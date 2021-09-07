@@ -9,17 +9,15 @@ A MATLAB pipeline for automatically processing TIFF image stacks. Functions incl
 
 [Java JRE 8 (or higher)](https://www.java.com/en/download/manual.jsp)
 
-# Compatibility
+## Compatibility
 Scripts should run on any system with compatible versions of MATLAB and Java.
 
 **Caveat**
 
 The dead pixel detection routine calls the native function `imhistc`, which is normally wrapped by `imhist` and hidden from the MATLAB user interface. To get around this, we copied `imhistc.m` and `imhistc.mexw64` from a Windows 8 installation to the workspace folder. These files have been removed from the public repo since they are part of MATLAB itself. At this time, the dead pixel detection function should attempt to search for `imhistc` and if it doesn't find it, call `imhist` instead. I do not know how well this works yet.
 
-If you want to use `imhistc` directly as we do, you can try to copy the files from your installation to the workspace directory. On Windows, they can be found at:
+If you want to use `imhistc` directly as we do, you can try to copy the files from your installation to the workspace directory. On Windows, they can be found in:
 
-`%MATLAB_INSTALLATION_DIR%\`
-
-``
+`%MATLAB_INSTALLATION_DIR%\toolbox\images\images\private`
 
 ## Usage
