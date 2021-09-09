@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.2.1
-%Updated August 31, 2021
+%Version 2.2.2
+%Updated September 9, 2021
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -32,6 +32,9 @@
 %       Changed save format for dead pixel detection
 %   2.2.1 | 21.08.31
 %       mask_spots now takes either a 2D or 3D mask
+%   2.2.2 | 21.09.09
+%       Kept debug plot for window score in auto threshold method, moved to
+%       its own method.
 %       
 
 %%
@@ -445,33 +448,32 @@ classdef RNA_Threshold_Common
             end
             
             %DEBUG plots
-            x = spotcount_table(1:pointcount,1);
-            y = winstdev;
-            %y = smooth(winstdev);
-            xlinecolor = [0.608 0.621 0.628];
-            ylinecolor = [0.608 0.621 0.628];
-            handle1 = figure(88888);
-            ax = axes;
-            plot(x, y, 'LineWidth', 2, 'Color', 'k');
-            ax.FontSize = 14;
-            hold on;
-            line(get(ax,'XLim'), [stdev_thresh stdev_thresh],'Color',xlinecolor,'LineStyle','--');
-            xlabel('Threshold', 'FontSize', 16);
-            ylabel('Window Score', 'FontSize', 16);
-            title(['Window Size = ' num2str(window_size)], 'FontSize', 18);
+            %x = spotcount_table(1:pointcount,1);
+            %y = winstdev;
+            %xlinecolor = [0.608 0.621 0.628];
+            %ylinecolor = [0.608 0.621 0.628];
+            %handle1 = figure(88888);
+            %ax = axes;
+            %plot(x, y, 'LineWidth', 2, 'Color', 'k');
+            %ax.FontSize = 14;
+            %hold on;
+            %line(get(ax,'XLim'), [stdev_thresh stdev_thresh],'Color',xlinecolor,'LineStyle','--');
+            %xlabel('Threshold', 'FontSize', 16);
+            %ylabel('Window Score', 'FontSize', 16);
+            %title(['Window Size = ' num2str(window_size)], 'FontSize', 18);
             
-            figure(88889);
-            x = x(startidx:(pointcount-1));
-            y = deriv1(startidx:(pointcount-1));
-            ax2 = axes;
-            plot(x, y, 'LineWidth', 2, 'Color', 'k');
-            ax2.FontSize = 14;
-            hold on;
-            xlabel('Threshold', 'FontSize', 16);
-            ylabel('|d(# Spots)/dx|', 'FontSize', 16);
+            %figure(88889);
+            %x = x(startidx:(pointcount-1));
+            %y = deriv1(startidx:(pointcount-1));
+            %ax2 = axes;
+            %plot(x, y, 'LineWidth', 2, 'Color', 'k');
+            %ax2.FontSize = 14;
+            %hold on;
+            %xlabel('Threshold', 'FontSize', 16);
+            %ylabel('|diff(# Spots)|', 'FontSize', 16);
             
             %Threshold
-            figure(handle1);
+            %figure(handle1);
             threshold = 0;
             for i = 1:pointcount
                 if ~isnan(win_stdevs(i))
@@ -480,12 +482,34 @@ classdef RNA_Threshold_Common
                     end
                 end
                 if threshold > 0
-                    line([threshold threshold], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
+                    %line([threshold threshold], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
                     return;
                 end
             end
             
-            line([threshold threshold], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
+            %line([threshold threshold], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
+        end
+        
+        %%
+        %
+        function fighandle = drawWindowscorePlot(th_table, win_stdevs, winscore_thresh, intensity_thresh)
+            pointcount = size(win_stdevs, 1);
+            x = th_table(1:pointcount);
+            y = win_stdevs;
+            %y = smooth(winstdev);
+            xlinecolor = [0.608 0.621 0.628];
+            ylinecolor = [0.608 0.621 0.628];
+            fighandle = figure(88888);
+            ax = axes;
+            plot(x, y, 'LineWidth', 2, 'Color', 'k');
+            ax.FontSize = 14;
+            hold on;
+            line(get(ax,'XLim'), [winscore_thresh winscore_thresh],'Color',xlinecolor,'LineStyle','--');
+            xlabel('Threshold', 'FontSize', 16);
+            ylabel('Window Score', 'FontSize', 16);
+            %title(['Window Size = ' num2str(window_size)], 'FontSize', 18);
+            title('Auto Threshold Selection', 'FontSize', 18);
+            line([intensity_thresh intensity_thresh], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
         end
         
         %%

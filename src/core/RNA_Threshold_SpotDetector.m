@@ -10,6 +10,8 @@
 %   1.0.0 | 19.10.24
 
 %%
+
+%%
 classdef RNA_Threshold_SpotDetector
     
     %%

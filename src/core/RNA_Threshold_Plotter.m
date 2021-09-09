@@ -72,6 +72,8 @@ classdef RNA_Threshold_Plotter
         function plotPreprocessedData(save_stem_signal, save_stem_ctrls, probeNames,...
                 st_thresh, img_output_dir, count_from_coords, zmin, zmax, async)
             
+            async = Force2Bool(async);
+            
             ctrl_count = size(save_stem_ctrls, 1);
             idx_rna = 1;
             
@@ -166,7 +168,13 @@ classdef RNA_Threshold_Plotter
 
             T = size(th_table,1);
             Tmax = th_table(T);
-            th_idx = T./2;
+            if st_thresh < 1
+                th_idx = T./2;
+            else
+                th_i_list = find(th_table(:) == st_thresh,1);
+                th_idx = th_i_list(1);
+            end
+            %th_idx = T./2;
             %th = th_table(th_idx);
 
             %Logs
@@ -181,43 +189,64 @@ classdef RNA_Threshold_Plotter
             
             img_handles = RNA_Threshold_Plotter.drawPlots(th_table, reg_tables, log_tables, th_idx, probeNames, all_imgs);
 
-            buu = 5;
-            while buu == 5
-                [x,~,but] = ginput(1);
-                if but == 1 %Left click, set thresh
-                    %fprintf("Left click! x = %f\n", x)
-                    if x > 0.0 && x < Tmax
-                        rounded = round(x);
-                        th_i_list = find(th_table(:) == rounded,1);
-                        th_idx = th_i_list(1);
-                        %th = spot_table_tsix(th_idx,1);
-                        img_handles = RNA_Threshold_Plotter.drawPlots(th_table, reg_tables, log_tables, th_idx, probeNames, all_imgs);
-                    end
-                elseif but == 2 %Middle click, exit loop
-                    buu = 2;
-                elseif but == 3 %Right click, exit loop
-                    buu = 2;
-                elseif but == 115 %"s" - save
-                    fprintf("Saving plots and images to %s...\n", img_output_dir)
-                    mkdir(img_output_dir);
-                    %Normal plot
-                    saveas(img_handles{1}, [img_output_dir filesep 'SpotPlot_th_' num2str(th_table(th_idx)) '.png']);
-                    saveas(img_handles{1}, [img_output_dir filesep 'SpotPlot_th_' num2str(th_table(th_idx))], 'epsc');
-                    %Log plot
-                    saveas(img_handles{2}, [img_output_dir filesep 'LogSpotPlot_th_' num2str(th_table(th_idx)) '.png']);
-                    saveas(img_handles{2}, [img_output_dir filesep 'LogSpotPlot_th_' num2str(th_table(th_idx))], 'epsc');
-                    %Images
-                    img_count = ctrl_count+1;
-                    for i = 1:img_count
-                        istruct(1) = all_imgs(i,1);
-                        istruct(2) = all_imgs(i,2);
-                        out_path = [img_output_dir filesep probeNames{i} '_filteredIMG_th_' num2str(th_table(th_idx))];
-                        RNA_Threshold_Plotter.saveFigureImage(istruct, 1, reg_tables(i).ctable{th_idx}, out_path);
-                        out_path = [img_output_dir filesep probeNames{i} '_rawIMG_th_' num2str(th_table(th_idx))];
-                        RNA_Threshold_Plotter.saveFigureImage(istruct, 2, reg_tables(i).ctable{th_idx}, out_path);
-                    end
+            if async
+                buu = 5;
+                while buu == 5
+                    [x,~,but] = ginput(1);
+                    if but == 1 %Left click, set thresh
+                        %fprintf("Left click! x = %f\n", x)
+                        if x > 0.0 && x < Tmax
+                            rounded = round(x);
+                            th_i_list = find(th_table(:) == rounded,1);
+                            th_idx = th_i_list(1);
+                            %th = spot_table_tsix(th_idx,1);
+                            img_handles = RNA_Threshold_Plotter.drawPlots(th_table, reg_tables, log_tables, th_idx, probeNames, all_imgs);
+                        end
+                    elseif but == 2 %Middle click, exit loop
+                        buu = 2;
+                    elseif but == 3 %Right click, exit loop
+                        buu = 2;
+                    elseif but == 115 %"s" - save
+                        fprintf("Saving plots and images to %s...\n", img_output_dir)
+                        mkdir(img_output_dir);
+                        %Normal plot
+                        saveas(img_handles{1}, [img_output_dir filesep 'SpotPlot_th_' num2str(th_table(th_idx)) '.png']);
+                        saveas(img_handles{1}, [img_output_dir filesep 'SpotPlot_th_' num2str(th_table(th_idx))], 'epsc');
+                        %Log plot
+                        saveas(img_handles{2}, [img_output_dir filesep 'LogSpotPlot_th_' num2str(th_table(th_idx)) '.png']);
+                        saveas(img_handles{2}, [img_output_dir filesep 'LogSpotPlot_th_' num2str(th_table(th_idx))], 'epsc');
+                        %Images
+                        img_count = ctrl_count+1;
+                        for i = 1:img_count
+                            istruct(1) = all_imgs(i,1);
+                            istruct(2) = all_imgs(i,2);
+                            out_path = [img_output_dir filesep probeNames{i} '_filteredIMG_th_' num2str(th_table(th_idx))];
+                            RNA_Threshold_Plotter.saveFigureImage(istruct, 1, reg_tables(i).ctable{th_idx}, out_path);
+                            out_path = [img_output_dir filesep probeNames{i} '_rawIMG_th_' num2str(th_table(th_idx))];
+                            RNA_Threshold_Plotter.saveFigureImage(istruct, 2, reg_tables(i).ctable{th_idx}, out_path);
+                        end
 
-                    fprintf("Plots saved!\n")
+                        fprintf("Plots saved!\n")
+                    end
+                end
+            else
+                %Just render and save.
+                mkdir(img_output_dir);
+                %Normal plot
+                saveas(img_handles{1}, [img_output_dir filesep 'SpotPlot_th_' num2str(th_table(th_idx)) '.png']);
+                saveas(img_handles{1}, [img_output_dir filesep 'SpotPlot_th_' num2str(th_table(th_idx))], 'epsc');
+                %Log plot
+                saveas(img_handles{2}, [img_output_dir filesep 'LogSpotPlot_th_' num2str(th_table(th_idx)) '.png']);
+                saveas(img_handles{2}, [img_output_dir filesep 'LogSpotPlot_th_' num2str(th_table(th_idx))], 'epsc');
+                %Images
+                img_count = ctrl_count+1;
+                for i = 1:img_count
+                    istruct(1) = all_imgs(i,1);
+                    istruct(2) = all_imgs(i,2);
+                    out_path = [img_output_dir filesep probeNames{i} '_filteredIMG_th_' num2str(th_table(th_idx))];
+                    RNA_Threshold_Plotter.saveFigureImage(istruct, 1, reg_tables(i).ctable{th_idx}, out_path);
+                    out_path = [img_output_dir filesep probeNames{i} '_rawIMG_th_' num2str(th_table(th_idx))];
+                    RNA_Threshold_Plotter.saveFigureImage(istruct, 2, reg_tables(i).ctable{th_idx}, out_path);
                 end
             end
             
@@ -280,6 +309,7 @@ classdef RNA_Threshold_Plotter
                 img_handles{4+i} = RNA_Threshold_Plotter.draw_images(istruct, 2+i, reg_tables(i).ctable{th_idx}, [probeNames{i} ' Image | Threshold = ' num2str(th)]);
             end
             
+            %TODO: Maybe resize to make plots a bit more horizontal
             %plot_count = (img_count.*3) - 2;
             plot_count = img_count;
             legend_names = cell(1, plot_count);

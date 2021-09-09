@@ -48,6 +48,11 @@ classdef RNA_Fisher_State
             clear RNA_Fisher_State.getStaticState
         end
         
+        function outputMessageLineStatic(message, send_to_gui)
+            rf_state = RNA_Fisher_State.getStaticState();
+            rf_state.outputMessageLine(message, send_to_gui);
+        end
+        
     end
     
 end
