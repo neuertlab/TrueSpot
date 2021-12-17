@@ -61,6 +61,15 @@ end
 if (nargin<=1);  img_first = 1; img_last = 10000; end
 if (nargin==2);  img_last = img_first;            end
 
+%Added by Blythe --
+%I got really sick of the tiff tag warnings eating up my output logs
+
+addpath('./core');
+suppress_tag_warnings = false;
+if exist('RNA_Fisher_State')
+    rfstate = RNA_Fisher_State.getStaticState();
+    suppress_tag_warnings = ~rfstate.tif_verbose;
+end
 
 % not all valid tiff tags have been included, as they are really a lot...
 % if needed, tags can easily be added to this code
@@ -211,7 +220,9 @@ while (ifd_pos ~= 0)
             case 33631       %metamorph stack data: gain/background?
                 TIF.MM_private2    = entry.val;
             otherwise
-                fprintf(1,'ignored TIFF entry with tag %i (cnt %i)\n', TIF.entry_tag, entry.cnt);
+                if ~suppress_tag_warnings
+                    fprintf(1,'ignored TIFF entry with tag %i (cnt %i)\n', TIF.entry_tag, entry.cnt);
+                end
         end
         % move to next IFD entry in the file
         fseek(TIF.file, file_pos+12,-1);

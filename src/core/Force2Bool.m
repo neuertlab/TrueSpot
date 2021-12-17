@@ -2,16 +2,16 @@
 %%
 
 function boolean = Force2Bool(value)
-    boolean = FALSE;
+    boolean = false;
     if ~islogical(value)
         if ischar(value)
             boolean = startsWith(value, "true", 'IgnoreCase', true);
         else
             if isnumeric(value)
                 if value == 0
-                    boolean = FALSE;
+                    boolean = false;
                 else
-                    boolean = TRUE;
+                    boolean = true;
                 end
             end
         end

@@ -244,7 +244,8 @@ classdef RNA_Threshold_Common
                 rand_hi(j, 1:size(rand_hi_temp,2)) = rand_hi_temp;
             end
             
-            if exist('imhistc') == 3
+            imhistc_exists = exist('imhistc');
+            if imhistc_exists == 3
                 %this is a binary mex file - the one I have is only gonna
                 %run on win x64 I think
                 fprintf("imhistc was found. Using imhistc.\n");
@@ -260,7 +261,7 @@ classdef RNA_Threshold_Common
             %[num2str(size(rand_recur_pix,1)) ' randomly recurring pixels' ]
             fprintf("%d randomly recurring pixels\n", size(rand_recur_pix,1));
             hi_pixels_all(hi_pixels_all == 0) = [];
-            if exist('imhistc') == 3
+            if imhistc_exists == 3
                 hist_pix = imhistc(double(hi_pixels_all(:)), double(Y * X), 0, double(Y * X));
             else
                 hist_pix = imhist(double(hi_pixels_all(:)), double(Y * X));
@@ -773,6 +774,7 @@ classdef RNA_Threshold_Common
         %   saveStem (string) - Path stem for saving results
         %   collapse3D (bool) - If the all3D strat is set, this specifies
         %           whether to collapse the return coordinates/counts to 2D
+        %   verbose (bool) - Whether to print update messages.
         %
         %RETURN
         %   spot_table (double[T][2]) - Table of spot counts at each
@@ -782,8 +784,13 @@ classdef RNA_Threshold_Common
         %                                   table for each threshold level.
         %
         function [spot_table, coord_table] = run_spotDetectOnThresholdList(img_filter, th_list, th_strategy, zBorder,... 
-                                                            save_filtered, saveStem, collapse3D)
+                                                            save_filtered, saveStem, collapse3D, verbose)
     
+                                                        
+            if nargin < 8
+                verbose = true;
+            end
+            
             %Save the basics
             Z = size(img_filter, 3);
             T = size(th_list, 2);
@@ -847,21 +854,21 @@ classdef RNA_Threshold_Common
                     %Run full 3D image. Yay!
                     if save_filtered
                         for c = 1:T
-                            tic
+                            if verbose; tic; end
                             th = th_list(1,c);
-                            fprintf("Processing image using threshold = %f\t", th)
+                            if verbose; fprintf("Processing image using threshold = %f\t", th); end
                             %Spot detect
                             [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder);
                             %Whittle down spots
-                            toc
+                            if verbose; toc; end
 
                             if collapse3D
-                                tic
-                                fprintf("Determining unique XY spots...\t")
+                                if verbose; tic; end
+                                if verbose; fprintf("Determining unique XY spots...\t"); end
                                 [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
                                 spot_table(c,2) = spot_count;
                                 coord_table{c,1} = t_coords;
-                                toc
+                                if verbose; toc; end
                             else
                                 [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,minZ,maxZ);
                                 spot_table(c,2) = spot_count;
@@ -873,12 +880,15 @@ classdef RNA_Threshold_Common
                         for c = 1:T
                         %parfor c = 1:T
                             th = th_list(1,c);
-                            fprintf("Processing image using threshold = %f\n", th)
+                            if verbose
+                                tic;
+                                fprintf("Processing image using threshold = %f\n", th);
+                            end
                             %Spot detect
                             [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder);
                             %Whittle down spots
                             if collapse3D
-                                fprintf("Determining unique XY spots...\n")
+                                if verbose; fprintf("Determining unique XY spots...\n"); end
                                 [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
                                 spot_table(c,2) = spot_count;
                                 coord_table{c,1} = t_coords;
@@ -887,6 +897,7 @@ classdef RNA_Threshold_Common
                                 spot_table(c,2) = spot_count;
                                 coord_table{c,1} = t_coords;
                             end
+                            if verbose; toc; end
                         end
                     end
                 end
@@ -1801,6 +1812,8 @@ classdef RNA_Threshold_Common
         %   coord_table (cell{int[N][2+]}) - Coordinate table of spots detected
         %       from original image. Each cell correlates to a tried
         %       threshold.
+        %   th_list (int[1][T]) - [Optional] Table of threshold values.
+        %       Defaults to 1:1:(coord_table size)
         %
         %RETURN
         %   masked_spot_table (int[T][2]) - Table of thresholds and the
@@ -1809,9 +1822,12 @@ classdef RNA_Threshold_Common
         %   masked_coord_table (cell{int[N][INDIM]}) - Coordinate table of
         %       only detected spots in the masked region.
         %
-        function [masked_spot_table, masked_coord_table] = mask_spots(mask_raw, coord_table)
+        function [masked_spot_table, masked_coord_table] = mask_spots(mask_raw, coord_table, th_list)
             tcount = size(coord_table,1);
-            th_list = [1:1:tcount];
+            
+            if nargin < 3
+                th_list = [1:1:tcount];
+            end
             
             masked_spot_table = NaN(tcount,2); %Columns are threshold, spot count. Rows are entries.
             masked_coord_table = cell(tcount,1); %Cell vector. Each cell is an x,y,z table.

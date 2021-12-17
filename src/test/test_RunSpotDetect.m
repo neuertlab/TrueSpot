@@ -4,7 +4,8 @@
 %%
 %Parameters
 %base_dir = 'D:\usr\bghos\labdat\imgproc';
-base_dir = 'C:\Users\Blythe\labdata\imgproc';
+%base_dir = 'C:\Users\Blythe\labdata\imgproc';
+base_dir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
 %tif_path = [base_dir '\img\mESC_4d\20180202_4d_mESC_Tsix-AF594_img_1_MMStack.ome.tif'];
 %img_name = 'Tsix-AF594';
@@ -14,13 +15,13 @@ base_dir = 'C:\Users\Blythe\labdata\imgproc';
 %t_min = 1; %Min threshold to try
 %t_max = 200; %Max threshold to try
 
-tif_path = [base_dir '\img\mESC_4d\20180202_4d_mESC_SCR-AF594_img_1_MMStack.ome.tif'];
-img_name = 'SCR-AF594';
-out_dir = [base_dir '\data\preprocess\feb2018\Tsix_AF594\SCR'];
-rna_channel = 3;
-channel_count = 5;
-t_min = 1; %Min threshold to try
-t_max = 200; %Max threshold to try
+%tif_path = [base_dir '\img\mESC_4d\20180202_4d_mESC_SCR-AF594_img_1_MMStack.ome.tif'];
+%img_name = 'SCR-AF594';
+%out_dir = [base_dir '\data\preprocess\feb2018\Tsix_AF594\SCR'];
+%rna_channel = 3;
+%channel_count = 5;
+%t_min = 1; %Min threshold to try
+%t_max = 200; %Max threshold to try
 
 %tif_path = [base_dir
 %'\img\mESC_4d\20180202_4d_mESC_No-probe_img_2_MMStack.ome.tif'];
@@ -173,6 +174,16 @@ t_max = 200; %Max threshold to try
 
 %t_min = 1; %Min threshold to try
 %t_max = 300; %Max threshold to try
+
+tif_path = [base_dir '\img\histones\20201118_0d_F1-2-1_XistInt-CY5-Tsix5Int-TMR-H3K36me3-AF488_img_4_MMStack.ome.tif'];
+img_name = 'Histone_D0_img4_ch3';
+out_dir = [base_dir '\data\preprocess\histones\D0_I4\Ch3'];
+rna_channel = 3;
+light_channel = 5;
+channel_count = 5;
+
+t_min = 1; %Min threshold to try
+t_max = 400; %Max threshold to try
 
 %And call the main!
 addpath('..');

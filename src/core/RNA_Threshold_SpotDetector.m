@@ -33,16 +33,21 @@ classdef RNA_Threshold_SpotDetector
         %   th_max (int) - Maximum intensity threshold value to scan
         %   dead_pix_detect (bool) - Whether to rerun the dead pixel detection procedure (if false, looks for file with dead pixel coords) 
         %
-        function run_spot_detection(img_channel, save_stem, strategy, th_min, th_max, dead_pix_detect)
+        function run_spot_detection(img_channel, save_stem, strategy, th_min, th_max, dead_pix_detect, verbose)
+            
+            if nargin < 7
+                verbose = true;
+            end
             
             %Detect dead pixels...
+            dead_pix_path = [save_stem '_deadpix'];
             if (dead_pix_detect)
-                RNA_Threshold_Common.saveDeadPixels(img_channel);
+                RNA_Threshold_Common.saveDeadPixels(img_channel, dead_pix_path);
             end
 
             %Pre-filtering...
             IMG3D = uint16(img_channel);
-            IMG3D = RNA_Threshold_Common.cleanDeadPixels(IMG3D);
+            IMG3D = RNA_Threshold_Common.cleanDeadPixels(IMG3D, dead_pix_path);
 
             fs = 13;
             IMG_filtered = RNA_Threshold_Common.applyGaussianFilter(IMG3D, fs);
@@ -68,7 +73,7 @@ classdef RNA_Threshold_SpotDetector
                     z_trim = 0;
                 end
             end
-            [spot_table, coord_table] = RNA_Threshold_Common.run_spotDetectOnThresholdList(IMG_filtered, thh, strategy, z_trim, false, [save_stem '_sfimg'], false);
+            [spot_table, coord_table] = RNA_Threshold_Common.run_spotDetectOnThresholdList(IMG_filtered, thh, strategy, z_trim, false, [save_stem '_sfimg'], false, verbose);
 
             %Spot count table
             save([save_stem '_spotTable'], 'spot_table');

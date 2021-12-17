@@ -39,15 +39,9 @@ function Main_BackgroundMask(img_path, seg_path, out_stem, totalCh, lightCh, out
     %Force to numbers
     totalCh = Force2Num(totalCh);
     lightCh = Force2Num(lightCh);
+    outputpng = Force2Bool(outputpng);
 
-    bkge = Background_Extractor;
-    bkge = bkge.initialize(img_path, totalCh, lightCh, seg_path);
-    bkge = bkge.setBkgMaskSavePath([out_stem '.mat']);
-    bkge = bkge.applyAndSave();
-    
-    if outputpng
-        bkge.exportMaskedImage([out_stem '.png']);
-        bkge.exportHistogramImage([out_stem '_histo.png']);
-    end
+    [tif, ~] = LoadTif(img_path, totalCh, [lightCh], true);
+    Bkg_Mask_Core(tif{lightCh,1}, seg_path, out_stem, outputpng);
 
 end

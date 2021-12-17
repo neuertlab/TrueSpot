@@ -8,7 +8,7 @@
 %       Init doc
 %   1.1.0 | 21.12.14
 %       Large images getting too big to save to one file
-%       Moved saves for pos table and neg table to their own files
+%       Moved saves for pos table and neg table to 
 
 %%
 classdef RNA_Threshold_SpotSelector

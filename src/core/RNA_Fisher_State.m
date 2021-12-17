@@ -5,6 +5,7 @@ classdef RNA_Fisher_State
     
     properties
         rna_fisher_gui_mode; %bool
+        tif_verbose; %bool
         
     end
     
@@ -17,6 +18,7 @@ classdef RNA_Fisher_State
                 obj.rna_fisher_gui_mode = false;
             end
             
+            obj.tif_verbose = true;
             initres = 0;
         end
         

@@ -46,13 +46,13 @@ classdef RNASpotsRun
             thresh_table = [];
             [~, spot_table] = obj.loadSpotsTable();
             if ~isempty(spot_table)
-                thresh_table = spot_table(:,1);
+                thresh_table = transpose(spot_table(:,1));
             end
         end
         
         function [obj, spot_table] = loadSpotsTable(obj)
             spot_table = [];
-            tbl_path = [obj.out_stem 'spot_table'];
+            tbl_path = [obj.out_stem '_spotTable.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'spot_table');
             end
@@ -60,7 +60,7 @@ classdef RNASpotsRun
         
         function [obj, spot_table] = loadControlSpotsTable(obj)
             spot_table = [];
-            tbl_path = [obj.ctrl_stem 'spot_table'];
+            tbl_path = [obj.ctrl_stem 'spot_table.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'spot_table');
             end
@@ -68,7 +68,7 @@ classdef RNASpotsRun
         
         function [obj, coord_table] = loadCoordinateTable(obj)
             coord_table = [];
-            tbl_path_RNA = [obj.out_stem '_coordTable'];
+            tbl_path_RNA = [obj.out_stem '_coordTable.mat'];
             if isfile(tbl_path_RNA)
                 load(tbl_path_RNA, 'coord_table');
             end
@@ -76,7 +76,7 @@ classdef RNASpotsRun
         
         function [obj, coord_table] = loadControlCoordinateTable(obj)
             coord_table = [];
-            tbl_path = [obj.ctrl_stem '_coordTable'];
+            tbl_path = [obj.ctrl_stem '_coordTable.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'coord_table');
             end
@@ -84,15 +84,15 @@ classdef RNASpotsRun
           
         function [obj, background_mask] = loadBackgroundMask(obj)
             background_mask = [];
-            if isfile(obj.bkg_path)
+            if isfile([obj.bkg_path '.mat'])
                 load(obj.bkg_path, 'background_mask');
             end
         end
         
         function [obj, my_images] = loadImageViewStructs(obj)
             my_images = [];
-            mypath = [obj.out_stem '_imgviewstructs'];
-            if isfile(obj.bkg_path)
+            mypath = [obj.out_stem '_imgviewstructs.mat'];
+            if isfile(mypath)
                 load(mypath, 'my_images');
             end
         end
@@ -100,12 +100,13 @@ classdef RNASpotsRun
         function obj = updateBackgroundFilteredCoords(obj)
             [~, background_mask] = obj.loadBackgroundMask();
             [~, coord_table] = obj.loadCoordinateTable();
+            [~, th_list] = obj.loadThresholdTable();
             
             if isempty(background_mask)
                 return;
             end
             
-            [masked_spot_table, masked_coord_table] = RNA_Threshold_Common.mask_spots(background_mask, coord_table);
+            [masked_spot_table, masked_coord_table] = RNA_Threshold_Common.mask_spots(background_mask, coord_table, th_list);
             coord_table = masked_coord_table;
             spot_table = masked_spot_table;
             save([obj.bkg_filter_stem '_coordTable'], 'coord_table');
@@ -127,8 +128,9 @@ classdef RNASpotsRun
                 else
                     %Reload TIF and count manually.
                     [X,Y,Z] = GetTifDims(obj.tif_path, obj.total_ch);
-                    idims = struct('x', X, 'y', Y, 'z', Z);
+                    idims = struct('x', X, 'y', Y, 'z', Z); 
                 end
+                idims
                 obj.idims_sample = idims;
             end
             
@@ -150,6 +152,21 @@ classdef RNASpotsRun
                 end
             end
         end
+        
+        function [obj, tif] = loadSampleTif(obj, verbosity)
+            if (nargin < 2); verbosity = 2; end
+            [tif, obj.idims_sample] = LoadTif(obj.tif_path, obj.total_ch, [obj.rna_ch, obj.light_ch], verbosity);
+        end
+        
+        function [obj, ch_dat] = loadControlChannel(obj, verbosity)
+            ch_dat = [];
+            if (nargin < 2); verbosity = 2; end
+            if ~isempty(obj.ctrl_path)
+                [tif, obj.idims_ctrl] = LoadTif(obj.ctrl_path, obj.ctrl_chcount, [obj.ctrl_ch], verbosity);
+                ch_dat = tif{obj.ctrl_ch, 1};
+            end
+        end
+        
     end
     
     methods(Static)

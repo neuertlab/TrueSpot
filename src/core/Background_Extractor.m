@@ -1,12 +1,15 @@
 %%
 %Image background extraction methods & GUI
 %Blythe Hospelhorn
-%Version 1.0.0
-%Modified March 11, 2021
+%Version 2.0.0
+%Modified December 13, 2021
 
 %Update Log:
 %   1.0.0 | 21.03.11
 %       Initital proper documentation
+%   2.0.0 | 21.12.13
+%       Changed initialize() to take the channel directly instead -
+%       converted old initialize() to read_and_initialize()
 %
 
 %%
@@ -65,23 +68,27 @@ classdef Background_Extractor
         %   light_ch_idx (int) - Index of light channel in source image
         %   seg_file_path (string) - Path to mat file containing cell
         %                            segmentation data for image
+        %   verbose (bool) - Whether to print TIFF read warnings
         %
-        function obj = initialize(obj, tiffpath, total_ch, light_ch_idx, seg_file_path)
+        function obj = read_and_initialize(obj, tiffpath, total_ch, light_ch_idx, seg_file_path, verbose)
             
             %Read in stack
-            [stack, img_read] = tiffread2(tiffpath);
-            img_read
-            total_ch
-            Z = img_read/total_ch;
-            Y = size(stack(1,1).data,1);
-            X = size(stack(1,1).data,2);
-                  
-            obj.img_ch = NaN(Y,X,Z);
-            idx = light_ch_idx; %Light
-            for z = 1:Z
-                obj.img_ch(:,:,z) = stack(1,idx).data;
-                idx = idx + total_ch;
-            end
+            [tif, ~] = LoadTif(tiffpath, total_ch, [light_ch_idx], ~verbose);
+            obj = obj.initialize(tif{light_ch_idx,1}, seg_file_path);
+            
+        end
+        
+        %%
+        %Load Background_Extractor object with provided channel data.
+        %
+        %ARGS
+        %   light_ch (double[][][]) - 3D light channel data
+        %   seg_file_path (string) - Path to mat file containing cell
+        %                            segmentation data for image
+        %
+        function obj = initialize(obj, light_ch, seg_file_path)
+            
+            obj.img_ch = light_ch;
             
             %Read in previous segmentation data
             load(seg_file_path, 'cells');
@@ -588,8 +595,8 @@ classdef Background_Extractor
             %smgauss = fit(transpose(1:size(histo_counts)), smooth, 'gauss2');
             
             %Plot smoothed function -- Debug only
-            figure(88888);
-            plot(histo_counts);
+            %figure(88888);
+            %plot(histo_counts);
             %hold on;
             %plot(smooth);
             %plot(raw_counts);
