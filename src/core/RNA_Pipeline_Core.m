@@ -2,7 +2,7 @@
 %%
 
 function RNA_Pipeline_Core(spotsrun, verbosity)
-%TestCommment
+%TestCommmentBK1
 %Debug print
 if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Running RNASpots with the following parameters..."), false);
