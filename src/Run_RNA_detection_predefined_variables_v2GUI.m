@@ -5,7 +5,7 @@
 %% Also ajust the threshold range if needed.
 %% The choosen thresholds are save in a file and can be used later for batch processing of images.
 
-function Run_RNA_detection_predefined_variables(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,images1,im_prefixes,img_stacks)
+function Run_RNA_detection_predefined_variablesv2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,images1,im_prefixes,img_stacks)
 %% Input
 % RNA_thresholds = zeros(6,65);
 % counter6 = 1;                     %counter for RNA_thresholds
@@ -13,7 +13,7 @@ function Run_RNA_detection_predefined_variables(thA,ths,outfile_prefix_RNA,Yth,Y
 %     counter6 = (node_num)*sum(Ych(1:7))+1;
 % end
 ch = Ych(1);
-% chi = find(Ych == 1);
+ chi = find(Ych == 1);
 % ch = size(chi,2);
 max_int_thres = 1;
 max_int_spot_th = 0;
@@ -338,7 +338,17 @@ images1{im_num}
     im_size = size(stack(1,1).data);
     whos
     clear stack
-    [thCY7,thAF700,thCY5,thAF594,thTMR,thYFP,thGFP] = AB_FindThreshold_TMR_AF594_CY5_B(im_size,counter,cells,trans_plane,S,CY7_ims,AF700_ims,CY5_ims,AF594_ims,TMR_ims,YFP_ims,GFP_ims,thA,ths,Ych,max_int_thres,max_int_spot_th);
+    for channels1 = 4:6
+        if Ych(4)& channels1 == 4
+            thresh_img = CY5_ims;
+        elseif Ych(5)& channels1 == 5
+            thresh_img = AF594_ims;
+        elseif Ych(6)& channels1 == 6
+            thresh_img = TMR_ims;
+        end
+        Main_RNASpotDetectv2(thresh_img, ImSt,fish_dir, im_prefixes{im_num},outfile_prefix_RNA, ch,thA(1), thA(end), true,true);
+    end
+%     [thCY7,thAF700,thCY5,thAF594,thTMR,thYFP,thGFP] = AB_FindThreshold_TMR_AF594_CY5_B(im_size,counter,cells,trans_plane,S,CY7_ims,AF700_ims,CY5_ims,AF594_ims,TMR_ims,YFP_ims,GFP_ims,thA,ths,Ych,max_int_thres,max_int_spot_th);
     % collect all the picked thresholds for CY7, AF700, CY5, AF594, TMR, YFP,GFP
     thCY7Man(1:3,S,counter) = thCY7;
     thAF700Man(1:3,S,counter) = thAF700;

@@ -23,7 +23,7 @@ function varargout = A0_GUI_seg_outside_generalized(varargin)
 
 % Edit the above text to modify the response to help A0_GUI_seg_outside_generalized
 
-% Last Modified by GUIDE v2.5 20-Jun-2019 10:21:20
+% Last Modified by GUIDE v2.5 03-Feb-2022 13:51:35
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -68,7 +68,7 @@ handles.file_type = 'Multiple';
 handles.segment_mode = 'last5';
 handles.Seg_thres = 0;
 handles.fish_dir = '';
-handles.outfile_prefix_seg = '';
+handles.outfile_prefix_seg = ''; %Where the siles will be saved to
 handles.max_int_thres = 0;
 handles.max_int_spot_th = 0;
 handles.min_nucleus_size = 0;
@@ -3174,7 +3174,8 @@ im_prefixes = images2;
 %     im_prefixes = {im_prefixes{node_num+1}};
 % end
 end
-Run_RNA_detection_predefined_variables(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+% Main_RNASpotDetect(img_name, tif_path, out_dir, rna_channel, channel_count, t_min, t_max, true);
+Run_RNA_detection_predefined_variablesv2(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
          
 
 
@@ -3341,3 +3342,10 @@ function checkbox20_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 handles.max_int_thres = get(hObject,'Value');
 % Hint: get(hObject,'Value') returns toggle state of checkbox20
+
+
+% --- Executes on button press in pushbutton21.
+function pushbutton21_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton21 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
