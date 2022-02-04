@@ -33,7 +33,7 @@ classdef RNA_Threshold_SpotDetector
         %   th_max (int) - Maximum intensity threshold value to scan
         %   dead_pix_detect (bool) - Whether to rerun the dead pixel detection procedure (if false, looks for file with dead pixel coords) 
         %
-        function run_spot_detection(img_channel, save_stem, strategy, th_min, th_max, dead_pix_detect, verbose)
+        function [auto_ztrim] = run_spot_detection(img_channel, save_stem, strategy, th_min, th_max, dead_pix_detect, verbose)
             
             if nargin < 7
                 verbose = true;
@@ -73,6 +73,7 @@ classdef RNA_Threshold_SpotDetector
                     z_trim = 0;
                 end
             end
+            auto_ztrim = z_trim;
             [spot_table, coord_table] = RNA_Threshold_Common.run_spotDetectOnThresholdList(IMG_filtered, thh, strategy, z_trim, false, [save_stem '_sfimg'], false, verbose);
 
             %Spot count table

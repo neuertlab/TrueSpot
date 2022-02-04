@@ -50,6 +50,11 @@ classdef RNA_Fisher_State
             clear RNA_Fisher_State.getStaticState
         end
         
+        function setGUIMode(mybool)
+            rf_state = RNA_Fisher_State.getStaticState();
+            rf_state.rna_fisher_gui_mode = mybool;
+        end
+        
         function outputMessageLineStatic(message, send_to_gui)
             rf_state = RNA_Fisher_State.getStaticState();
             rf_state.outputMessageLine(message, send_to_gui);
