@@ -27,6 +27,7 @@ classdef RNASpotsRun
         t_min;
         t_max;
         ztrim;
+        ztrim_auto;
         ttune_winsize;
         ttune_wscorethresh;
         intensity_threshold;

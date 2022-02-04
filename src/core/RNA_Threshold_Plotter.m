@@ -169,7 +169,7 @@ classdef RNA_Threshold_Plotter
             T = size(th_table,1);
             Tmax = th_table(T);
             if st_thresh < 1
-                th_idx = T./2;
+                th_idx = int16(T./2);
             else
                 th_i_list = find(th_table(:) == st_thresh,1);
                 th_idx = th_i_list(1);
