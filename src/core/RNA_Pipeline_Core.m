@@ -1,8 +1,10 @@
 %
 %%
 
-function RNA_Pipeline_Core(spotsrun, verbosity)
-%TestCommmentBK1
+function RNA_Pipeline_Core(spotsrun, verbosity, preloaded_imgs)
+
+bPreloaded = (nargin > 2) && (~isempty(preloaded_imgs));
+
 %Debug print
 if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Running RNASpots with the following parameters..."), false);
@@ -22,11 +24,17 @@ if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_winsize = %d", spotsrun.ttune_winsize), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_wscorethresh = %f", spotsrun.ttune_wscorethresh), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("overwrite_output = %d", spotsrun.overwrite_output), false);
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
 end
 
-%Load sample TIF
-[spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
-sample_rna_ch = sample_tif{spotsrun.rna_ch,1};
+%Nab sample images.
+if bPreloaded
+    sample_rna_ch = preloaded_imgs.dat_rna_sample;
+else
+    %Load sample TIF
+    [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
+    sample_rna_ch = sample_tif{spotsrun.rna_ch,1};
+end
 
 %Do background extraction if arguments provided.
 %!! Don't redo if target exists and overwrite output is false!
@@ -42,7 +50,11 @@ if isempty(spotsrun.ctrl_path)
             %fprintf("Extracting background...\n");
             %Make sure cellseg data file exists
             if (isfile(spotsrun.cellseg_path))
-                sample_light_ch = sample_tif{spotsrun.light_ch,1};
+                if bPreloaded
+                    sample_light_ch = preloaded_imgs.dat_trans_sample;
+                else
+                    sample_light_ch = sample_tif{spotsrun.light_ch,1};
+                end
                 Bkg_Mask_Core(sample_light_ch, spotsrun.cellseg_path, spotsrun.bkg_path, true);
                 %Main_BackgroundMask(spotsrun.tif_path, spotsrun.cellseg_path, spotsrun.bkg_path, spotsrun.total_ch, spotsrun.light_ch, true);
             else
@@ -75,7 +87,8 @@ end
 
 if runme
     spotdec = RNA_Threshold_SpotDetector;
-    spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+    [auto_zt] = spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+    spotsrun.ztrim_auto = auto_zt;
 end
 
 %Run spot detect on control (if a tif path was provided)
@@ -93,11 +106,17 @@ if ~isempty(spotsrun.ctrl_path)
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Running spot detect on control image... (This may take a few hours on large files)"), true);
         %spotsrun.ctrl_stem = Main_RNASpotDetect([spotsrun.img_name '_Control'], spotsrun.ctrl_path, spotsrun.out_dir,...
         %    spotsrun.ctrl_ch, spotsrun.ctrl_chcount, spotsrun.t_min, spotsrun.t_max, true, spotsrun.overwrite_output);
-        [spotsrun, ctrl_image_channel] = spotsrun.loadControlChannel(verbosity);
+        if bPreloaded
+            ctrl_image_channel = preloaded_imgs.dat_rna_control;
+        else
+            [spotsrun, ctrl_image_channel] = spotsrun.loadControlChannel(verbosity);
+        end
         %outdir = [spotsrun.out_dir filesep strat];
         outstem = [spotsrun.out_dir filesep spotsrun.img_name '_Control_' strat];
         runme = true;
         if ~spotsrun.overwrite_output
+            %TODO check this run params against saved - if not match, throw
+            %an error and return!!
             if isfile([outstem '_coordTable.mat'])
                 fprintf("Spot detection output at %s already exists! Skipping spot detection...\n", outstem);
                 runme = false;
@@ -136,8 +155,7 @@ z_min_trimmed = 1;
 z_max_trimmed = idims.z;
 
 %Load spot count tables and apply ztrim
-%TODO - ztrim not working - I think it's just trimming out everything XD
-if spotsrun.ztrim > 0
+if spotsrun.ztrim > spotsrun.ztrim_auto
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Applying z trim..."), true);
     %Create ztrim mask.
     ztrim_mask = true(idims.y, idims.x, idims.z);

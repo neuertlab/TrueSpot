@@ -1840,6 +1840,7 @@ classdef RNA_Threshold_Common
             ndim = size(coord_table{1},2);
             tdims = max(mdim, ndim);
             
+   
             for t = 1:tcount
                 ttable = coord_table{t};
                 s_count = size(ttable,1);
@@ -1851,19 +1852,20 @@ classdef RNA_Threshold_Common
                     if ndim == 3
                         z = ttable(i,3);
                     end
-                    if mask_raw(y,x) 
-                        if mdim > 2
-                            if mask_raw(y,x,z)
-                                tmptbl(i,1) = x;
-                                tmptbl(i,2) = y;
-                                tmptbl(i,3) = z;
-                            end
-                        else
+                    
+                    if mdim == 2
+                        if mask_raw(y,x) 
                             tmptbl(i,1) = x;
                             tmptbl(i,2) = y;
                             if ndim == 3
                                 tmptbl(i,3) = z;
                             end
+                        end
+                    elseif mdim == 3
+                        if mask_raw(y,x,z)
+                        	tmptbl(i,1) = x;
+                        	tmptbl(i,2) = y;
+                         	tmptbl(i,3) = z;
                         end
                     end
                 end
