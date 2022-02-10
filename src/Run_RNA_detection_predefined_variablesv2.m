@@ -305,7 +305,33 @@ for S = task_ids
            elseif chi(channels1) ==  7
                thresh_img = GFP_ims;
            end
-        Main_RNASpotDetectv2(thresh_img, ImSt,fish_dir, outfile_prefix_RNA, ch,thA(1), thA(end), true);
+           if runme
+               spotdec = RNA_Threshold_SpotDetector;
+               [auto_zt] = spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+               spotsrun.ztrim_auto = auto_zt;
+           end
+           img_name = outfile_prefix_RNA;
+           tif_path = fish_dir;
+           rna_ch = channels1;
+           light_ch = ch;
+           total_ch = ch;
+           out_dir = outfile_prefix_seg;
+           t_min = thA(1);
+           t_max = thA(end);
+           cellseg_path = outfile_prefix_seg;
+           ztrim = 5;
+           ctrl_path = '';
+           ctrl_ch = [];
+           ctrl_chcount = [];
+           ttune_winsize = 0;
+           ttune_wscorethresh = -1;
+           overwrite_output = 1;
+                      guimode = 1;
+           preloaded_images = thresh_img;
+           Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
+    out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize, ttune_wscorethresh,...
+    overwrite_output, guimode, preloaded_images)
+%            Main_RNASpotDetectv2(thresh_img, ImSt,fish_dir, outfile_prefix_RNA, ch,thA(1), thA(end), true);
        end
         %     [thCY7,thAF700,thCY5,thAF594,thTMR,thYFP,thGFP,RNA_thresholds,counter6] = AB_FindThreshold_TMR_AF594_CY5_B_BK_auto(counter,cells,trans_plane,S,CY7_ims,AF700_ims,CY5_ims,AF594_ims,TMR_ims,YFP_ims,GFP_ims,thA,ths,Ych,RNA_thresholds,counter6,exp_name,outfile_prefix_RNA);
     % collect all the picked thresholds for CY7, AF700, CY5, AF594, TMR, YFP,GFP

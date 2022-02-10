@@ -1,0 +1,1048 @@
+
+S =
+
+     1
+
+
+counter =
+
+     1
+
+
+ans =
+
+    'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'
+
+
+ij =
+
+     2
+
+  Name                       Size                      Bytes  Class     Attributes
+
+  AF594_ims               2048x2048x81            2717908992  double              
+  AF594im                    1x81                        648  double              
+  AF700_ims                  1x1                           8  double              
+  CY5_ims                 2048x2048x81            2717908992  double              
+  CY5im                      1x81                        648  double              
+  CY7_ims                    1x1                           8  double              
+  GFP_ims                    1x1                           8  double              
+  ImSt                       1x1                           8  double              
+  ManTh                      1x1                           8  double              
+  S                          1x1                           8  double              
+  Seg_thres                  1x1                           8  double              
+  TMR_ims                 2048x2048x81            2717908992  double              
+  TMRim                      1x81                        648  double              
+  TRANS_ims                  1x1                           8  double              
+  YFP_ims                    1x1                           8  double              
+  Ych                        1x9                          72  double              
+  Yim                        1x1                           8  double              
+  Yth                        1x1                           8  double              
+  Ywin                       1x1                           8  double              
+  ans                        1x156                       312  char                
+  cells                      1x1                           8  double              
+  ch                         1x1                           8  double              
+  chi                        1x1                           8  double              
+  counter                    1x1                           8  double              
+  file_type                  1x8                          16  char                
+  fish_dir                   1x76                        152  char                
+  h                          1x1                           2  char                
+  i                          1x1                           8  double              
+  ij                         1x1                           8  double              
+  im_num                     1x1                           8  double              
+  im_prefixes                1x1                         230  cell                
+  im_size                    1x2                          16  double              
+  images1                    1x1                         416  cell                
+  img_read                   1x1                           8  double              
+  img_stacks                 1x2                          16  double              
+  max_int_spot_th            1x1                           8  double              
+  max_int_thres              1x1                           8  double              
+  node_num                   1x1                           8  double              
+  outfile_prefix_RNA         1x1                           8  double              
+  outfile_prefix_seg         1x1                           8  double              
+  segment_mode               1x5                          10  char                
+  stack                      1x405                3397922972  struct              
+  thA                        1x3                          24  double              
+  ths                        1x9                          72  double              
+  trans_plane                1x1                           8  double              
+
+Output directory argument is invalid.
+
+ans = 
+
+  <a href="matlab:helpPopup RNASpotsRun" style="font-weight:bold">RNASpotsRun</a> with properties:
+
+               img_name: []
+               tif_path: []
+                out_dir: []
+           cellseg_path: []
+              ctrl_path: []
+               bkg_path: []
+        bkg_filter_stem: []
+               out_stem: []
+              ctrl_stem: []
+                 rna_ch: []
+               light_ch: []
+               total_ch: []
+                ctrl_ch: []
+           ctrl_chcount: []
+           idims_sample: []
+             idims_ctrl: []
+                  t_min: []
+                  t_max: []
+                  ztrim: []
+             ztrim_auto: []
+          ttune_winsize: []
+     ttune_wscorethresh: []
+    intensity_threshold: []
+       overwrite_output: []
+
+Output directory argument is invalid.
+
+ans = 
+
+  <a href="matlab:helpPopup RNASpotsRun" style="font-weight:bold">RNASpotsRun</a> with properties:
+
+               img_name: []
+               tif_path: []
+                out_dir: []
+           cellseg_path: []
+              ctrl_path: []
+               bkg_path: []
+        bkg_filter_stem: []
+               out_stem: []
+              ctrl_stem: []
+                 rna_ch: []
+               light_ch: []
+               total_ch: []
+                ctrl_ch: []
+           ctrl_chcount: []
+           idims_sample: []
+             idims_ctrl: []
+                  t_min: []
+                  t_max: []
+                  ztrim: []
+             ztrim_auto: []
+          ttune_winsize: []
+     ttune_wscorethresh: []
+    intensity_threshold: []
+       overwrite_output: []
+
+Output directory argument is invalid.
+
+ans = 
+
+  <a href="matlab:helpPopup RNASpotsRun" style="font-weight:bold">RNASpotsRun</a> with properties:
+
+               img_name: []
+               tif_path: []
+                out_dir: []
+           cellseg_path: []
+              ctrl_path: []
+               bkg_path: []
+        bkg_filter_stem: []
+               out_stem: []
+              ctrl_stem: []
+                 rna_ch: []
+               light_ch: []
+               total_ch: []
+                ctrl_ch: []
+           ctrl_chcount: []
+           idims_sample: []
+             idims_ctrl: []
+                  t_min: []
+                  t_max: []
+                  ztrim: []
+             ztrim_auto: []
+          ttune_winsize: []
+     ttune_wscorethresh: []
+    intensity_threshold: []
+       overwrite_output: []
+
+{Unrecognized function or variable 'thCY7'.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 375)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',375,0)">line 375</a>)
+    thCY7Man(1:3,S,counter) = thCY7;
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+Error in
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>} 
+Error while evaluating UIControl Callback.
+
+opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',375,0)
+
+images1 =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'}
+
+
+im_prefixes =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1'}
+
+
+S =
+
+     1
+
+
+counter =
+
+     1
+
+
+ans =
+
+    'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'
+
+
+ij =
+
+     2
+
+  Name                       Size                      Bytes  Class     Attributes
+
+  AF594_ims               2048x2048x81            2717908992  double              
+  AF594im                    1x81                        648  double              
+  AF700_ims                  1x1                           8  double              
+  CY5_ims                 2048x2048x81            2717908992  double              
+  CY5im                      1x81                        648  double              
+  CY7_ims                    1x1                           8  double              
+  GFP_ims                    1x1                           8  double              
+  ImSt                       1x1                           8  double              
+  ManTh                      1x1                           8  double              
+  S                          1x1                           8  double              
+  Seg_thres                  1x1                           8  double              
+  TMR_ims                 2048x2048x81            2717908992  double              
+  TMRim                      1x81                        648  double              
+  TRANS_ims                  1x1                           8  double              
+  YFP_ims                    1x1                           8  double              
+  Ych                        1x9                          72  double              
+  Yim                        1x1                           8  double              
+  Yth                        1x1                           8  double              
+  Ywin                       1x1                           8  double              
+  ans                        1x156                       312  char                
+  cells                      1x1                           8  double              
+  ch                         1x1                           8  double              
+  chi                        1x1                           8  double              
+  counter                    1x1                           8  double              
+  file_type                  1x8                          16  char                
+  fish_dir                   1x76                        152  char                
+  h                          1x1                           2  char                
+  i                          1x1                           8  double              
+  ij                         1x1                           8  double              
+  im_num                     1x1                           8  double              
+  im_prefixes                1x1                         230  cell                
+  im_size                    1x2                          16  double              
+  images1                    1x1                         416  cell                
+  img_read                   1x1                           8  double              
+  img_stacks                 1x2                          16  double              
+  max_int_spot_th            1x1                           8  double              
+  max_int_thres              1x1                           8  double              
+  node_num                   1x1                           8  double              
+  outfile_prefix_RNA         1x1                           8  double              
+  outfile_prefix_seg         1x1                           8  double              
+  segment_mode               1x5                          10  char                
+  stack                      1x405                3397922972  struct              
+  thA                        1x3                          24  double              
+  ths                        1x9                          72  double              
+  trans_plane                1x1                           8  double              
+
+Output directory argument is invalid.
+
+rna_spot_run = 
+
+  <a href="matlab:helpPopup RNASpotsRun" style="font-weight:bold">RNASpotsRun</a> with properties:
+
+               img_name: []
+               tif_path: []
+                out_dir: []
+           cellseg_path: []
+              ctrl_path: []
+               bkg_path: []
+        bkg_filter_stem: []
+               out_stem: []
+              ctrl_stem: []
+                 rna_ch: []
+               light_ch: []
+               total_ch: []
+                ctrl_ch: []
+           ctrl_chcount: []
+           idims_sample: []
+             idims_ctrl: []
+                  t_min: []
+                  t_max: []
+                  ztrim: []
+             ztrim_auto: []
+          ttune_winsize: []
+     ttune_wscorethresh: []
+    intensity_threshold: []
+       overwrite_output: []
+
+Output directory argument is invalid.
+
+rna_spot_run = 
+
+  <a href="matlab:helpPopup RNASpotsRun" style="font-weight:bold">RNASpotsRun</a> with properties:
+
+               img_name: []
+               tif_path: []
+                out_dir: []
+           cellseg_path: []
+              ctrl_path: []
+               bkg_path: []
+        bkg_filter_stem: []
+               out_stem: []
+              ctrl_stem: []
+                 rna_ch: []
+               light_ch: []
+               total_ch: []
+                ctrl_ch: []
+           ctrl_chcount: []
+           idims_sample: []
+             idims_ctrl: []
+                  t_min: []
+                  t_max: []
+                  ztrim: []
+             ztrim_auto: []
+          ttune_winsize: []
+     ttune_wscorethresh: []
+    intensity_threshold: []
+       overwrite_output: []
+
+Output directory argument is invalid.
+
+rna_spot_run = 
+
+  <a href="matlab:helpPopup RNASpotsRun" style="font-weight:bold">RNASpotsRun</a> with properties:
+
+               img_name: []
+               tif_path: []
+                out_dir: []
+           cellseg_path: []
+              ctrl_path: []
+               bkg_path: []
+        bkg_filter_stem: []
+               out_stem: []
+              ctrl_stem: []
+                 rna_ch: []
+               light_ch: []
+               total_ch: []
+                ctrl_ch: []
+           ctrl_chcount: []
+           idims_sample: []
+             idims_ctrl: []
+                  t_min: []
+                  t_max: []
+                  ztrim: []
+             ztrim_auto: []
+          ttune_winsize: []
+     ttune_wscorethresh: []
+    intensity_threshold: []
+       overwrite_output: []
+
+  Name                       Size                      Bytes  Class          Attributes
+
+  AF594im                    1x81                        648  double                   
+  AF700_ims                  1x1                           8  double                   
+  CY5im                      1x81                        648  double                   
+  CY7_ims                    1x1                           8  double                   
+  GFP_ims                    1x1                           8  double                   
+  ImSt                       1x1                           8  double                   
+  ManTh                      1x1                           8  double                   
+  S                          1x1                           8  double                   
+  Seg_thres                  1x1                           8  double                   
+  TMRim                      1x81                        648  double                   
+  TRANS_ims                  1x1                           8  double                   
+  YFP_ims                    1x1                           8  double                   
+  Ych                        1x9                          72  double                   
+  Yim                        1x1                           8  double                   
+  Yth                        1x1                           8  double                   
+  Ywin                       1x1                           8  double                   
+  ans                        1x156                       312  char                     
+  cells                      1x1                           8  double                   
+  cellseg_path               1x1                           8  double                   
+  ch                         1x1                           8  double                   
+  channels1                  1x1                           8  double                   
+  chi                        1x1                           8  double                   
+  counter                    1x1                           8  double                   
+  ctrl_ch                    0x0                           0  double                   
+  ctrl_chcount               0x0                           0  double                   
+  ctrl_path                  0x0                           0  char                     
+  file_type                  1x8                          16  char                     
+  fish_dir                   1x76                        152  char                     
+  guimode                    1x1                           8  double                   
+  h                          1x1                           2  char                     
+  i                          1x1                           8  double                   
+  ij                         1x1                           8  double                   
+  im_num                     1x1                           8  double                   
+  im_prefixes                1x1                         230  cell                     
+  im_size                    1x2                          16  double                   
+  images1                    1x1                         416  cell                     
+  img_name                   1x1                           8  double                   
+  img_read                   1x1                           8  double                   
+  img_stacks                 1x2                          16  double                   
+  light_ch                   1x1                           8  double                   
+  max_int_spot_th            1x1                           8  double                   
+  max_int_thres              1x1                           8  double                   
+  node_num                   1x1                           8  double                   
+  out_dir                    1x1                           8  double                   
+  outfile_prefix_RNA         1x1                           8  double                   
+  outfile_prefix_seg         1x1                           8  double                   
+  overwrite_output           1x1                           8  double                   
+  preloaded_images        2048x2048x81            2717908992  double                   
+  rna_ch                     1x1                           8  double                   
+  rna_spot_run               1x1                           0  RNASpotsRun              
+  segment_mode               1x5                          10  char                     
+  t_max                      1x1                           8  double                   
+  t_min                      1x1                           8  double                   
+  thA                        1x3                          24  double                   
+  thresh_img              2048x2048x81            2717908992  double                   
+  ths                        1x9                          72  double                   
+  tif_path                   1x76                        152  char                     
+  total_ch                   1x1                           8  double                   
+  trans_plane                1x1                           8  double                   
+  ttune_winsize              1x1                           8  double                   
+  ttune_wscorethresh         1x1                           8  double                   
+  ztrim                      1x1                           8  double                   
+
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('save')" style="font-weight:bold">save</a>
+' mRNA_TH_20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1.mat' is a folder name. The FILENAME must be
+a valid file name.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 388)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',388,0)">line 388</a>)
+    save([outfile_prefix_RNA char(files)],'rna_spot_run')
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+Error in
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>} 
+Error while evaluating UIControl Callback.
+
+
+images1 =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'}
+
+
+im_prefixes =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1'}
+
+
+S =
+
+     1
+
+
+counter =
+
+     1
+
+
+ans =
+
+    'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'
+
+
+ij =
+
+     2
+
+  Name                       Size                      Bytes  Class     Attributes
+
+  AF594_ims               2048x2048x81            2717908992  double              
+  AF594im                    1x81                        648  double              
+  AF700_ims                  1x1                           8  double              
+  CY5_ims                 2048x2048x81            2717908992  double              
+  CY5im                      1x81                        648  double              
+  CY7_ims                    1x1                           8  double              
+  GFP_ims                    1x1                           8  double              
+  ImSt                       1x1                           8  double              
+  ManTh                      1x1                           8  double              
+  S                          1x1                           8  double              
+  Seg_thres                  1x1                           8  double              
+  TMR_ims                 2048x2048x81            2717908992  double              
+  TMRim                      1x81                        648  double              
+  TRANS_ims                  1x1                           8  double              
+  YFP_ims                    1x1                           8  double              
+  Ych                        1x9                          72  double              
+  Yim                        1x1                           8  double              
+  Yth                        1x1                           8  double              
+  Ywin                       1x1                           8  double              
+  ans                        1x156                       312  char                
+  cells                      1x1                           8  double              
+  ch                         1x1                           8  double              
+  chi                        1x1                           8  double              
+  counter                    1x1                           8  double              
+  file_type                  1x8                          16  char                
+  fish_dir                   1x76                        152  char                
+  h                          1x1                           2  char                
+  i                          1x1                           8  double              
+  ij                         1x1                           8  double              
+  im_num                     1x1                           8  double              
+  im_prefixes                1x1                         230  cell                
+  im_size                    1x2                          16  double              
+  images1                    1x1                         416  cell                
+  img_read                   1x1                           8  double              
+  img_stacks                 1x2                          16  double              
+  max_int_spot_th            1x1                           8  double              
+  max_int_thres              1x1                           8  double              
+  node_num                   1x1                           8  double              
+  outfile_prefix_RNA         1x28                         56  char                
+  outfile_prefix_seg         1x28                         56  char                
+  segment_mode               1x5                          10  char                
+  stack                      1x405                3397922972  struct              
+  thA                        1x3                          24  double              
+  ths                        1x9                          72  double              
+  trans_plane                1x1                           8  double              
+
+Running RNASpots with the following parameters...
+img_name = 20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1
+tif_path = D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/
+rna_ch = 4
+light_ch = 5
+total_ch = 5
+out_dir = D:\Thresholding_TestOutputs\
+t_min = 1
+t_max = 200
+ztrim = 5
+cellseg_path = D:\Thresholding_TestOutputs\
+ctrl_path = 
+ctrl_ch = 
+ctrl_chcount = 
+ttune_winsize = 10
+ttune_wscorethresh = 0.900000
+overwrite_output = 1
+Use preloaded images? = 1
+{Dot indexing is not supported for variables of this type.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Pipeline_Core', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m', 32)" style="font-weight:bold">RNA_Pipeline_Core</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m',32,0)">line 32</a>)
+    sample_rna_ch = preloaded_imgs.dat_rna_sample;
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Adapter_RNASpots', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m', 116)" style="font-weight:bold">Adapter_RNASpots</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m',116,0)">line 116</a>)
+    RNA_Pipeline_Core(spotsrun, verbosity, preloaded_images);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 367)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',367,0)">line 367</a>)
+    rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+Error in
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>} 
+Error while evaluating UIControl Callback.
+
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('load')" style="font-weight:bold">load</a>
+Unable to read file '00'. No such file or directory.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Load_In_Browse_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 1089)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Load_In_Browse_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',1089,0)">line 1089</a>)
+load(get(handles.Load_In_edit,'String'));
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+Error in
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Load_In_Browse_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Load_In_Browse_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>} 
+Error while evaluating UIControl Callback.
+
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('load')" style="font-weight:bold">load</a>
+Unable to read file '00'. No such file or directory.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Load_In_Browse_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 1089)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Load_In_Browse_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',1089,0)">line 1089</a>)
+load(get(handles.Load_In_edit,'String'));
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+Error in
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Load_In_Browse_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Load_In_Browse_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>} 
+Error while evaluating UIControl Callback.
+
+
+images1 =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'}
+
+
+im_prefixes =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1'}
+
+
+S =
+
+     1
+
+
+counter =
+
+     1
+
+
+ans =
+
+    'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'
+
+
+ij =
+
+     2
+
+  Name                       Size                      Bytes  Class     Attributes
+
+  AF594_ims               2048x2048x81            2717908992  double              
+  AF594im                    1x81                        648  double              
+  AF700_ims                  1x1                           8  double              
+  CY5_ims                 2048x2048x81            2717908992  double              
+  CY5im                      1x81                        648  double              
+  CY7_ims                    1x1                           8  double              
+  GFP_ims                    1x1                           8  double              
+  ImSt                       1x1                           8  double              
+  ManTh                      1x1                           8  double              
+  S                          1x1                           8  double              
+  Seg_thres                  1x1                           8  double              
+  TMR_ims                 2048x2048x81            2717908992  double              
+  TMRim                      1x81                        648  double              
+  TRANS_ims                  1x1                           8  double              
+  YFP_ims                    1x1                           8  double              
+  Ych                        1x9                          72  double              
+  Yim                        1x1                           8  double              
+  Yth                        1x1                           8  double              
+  Ywin                       1x1                           8  double              
+  ans                        1x156                       312  char                
+  cells                      1x1                           8  double              
+  ch                         1x1                           8  double              
+  chi                        1x1                           8  double              
+  counter                    1x1                           8  double              
+  file_type                  1x8                          16  char                
+  fish_dir                   1x76                        152  char                
+  h                          1x1                           2  char                
+  i                          1x1                           8  double              
+  ij                         1x1                           8  double              
+  im_num                     1x1                           8  double              
+  im_prefixes                1x1                         230  cell                
+  im_size                    1x2                          16  double              
+  images1                    1x1                         416  cell                
+  img_read                   1x1                           8  double              
+  img_stacks                 1x2                          16  double              
+  max_int_spot_th            1x1                           8  double              
+  max_int_thres              1x1                           8  double              
+  node_num                   1x1                           8  double              
+  outfile_prefix_RNA         1x28                         56  char                
+  outfile_prefix_seg         1x28                         56  char                
+  segment_mode               1x5                          10  char                
+  stack                      1x405                3397922972  struct              
+  thA                        1x3                          24  double              
+  ths                        1x9                          72  double              
+  trans_plane                1x1                           8  double              
+
+Running RNASpots with the following parameters...
+img_name = 20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1
+tif_path = D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/
+rna_ch = 4
+light_ch = 5
+total_ch = 5
+out_dir = D:\Thresholding_TestOutputs\
+t_min = 1
+t_max = 200
+ztrim = 5
+cellseg_path = D:\Thresholding_TestOutputs\
+ctrl_path = 
+ctrl_ch = 
+ctrl_chcount = 
+ttune_winsize = 10
+ttune_wscorethresh = 0.900000
+overwrite_output = 1
+Use preloaded images? = 1
+Control not provided. Will attempt to use background.
+Cellseg file D:\Thresholding_TestOutputs\ does not exist! Skipping background extraction...
+Running spot detect... (This may take a few hours on large files)
+[Warning: Directory already exists.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Pipeline_Core', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m', 78)" style="font-weight:bold">RNA_Pipeline_Core</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m',78,0)">line 78</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Adapter_RNASpots', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m', 116)" style="font-weight:bold">Adapter_RNASpots</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m',116,0)">line 116</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 370)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',370,0)">line 370</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>] 
+Determining recurring pixels...
+imhistc was NOT found. Using imhist.
+2 randomly recurring pixels
+1 recurring pixels
+Averaging recurring pixels...	Elapsed time is 0.462982 seconds.
+Processing image using threshold = 1.000000
+Elapsed time is 78.028734 seconds.
+Processing image using threshold = 2.000000
+Elapsed time is 79.066228 seconds.
+Processing image using threshold = 3.000000
+Elapsed time is 70.575841 seconds.
+Processing image using threshold = 4.000000
+Elapsed time is 62.718782 seconds.
+Processing image using threshold = 5.000000
+{Out of memory.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('imregionalmax', 'C:\Program Files\MATLAB\R2021a\toolbox\images\images\imregionalmax.m', 79)" style="font-weight:bold">imregionalmax</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\images\images\imregionalmax.m',79,0)">line 79</a>)
+BW = images.internal.builtins.imregionalmax(I,connb);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Threshold_Common.testThreshold_3D', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m', 620)" style="font-weight:bold">RNA_Threshold_Common.testThreshold_3D</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m',620,0)">line 620</a>)
+                IM2 = imregionalmax(IM,26); %Filters down to only brightest pix in each spot in 3D (so can spot
+                count)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Threshold_Common.run_spotDetectOnThresholdList', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m', 888)" style="font-weight:bold">RNA_Threshold_Common.run_spotDetectOnThresholdList</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m',888,0)">line 888</a>)
+                            [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Threshold_SpotDetector.run_spot_detection', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_SpotDetector.m', 77)" style="font-weight:bold">RNA_Threshold_SpotDetector.run_spot_detection</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_SpotDetector.m',77,0)">line 77</a>)
+            [spot_table, coord_table] = RNA_Threshold_Common.run_spotDetectOnThresholdList(IMG_filtered, thh,
+            strategy, z_trim, false, [save_stem '_sfimg'], false, verbose);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Pipeline_Core', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m', 90)" style="font-weight:bold">RNA_Pipeline_Core</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m',90,0)">line 90</a>)
+    [auto_zt] = spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max,
+    true, (verbosity > 0));
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Adapter_RNASpots', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m', 116)" style="font-weight:bold">Adapter_RNASpots</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m',116,0)">line 116</a>)
+    RNA_Pipeline_Core(spotsrun, verbosity, preloaded_images);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 370)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',370,0)">line 370</a>)
+    rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+Error in
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>
+
+<a href="matlab:helpview('matlab','error_nomem')" style="font-weight:bold">Related documentation</a>
+} 
+Error while evaluating UIControl Callback.
+
+render process terminated: null
+java.lang.NoSuchFieldError: TS_PROCESS_OOM
+
+S =
+
+     1
+
+
+counter =
+
+     1
+
+
+ans =
+
+    'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1//20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'
+
+{Operation terminated by user during <a href="matlab:matlab.internal.language.introspective.errorDocCallback('tiffread2>read_strip', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m', 429)" style="font-weight:bold">tiffread2>read_strip</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m',429,0)">line 429</a>)
+
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('tiffread2>read_plane', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m', 393)" style="font-weight:bold">tiffread2>read_plane</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m',393,0)">line 393</a>)
+    strip = read_strip(offset, width, planeCnt, TIF.StripCnt, classname);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('tiffread2', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m', 316)" style="font-weight:bold">tiffread2</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m',316,0)">line 316</a>)
+                IMG.data  = read_plane(0, IMG.width, IMG.height, 1);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 63)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',63,0)">line 63</a>)
+            [stack, img_read] = tiffread2(images1{im_num});
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+In
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>} 
+Interrupt while evaluating UIControl Callback.
+
+
+images1 =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1//20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'}
+
+
+im_prefixes =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1'}
+
+
+S =
+
+     1
+
+
+counter =
+
+     1
+
+
+ans =
+
+    'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1//20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'
+
+{Operation terminated by user during <a href="matlab:matlab.internal.language.introspective.errorDocCallback('tiffread2>read_strip', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m', 429)" style="font-weight:bold">tiffread2>read_strip</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m',429,0)">line 429</a>)
+
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('tiffread2>read_plane', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m', 393)" style="font-weight:bold">tiffread2>read_plane</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m',393,0)">line 393</a>)
+    strip = read_strip(offset, width, planeCnt, TIF.StripCnt, classname);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('tiffread2', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m', 316)" style="font-weight:bold">tiffread2</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\tiffread2.m',316,0)">line 316</a>)
+                IMG.data  = read_plane(0, IMG.width, IMG.height, 1);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 63)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',63,0)">line 63</a>)
+            [stack, img_read] = tiffread2(images1{im_num});
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+In
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>} 
+Interrupt while evaluating UIControl Callback.
+
+
+images1 =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'}
+
+
+im_prefixes =
+
+  1×1 <a href="matlab:helpPopup cell" style="font-weight:bold">cell</a> array
+
+    {'20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1'}
+
+
+S =
+
+     1
+
+
+counter =
+
+     1
+
+
+ans =
+
+    'D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack.ome.tif'
+
+
+ij =
+
+     2
+
+  Name                       Size                      Bytes  Class     Attributes
+
+  AF594_ims               2048x2048x81            2717908992  double              
+  AF594im                    1x81                        648  double              
+  AF700_ims                  1x1                           8  double              
+  CY5_ims                 2048x2048x81            2717908992  double              
+  CY5im                      1x81                        648  double              
+  CY7_ims                    1x1                           8  double              
+  GFP_ims                    1x1                           8  double              
+  ImSt                       1x1                           8  double              
+  ManTh                      1x1                           8  double              
+  S                          1x1                           8  double              
+  Seg_thres                  1x1                           8  double              
+  TMR_ims                 2048x2048x81            2717908992  double              
+  TMRim                      1x81                        648  double              
+  TRANS_ims                  1x1                           8  double              
+  YFP_ims                    1x1                           8  double              
+  Ych                        1x9                          72  double              
+  Yim                        1x1                           8  double              
+  Yth                        1x1                           8  double              
+  Ywin                       1x1                           8  double              
+  ans                        1x156                       312  char                
+  cells                      1x1                           8  double              
+  ch                         1x1                           8  double              
+  chi                        1x1                           8  double              
+  counter                    1x1                           8  double              
+  file_type                  1x8                          16  char                
+  fish_dir                   1x76                        152  char                
+  h                          1x1                           2  char                
+  i                          1x1                           8  double              
+  ij                         1x1                           8  double              
+  im_num                     1x1                           8  double              
+  im_prefixes                1x1                         230  cell                
+  im_size                    1x2                          16  double              
+  images1                    1x1                         416  cell                
+  img_read                   1x1                           8  double              
+  img_stacks                 1x2                          16  double              
+  max_int_spot_th            1x1                           8  double              
+  max_int_thres              1x1                           8  double              
+  node_num                   1x1                           8  double              
+  outfile_prefix_RNA         1x28                         56  char                
+  outfile_prefix_seg         1x28                         56  char                
+  segment_mode               1x5                          10  char                
+  stack                      1x405                3397922972  struct              
+  thA                        1x3                          24  double              
+  ths                        1x9                          72  double              
+  trans_plane                1x1                           8  double              
+
+Running RNASpots with the following parameters...
+img_name = 20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1
+tif_path = D:\20200207\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1/
+rna_ch = 4
+light_ch = 5
+total_ch = 5
+out_dir = D:\Thresholding_TestOutputs/
+t_min = 1
+t_max = 200
+ztrim = 5
+cellseg_path = D:\Thresholding_TestOutputs/
+ctrl_path = 
+ctrl_ch = 
+ctrl_chcount = 
+ttune_winsize = 10
+ttune_wscorethresh = 0.900000
+overwrite_output = 1
+Use preloaded images? = 1
+[Warning: Directory already exists.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Pipeline_Core', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m', 42)" style="font-weight:bold">RNA_Pipeline_Core</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m',42,0)">line 42</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Adapter_RNASpots', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m', 116)" style="font-weight:bold">Adapter_RNASpots</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m',116,0)">line 116</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 370)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',370,0)">line 370</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>] 
+Control not provided. Will attempt to use background.
+Cellseg file D:\Thresholding_TestOutputs/ does not exist! Skipping background extraction...
+Running spot detect... (This may take a few hours on large files)
+[Warning: Directory already exists.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Pipeline_Core', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m', 78)" style="font-weight:bold">RNA_Pipeline_Core</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m',78,0)">line 78</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Adapter_RNASpots', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m', 116)" style="font-weight:bold">Adapter_RNASpots</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m',116,0)">line 116</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 370)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',370,0)">line 370</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>] 
+Determining recurring pixels...
+imhistc was NOT found. Using imhist.
+2 randomly recurring pixels
+1 recurring pixels
+Averaging recurring pixels...	Elapsed time is 0.954165 seconds.
+Processing image using threshold = 1.000000
+Elapsed time is 72.574189 seconds.
+Processing image using threshold = 2.000000
+Elapsed time is 70.141997 seconds.
+Processing image using threshold = 3.000000
+Elapsed time is 67.110793 seconds.
+Processing image using threshold = 4.000000
+Elapsed time is 63.917342 seconds.
+Processing image using threshold = 5.000000
+Elapsed time is 62.619755 seconds.
+Processing image using threshold = 6.000000
+Elapsed time is 61.048015 seconds.
+Processing image using threshold = 7.000000
+Elapsed time is 56.779099 seconds.
+Processing image using threshold = 8.000000
+Elapsed time is 55.583918 seconds.
+Processing image using threshold = 9.000000
+Elapsed time is 54.160759 seconds.
+Processing image using threshold = 10.000000
+Elapsed time is 53.095042 seconds.
+Processing image using threshold = 11.000000
+Elapsed time is 53.934650 seconds.
+Processing image using threshold = 12.000000
+{Out of memory.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('imregionalmax', 'C:\Program Files\MATLAB\R2021a\toolbox\images\images\imregionalmax.m', 79)" style="font-weight:bold">imregionalmax</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\images\images\imregionalmax.m',79,0)">line 79</a>)
+BW = images.internal.builtins.imregionalmax(I,connb);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Threshold_Common.testThreshold_3D', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m', 620)" style="font-weight:bold">RNA_Threshold_Common.testThreshold_3D</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m',620,0)">line 620</a>)
+                IM2 = imregionalmax(IM,26); %Filters down to only brightest pix in each spot in 3D (so can spot
+                count)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Threshold_Common.run_spotDetectOnThresholdList', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m', 888)" style="font-weight:bold">RNA_Threshold_Common.run_spotDetectOnThresholdList</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_Common.m',888,0)">line 888</a>)
+                            [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Threshold_SpotDetector.run_spot_detection', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_SpotDetector.m', 77)" style="font-weight:bold">RNA_Threshold_SpotDetector.run_spot_detection</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Threshold_SpotDetector.m',77,0)">line 77</a>)
+            [spot_table, coord_table] = RNA_Threshold_Common.run_spotDetectOnThresholdList(IMG_filtered, thh,
+            strategy, z_trim, false, [save_stem '_sfimg'], false, verbose);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('RNA_Pipeline_Core', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m', 90)" style="font-weight:bold">RNA_Pipeline_Core</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\core\RNA_Pipeline_Core.m',90,0)">line 90</a>)
+    [auto_zt] = spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max,
+    true, (verbosity > 0));
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Adapter_RNASpots', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m', 116)" style="font-weight:bold">Adapter_RNASpots</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Adapter_RNASpots.m',116,0)">line 116</a>)
+    RNA_Pipeline_Core(spotsrun, verbosity, preloaded_images);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Run_RNA_detection_predefined_variables_v2GUI', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m', 370)" style="font-weight:bold">Run_RNA_detection_predefined_variables_v2GUI</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\Run_RNA_detection_predefined_variables_v2GUI.m',370,0)">line 370</a>)
+    rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 3178)" style="font-weight:bold">A0_GUI_seg_outside_generalized>Start_RNA_Thresholding_pushbutton_Callback</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',3178,0)">line 3178</a>)
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('gui_mainfcn', 'C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m', 95)" style="font-weight:bold">gui_mainfcn</a> (<a href="matlab: opentoline('C:\Program Files\MATLAB\R2021a\toolbox\matlab\guide\gui_mainfcn.m',95,0)">line 95</a>)
+        feval(varargin{:});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('A0_GUI_seg_outside_generalized', 'C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m', 43)" style="font-weight:bold">A0_GUI_seg_outside_generalized</a> (<a href="matlab: opentoline('C:\Users\bkkes\OneDrive\Documents\GitHub\RNA-FISH-Auto\src\A0_GUI_seg_outside_generalized.m',43,0)">line 43</a>)
+    gui_mainfcn(gui_State, varargin{:});
+
+Error in
+<a href="matlab:matlab.internal.language.introspective.errorDocCallback('matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized(''Start_RNA_Thresholding_pushbutton_Callback'',hObject,eventdata,guidata(hObject))')" style="font-weight:bold">matlab.graphics.internal.figfile.FigFile/read>@(hObject,eventdata)A0_GUI_seg_outside_generalized('Start_RNA_Thresholding_pushbutton_Callback',hObject,eventdata,guidata(hObject))</a>
+
+<a href="matlab:helpview('matlab','error_nomem')" style="font-weight:bold">Related documentation</a>
+} 
+Error while evaluating UIControl Callback.
+

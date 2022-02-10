@@ -3175,9 +3175,7 @@ im_prefixes = images2;
 % end
 end
 % Main_RNASpotDetect(img_name, tif_path, out_dir, rna_channel, channel_count, t_min, t_max, true);
-Run_RNA_detection_predefined_variablesv2(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
-         
-
+Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,handles.images1,im_prefixes,img_stacks)
 
 
 function Beginning_thresh_edit_Callback(hObject, eventdata, handles)

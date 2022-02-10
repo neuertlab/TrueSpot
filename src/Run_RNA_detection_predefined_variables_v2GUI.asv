@@ -346,7 +346,7 @@ images1{im_num}
         elseif Ych(6)& channels1 == 6
             thresh_img = TMR_ims;
         end
-                   img_name = im_prefixes{im_num};
+                   img_name = outfile_prefix_RNA;
            tif_path = fish_dir;
            rna_ch = channels1;
            light_ch = ch;
@@ -363,16 +363,10 @@ images1{im_num}
            ttune_wscorethresh = -1;
            overwrite_output = 1;
                       guimode = 1;
-%            preloaded_images = thresh_img;
-           addpath('./core');
-           preloaded_images = ImageChannelSet;
-           preloaded_images.dat_rna_sample = thresh_img;
+           preloaded_images = thresh_img;
     rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
     out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize, ttune_wscorethresh,...
     overwrite_output, guimode, preloaded_images)
-   files = char(strcat('mRNA_TH_',im_prefixes{im_num},'channel,',num2str(channels1),'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
-%     save([outfile_prefix_RNA char(files)],'thCY7Man','thAF700Man','thCY5Man','thAF594Man','thTMRMan','thYFPMan','thGFPMan'); % save the analyzed files
-    save([outfile_prefix_RNA char(files)],'rna_spot_run')
 %         Main_RNASpotDetectv2(thresh_img, ImSt,fish_dir, im_prefixes{im_num},outfile_prefix_RNA, ch,thA(1), thA(end), true,true);
     
     end
@@ -389,8 +383,9 @@ images1{im_num}
      whos
 
 %     files = char(strcat('mRNA_TH_',exp_name,num2str(counter),'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
- 
-    %     ths(3) = thCY5;
+    files = char(strcat('mRNA_TH_',im_prefixes{im_num},'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
+    save([outfile_prefix_RNA char(files)],'thCY7Man','thAF700Man','thCY5Man','thAF594Man','thTMRMan','thYFPMan','thGFPMan'); % save the analyzed files
+%     ths(3) = thCY5;
 %     ths(1) = thTMR;
 %     ths(2) = thAF594;
 %     ths(3) = thCY5;
