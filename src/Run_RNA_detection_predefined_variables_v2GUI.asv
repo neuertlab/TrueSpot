@@ -5,7 +5,7 @@
 %% Also ajust the threshold range if needed.
 %% The choosen thresholds are save in a file and can be used later for batch processing of images.
 
-function Run_RNA_detection_predefined_variables(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,images1,im_prefixes,img_stacks)
+function Run_RNA_detection_predefined_variables_v2GUI(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,images1,im_prefixes,img_stacks)
 %% Input
 % RNA_thresholds = zeros(6,65);
 % counter6 = 1;                     %counter for RNA_thresholds
@@ -13,7 +13,7 @@ function Run_RNA_detection_predefined_variables(thA,ths,outfile_prefix_RNA,Yth,Y
 %     counter6 = (node_num)*sum(Ych(1:7))+1;
 % end
 ch = Ych(1);
-% chi = find(Ych == 1);
+ chi = find(Ych == 1);
 % ch = size(chi,2);
 max_int_thres = 1;
 max_int_spot_th = 0;
@@ -338,17 +338,50 @@ images1{im_num}
     im_size = size(stack(1,1).data);
     whos
     clear stack
-    [thCY7,thAF700,thCY5,thAF594,thTMR,thYFP,thGFP] = AB_FindThreshold_TMR_AF594_CY5_B(im_size,counter,cells,trans_plane,S,CY7_ims,AF700_ims,CY5_ims,AF594_ims,TMR_ims,YFP_ims,GFP_ims,thA,ths,Ych,max_int_thres,max_int_spot_th);
+    for channels1 = 4:6
+        if Ych(4)& channels1 == 4
+            thresh_img = CY5_ims;
+        elseif Ych(5)& channels1 == 5
+            thresh_img = AF594_ims;
+        elseif Ych(6)& channels1 == 6
+            thresh_img = TMR_ims;
+        end
+                   img_name = outfile_prefix_RNA;
+           tif_path = fish_dir;
+           rna_ch = channels1;
+           light_ch = ch;
+           total_ch = ch;
+           out_dir = outfile_prefix_seg;
+           t_min = thA(1);
+           t_max = thA(end);
+           cellseg_path = outfile_prefix_seg;
+           ztrim = 5;
+           ctrl_path = '';
+           ctrl_ch = [];
+           ctrl_chcount = [];
+           ttune_winsize = 0;
+           ttune_wscorethresh = -1;
+           overwrite_output = 1;
+                      guimode = 1;
+           preloaded_images = thresh_img;
+    rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
+    out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize, ttune_wscorethresh,...
+    overwrite_output, guimode, preloaded_images)
+%         Main_RNASpotDetectv2(thresh_img, ImSt,fish_dir, im_prefixes{im_num},outfile_prefix_RNA, ch,thA(1), thA(end), true,true);
+    
+    end
+%     [thCY7,thAF700,thCY5,thAF594,thTMR,thYFP,thGFP] = AB_FindThreshold_TMR_AF594_CY5_B(im_size,counter,cells,trans_plane,S,CY7_ims,AF700_ims,CY5_ims,AF594_ims,TMR_ims,YFP_ims,GFP_ims,thA,ths,Ych,max_int_thres,max_int_spot_th);
     % collect all the picked thresholds for CY7, AF700, CY5, AF594, TMR, YFP,GFP
-    thCY7Man(1:3,S,counter) = thCY7;
-    thAF700Man(1:3,S,counter) = thAF700;
-    thCY5Man(1:3,S,counter) = thCY5;
-    thAF594Man(1:3,S,counter) = thAF594;
-    thTMRMan(1:3,S,counter) = thTMR; 
-    thYFPMan(1:3,S,counter) = thYFP; 
-    thGFPMan(1:3,S,counter) = thGFP; 
+%     thCY7Man(1:3,S,counter) = thCY7;
+%     thAF700Man(1:3,S,counter) = thAF700;
+%     thCY5Man(1:3,S,counter) = thCY5;
+%     thAF594Man(1:3,S,counter) = thAF594;
+%     thTMRMan(1:3,S,counter) = thTMR; 
+%     thYFPMan(1:3,S,counter) = thYFP; 
+%     thGFPMan(1:3,S,counter) = thGFP; 
     clear TMR_ims CY5_ims AF594_ims
-    whos
+     whos
+
 %     files = char(strcat('mRNA_TH_',exp_name,num2str(counter),'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
     files = char(strcat('mRNA_TH_',im_prefixes{im_num},'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
     save([outfile_prefix_RNA char(files)],'thCY7Man','thAF700Man','thCY5Man','thAF594Man','thTMRMan','thYFPMan','thGFPMan'); % save the analyzed files
