@@ -39,26 +39,19 @@ ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 %save_stem_rna = [ImgDir '\data\preprocess\msb2\4M5m_img2\all_3d\Msb2_04M_5m_img2_GFP_all_3d'];
 
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch2\all_3d\Histone_D0_img4_ch2_all_3d'];
-save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch3\all_3d\Histone_D0_img4_ch3_all_3d'];
-
-load([save_stem_rna '_spotTable.mat'], 'spot_table');
-load([save_stem_rna '_coordTable.mat'], 'coord_table');
-load([save_stem_rna '_spotTable2d.mat'], 'spot_table_2D');
-load([save_stem_rna '_coordTable2d.mat'], 'coord_table_2D');
-%load(nucl_seg_path);
-
-load([save_stem_rna 'spotAnnoObj']);
-
-th_tbl = 1:1:300; %TODO this should be read in from the detect data...
-th_tbl = transpose(th_tbl);
-
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch3\Histone_D0_img4_ch3_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch4\Histone_D0_img4_ch4_all_3d'];
 
 addpath('./core');
+spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
+%th_tbl = spotsrun.t_min:1:spotsrun.t_max;
+%th_tbl = transpose(th_tbl);
+
 %selector = RNA_Threshold_SpotSelector;
-%selector = selector.initializeNew(save_stem_rna, 50, th_tbl);
+%selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
+%selector.ztrim = spotsrun.ztrim;
 selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
 %selector = RNA_Threshold_SpotSelector.openSelectorSetPaths(save_stem_rna);
-%selector.ztrim = 5;
 %selector = selector.launchGUI(); %Select f+/f- spots from auto detect results
 selector = selector.launchRefSelectGUI(); %Agnostic selection
 
