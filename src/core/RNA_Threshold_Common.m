@@ -378,7 +378,7 @@ classdef RNA_Threshold_Common
         %   threshold (int) - Suggested threshold derived from shape of
         %       spot count plot
         %
-        function [threshold, win_stdevs] = estimateThreshold(spotcount_table, bkg_spotcount_table, window_size, windowpos, stdev_thresh)
+        function [threshold, win_out] = estimateThreshold(spotcount_table, bkg_spotcount_table, window_size, windowpos, stdev_thresh)
             
             deriv1 = diff(spotcount_table(:,2));
             deriv1 = smooth(deriv1);
@@ -434,18 +434,22 @@ classdef RNA_Threshold_Common
             
             
             %Window stdev
-            winstdev = NaN(pointcount, 1);
+            %winstdev = NaN(pointcount, 1);
+            winout = NaN(pointcount, 1);
             winmax = pointcount - window_size;
             for i = startidx:winmax
                 w_back = i;
-                w_front = i + window_size;
-                winstdev(i) = std(deriv1(w_back:w_front,1));
+                w_front = i + window_size - 1;
+                %winout(i) = std(deriv1(w_back:w_front,1));
+                winout(i) = std(deriv1(w_back:w_front,1)) / mean(deriv1(w_back:w_front,1));
             end
             
             %Shift
-            win_stdevs = NaN(pointcount, 1);
+            %win_stdevs = NaN(pointcount, 1);
+            win_out = NaN(pointcount, 1);
             for i = 1:(pointcount - winshift)
-                win_stdevs(i+winshift) = winstdev(i);
+                %win_stdevs(i+winshift) = winstdev(i);
+                win_out(i+winshift) = winout(i);
             end
             
             %DEBUG plots
@@ -475,17 +479,22 @@ classdef RNA_Threshold_Common
             
             %Threshold
             %figure(handle1);
+            %win_out = smooth(win_out);
             threshold = 0;
+            last_min = -1;
             for i = 1:pointcount
-                if ~isnan(win_stdevs(i))
-                    if win_stdevs(i) <= stdev_thresh
+                if ~isnan(win_out(i))
+                    %if win_out(i) <= stdev_thresh
+                    %    threshold = spotcount_table(i,1);
+                    %end
+                    if (last_min < 0) | (win_out(i) < last_min)
                         threshold = spotcount_table(i,1);
+                        last_min = win_out(i);
                     end
                 end
-                if threshold > 0
-                    %line([threshold threshold], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
-                    return;
-                end
+                %if threshold > 0
+                %    return;
+                %end
             end
             
             %line([threshold threshold], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
