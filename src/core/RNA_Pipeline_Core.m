@@ -192,7 +192,7 @@ end
 
 %Detect threshold
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
-[thresh, win_stdevs] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.0, spotsrun.ttune_wscorethresh);
+[thresh, win_scores] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.0, spotsrun.ttune_wscorethresh);
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Auto threshold selected: %d", thresh), true);
 spotsrun.intensity_threshold = thresh;
 
@@ -208,8 +208,13 @@ RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [{spotsrun.ctrl_st
                 thresh, plots_dir, true, z_min_trimmed, z_max_trimmed, false);
     
     %Window score plot
-fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_stdevs, spotsrun.ttune_wscorethresh, thresh);
+fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, spotsrun.ttune_wscorethresh, thresh);
 saveas(fighandle, [plots_dir filesep 'autothresh_windowscore.png']);
+close(fighandle);
+
+fighandle = figure(222);
+histogram(win_scores);
+saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
 close(fighandle);
     
 %Save THIS module's run info (including paths, parameters, chosen threshold etc)

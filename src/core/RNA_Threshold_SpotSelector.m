@@ -10,11 +10,17 @@
 %       Large images getting too big to save to one file
 %       Moved saves for pos table and neg table to their own files
 
+
 %%
 classdef RNA_Threshold_SpotSelector
     
     %TODO - There is a bug with the z trim command, so can't change z trim
     %from GUI. 
+    %TODO: Make mask coords integers
+    %TODO: Clean out 0,0,0 points that randomly appear. I think rendering
+    %stops after encountering these?
+    %TODO: Some spots apparently not rendering in ref select? Is this
+    %related to ztrim or 0,0,0 problem?
     
     %GUI Controls:
             %   space (or any key) - Ready listener
@@ -39,8 +45,8 @@ classdef RNA_Threshold_SpotSelector
             %   < - Decrease threshold by 1
             %   ] - Increase threshold by 10
             %   [ - Decrease threshold by 10
-            %   " - Increase Z trim
-            %   ' - Decrease Z trim
+            %   ^ - Increase Z trim
+            %   v - Decrease Z trim
             
             %   o - Load original image
             %   + - Up one slice
@@ -121,15 +127,24 @@ classdef RNA_Threshold_SpotSelector
         %   init_thresh_idx (int) - Index of initial threshold value to set
         %       the spot selector to
         %   th_table (int[t_count][1]) - Table of threshold values
+        %       (OPTIONAL)
         %
         function obj = initializeNew(obj, save_stem, init_thresh_idx, th_table)
             
-            t_count = size(th_table,1);
-            
-            %Load coordinate table
-            coord_table_suffix = '_coordTable';
-            tbl_path = [save_stem coord_table_suffix];
-            load(tbl_path, 'coord_table');
+            %First, look for run specs...
+            spotsrun = [];
+            if isfile([save_stem '_rnaspotsrun.mat'])
+                spotsrun = RNASpotsRun.loadFrom(save_stem);
+                t_count = spotsrun.t_max - spotsrun.t_min + 1;
+                [~,coord_table] = spotsrun.loadCoordinateTable();
+            else
+                t_count = size(th_table,1); 
+               %Load coordinate table
+                coord_table_suffix = '_coordTable';
+                tbl_path = [save_stem coord_table_suffix];
+                load(tbl_path, 'coord_table');
+            end
+
             obj.positives = cell(t_count, 1);
             dimcount = size(coord_table{1});
             for t = 1:t_count
@@ -160,11 +175,11 @@ classdef RNA_Threshold_SpotSelector
             
             %Set defaults
             obj.threshold_table = zeros([t_count, 2]);
-            obj.threshold_table(:,1) = th_table(:,:);
+            %obj.threshold_table(:,1) = th_table(:,:);
             obj.save_stem = save_stem;
             obj.threshold_idx = init_thresh_idx;
             obj.toggle_del_unsnapped = false;
-            obj.ztrim = 0;
+            %obj.ztrim = 0;
             obj.selmcoords = [];
             
             s_img = my_images(1).image;
@@ -175,13 +190,24 @@ classdef RNA_Threshold_SpotSelector
             %obj.tif_path = [];
             obj.slice_drawn = 0;
             obj.current_slice = 1;
+            obj.max_slice = 1;
             
-            if obj.mode_3d
-                %Find the max z
-                obj = obj.setMaxZ();
-                obj.current_slice = obj.max_slice./2;
+            if ~isempty(spotsrun)
+                obj.ztrim = spotsrun.ztrim;
+                obj.threshold_table(:,1) = transpose(spotsrun.t_min:1:spotsrun.t_max);
+                if obj.mode_3d
+                    %Find the max z
+                    obj.max_slice = spotsrun.idims_sample.z;
+                    obj.current_slice = uint16(obj.max_slice./2);
+                end
             else
-                obj.max_slice = 1;
+                obj.ztrim = 0;
+                obj.threshold_table(:,1) = th_table(:,:);
+                if obj.mode_3d
+                    %Find the max z
+                    obj = obj.setMaxZ();
+                    obj.current_slice = uint16(obj.max_slice./2);
+                end
             end
             
         end
@@ -281,7 +307,7 @@ classdef RNA_Threshold_SpotSelector
             filimg_path = obj.imgdat_path;
             z_trim = obj.ztrim;
             mask_selection = obj.selmcoords;
-            save_ver = 2;
+            save_ver = 3;
             
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
@@ -350,6 +376,8 @@ classdef RNA_Threshold_SpotSelector
             
             [~, fneg_idx] = RNA_Threshold_SpotSelector.isolateTFIndices(obj.n_table);
             fneg_tbl = obj.n_table(fneg_idx,:);
+            good_idx = RNA_Threshold_SpotSelector.findNonzeroCoords(fneg_tbl, obj.mode_3d);
+            fneg_tbl = fneg_tbl(good_idx,:);
             obj.false_negs{obj.threshold_idx} = fneg_tbl;
             
             obj.n_table = [];
@@ -371,6 +399,8 @@ classdef RNA_Threshold_SpotSelector
             
             [~, fneg_idx] = RNA_Threshold_SpotSelector.isolateTFIndices(obj.n_table);
             obj.ref_coords = obj.n_table(fneg_idx,1:3);
+            good_idx = RNA_Threshold_SpotSelector.findNonzeroCoords(obj.ref_coords, obj.mode_3d);
+            obj.ref_coords = obj.ref_coords(good_idx,:);
             
             obj.n_table = [];
             obj.n_alloc = 0;
@@ -1144,7 +1174,7 @@ classdef RNA_Threshold_SpotSelector
             elseif btn == 99 %'c' - clear
                 obj.ref_coords = [];
                 obj = obj.drawRefImage();
-            elseif btn == 34 %'\"' - Increase Z trim
+            elseif btn == 94 %'^' - Increase Z trim
                 maxzt = floor(obj.max_slice/2);
                 if obj.ztrim < maxzt
                     obj.ztrim = obj.ztrim + 1;
@@ -1154,7 +1184,7 @@ classdef RNA_Threshold_SpotSelector
                 else
                     fprintf("Z Trim at maximum value!\n");
                 end
-            elseif btn == 44 %'\'' - Decrease Z trim
+            elseif btn == 118 %'v' - Decrease Z trim
                 if obj.ztrim > 0
                     obj.ztrim = obj.ztrim - 1;
                     fprintf("Z Trim set to: %d\n", obj.ztrim);
@@ -1340,10 +1370,10 @@ classdef RNA_Threshold_SpotSelector
             end
             
             obj.selmcoords = zeros(4,1);
-            obj.selmcoords(1,1) = x_left;
-            obj.selmcoords(2,1) = x_right;
-            obj.selmcoords(3,1) = y_up;
-            obj.selmcoords(4,1) = y_down;
+            obj.selmcoords(1,1) = uint16(x_left);
+            obj.selmcoords(2,1) = uint16(x_right);
+            obj.selmcoords(3,1) = uint16(y_up);
+            obj.selmcoords(4,1) = uint16(y_down);
             
         end
         
@@ -1472,15 +1502,15 @@ classdef RNA_Threshold_SpotSelector
                     obj.n_alloc = 256;
                     obj.n_used = 0;
                 else
-                    fneg_tbl = obj.ref_coords;
-                    fn_tbl_sz = size(fneg_tbl,1);
+                    temp_tbl = obj.ref_coords;
+                    temp_tbl_sz = size(temp_tbl,1);
                     %fprintf("fn_tbl_sz = %d\n", fn_tbl_sz);
-                    tbl_sz = fn_tbl_sz + 256;
+                    tbl_sz = temp_tbl_sz + 256;
                     obj.n_table = zeros([tbl_sz 4]);
-                    obj.n_table(1:fn_tbl_sz,1:3) = fneg_tbl(:,1:3);
-                    obj.n_table(fn_tbl_sz+1:tbl_sz,4) = 1;
+                    obj.n_table(1:temp_tbl_sz,1:3) = temp_tbl(:,1:3);
+                    obj.n_table(temp_tbl_sz+1:tbl_sz,4) = 1;
                     obj.n_alloc = tbl_sz;
-                    obj.n_used = fn_tbl_sz;
+                    obj.n_used = temp_tbl_sz;
                 end
             end
             
@@ -1515,6 +1545,10 @@ classdef RNA_Threshold_SpotSelector
                     end 
                     return;
                 end
+            end
+            
+            if (x < 1) | (y < 1)
+                return;
             end
             
             %If none, create a new false neg
@@ -2033,42 +2067,22 @@ classdef RNA_Threshold_SpotSelector
         
         %%
         function obj = openSelectorSetPaths(save_stem)
-            save_path = [save_stem 'spotAnnoObj'];
-            load(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'z_trim', 'mask_selection', 'save_ver'); 
-
-            obj = RNA_Threshold_SpotSelector;
+            obj = RNA_Threshold_SpotSelector.openSelector(save_stem);
             obj.save_stem = save_stem;
             obj.imgdat_path = [save_stem '_prefilteredIMG'];
-             
-            obj.img_structs = istructs;
-            obj.threshold_idx = th_idx;
-            obj.threshold_table= th_tbl;
-            obj.positives = pos_tbl;
-            obj.false_negs = neg_tbl;
-            obj.mode_3d = bool3d;
-            obj.current_slice = lastz;
-            obj.max_slice = maxz;
-            
-            load(obj.imgdat_path, 'img_filter');
-            obj.loaded_ch = double(img_filter);
-            
-            obj.ref_coords = ref_coord_tbl;
-            
-            s_img = istructs(1).image;
-            obj.alloc_size = size(s_img, 1) * size(s_img,2);
-            obj.n_alloc = 0;
-            obj.n_used = 0;
-            obj.n_table = [];
-            obj.slice_drawn = 0;
-            
-            obj.ztrim = z_trim;
-            obj.selmcoords = mask_selection;
         end
         
         %%
         function obj = openSelector(save_stem)
             
             save_path = [save_stem 'spotAnnoObj'];
+            save_ver = 1;
+            mask_selection = [];
+            pos_tbl = [];
+            neg_tbl = [];
+            ref_coord_tbl = [];
+            bool3d = false;
+            
             %load(save_path, 'spot_annotator');
             %obj = spot_annotator;
             %load(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl');
@@ -2080,11 +2094,72 @@ classdef RNA_Threshold_SpotSelector
                 load([save_path '_ntbl']);
             end
             
+            if save_ver < 3
+                %Do some cleanups
+                %Force mask coords to ints
+                if ~isempty(mask_selection)
+                    temp_selmcoords = zeros(4,1);
+                    temp_selmcoords(1,1) = uint16(mask_selection(1,1));
+                    temp_selmcoords(2,1) = uint16(mask_selection(2,1));
+                    temp_selmcoords(3,1) = uint16(mask_selection(3,1));
+                    temp_selmcoords(4,1) = uint16(mask_selection(4,1));
+                    mask_selection = temp_selmcoords;
+                end
+                
+                if isfile([save_stem '_rnaspotsrun.mat'])
+                    spotsrun = RNASpotsRun.loadFrom(save_stem);
+                    maxz = spotsrun.idims_sample.z;
+                end
+                
+                %Clean out 0,0,0 coordinates
+                if ~isempty(pos_tbl)
+                    T = size(pos_tbl,1);
+                    for t = 1:T
+                        subtbl = pos_tbl{t};
+                        if ~isempty(subtbl)
+                            good_rows = RNA_Threshold_SpotSelector.findNonzeroCoords(subtbl, bool3d);
+                            if isempty(good_rows)
+                                subtbl = [];
+                            else
+                                subtbl = subtbl(good_rows,:);
+                            end
+                            pos_tbl{t} = subtbl;
+                        end
+                    end
+                end
+                
+                if ~isempty(neg_tbl)
+                    T = size(neg_tbl,1);
+                    for t = 1:T
+                        subtbl = neg_tbl{t};
+                        if ~isempty(subtbl)
+                            good_rows = RNA_Threshold_SpotSelector.findNonzeroCoords(subtbl, bool3d);
+                            if isempty(good_rows)
+                                subtbl = [];
+                            else
+                                subtbl = subtbl(good_rows,:);
+                            end
+                            neg_tbl{t} = subtbl;
+                        end
+                    end
+                end
+                
+                if ~isempty(ref_coord_tbl)
+                    good_rows = RNA_Threshold_SpotSelector.findNonzeroCoords(ref_coord_tbl, bool3d);
+                    if isempty(good_rows)
+                        ref_coord_tbl = [];
+                    else
+                        ref_coord_tbl = ref_coord_tbl(good_rows,:);
+                    end
+                end
+                
+            end
+            
             obj = RNA_Threshold_SpotSelector;
             obj.save_stem = save_stem;
             obj.img_structs = istructs;
             obj.threshold_idx = th_idx;
-            obj.threshold_table= th_tbl;
+            obj.threshold_table = th_tbl;
             obj.positives = pos_tbl;
             obj.false_negs = neg_tbl;
             %obj.false_negs{obj.threshold_idx}
@@ -2118,6 +2193,7 @@ classdef RNA_Threshold_SpotSelector
             %DEBUG
             %t_count = size(obj.threshold_table,1);
             %obj.false_negs = cell(t_count);
+            
         end
         
         %%
@@ -2221,6 +2297,18 @@ classdef RNA_Threshold_SpotSelector
             row_idx = find(row_match);
             
             xy_table = my_tbl(row_idx, 1:2);
+        end
+        
+        %%
+        function keep_idx = findNonzeroCoords(my_tbl, check_z)
+            
+            bad_mtx = my_tbl(:,1) == 0;
+            bad_mtx = bad_mtx | (my_tbl(:,2) == 0);
+            if check_z
+                bad_mtx = bad_mtx | (my_tbl(:,3) == 0);
+            end
+            [keep_idx,~,~] = find(~bad_mtx);
+            
         end
         
         %%
