@@ -9,7 +9,7 @@
 %%
 
 function rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
-    out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize, ttune_wscorethresh,...
+    out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize,...
     overwrite_output, guimode, preloaded_images)
 
 addpath('./core');
@@ -38,7 +38,7 @@ spotsrun.t_min = Force2Num(t_min);
 spotsrun.t_max = Force2Num(t_max);
 spotsrun.ztrim = Force2Num(ztrim);
 spotsrun.ttune_winsize = Force2Num(ttune_winsize);
-spotsrun.ttune_wscorethresh = Force2Num(ttune_wscorethresh);
+%spotsrun.ttune_wscorethresh = Force2Num(ttune_wscorethresh);
 spotsrun.overwrite_output = Force2Bool(overwrite_output);
 
 %Check required arguments
@@ -80,9 +80,9 @@ spotsrun.ztrim_auto = 5;
 if ttune_winsize < 1
     spotsrun.ttune_winsize = 10;
 end
-if ttune_wscorethresh < 0
-    spotsrun.ttune_wscorethresh = 0.9;
-end
+%if ttune_wscorethresh < 0
+%    spotsrun.ttune_wscorethresh = 0.9;
+%end
 if t_min < 1
     spotsrun.t_min = 1;
 end

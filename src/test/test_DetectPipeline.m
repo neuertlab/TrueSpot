@@ -70,4 +70,4 @@ ttune_winsize = 10;
 ttune_winthresh = 0.9;
 
 addpath('..');
-Main_RNASpots(img_name, tif_path, rna_channel, light_channel, channel_count, out_dir, t_min, t_max, z_trim, cellseg_path, ctrl_path, ctrl_ch, ctrl_ch_count, ttune_winsize, ttune_winthresh, false);
+Main_RNASpots(img_name, tif_path, rna_channel, light_channel, channel_count, out_dir, t_min, t_max, z_trim, cellseg_path, ctrl_path, ctrl_ch, ctrl_ch_count, ttune_winsize, false);

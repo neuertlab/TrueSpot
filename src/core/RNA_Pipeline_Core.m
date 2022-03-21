@@ -22,7 +22,7 @@ if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_ch = %d", spotsrun.ctrl_ch), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_chcount = %d", spotsrun.ctrl_chcount), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_winsize = %d", spotsrun.ttune_winsize), false);
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_wscorethresh = %f", spotsrun.ttune_wscorethresh), false);
+    %RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_wscorethresh = %f", spotsrun.ttune_wscorethresh), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("overwrite_output = %d", spotsrun.overwrite_output), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
 end
@@ -192,7 +192,7 @@ end
 
 %Detect threshold
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
-[thresh, win_scores] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.0, spotsrun.ttune_wscorethresh);
+[thresh, win_scores, score_thresh] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.0);
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Auto threshold selected: %d", thresh), true);
 spotsrun.intensity_threshold = thresh;
 
@@ -208,14 +208,14 @@ RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [{spotsrun.ctrl_st
                 thresh, plots_dir, true, z_min_trimmed, z_max_trimmed, false);
     
     %Window score plot
-fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, spotsrun.ttune_wscorethresh, thresh);
+fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, score_thresh, thresh);
 saveas(fighandle, [plots_dir filesep 'autothresh_windowscore.png']);
 close(fighandle);
 
-fighandle = figure(222);
-histogram(win_scores);
-saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
-close(fighandle);
+%fighandle = figure(222);
+%histogram(win_scores,100);
+%saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
+%close(fighandle);
     
 %Save THIS module's run info (including paths, parameters, chosen threshold etc)
     %Save ztrimmed coords/spotcounts here too. Remove coord tables below

@@ -371,14 +371,14 @@ classdef RNA_Threshold_Common
         %           conservative)
         %       0.5 - Middle of the window
         %       1.0 - Front of the window (highest threshold)
-        %   stdev_thresh (double) - Value window stdev must fall below to
+        %   {DEPR} stdev_thresh (double) - Value window stdev must fall below to
         %       be called threshold. Default: 1.0
         %
         %RETURN
         %   threshold (int) - Suggested threshold derived from shape of
         %       spot count plot
         %
-        function [threshold, win_out] = estimateThreshold(spotcount_table, bkg_spotcount_table, window_size, windowpos, stdev_thresh)
+        function [threshold, win_out, score_thresh] = estimateThreshold(spotcount_table, bkg_spotcount_table, window_size, windowpos)
             
             deriv1 = diff(spotcount_table(:,2));
             deriv1 = smooth(deriv1);
@@ -441,7 +441,7 @@ classdef RNA_Threshold_Common
                 w_back = i;
                 w_front = i + window_size - 1;
                 %winout(i) = std(deriv1(w_back:w_front,1));
-                winout(i) = std(deriv1(w_back:w_front,1)) / mean(deriv1(w_back:w_front,1));
+                winout(i) = var(deriv1(w_back:w_front,1)) / mean(deriv1(w_back:w_front,1));
             end
             
             %Shift
@@ -477,24 +477,27 @@ classdef RNA_Threshold_Common
             %xlabel('Threshold', 'FontSize', 16);
             %ylabel('|diff(# Spots)|', 'FontSize', 16);
             
+            score_thresh = median(win_out,'omitnan');
+            fprintf("RNA_Threshold_Common.estimateThreshold || DEBUG: Median value: %f\n", score_thresh);
+            
             %Threshold
             %figure(handle1);
             %win_out = smooth(win_out);
             threshold = 0;
-            last_min = -1;
+            %last_min = -1;
             for i = 1:pointcount
                 if ~isnan(win_out(i))
-                    %if win_out(i) <= stdev_thresh
-                    %    threshold = spotcount_table(i,1);
-                    %end
-                    if (last_min < 0) | (win_out(i) < last_min)
+                    if win_out(i) <= score_thresh
                         threshold = spotcount_table(i,1);
-                        last_min = win_out(i);
                     end
+                    %if (last_min < 0) | (win_out(i) < last_min)
+                    %    threshold = spotcount_table(i,1);
+                    %    last_min = win_out(i);
+                    %end
                 end
-                %if threshold > 0
-                %    return;
-                %end
+                if threshold > 0
+                    return;
+                end
             end
             
             %line([threshold threshold], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
