@@ -63,7 +63,7 @@ images1{im_num}
             [stack, img_read] = tiffread2(images1{im_num});
             ImSt = img_read/ch;
             im_size = size(stack(1,1).data);
-         if false;%Ych(3); %Ych(1) == 1;                                                     % CY7
+         if Ych(3); %Ych(1) == 1;                                                     % CY7
                 ij = Ych(3);%ij = find(chi==1);
                 TRANSim = [ij:ch:img_read];
                 im_size = size(stack(1,TRANSim(1)).data);                        %BK 12/10/15
@@ -71,12 +71,13 @@ images1{im_num}
                 for i = 1:ImSt;
                     TRANS_ims(:,:,i) = stack(1,TRANSim(i)).data;
                 end;
-                cells = max(TRANS_ims(:,:,img_stacks(1):img_stacks(2)),[],3);
-                trans_plane = NaN(im_size(1),im_size(2),ImSt);
-            else
+%                 cells = max(TRANS_ims(:,:,img_stacks(1):img_stacks(2)),[],3);
+%                 trans_plane = NaN(im_size(1),im_size(2),ImSt);
+%          TRANS_ims = uint16(TRANS_ims);   
+         else
                 TRANS_ims = NaN;
-                cells = NaN;
-                trans_plane = NaN;
+%                 cells = NaN;
+%                 trans_plane = NaN;
             end;
 
 
@@ -112,7 +113,7 @@ images1{im_num}
                 for i = 1:ImSt;
                     CY5_ims(:,:,i) = stack(1,CY5im(i)).data;
                 end;
-                %CY5_ims = uint16(CY5_ims);
+                CY5_ims = uint16(CY5_ims);
             else
                 CY5_ims = NaN;
             end;
@@ -126,7 +127,7 @@ images1{im_num}
                 for i = 1:ImSt;
                     AF594_ims(:,:,i) = stack(1,AF594im(i)).data;
                 end;
-                %AF594_ims = uint16(AF594_ims);
+                AF594_ims = uint16(AF594_ims);
             else
                 AF594_ims = NaN;
             end;
@@ -140,7 +141,7 @@ images1{im_num}
                 for i = 1:ImSt;
                     TMR_ims(:,:,i) = stack(1,TMRim(i)).data;
                 end;
-                %TMR_ims = uint16(TMR_ims);
+                TMR_ims = uint16(TMR_ims);
             else
                 TMR_ims = NaN;
             end;
@@ -366,8 +367,10 @@ images1{im_num}
 %            preloaded_images = thresh_img;
            addpath('./core');
            preloaded_images = ImageChannelSet;
-           preloaded_images.dat_rna_sample = thresh_img;
-    rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
+           preloaded_images.dat_rna_sample = double(thresh_img); clear thresh_img
+           preloaded_images.dat_trans_sample = TRANS_ims;
+% whos
+           rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, total_ch,...
     out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize, ttune_wscorethresh,...
     overwrite_output, guimode, preloaded_images)
    files = char(strcat('mRNA_TH_',im_prefixes{im_num},'channel,',num2str(channels1),'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)

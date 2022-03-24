@@ -113,6 +113,7 @@ end
 %Call core
 verbosity = 1;
 if bPreloaded
+%     whos
     RNA_Pipeline_Core(spotsrun, verbosity, preloaded_images);
 else
     RNA_Pipeline_Core(spotsrun, verbosity);

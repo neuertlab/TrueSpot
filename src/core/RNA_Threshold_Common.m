@@ -626,6 +626,7 @@ classdef RNA_Threshold_Common
             if sum(IM(:)) > 0 %Are there any spots at all?
                 %fprintf("Filter 2\t")
                 %tic
+whos
                 IM2 = imregionalmax(IM,26); %Filters down to only brightest pix in each spot in 3D (so can spot count)
                 %toc
                 %size(IM2)
@@ -894,6 +895,7 @@ classdef RNA_Threshold_Common
                                 fprintf("Processing image using threshold = %f\n", th);
                             end
                             %Spot detect
+whos
                             [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder);
                             %Whittle down spots
                             if collapse3D

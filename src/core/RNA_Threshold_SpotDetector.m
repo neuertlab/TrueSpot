@@ -74,6 +74,7 @@ classdef RNA_Threshold_SpotDetector
                 end
             end
             auto_ztrim = z_trim;
+% whos
             [spot_table, coord_table] = RNA_Threshold_Common.run_spotDetectOnThresholdList(IMG_filtered, thh, strategy, z_trim, false, [save_stem '_sfimg'], false, verbose);
 
             %Spot count table

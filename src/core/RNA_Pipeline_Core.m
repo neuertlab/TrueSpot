@@ -27,15 +27,6 @@ if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
 end
 
-%Nab sample images.
-if bPreloaded
-    sample_rna_ch = preloaded_imgs.dat_rna_sample;
-else
-    %Load sample TIF
-    [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
-    sample_rna_ch = sample_tif{spotsrun.rna_ch,1};
-end
-
 %Do background extraction if arguments provided.
 %!! Don't redo if target exists and overwrite output is false!
 bkg_mask_dir = [spotsrun.out_dir filesep 'bkgmask'];
@@ -51,11 +42,10 @@ if isempty(spotsrun.ctrl_path)
             %Make sure cellseg data file exists
             if (isfile(spotsrun.cellseg_path))
                 if bPreloaded
-                    sample_light_ch = preloaded_imgs.dat_trans_sample;
+                    Bkg_Mask_Core(preloaded_imgs.dat_trans_sample, spotsrun.cellseg_path, spotsrun.bkg_path, true);
                 else
-                    sample_light_ch = sample_tif{spotsrun.light_ch,1};
+                    Bkg_Mask_Core(sample_tif{spotsrun.light_ch,1}, spotsrun.cellseg_path, spotsrun.bkg_path, true);
                 end
-                Bkg_Mask_Core(sample_light_ch, spotsrun.cellseg_path, spotsrun.bkg_path, true);
                 %Main_BackgroundMask(spotsrun.tif_path, spotsrun.cellseg_path, spotsrun.bkg_path, spotsrun.total_ch, spotsrun.light_ch, true);
             else
                 RNA_Fisher_State.outputMessageLineStatic(sprintf("Cellseg file %s does not exist! Skipping background extraction...", spotsrun.cellseg_path), true);
@@ -87,8 +77,20 @@ end
 
 if runme
     spotdec = RNA_Threshold_SpotDetector;
-    [auto_zt] = spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+whos
+%Nab sample images.
+if bPreloaded
+    [auto_zt] = spotdec.run_spot_detection(preloaded_imgs.dat_rna_sample, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
     spotsrun.ztrim_auto = auto_zt;
+
+else
+    %Load sample TIF
+    [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
+    [auto_zt] = spotdec.run_spot_detection(sample_tif{spotsrun.rna_ch,1}, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+    spotsrun.ztrim_auto = auto_zt;
+end
+%     [auto_zt] = spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+%     spotsrun.ztrim_auto = auto_zt;
 end
 
 %Run spot detect on control (if a tif path was provided)
