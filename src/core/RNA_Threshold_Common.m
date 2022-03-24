@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.2.2
-%Updated September 9, 2021
+%Version 2.2.3
+%Updated March 21, 2022
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -35,7 +35,8 @@
 %   2.2.2 | 21.09.09
 %       Kept debug plot for window score in auto threshold method, moved to
 %       its own method.
-%       
+%   2.2.3 | 22.03.21
+%       Updated thresh choosing function to try something else
 
 %%
 %

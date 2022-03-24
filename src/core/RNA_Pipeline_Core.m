@@ -27,15 +27,6 @@ if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
 end
 
-%Nab sample images.
-if bPreloaded
-    sample_rna_ch = preloaded_imgs.dat_rna_sample;
-else
-    %Load sample TIF
-    [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
-    sample_rna_ch = sample_tif{spotsrun.rna_ch,1};
-end
-
 %Do background extraction if arguments provided.
 %!! Don't redo if target exists and overwrite output is false!
 bkg_mask_dir = [spotsrun.out_dir filesep 'bkgmask'];
@@ -53,6 +44,7 @@ if isempty(spotsrun.ctrl_path)
                 if bPreloaded
                     sample_light_ch = preloaded_imgs.dat_trans_sample;
                 else
+                    [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
                     sample_light_ch = sample_tif{spotsrun.light_ch,1};
                 end
                 Bkg_Mask_Core(sample_light_ch, spotsrun.cellseg_path, spotsrun.bkg_path, true);
@@ -86,9 +78,32 @@ if ~spotsrun.overwrite_output
 end
 
 if runme
+    %Load image channel
+    if bPreloaded
+        sample_rna_ch = preloaded_imgs.dat_rna_sample;
+    else
+        %Load sample TIF
+        if isempty(sample_tif)
+            [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
+        end
+        sample_rna_ch = sample_tif{spotsrun.rna_ch,1};
+    end
+    
     spotdec = RNA_Threshold_SpotDetector;
-    [auto_zt] = spotdec.run_spot_detection(sample_rna_ch, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+    [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, spotsrun.out_stem, true);
+    
+    %Clear original image to free (a ton of) memory
+    if ~isempty(sample_tif)
+        clear sample_tif;
+    end
+    if ~isempty(sample_light_ch)
+        clear sample_light_ch;
+    end
+    clear sample_rna_ch;
+    
+    [auto_zt] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
     spotsrun.ztrim_auto = auto_zt;
+    clear img_f;
 end
 
 %Run spot detect on control (if a tif path was provided)
@@ -106,11 +121,7 @@ if ~isempty(spotsrun.ctrl_path)
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Running spot detect on control image... (This may take a few hours on large files)"), true);
         %spotsrun.ctrl_stem = Main_RNASpotDetect([spotsrun.img_name '_Control'], spotsrun.ctrl_path, spotsrun.out_dir,...
         %    spotsrun.ctrl_ch, spotsrun.ctrl_chcount, spotsrun.t_min, spotsrun.t_max, true, spotsrun.overwrite_output);
-        if bPreloaded
-            ctrl_image_channel = preloaded_imgs.dat_rna_control;
-        else
-            [spotsrun, ctrl_image_channel] = spotsrun.loadControlChannel(verbosity);
-        end
+ 
         %outdir = [spotsrun.out_dir filesep strat];
         outstem = [spotsrun.out_dir filesep spotsrun.img_name '_Control_' strat];
         runme = true;
@@ -124,8 +135,17 @@ if ~isempty(spotsrun.ctrl_path)
         end
 
         if runme
+            if bPreloaded
+                ctrl_image_channel = preloaded_imgs.dat_rna_control;
+            else
+                [spotsrun, ctrl_image_channel] = spotsrun.loadControlChannel(verbosity);
+            end
+            
             spotdec = RNA_Threshold_SpotDetector;
-            spotdec.run_spot_detection(ctrl_image_channel, outstem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+            [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, outstem, true);
+            clear ctrl_image_channel;
+            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+            clear ctrl_f;
         end
         spotsrun.ctrl_stem = outstem;
     else

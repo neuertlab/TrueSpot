@@ -43,18 +43,18 @@ save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch2\E2R2-IM5-CH2_a
 %save_stem_rna = [ImgDir '\data\preprocess\opy2\NoSalt_img2\Opy2_NoSalt_img2_GFP_all_3d'];
 
 %----- Xist/Tsix + histones
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D0I4\Ch2\Histone_D0_img4_ch2_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D0I4\Ch3\Histone_D0_img4_ch3_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D0I4\Ch4\Histone_D0_img4_ch4_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D0I6\Ch2\Histone_D0_img6_ch2_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D0I6\Ch3\Histone_D0_img6_ch3_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D0I6\Ch4\Histone_D0_img6_ch4_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D2I3\Ch2\Histone_D2_img3_ch2_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D2I3\Ch3\Histone_D2_img3_ch3_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D2I3\Ch4\Histone_D2_img3_ch4_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D2I8\Ch2\Histone_D2_img8_ch2_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D2I8\Ch3\Histone_D2_img8_ch3_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones\D2I8\Ch4\Histone_D2_img8_ch4_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch2\Histone_D0_img4_ch2_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch3\Histone_D0_img4_ch3_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch4\Histone_D0_img4_ch4_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch2\Histone_D0_img6_ch2_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch4\Histone_D0_img6_ch4_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch2\Histone_D2_img3_ch2_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch3\Histone_D2_img3_ch3_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch4\Histone_D2_img3_ch4_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I8\Ch2\Histone_D2_img8_ch2_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I8\Ch3\Histone_D2_img8_ch3_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I8\Ch4\Histone_D2_img8_ch4_all_3d'];
 
 % ========================== Load Run Info ==========================
 
