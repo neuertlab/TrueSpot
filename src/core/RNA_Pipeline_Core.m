@@ -27,6 +27,10 @@ if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
 end
 
+%Declare some vars so it doesn't complain later...
+sample_tif = [];
+sample_light_ch = [];
+
 %Do background extraction if arguments provided.
 %!! Don't redo if target exists and overwrite output is false!
 bkg_mask_dir = [spotsrun.out_dir filesep 'bkgmask'];
@@ -101,7 +105,7 @@ if runme
     end
     clear sample_rna_ch;
     
-    [auto_zt] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+    [auto_zt] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, (verbosity > 0));
     spotsrun.ztrim_auto = auto_zt;
     clear img_f;
 end
@@ -144,7 +148,7 @@ if ~isempty(spotsrun.ctrl_path)
             spotdec = RNA_Threshold_SpotDetector;
             [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, outstem, true);
             clear ctrl_image_channel;
-            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max, true, (verbosity > 0));
+            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max,(verbosity > 0));
             clear ctrl_f;
         end
         spotsrun.ctrl_stem = outstem;

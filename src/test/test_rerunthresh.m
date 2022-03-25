@@ -12,12 +12,12 @@ img_paths{i,1} = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IM
 img_paths{i,1} = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist\Xist-CY5_IMG1_all_3d']; i = i+1;
 
 %----- mESC Set 2
-%img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\1Day\Tsix\mESC_1d_Tsix_all_3d']; i = i+1;
-%img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\1Day\Xist\mESC_1d_Xist_all_3d']; i = i+1;
-%img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\2Day\Tsix\mESC_2d_Tsix_all_3d']; i = i+1;
-%img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\2Day\Xist\mESC_2d_Xist_all_3d']; i = i+1;
-%img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\3Day\Tsix\mESC_3d_Tsix_all_3d']; i = i+1;
-%img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\3Day\Xist\mESC_3d_Xist_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\1Day\Tsix\mESC_1d_Tsix_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\1Day\Xist\mESC_1d_Xist_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\2Day\Tsix\mESC_2d_Tsix_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\2Day\Xist\mESC_2d_Xist_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\3Day\Tsix\mESC_3d_Tsix_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\3Day\Xist\mESC_3d_Xist_all_3d']; i = i+1;
 
 %----- yeast RNA
 img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E1R2\Ch1\E1R2-CH1_all_3d']; i = i+1;

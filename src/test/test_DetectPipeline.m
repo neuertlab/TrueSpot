@@ -5,14 +5,14 @@
 %base_dir = 'C:\Users\Blythe\labdata\imgproc';
 base_dir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
-tif_path = [base_dir '\img\yeast\Exp2_rep2_10min_im5.tif'];
-cellseg_path = [base_dir '\data\cell_seg\yeast\Lab_Exp2_rep2_10min_im5.mat'];
-light_channel = 4;
-channel_count = 4;
+%tif_path = [base_dir '\img\yeast\Exp2_rep2_10min_im5.tif'];
+%cellseg_path = [base_dir '\data\cell_seg\yeast\Lab_Exp2_rep2_10min_im5.mat'];
+%light_channel = 4;
+%channel_count = 4;
 
-img_name = 'E2R2-IM5-CH2';
-out_dir = [base_dir '\data\preprocess\YeastFISH\E2R2\Img5\Ch2'];
-rna_channel = 2;
+%img_name = 'E2R2-IM5-CH2';
+%out_dir = [base_dir '\data\preprocess\YeastFISH\E2R2\Img5\Ch2'];
+%rna_channel = 2;
 
 %ctrl_path = [base_dir '\img\mESC_4d\20180202_4d_mESC_SCR-CY5_img_1_MMStack.ome.tif'];
 %ctrl_ch = 2;
