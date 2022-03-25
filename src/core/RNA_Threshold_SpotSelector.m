@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.1.0
-%Updated Dec 14, 2021
+%Version 1.2.0
+%Updated March 25, 2022
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -9,6 +9,10 @@
 %   1.1.0 | 21.12.14
 %       Large images getting too big to save to one file
 %       Moved saves for pos table and neg table to their own files
+%   1.2.0 | 22.03.25
+%       Version 4 save (save toggles)
+%       Force ptbl and ntbl to uint16 (TOO BIG!!!)
+%       Fixed load + change savestem bug
 
 
 %%
@@ -16,7 +20,6 @@ classdef RNA_Threshold_SpotSelector
     
     %TODO - There is a bug with the z trim command, so can't change z trim
     %from GUI. 
-    %TODO: Make mask coords integers
     %TODO: Clean out 0,0,0 points that randomly appear. I think rendering
     %stops after encountering these?
     %TODO: Some spots apparently not rendering in ref select? Is this
@@ -157,6 +160,7 @@ classdef RNA_Threshold_SpotSelector
                     tbl(:,1:3) = src_tbl(:,1:3);
                     obj.mode_3d = true;
                 end
+                tbl = uint16(tbl);
                 obj.positives{t} = tbl;
             end
             obj.false_negs = cell(t_count, 1);
@@ -210,6 +214,12 @@ classdef RNA_Threshold_SpotSelector
                 end
             end
             
+            obj.toggle_allz = false;
+            obj.toggle_3dcount = false;
+            obj.toggle_clr_local = false;
+            obj.toggle_singleSlice = false;
+            obj.toggle_del_unsnapped = false;
+            
         end
         
         %%
@@ -220,11 +230,11 @@ classdef RNA_Threshold_SpotSelector
         function obj = launchGUI(obj)
             
             %Set some flags
-            obj.toggle_allz = false;
-            obj.toggle_3dcount = false;
-            obj.toggle_clr_local = false;
-            obj.toggle_singleSlice = false;
-            obj.toggle_del_unsnapped = false;
+            %obj.toggle_allz = false;
+            %obj.toggle_3dcount = false;
+            %obj.toggle_clr_local = false;
+            %obj.toggle_singleSlice = false;
+            %obj.toggle_del_unsnapped = false;
             
             %Generate color tables
             obj = obj.generateColorTables();
@@ -255,11 +265,11 @@ classdef RNA_Threshold_SpotSelector
         function obj = launchRefSelectGUI(obj)
             
             %Set some flags
-            obj.toggle_allz = false;
-            obj.toggle_3dcount = false;
-            obj.toggle_clr_local = false;
-            obj.toggle_singleSlice = true;
-            obj.toggle_del_unsnapped = false;
+            %obj.toggle_allz = false;
+            %obj.toggle_3dcount = false;
+            %obj.toggle_clr_local = false;
+            %obj.toggle_singleSlice = true;
+            %obj.toggle_del_unsnapped = false;
             
             %Generate color tables
             obj = obj.generateColorTables();
@@ -307,11 +317,18 @@ classdef RNA_Threshold_SpotSelector
             filimg_path = obj.imgdat_path;
             z_trim = obj.ztrim;
             mask_selection = obj.selmcoords;
-            save_ver = 3;
+            save_ver = 4;
+            
+            %Version 4+
+            toggle_ss = obj.toggle_singleSlice;
+            toggle_az = obj.toggle_allz;
+            toggle_3dc = obj.toggle_3dcount;
+            toggle_cl = obj.toggle_clr_local;
+            toggle_du = obj.toggle_del_unsnapped;
             
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
-            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
+            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du');
             save([save_path '_ptbl'], 'pos_tbl');
             save([save_path '_ntbl'], 'neg_tbl');
             fprintf("Save complete!\n")
@@ -2064,16 +2081,15 @@ classdef RNA_Threshold_SpotSelector
             end
             
         end
-        
+                
         %%
-        function obj = openSelectorSetPaths(save_stem)
-            obj = RNA_Threshold_SpotSelector.openSelector(save_stem);
-            obj.save_stem = save_stem;
-            obj.imgdat_path = [save_stem '_prefilteredIMG'];
-        end
-        
-        %%
-        function obj = openSelector(save_stem)
+        function obj = openSelector(save_stem, updatepaths)
+            
+            if nargin < 2
+                updatepaths = false;
+            else
+                updatepaths = Force2Bool(updatepaths);
+            end
             
             save_path = [save_stem 'spotAnnoObj'];
             save_ver = 1;
@@ -2090,8 +2106,18 @@ classdef RNA_Threshold_SpotSelector
             %load(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver'); 
             load(save_path);
             if save_ver > 1
-                load([save_path '_ptbl']);
-                load([save_path '_ntbl']);
+                load([save_path '_ptbl'], 'pos_tbl');
+                load([save_path '_ntbl'], 'neg_tbl');
+            end
+            
+            if save_ver < 4
+                %TODO
+                if ~isempty(pos_tbl)
+                    T = size(pos_tbl,1);
+                    for t = 1:T
+                        pos_tbl{t,1} = uint16(pos_tbl{t,1});
+                    end
+                end
             end
             
             if save_ver < 3
@@ -2115,7 +2141,7 @@ classdef RNA_Threshold_SpotSelector
                 if ~isempty(pos_tbl)
                     T = size(pos_tbl,1);
                     for t = 1:T
-                        subtbl = pos_tbl{t};
+                        subtbl = pos_tbl{t,1};
                         if ~isempty(subtbl)
                             good_rows = RNA_Threshold_SpotSelector.findNonzeroCoords(subtbl, bool3d);
                             if isempty(good_rows)
@@ -2123,7 +2149,7 @@ classdef RNA_Threshold_SpotSelector
                             else
                                 subtbl = subtbl(good_rows,:);
                             end
-                            pos_tbl{t} = subtbl;
+                            pos_tbl{t,1} = subtbl;
                         end
                     end
                 end
@@ -2131,7 +2157,7 @@ classdef RNA_Threshold_SpotSelector
                 if ~isempty(neg_tbl)
                     T = size(neg_tbl,1);
                     for t = 1:T
-                        subtbl = neg_tbl{t};
+                        subtbl = neg_tbl{t,1};
                         if ~isempty(subtbl)
                             good_rows = RNA_Threshold_SpotSelector.findNonzeroCoords(subtbl, bool3d);
                             if isempty(good_rows)
@@ -2139,7 +2165,7 @@ classdef RNA_Threshold_SpotSelector
                             else
                                 subtbl = subtbl(good_rows,:);
                             end
-                            neg_tbl{t} = subtbl;
+                            neg_tbl{t,1} = subtbl;
                         end
                     end
                 end
@@ -2171,6 +2197,10 @@ classdef RNA_Threshold_SpotSelector
             obj.max_slice = maxz;
             obj.imgdat_path = filimg_path;
             
+            if updatepaths
+                obj.imgdat_path = [save_stem '_prefilteredIMG'];
+            end
+            
             load(obj.imgdat_path, 'img_filter');
             obj.loaded_ch = double(img_filter);
             
@@ -2185,6 +2215,20 @@ classdef RNA_Threshold_SpotSelector
             
             obj.ztrim = z_trim;
             obj.selmcoords = mask_selection;
+            
+            if save_ver >= 4
+                obj.toggle_allz = toggle_az;
+                obj.toggle_3dcount = toggle_3dc;
+                obj.toggle_clr_local = toggle_cl;
+                obj.toggle_singleSlice = toggle_ss;
+                obj.toggle_del_unsnapped = toggle_du;
+            else
+                obj.toggle_allz = false;
+                obj.toggle_3dcount = false;
+                obj.toggle_clr_local = false;
+                obj.toggle_singleSlice = false;
+                obj.toggle_del_unsnapped = false;
+            end
             
             %obj.positives = pos_tbl(:,1);
             %obj.false_negs = neg_tbl(:,1);

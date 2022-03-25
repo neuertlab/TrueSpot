@@ -3,12 +3,11 @@
 
 %%  !! UPDATE TO YOUR BASE DIR
 ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-
 % ========================== Image Channels ==========================
 %De-comment one at a time
 
 %----- mESC Set 1
-%save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist\Xist-CY5_IMG1_all_3d'];
 
 %----- mESC Set 2
@@ -27,7 +26,7 @@ ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 %save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\Ch1\E2R2-IM3-CH1_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\Ch2\E2R2-IM3-CH2_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch1\E2R2-IM5-CH1_all_3d'];
-save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch2\E2R2-IM5-CH2_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch2\E2R2-IM5-CH2_all_3d'];
 
 %----- yeast proteins
 %save_stem_rna = [ImgDir '\data\preprocess\msb2\2M1m_img2\Msb2_02M_1m_img2_GFP_all_3d'];
@@ -69,19 +68,19 @@ spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
 %selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
 
 %-> New AnnoObj
-selector = RNA_Threshold_SpotSelector;
-selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
+%selector = RNA_Threshold_SpotSelector;
+%selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
 %selector = selector.launchRefSelectGUI();
-selector.selmcoords = zeros(4,1);
-selector.selmcoords(1,1) = uint16(702);
-selector.selmcoords(2,1) = uint16(1726);
-selector.selmcoords(3,1) = uint16(198);
-selector.selmcoords(4,1) = uint16(1222);
+%selector.selmcoords = zeros(4,1);
+%selector.selmcoords(1,1) = uint16(702);
+%selector.selmcoords(2,1) = uint16(1726);
+%selector.selmcoords(3,1) = uint16(198);
+%selector.selmcoords(4,1) = uint16(1222);
 
-selector = selector.saveMe();
+%selector = selector.saveMe();
 
 % ========================== Spawn AnnoObj ==========================
 
-%selector = RNA_Threshold_SpotSelector.openSelectorSetPaths(save_stem_rna);
-%selector = selector.launchRefSelectGUI();
+selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna, true);
+selector = selector.launchRefSelectGUI();
 
