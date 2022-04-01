@@ -631,6 +631,7 @@ classdef RNA_Threshold_Common
                 %fprintf("Filter 2\t")
                 %tic
                 IM2 = imregionalmax(IM,26); %Filters down to only brightest pix in each spot in 3D (so can spot count)
+                clear IM;
                 %toc
                 %size(IM2)
                 %size(in_img)
@@ -638,6 +639,7 @@ classdef RNA_Threshold_Common
                 %fprintf("Filter 3\t")
                 %tic
                 IM3 = immultiply(in_img, IM2);
+                clear IM2; %It's not much, but maybe it'll help the memory spikes?
                 %toc
         
                 %fprintf("Finding points...\t")

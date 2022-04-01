@@ -175,6 +175,10 @@ spotsrun.saveMe();
 
 %Get image dimensions (for ztrim)
 idims = spotsrun.idims_sample;
+if isempty(idims)
+    [spotsrun,~] = spotsrun.loadSampleTif(verbosity);
+    idims = spotsrun.idims_sample;
+end
 z_min_trimmed = 1;
 z_max_trimmed = idims.z;
 
@@ -226,20 +230,28 @@ spotsrun.intensity_threshold = thresh;
     
 plots_dir = [spotsrun.out_dir filesep 'plots'];
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
-probeNames = [{spotsrun.img_name};
-              {'Control'}];
-RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [{spotsrun.ctrl_stem}], probeNames,...
+
+if ~isempty(spotsrun.ctrl_stem)
+    probeNames = [{spotsrun.img_name};
+                  {'Control'}];
+    RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [{spotsrun.ctrl_stem}], probeNames,...
                 thresh, plots_dir, true, z_min_trimmed, z_max_trimmed, false);
+else
+    probeNames = [{spotsrun.img_name}];
+    RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [], probeNames,...
+                thresh, plots_dir, true, z_min_trimmed, z_max_trimmed, false);
+end
+
     
     %Window score plot
 fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, score_thresh, thresh);
 saveas(fighandle, [plots_dir filesep 'autothresh_windowscore.png']);
 close(fighandle);
 
-%fighandle = figure(222);
-%histogram(win_scores,100);
-%saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
-%close(fighandle);
+fighandle = figure(222);
+histogram(win_scores,100);
+saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
+close(fighandle);
     
 %Save THIS module's run info (including paths, parameters, chosen threshold etc)
     %Save ztrimmed coords/spotcounts here too. Remove coord tables below

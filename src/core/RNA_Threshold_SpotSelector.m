@@ -443,6 +443,10 @@ classdef RNA_Threshold_SpotSelector
             %fprintf("\tThreshold Index = %d\n", th_idx);
             %fprintf("\tz = %d\n", obj.current_slice);
             
+            if nargin < 3
+                filter_bool = false;
+            end
+            
             %Get mask
             smask = [];
             if filter_bool
@@ -610,7 +614,7 @@ classdef RNA_Threshold_SpotSelector
             
             %separate by z diff...
             Z = obj.max_slice+1;
-            cz = obj.current_slice;
+            cz = double(obj.current_slice);
             z_groups = cell(Z,1);
             diffs = abs(tbl(:,3) - cz);
             if obj.toggle_clr_local
@@ -1844,9 +1848,9 @@ classdef RNA_Threshold_SpotSelector
                         spottbl = spottbl(mrows, :);
                         N = size(spottbl,1);
                         for i = 1:N
-                            x0 = spottbl(i,1);
-                            y0 = spottbl(i,2);
-                            z0 = spottbl(i,3);
+                            x0 = double(spottbl(i,1));
+                            y0 = double(spottbl(i,2));
+                            z0 = double(spottbl(i,3));
                             
                             %Scan the ref table for closest spot that hasn't
                             %already been linked to another.
@@ -1857,9 +1861,9 @@ classdef RNA_Threshold_SpotSelector
                                     continue;
                                 end
                                 
-                                x1 = rtbl(j,1);
-                                y1 = rtbl(j,2);
-                                z1 = rtbl(j,3);
+                                x1 = double(rtbl(j,1));
+                                y1 = double(rtbl(j,2));
+                                z1 = double(rtbl(j,3));
                             
                                 %Calculate distance
                                 xsqr = (x0 - x1)^2;
