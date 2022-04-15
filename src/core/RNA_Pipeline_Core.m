@@ -218,9 +218,13 @@ else
     [~, spots_control] = spotsrun.loadControlSpotsTable();
 end
 
+if isempty(spotsrun.ttune_madfactor)
+    spotsrun.ttune_madfactor = 0.5;
+end
+
 %Detect threshold
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
-[thresh, win_scores, score_thresh] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.0);
+[thresh, win_scores, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.0, spotsrun.ttune_madfactor);
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Auto threshold selected: %d", thresh), true);
 spotsrun.intensity_threshold = thresh;
 
@@ -244,6 +248,7 @@ end
 
     
     %Window score plot
+win_scores(1:scanst-1) = NaN;
 fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, score_thresh, thresh);
 saveas(fighandle, [plots_dir filesep 'autothresh_windowscore.png']);
 close(fighandle);

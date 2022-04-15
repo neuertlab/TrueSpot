@@ -69,6 +69,7 @@ for j = 1:path_count
     fprintf("Now processing %s... (%d of %d)\n", mypath, j, path_count);
     if isfile(path_spotsrun)
         spotsrun = RNASpotsRun.loadFrom(path_spotsrun);
+        spotsrun.ttune_winsize = 15;
         RNA_Pipeline_Core(spotsrun, 1, []);
     else
         fprintf("WARNING: Could not find run data for %s. Skipping...\n", mypath);

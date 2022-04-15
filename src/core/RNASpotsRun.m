@@ -24,12 +24,19 @@ classdef RNASpotsRun
         idims_sample;
         idims_ctrl;
         
+        type_probe; %ie. 'TMR', 'AF594' 
+        type_species; %ie. Mus musculus, Saccharomyces cerevisiae
+        type_cell; %ie. 'S. cerevisiae', 'Yeast', 'mESC'
+        type_target; %ie. 'Tsix', 'Opy2', 'H3K4me2'
+        type_targetmol; %ie. 'lncRNA', 'Histone Mark', 'Protein'
+        
         t_min;
         t_max;
         ztrim;
         ztrim_auto;
         ttune_winsize;
-        ttune_wscorethresh;
+        %ttune_wscorethresh;
+        ttune_madfactor;
         intensity_threshold;
         
         overwrite_output;

@@ -379,7 +379,11 @@ classdef RNA_Threshold_Common
         %   threshold (int) - Suggested threshold derived from shape of
         %       spot count plot
         %
-        function [threshold, win_out, score_thresh] = estimateThreshold(spotcount_table, bkg_spotcount_table, window_size, windowpos)
+        function [threshold, win_out, score_thresh, scanst] = estimateThreshold(spotcount_table, bkg_spotcount_table, window_size, windowpos, mad_factor)
+            
+            if nargin < 5
+                mad_factor = 0.5;
+            end
             
             deriv1 = diff(spotcount_table(:,2));
             deriv1 = smooth(deriv1);
@@ -408,6 +412,7 @@ classdef RNA_Threshold_Common
                     maxvalue = checkcurve(i);
                 end
             end
+            maxidx = maxidx + uint16(window_size/2);
             
             %If bkg is present, find start point (when bkg deriv first = 0)
             %If it happens.
@@ -431,14 +436,15 @@ classdef RNA_Threshold_Common
                     winshift = round(window_size * windowpos);
                 end
                 startidx = startidx - winshift;
+                maxidx = maxidx - winshift;
             end
-            
+            scanst = startidx;
             
             %Window stdev
             %winstdev = NaN(pointcount, 1);
             winout = NaN(pointcount, 1);
             winmax = pointcount - window_size;
-            for i = startidx:winmax
+            for i = maxidx:winmax
                 w_back = i;
                 w_front = i + window_size - 1;
                 %winout(i) = std(deriv1(w_back:w_front,1));
@@ -478,15 +484,18 @@ classdef RNA_Threshold_Common
             %xlabel('Threshold', 'FontSize', 16);
             %ylabel('|diff(# Spots)|', 'FontSize', 16);
             
-            score_thresh = median(win_out,'omitnan');
-            fprintf("RNA_Threshold_Common.estimateThreshold || DEBUG: Median value: %f\n", score_thresh);
+            win_med = median(win_out,'omitnan');
+            win_mad = mad(win_out,1);
+            
+            score_thresh = win_med + (win_mad * mad_factor);
+            %fprintf("RNA_Threshold_Common.estimateThreshold || DEBUG: Median value: %f\n", score_thresh);
             
             %Threshold
             %figure(handle1);
             %win_out = smooth(win_out);
             threshold = 0;
             %last_min = -1;
-            for i = 1:pointcount
+            for i = startidx:pointcount
                 if ~isnan(win_out(i))
                     if win_out(i) <= score_thresh
                         threshold = spotcount_table(i,1);
