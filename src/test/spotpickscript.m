@@ -19,14 +19,14 @@ save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG
 %save_stem_rna = [ImgDir '\data\preprocess\feb2019\3Day\Xist\mESC_3d_Xist_all_3d'];
 
 %----- yeast RNA
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E1R2\Ch1\E1R2-CH1_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E1R2\Ch2\E1R2-CH2_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R1\Ch1\E2R1-CH1_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R1\Ch2\E2R1-CH2_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\Ch1\E2R2-IM3-CH1_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\Ch2\E2R2-IM3-CH2_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch1\E2R2-IM5-CH1_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch2\E2R2-IM5-CH2_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E1R2\STL1\E1R2-STL1-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E1R2\CTT1\E1R2-CTT1-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R1\STL1\E2R1-STL1-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R1\CTT1\E2R1-CTT1-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\STL1\E2R2I3-STL1-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\CTT1\E2R2I3-CTT1-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\STL1\E2R2I5-STL1-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\CTT1\E2R2I5-CTT1-CY5_all_3d'];
 
 %----- yeast proteins
 %save_stem_rna = [ImgDir '\data\preprocess\msb2\2M1m_img2\Msb2_02M_1m_img2_GFP_all_3d'];
@@ -68,14 +68,15 @@ spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
 %selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
 
 %-> New AnnoObj
-%selector = RNA_Threshold_SpotSelector;
-%selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
-%selector = selector.launchRefSelectGUI();
-%selector.selmcoords = zeros(4,1);
-%selector.selmcoords(1,1) = uint16(702);
-%selector.selmcoords(2,1) = uint16(1726);
-%selector.selmcoords(3,1) = uint16(198);
-%selector.selmcoords(4,1) = uint16(1222);
+% selector = RNA_Threshold_SpotSelector;
+% selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
+% selector.ztrim = 7;
+% selector.selmcoords = zeros(4,1);
+% selector.selmcoords(1,1) = uint16(504);
+% selector.selmcoords(2,1) = uint16(1528);
+% selector.selmcoords(3,1) = uint16(462);
+% selector.selmcoords(4,1) = uint16(1486);
+% selector = selector.launchRefSelectGUI();
 
 %selector = selector.saveMe();
 

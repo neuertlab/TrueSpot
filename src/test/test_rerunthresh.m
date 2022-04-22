@@ -20,14 +20,14 @@ img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\3Day\Tsix\mESC_3d_Tsix_all_3d
 img_paths{i,1} = [ImgDir '\data\preprocess\feb2019\3Day\Xist\mESC_3d_Xist_all_3d']; i = i+1;
 
 %----- yeast RNA
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E1R2\Ch1\E1R2-CH1_all_3d']; i = i+1;
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E1R2\Ch2\E1R2-CH2_all_3d']; i = i+1;
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R1\Ch1\E2R1-CH1_all_3d']; i = i+1;
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R1\Ch2\E2R1-CH2_all_3d']; i = i+1;
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\Ch1\E2R2-IM3-CH1_all_3d']; i = i+1;
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\Ch2\E2R2-IM3-CH2_all_3d']; i = i+1;
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch1\E2R2-IM5-CH1_all_3d']; i = i+1;
-img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\Ch2\E2R2-IM5-CH2_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E1R2\STL1\E1R2-STL1-TMR_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E1R2\CTT1\E1R2-CTT1-CY5_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R1\STL1\E2R1-STL1-TMR_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R1\CTT1\E2R1-CTT1-CY5_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\STL1\E2R2I3-STL1-TMR_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img3\CTT1\E2R2I3-CTT1-CY5_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\STL1\E2R2I5-STL1-TMR_all_3d']; i = i+1;
+img_paths{i,1} = [ImgDir '\data\preprocess\YeastFISH\E2R2\Img5\CTT1\E2R2I5-CTT1-CY5_all_3d']; i = i+1;
 
 %----- yeast proteins
 img_paths{i,1} = [ImgDir '\data\preprocess\msb2\2M1m_img2\Msb2_02M_1m_img2_GFP_all_3d']; i = i+1;

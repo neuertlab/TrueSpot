@@ -113,7 +113,7 @@ classdef RNA_Threshold_SpotDetector
             Z = size(IMG_filtered,3);
             if(Z < 20)
                 z_trim = 3;
-                if (Z < 10)
+                if (Z <= 10)
                     z_trim = 0;
                 end
             end

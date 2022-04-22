@@ -224,7 +224,7 @@ end
 
 %Detect threshold
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
-[thresh, win_scores, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.0, spotsrun.ttune_madfactor);
+[thresh, win_scores, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.5, spotsrun.ttune_madfactor);
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Auto threshold selected: %d", thresh), true);
 spotsrun.intensity_threshold = thresh;
 

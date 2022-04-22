@@ -1833,11 +1833,11 @@ classdef RNA_Threshold_SpotSelector
             T = size(obj.threshold_table, 1);
             oidx = 1;
             
-            fprintf("Max Threshold: %d\n",T);
+            fprintf("Max Threshold: %d\n",obj.threshold_table(T,1));
             
             %Stop at 20th lowest threshold
             for t = T:-1:20
-                fprintf("Trying threshold %d\n",t);
+                fprintf("Trying threshold %d\n",obj.threshold_table(t,1));
                 spottbl = obj.positives{t,1}(:,1:3);
                 if ~isempty(spottbl)
                     %fprintf("Trying threshold %d\n",t);

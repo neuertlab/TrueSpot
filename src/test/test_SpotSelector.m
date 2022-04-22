@@ -40,7 +40,9 @@ ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch2\all_3d\Histone_D0_img4_ch2_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch3\Histone_D0_img4_ch3_all_3d'];
-save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch4\Histone_D0_img4_ch4_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I4\Ch4\Histone_D0_img4_ch4_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch2\Histone_D0_img6_ch2_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
 
 addpath('./core');
 spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
@@ -52,8 +54,8 @@ spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
 %selector.ztrim = spotsrun.ztrim;
 selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
 %selector = RNA_Threshold_SpotSelector.openSelectorSetPaths(save_stem_rna);
-%selector = selector.launchGUI(); %Select f+/f- spots from auto detect results
-selector = selector.launchRefSelectGUI(); %Agnostic selection
+selector = selector.launchGUI(); %Select f+/f- spots from auto detect results
+%selector = selector.launchRefSelectGUI(); %Agnostic selection
 
 %Nucll Mask
 %figure(234);
