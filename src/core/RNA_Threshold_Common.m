@@ -425,7 +425,12 @@ classdef RNA_Threshold_Common
                     end
                 end
             end
-            fprintf("Starting threshold scan from threshold %d\n", spotcount_table(startidx, 1));
+            if startidx > pointcount
+                %Just set back to 1...
+                startidx = 1;
+            end
+            %fprintf("Starting threshold scan from threshold %d\n", spotcount_table(startidx, 1));
+            scanst = startidx;
             
             %Adjust starting point for window position
             winshift = 0;
@@ -438,15 +443,31 @@ classdef RNA_Threshold_Common
                 startidx = startidx - winshift;
                 maxidx = maxidx - winshift;
             end
-            scanst = startidx;
+            
+            if maxidx < 1
+                maxidx = 1;
+            end
+            if startidx < 1
+                startidx = 1;
+            end
+            
+            %scanst = startidx;
             
             %Window stdev
             %winstdev = NaN(pointcount, 1);
             winout = NaN(pointcount, 1);
-            winmax = pointcount - window_size;
+            %winmax = pointcount - window_size;
+            winmax = pointcount;
+            %fprintf("DEBUG -- maxidx = %d, winmax = %d, winshift = %d\n", maxidx, winmax, winshift);
             for i = maxidx:winmax
                 w_back = i;
                 w_front = i + window_size - 1;
+                if w_back < 1
+                    w_back = 1;
+                end
+                if w_front > pointcount
+                    w_front = pointcount;
+                end
                 %winout(i) = std(deriv1(w_back:w_front,1));
                 winout(i) = var(deriv1(w_back:w_front,1)) / mean(deriv1(w_back:w_front,1));
             end

@@ -68,7 +68,7 @@ classdef RNASpotsRun
         
         function [obj, spot_table] = loadControlSpotsTable(obj)
             spot_table = [];
-            tbl_path = [obj.ctrl_stem 'spot_table.mat'];
+            tbl_path = [obj.ctrl_stem '_spotTable.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'spot_table');
             end

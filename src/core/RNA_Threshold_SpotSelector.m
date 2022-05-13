@@ -61,6 +61,8 @@ classdef RNA_Threshold_SpotSelector
             %   z - Toggle on/off all-z selection
             %   # - Toggle on/off z spot counts
             %   % - Toggle z-color scale (all z, or just nearest slices?)
+            %   C - Toggle contrast scale (max proj versus indiv slice -
+            %       only available for slice view)
     
     %%
     properties
@@ -103,6 +105,7 @@ classdef RNA_Threshold_SpotSelector
         toggle_3dcount;
         toggle_clr_local;
         toggle_del_unsnapped;
+        toggle_cscale_max; % (3D mode) whether contrast scale for indiv z slices uses the full image scale or a scale for that slice
         
         loop_breaker;
         
@@ -183,6 +186,7 @@ classdef RNA_Threshold_SpotSelector
             obj.save_stem = save_stem;
             obj.threshold_idx = init_thresh_idx;
             obj.toggle_del_unsnapped = false;
+            obj.toggle_cscale_max = false;
             %obj.ztrim = 0;
             obj.selmcoords = [];
             
@@ -317,7 +321,7 @@ classdef RNA_Threshold_SpotSelector
             filimg_path = obj.imgdat_path;
             z_trim = obj.ztrim;
             mask_selection = obj.selmcoords;
-            save_ver = 4;
+            save_ver = 5;
             
             %Version 4+
             toggle_ss = obj.toggle_singleSlice;
@@ -326,9 +330,12 @@ classdef RNA_Threshold_SpotSelector
             toggle_cl = obj.toggle_clr_local;
             toggle_du = obj.toggle_del_unsnapped;
             
+            %Version 5+
+            toggle_cs = obj.toggle_cscale_max;
+            
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
-            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du');
+            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs');
             save([save_path '_ptbl'], 'pos_tbl');
             save([save_path '_ntbl'], 'neg_tbl');
             fprintf("Save complete!\n")
@@ -791,9 +798,16 @@ classdef RNA_Threshold_SpotSelector
                 obj.fh_origslice = figure(12);
                 clf;
                 slice = obj.loaded_ch(:,:,obj.current_slice);
-                Lmin = min(slice(:));
-                Lmax = median(slice(:)) + round(10 * std(slice(:)));
-                imshow(slice,[Lmin Lmax]);
+                
+                if (obj.toggle_cscale_max)
+                    img1 = obj.img_structs(1);
+                    imshow(slice,[img1.Lmin img1.Lmax]);
+                else
+                    Lmin = min(slice(:));
+                    Lmax = median(slice(:)) + round(10 * std(slice(:)));
+                    imshow(slice,[Lmin Lmax]);
+                end
+                
                 hold on;
                 if ~isempty(f_pos)
                     plot(f_pos(:,1), f_pos(:,2),'oy','markersize',10); 
@@ -849,8 +863,6 @@ classdef RNA_Threshold_SpotSelector
             clf;
             if (obj.toggle_singleSlice)
                 slice = obj.loaded_ch(:,:,obj.current_slice);
-                Lmin = min(slice(:));
-                Lmax = median(slice(:)) + round(10 * std(slice(:)));
                 
                 if (obj.current_slice <= obj.ztrim) | (obj.current_slice >= (obj.max_slice - obj.ztrim))
                     slice = slice * dval;
@@ -858,7 +870,15 @@ classdef RNA_Threshold_SpotSelector
                     slice = immultiply(slice, immul_mask);
                 end
                 
-                imshow(slice,[Lmin Lmax]);
+                if (obj.toggle_cscale_max)
+                    img1 = obj.img_structs(1);
+                    imshow(slice,[img1.Lmin img1.Lmax]);
+                else
+                    Lmin = min(slice(:));
+                    Lmax = median(slice(:)) + round(10 * std(slice(:)));
+                    imshow(slice,[Lmin Lmax]);
+                end
+                
                 ref_coords_z = RNA_Threshold_SpotSelector.filterByZ(filtered_coords, obj.current_slice);
                 
                 %Draw the spots on other z planes in green (above) or
@@ -1035,6 +1055,9 @@ classdef RNA_Threshold_SpotSelector
                 obj = obj.drawImages();
             elseif btn == 37 %'%' - toggle z color scale (nearest 5 planes/all planes)
                 obj.toggle_clr_local = ~obj.toggle_clr_local;
+                obj = obj.drawImages();
+            elseif btn == 67 %'C' - toggle contrast scale
+                obj.toggle_cscale_max = ~obj.toggle_cscale_max;
                 obj = obj.drawImages();
             elseif btn == 43 %'+' - Up one slice
                 if ~isempty(obj.loaded_ch)
@@ -1225,6 +1248,9 @@ classdef RNA_Threshold_SpotSelector
                 obj = obj.drawRefImage();
             elseif btn == 56 %'8' - Apply 1/8 sample mask at clicked point
                 obj = obj.whileMouseListening_selectMask(2.83);
+                obj = obj.drawRefImage();
+            elseif btn == 67 %'C' - toggle contrast scale
+                obj.toggle_cscale_max = ~obj.toggle_cscale_max;
                 obj = obj.drawRefImage();
             elseif btn == 43 %'+' - Up one slice
                 if obj.toggle_singleSlice
@@ -2232,6 +2258,12 @@ classdef RNA_Threshold_SpotSelector
                 obj.toggle_clr_local = false;
                 obj.toggle_singleSlice = false;
                 obj.toggle_del_unsnapped = false;
+            end
+            
+            if save_ver >= 5
+                obj.toggle_cscale_max = toggle_cs;
+            else
+                obj.toggle_cscale_max = false;
             end
             
             %obj.positives = pos_tbl(:,1);

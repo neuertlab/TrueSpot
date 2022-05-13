@@ -8,6 +8,11 @@
 %   1.0.0 | 21.03.12
 %       Init Doc
 
+%TODO
+%   1. Sort input coords by brightness, and don't bother looking for clouds
+%   for spots already part of previous cloud.
+%   2. Dead pix
+%   3. ratio > obj.d_thresh ?
 
 %%
 classdef RNA_Clouds
