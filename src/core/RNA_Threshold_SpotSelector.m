@@ -89,6 +89,7 @@ classdef RNA_Threshold_SpotSelector
         positives; %cell(t_count) of int[n][4] - x,y,z,t/f/e (Table of positives, whether true, false, or excluded)
         false_negs; %cell(t_count) of int[n][3] - x,y,z (Table of false negatives)
         ref_coords; %int[n][3] - x,y,z (Table of manually selected ref spots)
+        f_scores; %double[t][4] (fscore[t][1], truepos[t][2], falsepos[t][3], falseneg[t][4] at each thresh value: recalculated whenever snap to ref coords is performed)
         
         fh_filter; %Figure handle for filtered image max z projection
         fh_raw; %Figure handle for max z proj of (contrast enhanced) raw image
@@ -218,6 +219,8 @@ classdef RNA_Threshold_SpotSelector
                 end
             end
             
+            obj.f_scores = NaN(t_count,4);
+            
             obj.toggle_allz = false;
             obj.toggle_3dcount = false;
             obj.toggle_clr_local = false;
@@ -333,9 +336,12 @@ classdef RNA_Threshold_SpotSelector
             %Version 5+
             toggle_cs = obj.toggle_cscale_max;
             
+            %Version 6+
+            ftable = obj.f_scores;
+            
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
-            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs');
+            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable');
             save([save_path '_ptbl'], 'pos_tbl');
             save([save_path '_ntbl'], 'neg_tbl');
             fprintf("Save complete!\n")
@@ -1783,6 +1789,22 @@ classdef RNA_Threshold_SpotSelector
         end
         
         %%
+        function obj = updateFTable(obj)
+            [obj, ctmask] = obj.genCountMask();
+            [obj, tpos, fpos, fneg, ~] = obj.takeCounts(ctmask);
+            obj.f_scores(:,2) = tpos(:,1);
+            obj.f_scores(:,3) = fpos(:,1);
+            obj.f_scores(:,4) = fneg(:,1);
+            totalpos = tpos + fneg;
+            totalpos(totalpos == 0) = NaN;
+            totalhits = tpos + fpos;
+            totalhits(totalhits == 0) = NaN;
+            sensitivity = tpos./totalpos;
+            precision = tpos./totalhits;
+            obj.f_scores(:,1) = (2 .* sensitivity .* precision)./(sensitivity + precision);
+        end
+        
+        %%
         function obj = loadSourceImageChannel(obj)
             
             if isempty(obj.tif_path)
@@ -2264,6 +2286,13 @@ classdef RNA_Threshold_SpotSelector
                 obj.toggle_cscale_max = toggle_cs;
             else
                 obj.toggle_cscale_max = false;
+            end
+            
+            if save_ver >= 6
+                obj.f_scores = ftable;
+            else
+                t_count = size(obj.threshold_table,1);
+                obj.f_scores = NaN(t_count,4);
             end
             
             %obj.positives = pos_tbl(:,1);

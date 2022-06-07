@@ -625,7 +625,12 @@ classdef RNA_Threshold_Common
         %FLEXIBILITIES
         %   -> "int" can refer to any integer type
         %
-        function [img_filtered,xx,yy,minVal,maxVal] = testThreshold_3D(in_img,th1,th2,zBorder)
+        function [img_filtered,xx,yy,minVal,maxVal] = testThreshold_3D(in_img,th1,th2,zBorder,pretrimmed)
+            
+            if nargin < 5
+                pretrimmed = false;
+            end
+            
             %Initialize outputs
             %fprintf("Preparing spot testing...\t")
             %tic
@@ -643,18 +648,20 @@ classdef RNA_Threshold_Common
             maxZ = Z-zBorder;
             %img_filtered = in_img(:,:,minZ:maxZ);
             img_filtered = in_img;
-            for z = 1:(minZ-1)
+            if ~pretrimmed
+                for z = 1:(minZ-1)
                     img_filtered(:,:,z) = zeros(Y,X);
-            end
-            for z = (maxZ+1):Z
+                end
+                for z = (maxZ+1):Z
                     img_filtered(:,:,z) = zeros(Y,X);
+                end
             end
             %toc
     
             %Initial filter
             %fprintf("Filter 1\t")
             %tic
-            IM = immultiply(img_filtered, img_filtered > th1); % Filters out pixels below threshold
+            IM = immultiply(img_filtered, img_filtered > th1); % Filters out pixels at or below threshold
             %toc
     
             if sum(IM(:)) > 0 %Are there any spots at all?
@@ -838,6 +845,8 @@ classdef RNA_Threshold_Common
             
             %Save the basics
             Z = size(img_filter, 3);
+            Y = size(img_filter, 1);
+            X = size(img_filter, 2);
             T = size(th_list, 2);
             minZ = zBorder+1;
             maxZ = Z-zBorder;
@@ -847,6 +856,15 @@ classdef RNA_Threshold_Common
             for z = minZ:maxZ
                 %plane_avgs(z) = mean2(img_filter(:,:,z));
                 plane_avgs(z) = RNA_Threshold_Common.mean_noZeros(img_filter(:,:,z));
+            end
+            
+            if (zBorder > 0)
+                for z = 1:(minZ-1)
+                	img_filter(:,:,z) = zeros(Y,X);
+                end
+                for z = (maxZ+1):Z
+                    img_filter(:,:,z) = zeros(Y,X);
+                end
             end
     
             spot_table = NaN(T,2); %Columns are threshold, spot count. Rows are entries.
@@ -896,30 +914,54 @@ classdef RNA_Threshold_Common
                         end
                     end
                 else
+                    %TODO - Pretrim the unwanted Z slices. There is no
+                    %reason to do this for EVERY thresh.
+                    %TODO - Skip threshes with no spots at that intensity.
+                    fimg_max_val = max(img_filter, [], 'all', 'omitnan');
+                    valbin = histcounts(img_filter, fimg_max_val+1);
+                    ptotal = 0;
+                    bincount = size(valbin, 2);
+                    for i = 1:bincount
+                        ptotal = ptotal + valbin(1, i);
+                        valbin(1,i) = ptotal;
+                    end
+
                     %Run full 3D image. Yay!
+                    last_th_pcount = 0;
+                    this_th_pcount = 0;
                     if save_filtered
                         for c = 1:T
                             if verbose; tic; end
                             th = th_list(1,c);
                             if verbose; fprintf("Processing image using threshold = %f\t", th); end
-                            %Spot detect
-                            [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder);
-                            %Whittle down spots
-                            if verbose; toc; end
-
-                            if collapse3D
-                                if verbose; tic; end
-                                if verbose; fprintf("Determining unique XY spots...\t"); end
-                                [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
-                                spot_table(c,2) = spot_count;
-                                coord_table{c,1} = t_coords;
+                            this_th_pcount = valbin(1,th+1);
+                            if this_th_pcount ~= last_th_pcount
+                                %Spot detect
+                                [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder,true);
+                                
+                                %Whittle down spots
                                 if verbose; toc; end
+
+                                if collapse3D
+                                    if verbose; tic; end
+                                    if verbose; fprintf("Determining unique XY spots...\t"); end
+                                    [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
+                                    spot_table(c,2) = spot_count;
+                                    coord_table{c,1} = t_coords;
+                                    if verbose; toc; end
+                                else
+                                    [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,minZ,maxZ);
+                                    spot_table(c,2) = spot_count;
+                                    coord_table{c,1} = t_coords;
+                                end
+                                save([saveStem '_t' num2str(c)], 'f_img');
                             else
-                                [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,minZ,maxZ);
-                                spot_table(c,2) = spot_count;
-                                coord_table{c,1} = t_coords;
+                                if verbose; toc; end
+                                
+                                spot_table(c,2) = spot_table(c-1,2);
+                                coord_table{c,1} = coord_table{c-1,1};
                             end
-                            save([saveStem '_t' num2str(c)], 'f_img');
+                            last_th_pcount = this_th_pcount;
                         end
                     else
                         for c = 1:T
@@ -929,19 +971,26 @@ classdef RNA_Threshold_Common
                                 tic;
                                 fprintf("Processing image using threshold = %f\n", th);
                             end
-                            %Spot detect
-                            [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder);
-                            %Whittle down spots
-                            if collapse3D
-                                if verbose; fprintf("Determining unique XY spots...\n"); end
-                                [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
-                                spot_table(c,2) = spot_count;
-                                coord_table{c,1} = t_coords;
+                            this_th_pcount = valbin(1,th+1);
+                            if this_th_pcount ~= last_th_pcount
+                                %Spot detect
+                                [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder,true);
+                                %Whittle down spots
+                                if collapse3D
+                                    if verbose; fprintf("Determining unique XY spots...\n"); end
+                                    [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
+                                    spot_table(c,2) = spot_count;
+                                    coord_table{c,1} = t_coords;
+                                else
+                                    [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,minZ,maxZ);
+                                    spot_table(c,2) = spot_count;
+                                    coord_table{c,1} = t_coords;
+                                end
                             else
-                                [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,minZ,maxZ);
-                                spot_table(c,2) = spot_count;
-                                coord_table{c,1} = t_coords;
+                                spot_table(c,2) = spot_table(c-1,2);
+                                coord_table{c,1} = coord_table{c-1,1};
                             end
+                            last_th_pcount = this_th_pcount;
                             if verbose; toc; end
                         end
                     end
@@ -1985,6 +2034,45 @@ classdef RNA_Threshold_Common
         end
         
         %%-------------------------[Misc. Utilities]-----------------------------
+        
+        %%
+        function th_min = suggestMinScanThreshold(img_filter, bkg_mask)
+            if nargin < 2
+                bkg_mask = [];
+            end
+            
+            img_noz = double(img_filter);
+            img_noz(img_noz == 0) = NaN;
+            if ~isempty(bkg_mask)
+                Z = size(img_noz, 3);
+                for z = 1:Z
+                    img_noz(:,:,z) = immultiply(img_noz(:,:,z), ~bkg_mask);
+                end
+                th_min = floor(mean(img_noz,'all', 'omitnan'));
+                return;
+            end
+            
+            img_mean = mean(img_noz,'all', 'omitnan');
+            img_std = std(img_noz,0,'all', 'omitnan');
+            img_noz(img_noz >= (img_mean+img_std)) = NaN;
+            th_min = max(floor(mean(img_noz,'all', 'omitnan')),10);
+        end
+        
+        %%
+        function th_max = suggestMaxScanThreshold(img_filter, bkg_lvl)
+            if nargin < 2
+                bkg_lvl = 20;
+            end
+            
+            img_noz = double(img_filter);
+            img_noz(img_noz < bkg_lvl) = NaN;
+            
+            img_mean = mean(img_noz,'all', 'omitnan');
+            img_std = std(img_noz,0,'all', 'omitnan');
+            img_max = max(img_noz, [], 'all', 'omitnan');
+            
+            th_max = max(round(img_mean + (10*img_std)),round(img_max/20));
+        end
         
         %%
         %Get the standard deviation of all non-zero values in a matrix

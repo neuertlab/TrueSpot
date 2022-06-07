@@ -71,6 +71,12 @@ for j = 1:path_count
         spotsrun = RNASpotsRun.loadFrom(path_spotsrun);
         spotsrun.ttune_winsize = 15;
         RNA_Pipeline_Core(spotsrun, 1, []);
+        
+        [spotsrun, img_filter] = spotsrun.loadFilteredImage();
+        sugg_th_min = RNA_Threshold_Common.suggestMinScanThreshold(img_filter);
+        sugg_th_max = RNA_Threshold_Common.suggestMaxScanThreshold(img_filter, 20);
+        fprintf("Suggested Scan Range: %d - %d\n", sugg_th_min, sugg_th_max);
+        fprintf("break;\n");
     else
         fprintf("WARNING: Could not find run data for %s. Skipping...\n", mypath);
     end

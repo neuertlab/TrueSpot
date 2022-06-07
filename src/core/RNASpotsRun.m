@@ -105,6 +105,14 @@ classdef RNASpotsRun
             end
         end
         
+        function [obj, img_filter] = loadFilteredImage(obj)
+            img_filter = [];
+            mypath = [obj.out_stem '_prefilteredIMG.mat'];
+            if isfile(mypath)
+                load(mypath, 'img_filter');
+            end
+        end
+        
         function obj = updateBackgroundFilteredCoords(obj)
             [~, background_mask] = obj.loadBackgroundMask();
             [~, coord_table] = obj.loadCoordinateTable();
