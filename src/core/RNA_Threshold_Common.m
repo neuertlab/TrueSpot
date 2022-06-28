@@ -252,8 +252,10 @@ classdef RNA_Threshold_Common
                 fprintf("imhistc was found. Using imhistc.\n");
                 hist_pix_rand = imhistc(double(rand_hi(:)), double(Y*X), 0, double(Y*X));
             else
-                fprintf("imhistc was NOT found. Using imhist.\n");
-                hist_pix_rand = imhist(double(rand_hi(:)), double(Y*X));
+                fprintf("imhistc was NOT found. Using histcounts.\n");
+                %[hist_pix_rand, ~] = imhist(double(rand_hi(:)), double(Y*X));
+                [hist_pix_rand, ~] = histcounts(double(rand_hi(:)), double(Y*X));
+                hist_pix_rand = transpose(hist_pix_rand);
             end
             %hist_pix_rand = imhist(double(rand_hi(:)), double(Y*Y), 0, double(Y*Y));
             rand_recur_pix = find(hist_pix_rand >= slice_num*slice_cut);
@@ -265,7 +267,9 @@ classdef RNA_Threshold_Common
             if imhistc_exists == 3
                 hist_pix = imhistc(double(hi_pixels_all(:)), double(Y * X), 0, double(Y * X));
             else
-                hist_pix = imhist(double(hi_pixels_all(:)), double(Y * X));
+                %[hist_pix, ~] = imhist(double(hi_pixels_all(:)), double(Y * X));
+                [hist_pix, ~] = histcounts(double(hi_pixels_all(:)), double(Y * X));
+                hist_pix = transpose(hist_pix);
             end
             recurring_pixels = find(hist_pix >= slice_num*slice_cut);
             %[num2str(size(recurring_pixels,1)) ' recurring pixels' ]
@@ -929,12 +933,17 @@ classdef RNA_Threshold_Common
                     %Run full 3D image. Yay!
                     last_th_pcount = 0;
                     this_th_pcount = 0;
+                    thmax = size(valbin,2);
                     if save_filtered
                         for c = 1:T
                             if verbose; tic; end
                             th = th_list(1,c);
                             if verbose; fprintf("Processing image using threshold = %f\t", th); end
-                            this_th_pcount = valbin(1,th+1);
+                            if th+1 <= thmax
+                                this_th_pcount = valbin(1,th+1);
+                            else
+                                this_th_pcount = last_th_pcount;
+                            end
                             if this_th_pcount ~= last_th_pcount
                                 %Spot detect
                                 [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder,true);
@@ -971,7 +980,12 @@ classdef RNA_Threshold_Common
                                 tic;
                                 fprintf("Processing image using threshold = %f\n", th);
                             end
-                            this_th_pcount = valbin(1,th+1);
+                            
+                            if th+1 <= thmax
+                                this_th_pcount = valbin(1,th+1);
+                            else
+                                this_th_pcount = last_th_pcount;
+                            end
                             if this_th_pcount ~= last_th_pcount
                                 %Spot detect
                                 [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder,true);

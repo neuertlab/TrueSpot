@@ -14,7 +14,7 @@ function rna_spot_run = Adapter_RNASpots(img_name, tif_path, rna_ch, light_ch, t
 
 addpath('./core');
 RNA_Fisher_State.setGUIMode(guimode);
-bPreloaded = (nargin > 17);
+bPreloaded = (nargin > 17) && ~isempty(preloaded_images);
 
 %Build a Run object for easy save/load
 spotsrun = RNASpotsRun;

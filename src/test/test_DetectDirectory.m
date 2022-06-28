@@ -5,9 +5,13 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
 % ========================== Paths ==========================
 
-InputDir = [BaseDir '\img\yeast_full\Exp1_rep1'];
-CellsegDir = [BaseDir '\data\cell_seg\yeast_full\E1R1'];
-OutputDir = [BaseDir '\data\preprocess\yeast_tc\E1R1'];
+%InputDir = [BaseDir '\img\yeast_full\Exp1_rep1'];
+%CellsegDir = [BaseDir '\data\cell_seg\yeast_full\E1R1'];
+%OutputDir = [BaseDir '\data\preprocess\yeast_tc\E1R1'];
+
+InputDir = [BaseDir '\img\yeast_full\Exp1_rep2'];
+CellsegDir = [BaseDir '\data\cell_seg\yeast_full\E1R2'];
+OutputDir = [BaseDir '\data\preprocess\yeast_tc\E1R2'];
 
 % ========================== Image Info ==========================
 
