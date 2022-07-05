@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.2.0
-%Updated March 25, 2022
+%Version 1.3.0
+%Updated July 1, 2022
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -13,6 +13,8 @@
 %       Version 4 save (save toggles)
 %       Force ptbl and ntbl to uint16 (TOO BIG!!!)
 %       Fixed load + change savestem bug
+%   1.3.0 | 22.07.01
+%       Version 7 save - Ref coords to separate file
 
 
 %%
@@ -324,7 +326,7 @@ classdef RNA_Threshold_SpotSelector
             filimg_path = obj.imgdat_path;
             z_trim = obj.ztrim;
             mask_selection = obj.selmcoords;
-            save_ver = 5;
+            save_ver = 7;
             
             %Version 4+
             toggle_ss = obj.toggle_singleSlice;
@@ -341,9 +343,10 @@ classdef RNA_Threshold_SpotSelector
             
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
-            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable');
+            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable');
             save([save_path '_ptbl'], 'pos_tbl');
             save([save_path '_ntbl'], 'neg_tbl');
+            save([save_path '_refset'], 'ref_coord_tbl'); %Ver 7+
             fprintf("Save complete!\n")
         end
         
@@ -2058,6 +2061,71 @@ classdef RNA_Threshold_SpotSelector
             
         end
         
+        %%
+        function [obj, copy] = makeCopy(obj)
+            copy = RNA_Threshold_SpotSelector;
+            copy.save_stem = obj.save_stem;
+            
+            copy.img_structs = obj.img_structs;
+            copy.threshold_idx = obj.threshold_idx;
+            copy.threshold_table = obj.threshold_table;
+            copy.positives = obj.positives;
+            copy.false_negs = obj.false_negs;
+            
+            copy.ref_coords = obj.ref_coords;
+            copy.mode_3d = obj.mode_3d;
+            copy.current_slice = obj.current_slice;
+            copy.max_slice = obj.max_slice;
+            copy.imgdat_path = obj.imgdat_path;
+            copy.ztrim = obj.ztrim;
+            copy.selmcoords = obj.selmcoords;
+            
+            copy.toggle_singleSlice = obj.toggle_singleSlice;
+            copy.toggle_allz = obj.toggle_allz;
+            copy.toggle_3dcount = obj.toggle_3dcount;
+            copy.toggle_clr_local = obj.toggle_clr_local;
+            copy.toggle_del_unsnapped = obj.toggle_del_unsnapped;
+            copy.toggle_cscale_max = obj.toggle_cscale_max;
+            copy.f_scores = obj.f_scores;
+            
+            copy.loaded_ch = [];
+            s_img = copy.img_structs(1).image;
+            copy.alloc_size = size(s_img, 1) * size(s_img,2);
+            copy.n_alloc = 0;
+            copy.n_used = 0;
+            copy.n_table = [];
+            copy.slice_drawn = 0;
+        end
+        
+        %%
+        function obj = loadNewSpotset(obj, spot_counts, coord_table)
+            
+            t_count = size(spot_counts,1);
+            dimcount = size(coord_table{1});
+            
+            obj.positives = cell(t_count, 1);
+            for t = 1:t_count
+                src_tbl = coord_table{t};
+                tbl = ones([size(src_tbl,1) 4]);
+                if dimcount == 2
+                    tbl(:,1:2) = src_tbl(:,1:2);
+                    obj.mode_3d = false;
+                else
+                    tbl(:,1:3) = src_tbl(:,1:3);
+                    obj.mode_3d = true;
+                end
+                tbl = uint16(tbl);
+                obj.positives{t} = tbl;
+            end
+            obj.false_negs = cell(t_count, 1);
+            
+            obj.threshold_table(:,1) = spot_counts(:,1);
+            obj.threshold_idx = uint16(t_count/2);
+            
+            obj.f_scores = NaN(t_count,4);
+            obj = obj.updateFTable();
+        end
+        
     end
     
     %%
@@ -2256,6 +2324,9 @@ classdef RNA_Threshold_SpotSelector
             load(obj.imgdat_path, 'img_filter');
             obj.loaded_ch = double(img_filter);
             
+            if save_ver >= 7
+                load([save_path '_refset'], 'ref_coord_tbl');
+            end
             obj.ref_coords = ref_coord_tbl;
             
             s_img = istructs(1).image;
