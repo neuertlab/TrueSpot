@@ -540,10 +540,27 @@ classdef RNA_Threshold_Common
         
         %%
         %
-        function fighandle = drawWindowscorePlot(th_table, win_stdevs, winscore_thresh, intensity_thresh)
-            pointcount = size(win_stdevs, 1);
+        function fighandle = drawWindowscorePlot(th_table, win_scores, winscore_thresh, intensity_thresh)
+            mad_ws = mad(win_scores, 1, 'all');
+            med_ws = median(win_scores, 'all','omitnan');
+            trim_t = med_ws + (10*mad_ws);
+
+            pointcount = size(win_scores, 1);
             x = th_table(1:pointcount);
-            y = win_stdevs;
+            y = win_scores;
+            
+            %NaN any scores more than some stdevs above, from left.
+            for t = 1:pointcount
+                compval = y(t,1);
+                if ~isnan(compval)
+                    if compval > trim_t
+                        y(t,1) = NaN;
+                    else
+                        break;
+                    end
+                end
+            end
+            
             %y = smooth(winstdev);
             xlinecolor = [0.608 0.621 0.628];
             ylinecolor = [0.608 0.621 0.628];

@@ -7,21 +7,27 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
 InputDir = [BaseDir '\data\bigfish\mESC_4d\Tsix-AF594'];
 RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
-
 BFStem = [InputDir filesep 'BIGFISH_Tsix-AF594'];
+
+% InputDir = [BaseDir '\data\bigfish\mESC_4d\Xist-CY5'];
+% RefStem = [BaseDir '\data\preprocess\feb2018\Xist_CY5\Xist\Xist-CY5_IMG1_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_Xist-CY5'];
 
 % ========================== Params ==========================
 
 tmin = 10;
-tmax = 400;
+tmax = 1000;
 trange = [tmin:1:tmax];
 T = size(trange,2);
 
 zmin = 14;
 bf_thresh = 191;
 
-madf = -0.25;
-winsz = 15;
+% zmin = 14;
+% bf_thresh = 184;
+
+madf = -1.0;
+winsz = 20;
 
 % ========================== Read BIGFISH Data ==========================
 addpath('./core');
@@ -29,6 +35,7 @@ spot_counts = zeros(T,2);
 spot_coords = cell(T,1);
 
 %Read cellseg masks
+fprintf("Reading BIG-FISH cell seg data...\n");
 cell_n = uint16(csvread([InputDir filesep 'cell_n.csv']));
 cell_t = uint16(csvread([InputDir filesep 'cell_t.csv']));
 nuc_n = uint16(csvread([InputDir filesep 'nuc_n.csv']));
@@ -38,6 +45,7 @@ save([BFStem '_bfcellseg'], 'cell_n', 'cell_t', 'nuc_n', 'nuc_t');
 
 %Read spot detection results
 %Remember to add 1 to all BIGFISH coords (I think it is 0 - based)
+fprintf("Reading BIG-FISH spot detection data...\n");
 i = 1;
 for t = tmin:tmax
     filetblname = [InputDir filesep 'spots_' sprintf('%04d', t) '.csv'];
@@ -74,7 +82,7 @@ fprintf("Threshold w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, thresh
 % ========================== Import Ref Set & Comparison Data ==========================
 
 fprintf("Loading reference SpotSelector data...\n");
-src_selector = RNA_Threshold_SpotSelector.openSelector(RefStem);
+src_selector = RNA_Threshold_SpotSelector.openSelector(RefStem, true);
 [~, bf_selector] = src_selector.makeCopy();
 
 fprintf("Loading reference spot table...\n");
@@ -95,6 +103,7 @@ plotdir = [InputDir filesep 'plots'];
 mkdir(plotdir);
 
 %Spots circled image in BF set at BF and homebrew thresholds
+bf_selector = bf_selector.generateColorTables();
 bf_selector.toggle_singleSlice = false; %Set to max proj
 bf_selector.threshold_idx = bf_thresh - tmin + 1;
 bf_selector = bf_selector.drawImages();
@@ -137,6 +146,37 @@ close(figh);
 %Fscore curves of both spot sets
 src_selector = src_selector.updateFTable();
 
-%Window score plot
-%Cellseg masks visualized
+figh = figure(988);
+clf;
+ax = axes;
+plot(spot_counts(:,1),bf_selector.f_scores(:,1),'LineWidth',2,'Color',color1);
+hold on;
+plot(spot_counts_ref(:,1),src_selector.f_scores(:,1),'-.','LineWidth',2,'Color',color2);
+ylim([0.0 1.0]);
+line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',grey,'LineStyle','--');
+legend(legend_names);
+xlabel('Threshold');
+ylabel('FScore');
+saveas(figh, [plotdir filesep 'fscoreplot.png']);
+close(figh);
 
+%Window score plot
+figh = RNA_Threshold_Common.drawWindowscorePlot(spot_counts(:,1), win_out, score_thresh, threshold);
+saveas(figh, [plotdir filesep 'winscore.png']);
+close(figh);
+
+%Cellseg masks visualized
+figh = figure(987);
+clf;
+imshow(cell_n,[]);
+saveas(figh, [plotdir filesep 'cell_n.png']);
+clf;
+imshow(cell_t,[]);
+saveas(figh, [plotdir filesep 'cell_t.png']);
+clf;
+imshow(nuc_n,[]);
+saveas(figh, [plotdir filesep 'nuc_n.png']);
+clf;
+imshow(nuc_t,[]);
+saveas(figh, [plotdir filesep 'nuc_t.png']);
+close(figh);

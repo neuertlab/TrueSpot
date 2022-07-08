@@ -2119,6 +2119,7 @@ classdef RNA_Threshold_SpotSelector
             end
             obj.false_negs = cell(t_count, 1);
             
+            obj.threshold_table = zeros(t_count,1);
             obj.threshold_table(:,1) = spot_counts(:,1);
             obj.threshold_idx = uint16(t_count/2);
             

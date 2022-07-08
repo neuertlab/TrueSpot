@@ -11,7 +11,7 @@
 %ImgDir = 'C:\Users\Blythe\labdata\imgproc'; %aelec
 ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 
-%save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
 %nucl_seg_path = [ImgDir '\data\cell_seg\mESC_4d\nuclei_20180202_4d_mESC_Tsix-AF594_img_1.mat'];
 
 %save_stem_rna = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist'];
@@ -56,7 +56,7 @@ ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch4\Histone_D0_img6_ch4_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch3\Histone_D2_img3_ch3_all_3d'];
-save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch4\Histone_D2_img3_ch4_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch4\Histone_D2_img3_ch4_all_3d'];
 
 addpath('./core');
 spotsrun = RNASpotsRun.loadFrom(save_stem_rna);

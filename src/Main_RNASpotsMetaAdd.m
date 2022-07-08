@@ -6,6 +6,8 @@ function Main_RNASpotsMetaAdd(dirpath, varargin)
     %Look for a valid RNASpotsRun file in the given directory, and load.
 % ========================== Scan directory ==========================
 
+addpath('./core');
+
 DirContents = dir(dirpath);
 fcount = size(DirContents,1);
 
