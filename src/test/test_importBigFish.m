@@ -5,13 +5,84 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
 % ========================== Paths ==========================
 
-InputDir = [BaseDir '\data\bigfish\mESC_4d\Tsix-AF594'];
-RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
-BFStem = [InputDir filesep 'BIGFISH_Tsix-AF594'];
+% InputDir = [BaseDir '\data\bigfish\mESC_4d\Tsix-AF594'];
+% RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_Tsix-AF594'];
+% zmin = 14;
+% bf_thresh = 191;
+% %bf_thresh = 36;
 
 % InputDir = [BaseDir '\data\bigfish\mESC_4d\Xist-CY5'];
 % RefStem = [BaseDir '\data\preprocess\feb2018\Xist_CY5\Xist\Xist-CY5_IMG1_all_3d'];
 % BFStem = [InputDir filesep 'BIGFISH_Xist-CY5'];
+% zmin = 14;
+% bf_thresh = 184;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E1R2I4\STL1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E1R2\STL1\E1R2-STL1-TMR_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_STL1-TMR'];
+% zmin = 4;
+% bf_thresh = 154;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E1R2I4\CTT1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E1R2\CTT1\E1R2-CTT1-CY5_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_CTT1-CY5'];
+% zmin = 1;
+% bf_thresh = 124;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E2R1I2\STL1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E2R1\STL1\E2R1-STL1-TMR_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_STL1-TMR'];
+% zmin = 3;
+% bf_thresh = 231;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E2R1I2\CTT1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E2R1\CTT1\E2R1-CTT1-CY5_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_CTT1-CY5'];
+% zmin = 2;
+% bf_thresh = 805;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E2R2I3\STL1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E2R2\Img3\STL1\E2R2I3-STL1-TMR_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_STL1-TMR'];
+% zmin = 5;
+% bf_thresh = 231;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E2R2I3\CTT1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E2R2\Img3\CTT1\E2R2I3-CTT1-CY5_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_CTT1-CY5'];
+% zmin = 1;
+% bf_thresh = 281;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E2R2I5\STL1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E2R2\Img5\STL1\E2R2I5-STL1-TMR_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_STL1-TMR'];
+% zmin = 5;
+% bf_thresh = 208;
+
+% InputDir = [BaseDir '\data\bigfish\yeast_rna\E2R2I5\CTT1'];
+% RefStem = [BaseDir '\data\preprocess\YeastFISH\E2R2\Img5\CTT1\E2R2I5-CTT1-CY5_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_CTT1-CY5'];
+% zmin = 2;
+% bf_thresh = 340;
+
+% InputDir = [BaseDir '\data\bigfish\histones\D0I4\Xist'];
+% RefStem = [BaseDir '\data\preprocess\histones\D0_I4\Ch2\Histone_D0_img4_ch2_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_Xist-CY5'];
+% zmin = 17;
+% bf_thresh = 250;
+
+% InputDir = [BaseDir '\data\bigfish\histones\D0I4\Tsix'];
+% RefStem = [BaseDir '\data\preprocess\histones\D0_I4\Ch3\Histone_D0_img4_ch3_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_Tsix-TMR'];
+% zmin = 17;
+% bf_thresh = 246;
+
+InputDir = [BaseDir '\data\bigfish\histones\D0I4\H3K36me3'];
+RefStem = [BaseDir '\data\preprocess\histones\D0_I4\Ch4\Histone_D0_img4_ch4_all_3d'];
+BFStem = [InputDir filesep 'BIGFISH_H3K36me3-AF488'];
+zmin = 17;
+bf_thresh = 356;
 
 % ========================== Params ==========================
 
@@ -20,13 +91,7 @@ tmax = 1000;
 trange = [tmin:1:tmax];
 T = size(trange,2);
 
-zmin = 14;
-bf_thresh = 191;
-
-% zmin = 14;
-% bf_thresh = 184;
-
-madf = -1.0;
+madf = -0.5;
 winsz = 20;
 
 % ========================== Read BIGFISH Data ==========================
@@ -36,12 +101,13 @@ spot_coords = cell(T,1);
 
 %Read cellseg masks
 fprintf("Reading BIG-FISH cell seg data...\n");
-cell_n = uint16(csvread([InputDir filesep 'cell_n.csv']));
+%cell_n = uint16(csvread([InputDir filesep 'cell_n.csv']));
 cell_t = uint16(csvread([InputDir filesep 'cell_t.csv']));
-nuc_n = uint16(csvread([InputDir filesep 'nuc_n.csv']));
+%nuc_n = uint16(csvread([InputDir filesep 'nuc_n.csv']));
 nuc_t = uint16(csvread([InputDir filesep 'nuc_t.csv']));
 
-save([BFStem '_bfcellseg'], 'cell_n', 'cell_t', 'nuc_n', 'nuc_t');
+%save([BFStem '_bfcellseg'], 'cell_n', 'cell_t', 'nuc_n', 'nuc_t');
+save([BFStem '_bfcellseg_tonly'], 'cell_t', 'nuc_t');
 
 %Read spot detection results
 %Remember to add 1 to all BIGFISH coords (I think it is 0 - based)
@@ -76,8 +142,8 @@ save([BFStem '_spotTable'], 'spot_table');
 
 % ========================== See what threshold finder calls ==========================
 
-[threshold, win_out, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spot_counts, [], winsz, 0.5, madf);
-fprintf("Threshold w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, threshold);
+[thresh_hbbf, win_out, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spot_counts, [], winsz, 0.5, madf);
+fprintf("Threshold w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, thresh_hbbf);
 
 % ========================== Import Ref Set & Comparison Data ==========================
 
@@ -97,6 +163,9 @@ bf_selector = bf_selector.refSnapToAutoSpots();
 bf_selector = bf_selector.updateFTable();
 bf_selector.saveMe();
 
+[thresh_hb, win_out_hb, score_thresh_hb, scanst_hb] = RNA_Threshold_Common.estimateThreshold(spot_counts_ref, [], winsz, 0.5, madf);
+fprintf("Threshold on Ref w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, thresh_hb);
+
 % ========================== Export Plots ==========================
 
 plotdir = [InputDir filesep 'plots'];
@@ -108,7 +177,7 @@ bf_selector.toggle_singleSlice = false; %Set to max proj
 bf_selector.threshold_idx = bf_thresh - tmin + 1;
 bf_selector = bf_selector.drawImages();
 saveas(bf_selector.fh_filter, [plotdir filesep 'circlespots_bfthresh.png']);
-bf_selector.threshold_idx = threshold - tmin + 1;
+bf_selector.threshold_idx = thresh_hbbf - tmin + 1;
 bf_selector = bf_selector.drawImages();
 saveas(bf_selector.fh_filter, [plotdir filesep 'circlespots_hbthresh.png']);
 close(bf_selector.fh_filter);
@@ -122,11 +191,12 @@ end
 
 %Spots vs. thresh in homebrew spot set and BF spot set
 legend_names = cell(1, 2);
-color1 = [0.849 0.633 0.778]; %#F2BBE0
-color2 = [0.759 0.665 0.802]; %#DBC3E6
-color3 = [0.416 0.427 0.678]; %#6A6DAD
-color4 = [0.416 0.588 0.678]; %#6A96AD
-grey = [0.608 0.621 0.628]; %#A8ABAD
+color1 = [0.071 0.094 0.529]; %#121887 - Blue
+color2 = [0.529 0.051 0.051]; %#870d0d - Red
+color3 = [0.369 0.035 0.427]; %#5e096d - Purple
+color1_light = [0.627 0.647 0.969]; %#a0a5f7
+color2_light = [0.969 0.588 0.588]; %#f79696
+color3_light = [0.910 0.588 0.969]; %#e896f7
 dim = [.45, .4, .5, .5];
 figh = figure(989);
 clf;
@@ -134,7 +204,9 @@ ax = axes;
 plot(spot_counts(:,1),log10(spot_counts(:,2)),'LineWidth',2,'Color',color1);
 hold on;
 plot(spot_counts_ref(:,1),log10(spot_counts_ref(:,2)),'-.','LineWidth',2,'Color',color2);
-line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',grey,'LineStyle','--');
+line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',color1_light,'LineStyle','--','LineWidth',2);
+line([thresh_hb thresh_hb], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
+line([thresh_hbbf thresh_hbbf], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
 legend_names{1,1} = 'BIG-FISH';
 legend_names{1,2} = 'Homebrew';
 legend(legend_names);
@@ -153,7 +225,9 @@ plot(spot_counts(:,1),bf_selector.f_scores(:,1),'LineWidth',2,'Color',color1);
 hold on;
 plot(spot_counts_ref(:,1),src_selector.f_scores(:,1),'-.','LineWidth',2,'Color',color2);
 ylim([0.0 1.0]);
-line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',grey,'LineStyle','--');
+line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',color1_light,'LineStyle','--','LineWidth',2);
+line([thresh_hb thresh_hb], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
+line([thresh_hbbf thresh_hbbf], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
 legend(legend_names);
 xlabel('Threshold');
 ylabel('FScore');
@@ -161,22 +235,30 @@ saveas(figh, [plotdir filesep 'fscoreplot.png']);
 close(figh);
 
 %Window score plot
-figh = RNA_Threshold_Common.drawWindowscorePlot(spot_counts(:,1), win_out, score_thresh, threshold);
+figh = RNA_Threshold_Common.drawWindowscorePlot(spot_counts(:,1), win_out, score_thresh, thresh_hbbf);
 saveas(figh, [plotdir filesep 'winscore.png']);
 close(figh);
 
 %Cellseg masks visualized
+%TODO: Gen an overlay over light channel. Also import Ben's output and gen
+%overlay for that. Maybe write a function that does that in core
 figh = figure(987);
 clf;
-imshow(cell_n,[]);
-saveas(figh, [plotdir filesep 'cell_n.png']);
-clf;
+% imshow(cell_n,[]);
+% saveas(figh, [plotdir filesep 'cell_n.png']);
+% clf;
 imshow(cell_t,[]);
 saveas(figh, [plotdir filesep 'cell_t.png']);
 clf;
-imshow(nuc_n,[]);
-saveas(figh, [plotdir filesep 'nuc_n.png']);
-clf;
+% imshow(nuc_n,[]);
+% saveas(figh, [plotdir filesep 'nuc_n.png']);
+% clf;
 imshow(nuc_t,[]);
 saveas(figh, [plotdir filesep 'nuc_t.png']);
 close(figh);
+
+%TODO
+%Plot of spot counts overlapping between callsets.
+%Also output the overlaps & non-overlap counts at thresholds
+%   Could even gen an image with non-overlapped circled for each picked
+%   threshold.
