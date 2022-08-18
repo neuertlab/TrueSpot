@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.2.3
-%Updated March 21, 2022
+%Version 2.3.0
+%Updated August 18, 2022
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -37,6 +37,8 @@
 %       its own method.
 %   2.2.3 | 22.03.21
 %       Updated thresh choosing function to try something else
+%   2.3.0 | 22.08.18
+%       Overhauled thresholding functions and interface
 
 %%
 %
@@ -353,7 +355,252 @@ classdef RNA_Threshold_Common
         end
         
         %%
-        %-------------------------[Spot Detection]-----------------------------
+        %-------------------------[Thresholding]-----------------------------
+        
+        %%
+        %
+        function param_struct = genEmptyThresholdParamStruct()
+            param_struct = struct("window_size", 20);
+            param_struct.window_pos = 0.5;
+            param_struct.mad_factor = -0.5;
+            param_struct.spline_iterations = 3;
+            param_struct.verbosity = 0;
+            param_struct.sample_spot_table = [];
+            param_struct.control_spot_table = [];
+            param_struct.test_data = false;
+            param_struct.test_diff = false;
+            param_struct.test_winsc = true;
+        end
+        
+        %%
+        %
+        function sub_struct = genEmptyThresholdInfoStruct()
+            sub_struct = struct("spline_fit", []);
+            sub_struct.spline_knot_x = 0;
+            sub_struct.max_index = 0; %Index in data of maximum y
+            sub_struct.median = 0;
+            sub_struct.mad = 0;
+            sub_struct.med_suggested_threshold = 0;
+            sub_struct.scan_value_threshold = 0;
+        end
+        
+        %%
+        %
+        function tres_struct = genEmptyThresholdResultStruct()
+            res = struct("window_size", 0);
+            res.window_pos = 0.0;
+            res.mad_factor = 0.0;
+            res.spline_iterations = 0;
+            res.verbosity = 0;
+            res.control_floor = 0;
+            res.window_scores = []; %Win score plot. Col 1 is x, col 2 is y
+            res.window_scores_ctrl = [];
+            res.threshold = 0; %Overall suggestion
+            res.test_data = [];
+            res.test_diff = [];
+            res.test_winsc = [];
+            tres_struct = res;
+        end
+        
+        %
+        %%
+        function thresh_info = thresholdTestCurve(data, thresh_info, params)
+            %Don't forget to find max and trim too!
+            %Also want to trim off any NaNs at the end, if those occur...
+            thresh_info.median = median(data, 'omitnan');
+            thresh_info.mad = mad(data,1);
+            thresh_info.scan_value_threshold = thresh_info.median + (thresh_info.mad * params.mad_factor);
+            
+            point_count = size(data,1);
+            [~,maxidx] = max(data(:,2),'omitnan');
+            thresh_info.max_index = maxidx;
+            data_trimmed = data(maxidx:point_count,:);
+            
+            %Scan using median appr. threshold method
+            %TODO This could probably replaced with "find"
+            %   ie. thresh_idx = find(data_trimmed(:,2) <= scanthresh, 1)
+            trimmed_count = size(data_trimmed,1);
+            for i = 1:trimmed_count
+                if data_trimmed(i,2) <= thresh_info.scan_value_threshold
+                    thresh_info.med_suggested_threshold = data_trimmed(i,1);
+                    break;
+                end
+            end
+            
+            %If user specified (spline itr > 0), fit spline
+            if params.spline_iterations > 0
+                verbosity = params.verbosity;
+                if verbosity > 1
+                    verbosity = 1;
+                else
+                    verbosity = 0;
+                end
+                thresh_info.spline_fit = Seglr2.fitTo(data_trimmed, params.spline_iterations, verbosity);
+            end
+            
+        end
+        
+        %%
+        % (Description)
+        %
+        % ARGS
+        %
+        %
+        % RETURN
+        %
+        function threshold_results = estimateThreshold(parameter_info)
+            %Generate return struct
+            threshold_results = RNA_Threshold_Common.genEmptyThresholdResultStruct();
+            threshold_results.window_size = parameter_info.window_size;
+            threshold_results.window_pos = parameter_info.window_pos;
+            threshold_results.mad_factor = parameter_info.mad_factor;
+            threshold_results.spline_iterations = parameter_info.spline_iterations;
+            threshold_results.verbosity = parameter_info.verbosity;
+            
+            %Start by calculating the diff
+            spotcount_table = parameter_info.sample_spot_table;
+            deriv1 = diff(spotcount_table(:,2));
+            deriv1 = smooth(deriv1);
+            deriv1 = abs(deriv1);
+            T_sample = size(spotcount_table,1);
+            P_sample = T_sample - 1;
+            
+            %Repeat for control, if present
+            ctrl_spotcount_table = parameter_info.control_spot_table;
+            if ~isempty(ctrl_spotcount_table)
+                ctrlderiv = diff(ctrl_spotcount_table(:,2));
+                ctrlderiv = smooth(ctrlderiv);
+                ctrlderiv = abs(ctrlderiv);
+                T_control = size(ctrl_spotcount_table,1);
+            else
+                ctrlderiv = [];
+                T_control = 0;
+            end
+            
+            %Calculate window position shift.
+            winshift = 0;
+            window_size = parameter_info.window_size;
+            if window_size < 1
+                window_size = 1;
+                threshold_results.window_size = 1;
+            elseif window_size > (T_sample - 2)
+                window_size = (T_sample - 2);
+                threshold_results.window_size = window_size;  
+            end
+            
+            if parameter_info.window_pos > 0.0
+                if parameter_info.window_pos >= 1.0
+                    winshift = window_size;
+                    threshold_results.window_pos = 1.0;
+                else
+                    winshift = round(window_size * parameter_info.window_pos);
+                end
+            else
+                threshold_results.window_pos = 0.0;
+            end
+            
+            %Calculate window scores for sample
+            if parameter_info.verbosity > 0
+                fprintf("Now calculating window scores...\n");
+            end
+            winout = NaN(P_sample, 1);
+            winmax = P_sample;
+            for i = 1:winmax
+                w_back = i;
+                w_front = i + window_size - 1;
+                if w_back < 1
+                    w_back = 1;
+                end
+                if w_front > P_sample
+                    w_front = P_sample;
+                end
+                winout(i) = var(deriv1(w_back:w_front,1)) / mean(deriv1(w_back:w_front,1));
+            end
+            
+            %Shift back
+            win_adj = NaN(P_sample, 1);
+            for i = 1:(P_sample - winshift)
+                win_adj(i+winshift) = winout(i);
+            end
+            threshold_results.window_scores = NaN(P_sample,2);
+            threshold_results.window_scores(:,1) = spotcount_table(1:P_sample,1);
+            threshold_results.window_scores(:,2) = win_adj(:,1);
+            clear winout;
+            clear win_adj;
+            
+            %Repeat for control
+            if ~isempty(ctrlderiv)
+                P_control = T_control - 1;
+                winout = NaN(P_control, 1);
+                winmax = P_control;
+                for i = 1:winmax
+                    w_back = i;
+                    w_front = i + window_size - 1;
+                    if w_back < 1
+                        w_back = 1;
+                    end
+                    if w_front > P_control
+                        w_front = P_control;
+                    end
+                    winout(i) = var(ctrlderiv(w_back:w_front,1)) / mean(ctrlderiv(w_back:w_front,1));
+                end
+            
+                %Shift back
+                win_adj = NaN(P_control, 1);
+                for i = 1:(P_control - winshift)
+                    win_adj(i+winshift) = winout(i);
+                end
+                threshold_results.window_scores_ctrl = NaN(P_control,2);
+                threshold_results.window_scores_ctrl(:,1) = ctrl_spotcount_table(1:P_control,1);
+                threshold_results.window_scores_ctrl(:,2) = win_adj(:,1);
+                clear winout;
+                clear win_adj;
+            end
+            
+            %Find control floor.
+            if ~isempty(threshold_results.window_scores_ctrl)
+                if parameter_info.verbosity > 0
+                    fprintf("Finding noise floor...\n");
+                end
+                findres = find(ctrlderiv < 1,1);
+                if isempty(findres)
+                    findres = find(ctrlderiv < 2,1);
+                end
+                if ~isempty(findres)
+                    threshold_results.control_floor = findres;
+                end
+            end
+            
+            %Test the spot curve, the diff, and the win score curve (as
+            %   wanted)
+            if parameter_info.test_data
+                if parameter_info.verbosity > 0
+                    fprintf("Testing sample spot curve...\n");
+                end
+                threshold_results.test_data = thresholdTestCurve(spotcount_table, RNA_Threshold_Common.genEmptyThresholdInfoStruct(), parameter_info);
+            end
+            
+            if parameter_info.test_diff
+                if parameter_info.verbosity > 0
+                    fprintf("Testing diff curve...\n");
+                end
+                diff_curve = NaN(P_sample,1);
+                diff_curve(:,1) = spotcount_table(1:P_sample,1);
+                diff_curve(:,2) = deriv1(:,1);
+                threshold_results.test_diff = thresholdTestCurve(diff_curve, RNA_Threshold_Common.genEmptyThresholdInfoStruct(), parameter_info);
+            end
+            
+            if parameter_info.test_winsc
+                if parameter_info.verbosity > 0
+                    fprintf("Testing winscore curve...\n");
+                end
+                threshold_results.test_winsc = thresholdTestCurve(threshold_results.window_scores, RNA_Threshold_Common.genEmptyThresholdInfoStruct(), parameter_info);
+            end
+            
+            %Determine a best threshold from test info.
+            %TODO
+            
+        end
         
         %%
         % (Method writing in progress)
@@ -383,7 +630,7 @@ classdef RNA_Threshold_Common
         %   threshold (int) - Suggested threshold derived from shape of
         %       spot count plot
         %
-        function [threshold, win_out, score_thresh, scanst] = estimateThreshold(spotcount_table, bkg_spotcount_table, window_size, windowpos, mad_factor)
+        function [threshold, win_out, score_thresh, scanst] = estimateThreshold_old(spotcount_table, bkg_spotcount_table, window_size, windowpos, mad_factor)
             
             if nargin < 5
                 mad_factor = 0.5;
@@ -604,6 +851,10 @@ classdef RNA_Threshold_Common
             title('Auto Threshold Selection', 'FontSize', 18);
             line([intensity_thresh intensity_thresh], get(ax,'YLim'),'Color',ylinecolor,'LineStyle','--');
         end
+        
+        
+        %%
+        %-------------------------[Spot Detection]-----------------------------
         
         %%
         %Apply threshold filters to a 2D image (or 3D image slice)

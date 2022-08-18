@@ -1,5 +1,12 @@
 %
 %%
+%For histones - run the older dataset - more homogeneous
+
+
+%Try three part spline? (Current algorithm may not work)
+%Try matlab cubic spline functions?
+%Try different criterion for "best" fits? (seg r2 weighted WAY in favor of
+%   initial downslope)
 
 BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 
@@ -49,4 +56,8 @@ hold on;
 plot(mydata(:,1), mydata(:,2), 'LineWidth', 2);
 line([l1x1 l1x2], [l1y1 l1y2], 'Color', 'red', 'LineStyle','--');
 line([l2x1 l2x2], [l2y1 l2y2], 'Color', 'green', 'LineStyle','--');
+
+% splx = [0:0.5:spotsrun.t_max];
+% spl = spline(mydata(:,1),mydata(:,2),splx);
+% plot(splx, spl, 'LineWidth', 2);
 

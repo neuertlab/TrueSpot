@@ -78,11 +78,17 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % zmin = 17;
 % bf_thresh = 246;
 
-InputDir = [BaseDir '\data\bigfish\histones\D0I4\H3K36me3'];
-RefStem = [BaseDir '\data\preprocess\histones\D0_I4\Ch4\Histone_D0_img4_ch4_all_3d'];
-BFStem = [InputDir filesep 'BIGFISH_H3K36me3-AF488'];
+% InputDir = [BaseDir '\data\bigfish\histones\D0I4\H3K36me3'];
+% RefStem = [BaseDir '\data\preprocess\histones\D0_I4\Ch4\Histone_D0_img4_ch4_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_H3K36me3-AF488'];
+% zmin = 17;
+% bf_thresh = 356;
+
+InputDir = [BaseDir '\data\bigfish\histones\D0I6\Xist'];
+RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch2\Histone_D0_img6_ch2_all_3d'];
+BFStem = [InputDir filesep 'BIGFISH_Xist-CY5'];
 zmin = 17;
-bf_thresh = 356;
+bf_thresh = 226;
 
 % ========================== Params ==========================
 

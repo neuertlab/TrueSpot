@@ -222,6 +222,7 @@ if isempty(spotsrun.ttune_madfactor)
     spotsrun.ttune_madfactor = 0.5;
 end
 
+%TODO INTERFACE HAS BEEN UPDATED!!!  (22/08/18)
 %Detect threshold
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
 [thresh, win_scores, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.5, spotsrun.ttune_madfactor);
