@@ -33,11 +33,25 @@ classdef RNASpotsRun
         t_min;
         t_max;
         ztrim;
+        z_min; %User set boundary
+        z_max; %User set boundary
+        z_min_apply; %What is actually used
+        z_max_apply; %What is actually used
         ztrim_auto;
-        ttune_winsize;
+        ttune_winsize; %DEPRECATED
         %ttune_wscorethresh;
-        ttune_madfactor;
+        ttune_madfactor; %DEPRECATED
         intensity_threshold;
+        
+        threshold_results;
+        ttune_madf_min;
+        ttune_madf_max;
+        ttune_winsz_min;
+        ttune_winsz_max;
+        ttune_winsz_incr;
+        ttune_spline_itr;
+        ttune_use_rawcurve;
+        ttune_use_diffcurve;
         
         overwrite_output;
     end
@@ -183,9 +197,115 @@ classdef RNASpotsRun
             end
         end
         
+        function obj = updateZTrimParams(obj)
+            %Trim
+            trim_val = obj.ztrim;
+            if obj.ztrim_auto > trim_val; trim_val = obj.ztrim_auto; end
+            
+            %Lower bound. (Index of lowest slice included)
+            obj.z_min_apply = 1 + trim_val;
+            if obj.z_min > obj.z_min_apply; obj.z_min_apply = obj.z_min; end
+            
+            %Upper bound. (Index of highest slice included)
+            Z = 1;
+            if ~isempty(obj.idims_sample)
+                Z = obj.idims_sample.z;
+            end
+            
+            obj.z_max_apply = Z - trim_val;
+            if obj.z_max < obj.z_max_apply; obj.z_max_apply = obj.z_max; end
+            
+            %Make sure the min and max don't overlap.
+            if obj.z_max_apply < obj.z_min_apply
+                obj.z_max_apply = obj.z_min_apply;
+                %You've included zero slices for some reason.
+            end
+        end
+        
+        function [obj, spots_table, coord_table] = loadZTrimmedTables_Sample(obj)
+            [obj, spots_table, coord_table] = obj.loadZTrimmedTables('_spotTablesZTrimmed.mat', false);
+        end
+        
+        function [obj, spots_table, coord_table] = loadZTrimmedTables_Control(obj)
+            [obj, spots_table, coord_table] = obj.loadZTrimmedTables('_ctrlTablesZTrimmed.mat', true);
+        end
+        
+        function [obj, spots_table, coord_table] = loadZTrimmedTables(obj, pathsfx, isctrl)
+            %Look to see if it's been pre-saved...
+            obj = obj.updateZTrimParams();
+            tbl_path = [obj.out_stem pathsfx];
+            if isfile(tbl_path)
+                load(tbl_path, 'zmin', 'zmax');
+                if zmin == obj.z_min_apply
+                    if zmax == obj.z_max_apply
+                        %Same trim. Load and return tables.
+                        load(tbl_path, 'spots_table', 'coord_table');
+                        return;
+                    end
+                end
+            end
+            
+            %Need to recalculate.
+            if isctrl
+                [obj, spots_table] = obj.loadControlSpotsTable();
+                [obj, coord_table] = obj.loadControlCoordinateTable();
+            else
+                [obj, spots_table] = obj.loadSpotsTable();
+                [obj, coord_table] = obj.loadCoordinateTable();
+            end
+            
+            T = size(coord_table,1);
+            masked_coord_table = cell(T,1);
+            masked_spots_table = zeros(T,2);
+            masked_spots_table(:,1) = spots_table(:,1);
+            for t = 1:T
+                tcoords = coord_table{t,1};
+                [keeprows, ~] = find(tcoords(:,3) >= obj.z_min_apply);
+                tcoords = tcoords(keeprows,:);
+                [keeprows, ~] = find(tcoords(:,3) <= obj.z_max_apply);
+                tcoords = tcoords(keeprows,:);
+                masked_coord_table{t,1} = tcoords;
+                masked_spots_table(t,2) = size(tcoords,1);
+            end
+            
+            spots_table = masked_spots_table;
+            coord_table = masked_coord_table;
+            zmin = obj.z_min_apply;
+            zmax = obj.z_max_apply;
+            version = 1;
+            save(tbl_path, 'version', 'zmin', 'zmax', 'spots_table', 'coord_table');
+        end
     end
     
     methods(Static)
+        
+        function rnaspots_run = initDefault()
+            rnaspots_run = RNASpotsRun;
+            rnaspots_run.rna_ch = 0;
+            rnaspots_run.light_ch = 0;
+            rnaspots_run.total_ch = 0;
+            rnaspots_run.ctrl_ch = 0;
+            rnaspots_run.ctrl_chcount = 0;
+            rnaspots_run.t_min = 10;
+            rnaspots_run.t_max = 500;
+            rnaspots_run.ztrim = 5;
+            rnaspots_run.z_min = -1;
+            rnaspots_run.z_max = -1;
+            rnaspots_run.z_min_apply = -1;
+            rnaspots_run.z_max_apply = -1;
+            rnaspots_run.ttune_winsize = -1; %DEPR
+            rnaspots_run.ttune_madfactor = 0.0; %DEPR
+            rnaspots_run.intensity_threshold = 0;
+            rnaspots_run.ttune_madf_min = -1.0;
+            rnaspots_run.ttune_madf_max = 1.0;
+            rnaspots_run.ttune_winsz_min = 5;
+            rnaspots_run.ttune_winsz_max = 25;
+            rnaspots_run.ttune_winsz_incr = 5;
+            rnaspots_run.ttune_spline_itr = 3;
+            rnaspots_run.overwrite_output = false;
+            rnaspots_run.ttune_use_rawcurve = false;
+            rnaspots_run.ttune_use_diffcurve = false;
+        end
         
         function rnaspots_run = loadFrom(path)
             if ~endsWith(path, '_rnaspotsrun.mat')

@@ -17,18 +17,36 @@ classdef Seglr2
             linfit = struct("left", [], "right", [], "break_index", -1, "segrsq", 0.0, "rsqwavg", 0.0);
         end
         
-        function linfit = fitTo(data, iterations, verbosity)
+        function linfit = fitTo(data, xmin, xmax, iterations, verbosity)
             min_points = 3;
             data_points = size(data,1);
             if data_points < ((min_points * 2) - 1)
                 return;
             end
             
-            if nargin < 2
+            if nargin < 4
                 iterations = 3;
             end
-            if nargin < 3
+            if nargin < 5
                 verbosity = 1;
+            end
+            
+            %Determine knot scan range
+            scanmin = min_points;
+            scanmax = data_points - min_points;
+            if nargin > 1
+                %Min provided.
+                usrmin = find(data(:,1) == xmin, 1);
+                if usrmin > scanmin
+                    scanmin = usrmin;
+                end
+            end
+            if nargin > 2
+                %Max provided.
+                usrmax = find(data(:,1) == xmax, 1);
+                if usrmax < scanmax
+                    scanmax = usrmax;
+                end
             end
             
             %Preallocate result array.
@@ -38,7 +56,7 @@ classdef Seglr2
 %             dbg_rsq_r = NaN(data_points,1);
 %             dbg_wavg = NaN(data_points,1);
             
-            for i = min_points:(data_points - min_points)
+            for i = scanmin:scanmax
                 if verbosity > 0
                     fprintf("Trying breakpoint x = %d...\n", data(i,1));
                 end
@@ -80,7 +98,7 @@ classdef Seglr2
             best_score = 0.0;
             best_break = -1;
             
-            for i = min_points:(data_points - min_points)
+            for i = scanmin:scanmax
                 if linearr(i).rsqwavg > best_score
                     best_score = linearr(i).rsqwavg;
                     best_break = i;
@@ -119,7 +137,7 @@ classdef Seglr2
             
             %Set up some variables
             testcvr = ymax - ymin;
-            testamt = 64;
+            testamt = 32;
             testinv = testcvr/(testamt-1);
             
             bestscore = 0.0; %This floors it for speed. Toss breakpoints that don't look like they can gen a good fit.
@@ -204,7 +222,7 @@ classdef Seglr2
                 nitr = 3;
             end
             
-            ivaldiv = 64;
+            ivaldiv = 32;
             
             for i = 1:nitr
                 %Find max rsq to test.

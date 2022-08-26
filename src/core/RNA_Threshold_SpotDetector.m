@@ -38,7 +38,7 @@ classdef RNA_Threshold_SpotDetector
         %
         function [IMG_filtered] = run_spot_detection_pre(img_channel, save_stem, dead_pix_detect)
             %Detect dead pixels...
-            dead_pix_path = [save_stem '_deadpix'];
+            dead_pix_path = [save_stem '_deadpix.mat'];
             if (dead_pix_detect)
                 RNA_Threshold_Common.saveDeadPixels(img_channel, dead_pix_path);
             end

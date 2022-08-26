@@ -21,7 +21,7 @@ if verbosity > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_path = %s", spotsrun.ctrl_path), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_ch = %d", spotsrun.ctrl_ch), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_chcount = %d", spotsrun.ctrl_chcount), false);
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_winsize = %d", spotsrun.ttune_winsize), false);
+    %RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_winsize = %d", spotsrun.ttune_winsize), false);
     %RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_wscorethresh = %f", spotsrun.ttune_wscorethresh), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("overwrite_output = %d", spotsrun.overwrite_output), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
@@ -157,8 +157,6 @@ if ~isempty(spotsrun.ctrl_path)
     end
 end
 
-[~, th_list] = spotsrun.loadThresholdTable();
-
 %Filter spots for bkg (if mask exists)
 spotsrun.bkg_filter_stem = [spotsrun.out_stem '_bkgmasked'];
 if isfile([spotsrun.bkg_path '.mat'])
@@ -179,55 +177,25 @@ if isempty(idims)
     [spotsrun,~] = spotsrun.loadSampleTif(verbosity);
     idims = spotsrun.idims_sample;
 end
-z_min_trimmed = 1;
-z_max_trimmed = idims.z;
+spotsrun = spotsrun.updateZTrimParams();
+
+if spotsrun.z_min_apply > 1 | spotsrun.z_max_apply < idims.z
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("ZTrim will be applied."), true);
+end
 
 %Load spot count tables and apply ztrim
-if spotsrun.ztrim > spotsrun.ztrim_auto
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("Applying z trim..."), true);
-    %Create ztrim mask.
-    ztrim_mask = true(idims.y, idims.x, idims.z);
-    z_min_trimmed = spotsrun.ztrim;
-    ztrim_mask(:,:,1:z_min_trimmed) = false;
-    z_max_trimmed = idims.z - spotsrun.ztrim +  1;
-    ztrim_mask(:,:,z_max_trimmed:idims.z) = false;
-    
-    %Load the tables
-    [~, coords_sample] = spotsrun.loadCoordinateTable();
-    
-    %Mask the tables
-    [spots_sample, trimmed_coords] = RNA_Threshold_Common.mask_spots(ztrim_mask, coords_sample, th_list);
-    save([spotsrun.out_stem '_ztrim' num2str(spotsrun.ztrim)], 'trimmed_coords');
-    
-    %--- And repeat with the control
-    if ~isfile([spotsrun.bkg_path '.mat'])
-        %Need to retrieve dims again and make a new mask.
-        idims = spotsrun.idims_ctrl;
-        ztrim_mask = true(idims.y, idims.x, idims.z);
-        zbot = spotsrun.ztrim;
-        ztrim_mask(:,:,1:zbot) = false;
-        ztop = idims.z - spotsrun.ztrim +  1;
-        ztrim_mask(:,:,ztop:idims.z) = false;
-    end
-    [~, coords_control] = spotsrun.loadControlCoordinateTable();
-    [spots_control, trimmed_coords] = RNA_Threshold_Common.mask_spots(ztrim_mask, coords_control, th_list);
-    save([spotsrun.ctrl_stem '_ztrim' num2str(spotsrun.ztrim)], 'trimmed_coords');
-else
-    %Just load the coord and spot tables
-    [~, spots_sample] = spotsrun.loadSpotsTable();
-    [~, spots_control] = spotsrun.loadControlSpotsTable();
-end
+%Ztrim is now handled in RNASpotsRun
 
-if isempty(spotsrun.ttune_madfactor)
-    spotsrun.ttune_madfactor = 0.5;
-end
-
-%TODO INTERFACE HAS BEEN UPDATED!!!  (22/08/18)
 %Detect threshold
+% RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
+% [thresh, win_scores, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.5, spotsrun.ttune_madfactor);
+% RNA_Fisher_State.outputMessageLineStatic(sprintf("Auto threshold selected: %d", thresh), true);
+% spotsrun.intensity_threshold = thresh;
+
+%Updated interface:
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
-[thresh, win_scores, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spots_sample, spots_control, spotsrun.ttune_winsize, 0.5, spotsrun.ttune_madfactor);
-RNA_Fisher_State.outputMessageLineStatic(sprintf("Auto threshold selected: %d", thresh), true);
-spotsrun.intensity_threshold = thresh;
+spotsrun.threshold_results = RNAThreshold.runSavedParameters(spotsrun, verbosity);
+spotsrun.intensity_threshold = spotsrun.threshold_results.threshold;
 
 %Print plots & image representation
     %Spot plots (log and linear scale) - w/ chosen threshold marked
@@ -236,28 +204,29 @@ spotsrun.intensity_threshold = thresh;
 plots_dir = [spotsrun.out_dir filesep 'plots'];
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
 
+%TODO: Compatibility with updated interface!
 if ~isempty(spotsrun.ctrl_stem)
     probeNames = [{spotsrun.img_name};
                   {'Control'}];
     RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [{spotsrun.ctrl_stem}], probeNames,...
-                thresh, plots_dir, true, z_min_trimmed, z_max_trimmed, false);
+                spotsrun.intensity_threshold, plots_dir, true, spotsrun.z_min_apply, spotsrun.z_max_apply, false);
 else
     probeNames = [{spotsrun.img_name}];
     RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [], probeNames,...
-                thresh, plots_dir, true, z_min_trimmed, z_max_trimmed, false);
+                spotsrun.intensity_threshold, plots_dir, true, spotsrun.z_min_apply, spotsrun.z_max_apply, false);
 end
 
-    
+    %TODO: Compatibility with updated interface!
     %Window score plot
-win_scores(1:scanst-1) = NaN;
-fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, score_thresh, thresh);
-saveas(fighandle, [plots_dir filesep 'autothresh_windowscore.png']);
-close(fighandle);
-
-fighandle = figure(222);
-histogram(win_scores,100);
-saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
-close(fighandle);
+% win_scores(1:scanst-1) = NaN;
+% fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, score_thresh, thresh);
+% saveas(fighandle, [plots_dir filesep 'autothresh_windowscore.png']);
+% close(fighandle);
+% 
+% fighandle = figure(222);
+% histogram(win_scores,100);
+% saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
+% close(fighandle);
     
 %Save THIS module's run info (including paths, parameters, chosen threshold etc)
     %Save ztrimmed coords/spotcounts here too. Remove coord tables below

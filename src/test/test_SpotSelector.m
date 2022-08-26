@@ -77,8 +77,8 @@ selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
 % selector.selmcoords(3,1) = uint16(233);
 % selector.selmcoords(4,1) = uint16(745);
 
-%selector = selector.launchGUI(); %Select f+/f- spots from auto detect results
-selector = selector.launchRefSelectGUI(); %Agnostic selection
+selector = selector.launchGUI(); %Select f+/f- spots from auto detect results
+%selector = selector.launchRefSelectGUI(); %Agnostic selection
 
 %Nucll Mask
 %figure(234);

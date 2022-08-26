@@ -84,11 +84,17 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % zmin = 17;
 % bf_thresh = 356;
 
-InputDir = [BaseDir '\data\bigfish\histones\D0I6\Xist'];
-RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch2\Histone_D0_img6_ch2_all_3d'];
-BFStem = [InputDir filesep 'BIGFISH_Xist-CY5'];
-zmin = 17;
-bf_thresh = 226;
+% InputDir = [BaseDir '\data\bigfish\histones\D0I6\Xist'];
+% RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch2\Histone_D0_img6_ch2_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_Xist-CY5'];
+% zmin = 17;
+% bf_thresh = 226;
+
+InputDir = [BaseDir '\data\bigfish\histones\D0I6\Tsix'];
+RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
+BFStem = [InputDir filesep 'BIGFISH_Tsix-TMR'];
+zmin = 14; zmax = 80;
+bf_thresh = 208;
 
 % ========================== Params ==========================
 
@@ -96,9 +102,6 @@ tmin = 10;
 tmax = 1000;
 trange = [tmin:1:tmax];
 T = size(trange,2);
-
-madf = -0.5;
-winsz = 20;
 
 % ========================== Read BIGFISH Data ==========================
 addpath('./core');
@@ -148,10 +151,14 @@ save([BFStem '_spotTable'], 'spot_table');
 
 % ========================== See what threshold finder calls ==========================
 
-[thresh_hbbf, win_out, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spot_counts, [], winsz, 0.5, madf);
-fprintf("Threshold w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, thresh_hbbf);
+%[thresh_hbbf, win_out, score_thresh, scanst] = RNA_Threshold_Common.estimateThreshold(spot_counts, [], winsz, 0.5, madf);
+%fprintf("Threshold w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, thresh_hbbf);
+thresh_hbbf = RNAThreshold.runDefaultParameters(spot_counts);
+save([BFStem '_threshres.mat'], 'thresh_hbbf');
 
 % ========================== Import Ref Set & Comparison Data ==========================
+%TODO - Is the selector properly masking out spots in zslices trimmed by bf
+%   in the reference set?
 
 fprintf("Loading reference SpotSelector data...\n");
 src_selector = RNA_Threshold_SpotSelector.openSelector(RefStem, true);
@@ -166,11 +173,21 @@ bf_selector.save_stem = BFStem;
 bf_selector = bf_selector.loadNewSpotset(spot_counts, spot_coords);
 bf_selector.toggle_del_unsnapped = false;
 bf_selector = bf_selector.refSnapToAutoSpots();
+bf_selector.z_min = zmin;
+bf_selector.z_max = zmax;
 bf_selector = bf_selector.updateFTable();
 bf_selector.saveMe();
 
-[thresh_hb, win_out_hb, score_thresh_hb, scanst_hb] = RNA_Threshold_Common.estimateThreshold(spot_counts_ref, [], winsz, 0.5, madf);
-fprintf("Threshold on Ref w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, thresh_hb);
+%[thresh_hb, win_out_hb, score_thresh_hb, scanst_hb] = RNA_Threshold_Common.estimateThreshold(spot_counts_ref, [], winsz, 0.5, madf);
+%fprintf("Threshold on Ref w/ MADFactor = %.3f, WinSize = %d: %d\n", madf, winsz, thresh_hb);
+spotsrun_path = [RefStem '_rnaspotsrun.mat'];
+if isfile(spotsrun_path)
+    %This will apply the same z trim as has been being used for run
+    spotsrun = RNASpotsRun.loadFrom(RefStem);
+    thresh_hb = RNAThreshold.runSavedParameters(spotsrun, 1);
+else
+    thresh_hb = RNAThreshold.runDefaultParameters(spot_counts_ref);
+end
 
 % ========================== Export Plots ==========================
 
@@ -183,9 +200,9 @@ bf_selector.toggle_singleSlice = false; %Set to max proj
 bf_selector.threshold_idx = bf_thresh - tmin + 1;
 bf_selector = bf_selector.drawImages();
 saveas(bf_selector.fh_filter, [plotdir filesep 'circlespots_bfthresh.png']);
-bf_selector.threshold_idx = thresh_hbbf - tmin + 1;
+bf_selector.threshold_idx = thresh_hbbf.threshold - tmin + 1;
 bf_selector = bf_selector.drawImages();
-saveas(bf_selector.fh_filter, [plotdir filesep 'circlespots_hbthresh.png']);
+saveas(bf_selector.fh_filter, [plotdir filesep 'circlespots_hbbfthresh.png']);
 close(bf_selector.fh_filter);
 close(bf_selector.fh_raw);
 if bf_selector.slice_drawn ~= 0
@@ -211,8 +228,8 @@ plot(spot_counts(:,1),log10(spot_counts(:,2)),'LineWidth',2,'Color',color1);
 hold on;
 plot(spot_counts_ref(:,1),log10(spot_counts_ref(:,2)),'-.','LineWidth',2,'Color',color2);
 line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',color1_light,'LineStyle','--','LineWidth',2);
-line([thresh_hb thresh_hb], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
-line([thresh_hbbf thresh_hbbf], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
+line([thresh_hb.threshold thresh_hb.threshold], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
+line([thresh_hbbf.threshold thresh_hbbf.threshold], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
 legend_names{1,1} = 'BIG-FISH';
 legend_names{1,2} = 'Homebrew';
 legend(legend_names);
@@ -232,8 +249,8 @@ hold on;
 plot(spot_counts_ref(:,1),src_selector.f_scores(:,1),'-.','LineWidth',2,'Color',color2);
 ylim([0.0 1.0]);
 line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',color1_light,'LineStyle','--','LineWidth',2);
-line([thresh_hb thresh_hb], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
-line([thresh_hbbf thresh_hbbf], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
+line([thresh_hb.threshold thresh_hb.threshold], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
+line([thresh_hbbf.threshold thresh_hbbf.threshold], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
 legend(legend_names);
 xlabel('Threshold');
 ylabel('FScore');
@@ -241,9 +258,9 @@ saveas(figh, [plotdir filesep 'fscoreplot.png']);
 close(figh);
 
 %Window score plot
-figh = RNA_Threshold_Common.drawWindowscorePlot(spot_counts(:,1), win_out, score_thresh, thresh_hbbf);
-saveas(figh, [plotdir filesep 'winscore.png']);
-close(figh);
+%figh = RNA_Threshold_Common.drawWindowscorePlot(spot_counts(:,1), win_out, score_thresh, thresh_hbbf);
+%saveas(figh, [plotdir filesep 'winscore.png']);
+%close(figh);
 
 %Cellseg masks visualized
 %TODO: Gen an overlay over light channel. Also import Ben's output and gen
