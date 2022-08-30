@@ -7,8 +7,8 @@ ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % ========================== Paths ==========================
 
 %----- mESC Set 1
-%save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
-save_stem_rna = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist\Xist-CY5_IMG1_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist\Xist-CY5_IMG1_all_3d'];
 
 %----- mESC Set 2
 %save_stem_rna = [ImgDir '\data\preprocess\feb2019\1Day\Tsix\mESC_1d_Tsix_all_3d'];
@@ -73,7 +73,7 @@ end
 
 % ========================== Run Updated Thresholder & Merge ==========================
 
-[spotsrun, sample_spot_table] = spotsrun.loadSpotsTable();
+[spotsrun, sample_spot_table, ~] = spotsrun.loadZTrimmedTables_Sample();
 if ~isfile(tinfo_path) | ~isfield(threshold_results, 'struct_ver')
     %Re-run.
 	parameter_info = RNA_Threshold_Common.genEmptyThresholdParamStruct();
@@ -81,7 +81,7 @@ if ~isfile(tinfo_path) | ~isfield(threshold_results, 'struct_ver')
 	parameter_info.test_data = true;
 	parameter_info.test_diff = true;
     parameter_info.sample_spot_table = sample_spot_table;
-    [spotsrun, parameter_info.control_spot_table] = spotsrun.loadControlSpotsTable();
+    [spotsrun, parameter_info.control_spot_table, ~] = spotsrun.loadZTrimmedTables_Control();
     threshold_results = RNA_Threshold_Common.estimateThreshold(parameter_info);
     save([save_stem_rna '_threshinfo.mat'], 'threshold_results');
 end

@@ -45,6 +45,30 @@ save_stem_rna = [ImgDir '\mESC4d\Tsix-AF594\Tsix-AF594_IMG1_all_3d'];
 %save_stem_rna = [ImgDir '\histones_feb2020\D0I1\Xist-CY5\20200218_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack-Xist-CY5_all_3d'];
 %save_stem_rna = [ImgDir '\histones_feb2020\D0I1\Tsix-TMR\20200218_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack-Tsix-TMR_all_3d'];
 %save_stem_rna = [ImgDir '\histones_feb2020\D0I1\H3K4me2-AF488\20200218_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_1_MMStack-H3K4me2-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I2\Xist-CY5\20200214_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_2_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I2\Tsix-TMR\20200214_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_2_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I2\H3K4me2-AF488\20200214_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_2_MMStack-H3K4me2-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I4\Xist-CY5\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_4_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I4\Tsix-TMR\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_4_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I4\H3K4me2-AF488\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_4_MMStack-H3K4me2-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I9A\Xist-CY5\20200207_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I9A\Tsix-TMR\20200207_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I9A\H3K36me3-AF488\20200207_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-H3K36me3-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I9B\Xist-CY5\20200221_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I9B\Tsix-TMR\20200221_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I9B\H3K36me3-AF488\20200221_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-H3K36me3-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I10\Xist-CY5\20200214_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_10_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I10\Tsix-TMR\20200214_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_10_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D0I10\H3K36me3-AF488\20200214_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_10_MMStack-H3K36me3-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I3A\Xist-CY5\20200205_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_3_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I3A\Tsix-TMR\20200205_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_3_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I3A\H3K36me3-AF488\20200205_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_3_MMStack-H3K36me3-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I3B\Xist-CY5\20200221_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_3_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I3B\Tsix-TMR\20200221_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_3_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I3B\H3K36me3-AF488\20200221_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_3_MMStack-H3K36me3-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I5A\Xist-CY5\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I5A\Tsix-TMR\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I5A\H3K36me3-AF488\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-H3K36me3-AF488_all_3d'];
 %There are more, I haven't added them yet.
 
 %----- Xist/Tsix + histones (NOV 2020)

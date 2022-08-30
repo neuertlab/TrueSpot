@@ -2434,7 +2434,7 @@ classdef RNA_Threshold_SpotSelector
             obj.loaded_ch = double(img_filter);
             
             if save_ver >= 7
-                refsetpath = [save_path '_refset'];
+                refsetpath = [save_path '_refset.mat'];
                 if isfile(refsetpath)
                     load(refsetpath, 'ref_coord_tbl');
                 else

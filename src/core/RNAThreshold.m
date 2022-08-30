@@ -16,6 +16,18 @@ classdef RNAThreshold
             threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
         end
         
+        function threshold_results = runDefaultParametersSpotsRun(rnaspots_run, verbosity)
+            if nargin < 2
+                verbosity = 0;
+            end
+            
+            param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            [rnaspots_run, param_struct.sample_spot_table, ~] = rnaspots_run.loadZTrimmedTables_Sample();
+            [~, param_struct.control_spot_table, ~] = rnaspots_run.loadZTrimmedTables_Control();
+            param_struct.verbosity = verbosity;
+            threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
+        end
+        
         function threshold_results = runSavedParameters(rnaspots_run, verbosity, spot_table, ctrl_table)
             if nargin < 2
                 verbosity = 0;

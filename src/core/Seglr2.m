@@ -14,7 +14,126 @@ classdef Seglr2
         end
         
         function linfit = genEmptySegfitStruct()
-            linfit = struct("left", [], "right", [], "break_index", -1, "segrsq", 0.0, "rsqwavg", 0.0);
+            linfit = struct("left", [], "right", [], "break_index", -1, "segrsq", 0.0, "rsqwavg", 0.0, ...
+                "break_x", 0, "break_y", 0.0, "input_x0", [], "input_y0", [], "input_bLeft", [], "input_bRight", []);
+        end
+        
+        function fitp = genEmptyFitParamStruct()
+            fitp = struct("min", 0.0, "max", 0.0, "start", 0.0);
+        end
+        
+        function linfit = fitToSpotCurve(data, xmin, xmax, verbosity)
+            
+            linfit = Seglr2.genEmptySegfitStruct();
+            min_points = 3;
+            data_points = size(data,1);
+            
+            if nargin < 4
+                verbosity = 1;
+            end
+            scanmin = min_points;
+            scanmax = data_points - min_points;
+            if nargin > 1
+                %Min provided.
+                usrmin = find(data(:,1) == xmin, 1);
+                if usrmin > scanmin
+                    scanmin = usrmin;
+                end
+            end
+            if nargin > 2
+                %Max provided.
+                usrmax = find(data(:,1) == xmax, 1);
+                if usrmax < scanmax
+                    scanmax = usrmax;
+                end
+            end
+            
+            if verbosity > 1
+                fprintf("Calculating scan ranges...\n");
+            end
+            
+            %Find Y knot range
+            ystd = std(data(:,2),0,'all','omitnan');
+            y0_min = min(data(:,2),[],'omitnan') - ystd;
+            y0_max = mean(data(:,2),'all','omitnan');
+            y0_st = y0_min + (rand() * (y0_max - y0_min));
+            
+            %Find left intercept range
+            [~, testb] = Seglr2.lineeqs(data(2:data_points,1),data(2:data_points,2),data(1,1), data(1,2));
+            b1_min = min(testb,[],'all','omitnan') - ystd;
+            b1_max = max(testb,[],'all','omitnan');
+            b1_st = b1_min + (rand() * (b1_max - b1_min));
+            
+            %Find right intercept range
+            [~,minidx] = min(data(:,2),[],'omitnan');
+            [~, testb] = Seglr2.lineeqs(data(:,1),data(:,2),data(minidx,1), data(minidx,2));
+            b2_min = min(testb,[],'all','omitnan');
+            b2_max = max(testb,[],'all','omitnan');
+            b2_st = b2_min + (rand() * (b2_max - b2_min));
+            
+            x0_st = scanmin + (rand() * (scanmax - scanmin));
+            
+            %(X0,Y0,b1,b2,x)
+            if verbosity > 1
+                fprintf("Performing fit...\n");
+            end
+            ftobj = fittype('((((x .* (Y0 - b1)) / X0) + b1) .* (x <= X0)) + ((((x .* (Y0 - b2)) / X0) + b2) .* (x > X0))');
+            cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[x0_st,y0_st,b1_st,b2_st],'Lower',[scanmin,y0_min,b1_min,b2_min],'Upper',[scanmax,y0_max,b1_max,b2_max]);
+            
+            if verbosity > 1
+                fprintf("Saving fit parameters...\n");
+            end
+            
+            linfit.break_x = cfobj.X0;
+            linfit.break_y = cfobj.Y0;
+            for i = 1:data_points
+                if data(i,1) >= linfit.break_x
+                    linfit.break_index = i;
+                    break;
+                end
+            end
+            
+            linfit.left = Seglr2.genEmptyLineStruct();
+            linfit.left.yintr = cfobj.b1;
+            linfit.left.slope = (linfit.break_y - linfit.left.yintr)/(linfit.break_x);
+            
+            linfit.right = Seglr2.genEmptyLineStruct();
+            linfit.right.yintr = cfobj.b2;
+            linfit.right.slope = (linfit.break_y - linfit.right.yintr)/(linfit.break_x);
+            
+            %rsq values
+            linfit.left.rsquared = Seglr2.rsquared(data, linfit.left.slope, linfit.left.yintr);
+            linfit.right.rsquared = Seglr2.rsquared(data, linfit.right.slope, linfit.right.yintr);
+            linfit.left.segrsq = Seglr2.rsquared_seg(data, linfit.break_index, linfit.left, linfit.right);
+            linfit.right.segrsq = linfit.left.segrsq;
+            linfit.segrsq = linfit.left.segrsq;
+            data_l = data(1:linfit.break_index,:);
+            data_r = data(linfit.break_index:data_points,:);
+            linfit.left.rsqwavg = Seglr2.rescoreWeighted(data_l, data_r, linfit.left, linfit.right);
+            linfit.right.rsqwavg = linfit.left.rsqwavg;
+            linfit.rsqwavg = linfit.left.rsqwavg;
+            
+            %For record keeping...
+            linfit.input_x0 = Seglr2.genEmptyFitParamStruct();
+            linfit.input_x0.start = x0_st;
+            linfit.input_x0.min = scanmin;
+            linfit.input_x0.max = scanmax;
+            
+            linfit.input_y0 = Seglr2.genEmptyFitParamStruct();
+            linfit.input_y0.start = y0_st;
+            linfit.input_y0.min = y0_min;
+            linfit.input_y0.max = y0_max;
+            
+            linfit.input_bLeft = Seglr2.genEmptyFitParamStruct();
+            linfit.input_bLeft.start = b1_st;
+            linfit.input_bLeft.min = b1_min;
+            linfit.input_bLeft.max = b1_max;
+            
+            linfit.input_bRight = Seglr2.genEmptyFitParamStruct();
+            linfit.input_bRight.start = b2_st;
+            linfit.input_bRight.min = b2_min;
+            linfit.input_bRight.max = b2_max;
+            
         end
         
         function linfit = fitTo(data, xmin, xmax, iterations, verbosity)
@@ -322,6 +441,35 @@ classdef Seglr2
             dsum = sum(dvec,1,'omitnan');
             
             rsq = 1.0 - (nsum./dsum);
+        end
+        
+        function fig_handle = renderFit(data, linfit, show_scan_ranges, figno)
+            if nargin < 4
+                figno = round(rand() * 10000);
+            end
+            
+            color_grey = [0.290, 0.290, 0.290];
+            color_red = [0.929, 0.229, 0.229];
+            color_blue = [0.229, 0.229, 0.929];
+            
+            fig_handle = figure(figno);
+            clf;
+            ax = axes;
+            plot(data(:,1), data(:,2),'LineWidth',2,'Color',color_grey);
+            hold on;
+            
+            line_x = data(1:linfit.break_index,1);
+            line_y = linfit.left.yintr + (line_x.*linfit.left.slope);
+            plot(line_x, line_y,'LineWidth',1,'Color',color_red,'LineStyle','--');
+            
+            line_x = data(linfit.break_index:size(data,1),1);
+            line_y = linfit.right.yintr + (line_x.*linfit.right.slope);
+            plot(line_x, line_y,'LineWidth',1,'Color',color_blue,'LineStyle','--');
+            
+            if show_scan_ranges
+                %TODO
+            end
+            
         end
         
     end

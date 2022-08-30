@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.3.0
-%Updated August 18, 2022
+%Version 2.3.1
+%Updated August 30, 2022
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -39,6 +39,8 @@
 %       Updated thresh choosing function to try something else
 %   2.3.0 | 22.08.18
 %       Overhauled thresholding functions and interface
+%   2.3.1 | 22.08.30
+%       Updated linear piecewise function for thresholder
 
 %%
 %
@@ -419,8 +421,7 @@ classdef RNA_Threshold_Common
         %
         %%
         function thresh_info = thresholdTestCurve(data, thresh_info, params)
-            %Don't forget to find max and trim too!
-            %Also want to trim off any NaNs at the end, if those occur...
+            
             thresh_info.median = median(data(:,2), 'omitnan');
             thresh_info.mad = mad(data(:,2),1);
             %thresh_info.scan_value_threshold = thresh_info.median + (thresh_info.mad * params.mad_factor);
@@ -478,19 +479,35 @@ classdef RNA_Threshold_Common
             
             %If user specified (spline itr > 0), fit spline
             if params.spline_iterations > 0
+                
+                %Log transform
+                ogdata = data;
+                data(:,2) = log10(data(:,2));
+                %Remove invalid values...
+                [okay_rows,~] = find(isfinite(data(:,2)));
+                data = data(okay_rows,:);
+                
+                local_count = size(data,1);
+                [~,maxidx] = max(data(:,2),[],'omitnan');
+                thresh_info.max_index = maxidx;
+                data_trimmed = data(maxidx:local_count,:);
+                
                 if params.verbosity > 0
                     fprintf("Fitting two-piece linear spline...\n");
                 end
-                verbosity = params.verbosity;
-                if verbosity > 1
-                    verbosity = 1;
-                else
-                    verbosity = 0;
-                end
-                thresh_info.spline_fit = Seglr2.fitTo(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.spline_iterations, verbosity);
+                %thresh_info.spline_fit = Seglr2.fitTo(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.spline_iterations, verbosity);
+                thresh_info.spline_fit = Seglr2.fitToSpotCurve(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.verbosity);
                 if ~isempty(thresh_info.spline_fit)
                     thresh_info.spline_knot_x = data_trimmed(thresh_info.spline_fit.break_index,1);
-                end
+                    
+                    %Adjust break index for original data...
+                    for i = 1:point_count
+                        if ogdata(i,1) >= thresh_info.spline_knot_x
+                            thresh_info.spline_fit.break_index = i;
+                            break;
+                        end
+                    end
+                end   
             end
             
         end
