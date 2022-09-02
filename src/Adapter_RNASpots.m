@@ -8,6 +8,12 @@
 % To generate an RNASpotsRun with default params all you gotta do is:
 %   rna_spot_run = RNASpotsRun.initDefault();
 
+%Debug levels: 
+%   0 - None
+%   1 - Regular verbosity
+%   2 - Regular verbosity + output plots
+%   3 - High verbosity + output plots
+
 %%
 %The preloaded_images param expects a ImageChannelSet
 %(./core/ImageChannelSet.m) object. 
@@ -17,11 +23,15 @@
 
 %%
 
-function rna_spot_run = Adapter_RNASpots(rna_spot_run, guimode, preloaded_images)
+function rna_spot_run = Adapter_RNASpots(rna_spot_run, guimode, preloaded_images, debug_lvl)
 
 addpath('./core');
 RNA_Fisher_State.setGUIMode(guimode);
 bPreloaded = (nargin > 2) & ~isempty(preloaded_images);
+
+if nargin < 4
+    debug_lvl = 1;
+end
 
 %Check required arguments
 if (isempty(rna_spot_run.tif_path)) || (~ischar(rna_spot_run.tif_path))
@@ -93,11 +103,10 @@ if rna_spot_run.ctrl_ch > rna_spot_run.ctrl_chcount
 end
 
 %Call core
-verbosity = 1;
 if bPreloaded
-    RNA_Pipeline_Core(rna_spot_run, verbosity, preloaded_images);
+    RNA_Pipeline_Core(rna_spot_run, debug_lvl, preloaded_images);
 else
-    RNA_Pipeline_Core(rna_spot_run, verbosity);
+    RNA_Pipeline_Core(rna_spot_run, debug_lvl);
 end
 
 RNA_Fisher_State.clearStaticState();

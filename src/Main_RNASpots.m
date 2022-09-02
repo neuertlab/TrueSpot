@@ -6,6 +6,10 @@ function rna_spot_run = Main_RNASpots(varargin)
 % ========================== Process args ==========================
 rna_spot_run = RNASpotsRun.initDefault();
 
+%Highest level set to true is what is used, regardless of other flags.
+arg_debug = true; %CONSTANT used for debugging arg parser.
+debug_lvl = 0;
+
 lastkey = [];
 for i = 1:nargin
     argval = varargin{i};
@@ -20,19 +24,38 @@ for i = 1:nargin
         %Account for boolean keys...
         if strcmp(lastkey, "ovrw")
             rna_spot_run.overwrite_output = true;
-            fprintf("Overwrite Output: On\n");
+            if arg_debug; fprintf("Overwrite Output: On\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "usespc")
             rna_spot_run.ttune_use_rawcurve = true;
-            fprintf("Use Raw Spot Count Curve: On\n");
+            if arg_debug; fprintf("Use Raw Spot Count Curve: On\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "usedfc")
             rna_spot_run.ttune_use_diffcurve = true;
-            fprintf("Use Diff Curve: On\n");
+            if arg_debug; fprintf("Use Diff Curve: On\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "nospline")
             rna_spot_run.ttune_spline_itr = 0;
-            fprintf("Use Spline: Off\n");
+            if arg_debug; fprintf("Use Spline: Off\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "verbose")
+            if debug_lvl < 1; debug_lvl = 1; end
+            if arg_debug; fprintf("Verbose: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "quiet")
+            if arg_debug; fprintf("Verbose: Off\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "plotout")
+            if debug_lvl < 2; debug_lvl = 2; end
+            if arg_debug; fprintf("Output Plots: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "debug")
+            if debug_lvl < 2; debug_lvl = 2; end
+            if arg_debug; fprintf("Debug Mode: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "debugv")
+            if debug_lvl < 3; debug_lvl = 3; end
+            if arg_debug; fprintf("Verbose Debug Mode: On\n"); end
             lastkey = [];
         end
         
@@ -45,85 +68,85 @@ for i = 1:nargin
         %Value
         if strcmp(lastkey, "imgname")
             rna_spot_run.img_name = argval;
-            fprintf("Image Name Set: %s\n", rna_spot_run.img_name);
+            if arg_debug; fprintf("Image Name Set: %s\n", rna_spot_run.img_name); end
         elseif strcmp(lastkey, "tif")
             rna_spot_run.tif_path = argval;
-            fprintf("TIF Path Set: %s\n", rna_spot_run.tif_path);
+            if arg_debug; fprintf("TIF Path Set: %s\n", rna_spot_run.tif_path); end
         elseif strcmp(lastkey, "outdir")
             rna_spot_run.out_dir = argval;
-            fprintf("Output Directory Set: %s\n", rna_spot_run.out_dir);
+            if arg_debug; fprintf("Output Directory Set: %s\n", rna_spot_run.out_dir); end
         elseif strcmp(lastkey, "cellseg")
             rna_spot_run.cellseg_path = argval;
-            fprintf("CellSeg Data Path Set: %s\n", rna_spot_run.cellseg_path);
+            if arg_debug; fprintf("CellSeg Data Path Set: %s\n", rna_spot_run.cellseg_path); end
         elseif strcmp(lastkey, "chsamp")
             rna_spot_run.rna_ch = round(Force2Num(argval));
-            fprintf("Sample Channel Set: %d\n", rna_spot_run.rna_ch);
+            if arg_debug; fprintf("Sample Channel Set: %d\n", rna_spot_run.rna_ch); end
         elseif strcmp(lastkey, "chtrans")
             rna_spot_run.light_ch = round(Force2Num(argval));
-            fprintf("Light/TRANS Channel Set: %d\n", rna_spot_run.light_ch);
+            if arg_debug; fprintf("Light/TRANS Channel Set: %d\n", rna_spot_run.light_ch); end
         elseif strcmp(lastkey, "chtotal")
             rna_spot_run.total_ch = round(Force2Num(argval));
-            fprintf("Channel Count Set: %d\n", rna_spot_run.total_ch);
+            if arg_debug; fprintf("Channel Count Set: %d\n", rna_spot_run.total_ch); end
         elseif strcmp(lastkey, "ctrltif")
             rna_spot_run.ctrl_path = argval;
-            fprintf("Control TIF Path Set: %s\n", rna_spot_run.ctrl_path);
+            if arg_debug; fprintf("Control TIF Path Set: %s\n", rna_spot_run.ctrl_path); end
         elseif strcmp(lastkey, "chctrsamp")
             rna_spot_run.ctrl_ch = round(Force2Num(argval));
-            fprintf("Control Channel Set: %d\n", rna_spot_run.ctrl_ch);
+            if arg_debug; fprintf("Control Channel Set: %d\n", rna_spot_run.ctrl_ch); end
         elseif strcmp(lastkey, "chctrtotal")
             rna_spot_run.ctrl_chcount = round(Force2Num(argval));
-            fprintf("Control Channel Count Set: %d\n", rna_spot_run.ctrl_chcount);
+            if arg_debug; fprintf("Control Channel Count Set: %d\n", rna_spot_run.ctrl_chcount); end
         elseif strcmp(lastkey, "thmin")
             rna_spot_run.t_min = round(Force2Num(argval));
-            fprintf("Min Scan Threshold Set: %d\n", rna_spot_run.t_min);
+            if arg_debug; fprintf("Min Scan Threshold Set: %d\n", rna_spot_run.t_min); end
         elseif strcmp(lastkey, "thmax")
             rna_spot_run.t_max = round(Force2Num(argval));
-            fprintf("Max Scan Threshold Set: %d\n", rna_spot_run.t_max);
+            if arg_debug; fprintf("Max Scan Threshold Set: %d\n", rna_spot_run.t_max); end
         elseif strcmp(lastkey, "ztrim")
             rna_spot_run.ztrim = round(Force2Num(argval));
-            fprintf("Z Trim Set: %d\n", rna_spot_run.ztrim);
+            if arg_debug; fprintf("Z Trim Set: %d\n", rna_spot_run.ztrim); end
         elseif strcmp(lastkey, "zmin")
             rna_spot_run.z_min = round(Force2Num(argval));
-            fprintf("Z Min Set: %d\n", rna_spot_run.z_min);
+            if arg_debug; fprintf("Z Min Set: %d\n", rna_spot_run.z_min); end
         elseif strcmp(lastkey, "zmax")
             rna_spot_run.z_max = round(Force2Num(argval));
-            fprintf("Z Max Set: %d\n", rna_spot_run.z_max);
+            if arg_debug; fprintf("Z Max Set: %d\n", rna_spot_run.z_max); end
         elseif strcmp(lastkey, "mfmin")
             rna_spot_run.ttune_madf_min = Force2Num(argval);
-            fprintf("mad Factor Minimum Set: %.3f\n", rna_spot_run.ttune_madf_min);
+            if arg_debug; fprintf("mad Factor Minimum Set: %.3f\n", rna_spot_run.ttune_madf_min); end
         elseif strcmp(lastkey, "mfmax")
             rna_spot_run.ttune_madf_max = Force2Num(argval);
-            fprintf("mad Factor Maximum Set: %.3f\n", rna_spot_run.ttune_madf_max);
+            if arg_debug; fprintf("mad Factor Maximum Set: %.3f\n", rna_spot_run.ttune_madf_max); end
         elseif strcmp(lastkey, "wszmin")
             rna_spot_run.ttune_winsz_min = round(Force2Num(argval));
-            fprintf("Window Size Minimum Set: %d\n", rna_spot_run.ttune_winsz_min);
+            if arg_debug; fprintf("Window Size Minimum Set: %d\n", rna_spot_run.ttune_winsz_min); end
         elseif strcmp(lastkey, "wszmax")
             rna_spot_run.ttune_winsz_max = round(Force2Num(argval));
-            fprintf("Window Size Maximum Set: %d\n", rna_spot_run.ttune_winsz_max);
+            if arg_debug; fprintf("Window Size Maximum Set: %d\n", rna_spot_run.ttune_winsz_max); end
         elseif strcmp(lastkey, "wszincr")
             rna_spot_run.ttune_winsz_incr = round(Force2Num(argval));
-            fprintf("Window Size Increment Set: %d\n", rna_spot_run.ttune_winsz_incr);
+            if arg_debug; fprintf("Window Size Increment Set: %d\n", rna_spot_run.ttune_winsz_incr); end
         elseif strcmp(lastkey, "splitr")
             if rna_spot_run.ttune_spline_itr > 0
                 %Ignore if it was previously set to 0 by something like 'nospline'
                 rna_spot_run.ttune_spline_itr = round(Force2Num(argval));
-                fprintf("Spline Iterations: %d\n", rna_spot_run.ttune_spline_itr);
+                if arg_debug; fprintf("Spline Iterations: %d\n", rna_spot_run.ttune_spline_itr); end
             end
         elseif strcmp(lastkey, "probetype")
             rna_spot_run.type_probe = argval;
-            fprintf("Probe Set: %s\n", rna_spot_run.type_probe);
+            if arg_debug; fprintf("Probe Set: %s\n", rna_spot_run.type_probe); end
         elseif strcmp(lastkey, "target")
             rna_spot_run.type_target = argval;
-            fprintf("Target Set: %s\n", rna_spot_run.type_target);
+            if arg_debug; fprintf("Target Set: %s\n", rna_spot_run.type_target); end
         elseif strcmp(lastkey, "targettype")
             rna_spot_run.type_targetmol = argval;
-            fprintf("Target Type Set: %s\n", rna_spot_run.type_targetmol);
+            if arg_debug; fprintf("Target Type Set: %s\n", rna_spot_run.type_targetmol); end
         elseif strcmp(lastkey, "species")
             rna_spot_run.type_species = argval;
-            fprintf("Species Set: %s\n", rna_spot_run.type_species);
+            if arg_debug; fprintf("Species Set: %s\n", rna_spot_run.type_species); end
         elseif strcmp(lastkey, "celltype")
             rna_spot_run.type_cell = argval;
-            fprintf("Cell Type Set: %s\n", rna_spot_run.type_cell);
+            if arg_debug; fprintf("Cell Type Set: %s\n", rna_spot_run.type_cell); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -136,6 +159,6 @@ end
 %     out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize,...
 %     ttune_madfactor, overwrite_output, false);
 
-rna_spot_run = Adapter_RNASpots(rna_spot_run, false);
+rna_spot_run = Adapter_RNASpots(rna_spot_run, false, debug_lvl);
 
 end

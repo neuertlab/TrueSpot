@@ -11,7 +11,7 @@
 %ImgDir = 'C:\Users\Blythe\labdata\imgproc'; %aelec
 ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 
-save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
 %nucl_seg_path = [ImgDir '\data\cell_seg\mESC_4d\nuclei_20180202_4d_mESC_Tsix-AF594_img_1.mat'];
 
 %save_stem_rna = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist'];
@@ -89,18 +89,27 @@ save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I5A\Xist-CY5\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Xist-CY5_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I5A\Tsix-TMR\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Tsix-TMR_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I5A\H3K36me3-AF488\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-H3K36me3-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I5B\Xist-CY5\20200218_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I5B\Tsix-TMR\20200218_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I5B\H3K4me2-AF488\20200218_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-H3K4me2-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I6\Xist-CY5\20200205_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_6_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I6\Tsix-TMR\20200205_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_6_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I6\H3K4me2-AF488\20200205_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_6_MMStack-H3K4me2-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I7\Xist-CY5\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I7\Tsix-TMR\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I7\H3K4me2-AF488\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-H3K4me2-AF488_all_3d'];
 
 addpath('./core');
 spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
-% spotsrun.out_stem = save_stem_rna;
-% spotsrun = spotsrun.saveMe();
+spotsrun.out_stem = save_stem_rna;
+spotsrun = spotsrun.saveMe();
 
-% selector = RNA_Threshold_SpotSelector;
-% selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
-% selector.z_min = spotsrun.ztrim+1;
-% selector.z_max = spotsrun.idims_sample.z - spotsrun.ztrim;
+selector = RNA_Threshold_SpotSelector;
+selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
+selector.z_min = spotsrun.ztrim+1;
+selector.z_max = spotsrun.idims_sample.z - spotsrun.ztrim;
 
-selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
+%selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
 %selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna, true);
 
 %selector = selector.launchGUI(); %Select f+/f- spots from auto detect results

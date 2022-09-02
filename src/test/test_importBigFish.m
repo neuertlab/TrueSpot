@@ -8,26 +8,26 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % InputDir = [BaseDir '\data\bigfish\mESC_4d\Tsix-AF594'];
 % RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
 % BFStem = [InputDir filesep 'BIGFISH_Tsix-AF594'];
-% zmin = 14;
+% zmin = 14; zmax = 68;
 % bf_thresh = 191;
 % %bf_thresh = 36;
 
 % InputDir = [BaseDir '\data\bigfish\mESC_4d\Xist-CY5'];
 % RefStem = [BaseDir '\data\preprocess\feb2018\Xist_CY5\Xist\Xist-CY5_IMG1_all_3d'];
 % BFStem = [InputDir filesep 'BIGFISH_Xist-CY5'];
-% zmin = 14;
+% zmin = 14; zmax = 68;
 % bf_thresh = 184;
 
 % InputDir = [BaseDir '\data\bigfish\yeast_rna\E1R2I4\STL1'];
 % RefStem = [BaseDir '\data\preprocess\YeastFISH\E1R2\STL1\E1R2-STL1-TMR_all_3d'];
 % BFStem = [InputDir filesep 'BIGFISH_STL1-TMR'];
-% zmin = 4;
+% zmin = 4; zmax = 23;
 % bf_thresh = 154;
 
-% InputDir = [BaseDir '\data\bigfish\yeast_rna\E1R2I4\CTT1'];
-% RefStem = [BaseDir '\data\preprocess\YeastFISH\E1R2\CTT1\E1R2-CTT1-CY5_all_3d'];
-% BFStem = [InputDir filesep 'BIGFISH_CTT1-CY5'];
-% zmin = 1;
+InputDir = [BaseDir '\data\bigfish\yeast_rna\E1R2I4\CTT1'];
+RefStem = [BaseDir '\data\preprocess\YeastFISH\E1R2\CTT1\E1R2-CTT1-CY5_all_3d'];
+BFStem = [InputDir filesep 'BIGFISH_CTT1-CY5'];
+zmin = 1; zmax = 20;
 % bf_thresh = 124;
 
 % InputDir = [BaseDir '\data\bigfish\yeast_rna\E2R1I2\STL1'];
@@ -90,11 +90,11 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % zmin = 17;
 % bf_thresh = 226;
 
-InputDir = [BaseDir '\data\bigfish\histones\D0I6\Tsix'];
-RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
-BFStem = [InputDir filesep 'BIGFISH_Tsix-TMR'];
-zmin = 14; zmax = 80;
-bf_thresh = 208;
+% InputDir = [BaseDir '\data\bigfish\histones\D0I6\Tsix'];
+% RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_Tsix-TMR'];
+% zmin = 14; zmax = 80;
+% bf_thresh = 208;
 
 % ========================== Params ==========================
 

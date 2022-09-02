@@ -1,12 +1,19 @@
 %
 %%
 
-function RNA_Pipeline_Core(spotsrun, verbosity, preloaded_imgs)
+%Debug levels: 
+%   0 - None
+%   1 - Regular verbosity
+%   2 - Regular verbosity + output plots
+%   3 - High verbosity + output plots
+
+%%
+function RNA_Pipeline_Core(spotsrun, debug_lvl, preloaded_imgs)
 
 bPreloaded = (nargin > 2) && (~isempty(preloaded_imgs));
 
 %Debug print
-if verbosity > 0
+if debug_lvl > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Running RNASpots with the following parameters..."), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("img_name = %s", spotsrun.img_name), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("tif_path = %s", spotsrun.tif_path), false);
@@ -25,6 +32,14 @@ if verbosity > 0
     %RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_wscorethresh = %f", spotsrun.ttune_wscorethresh), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("overwrite_output = %d", spotsrun.overwrite_output), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
+end
+
+if debug_lvl > 2
+	tif_v = 2;
+elseif debug_lvl == 0
+	tif_v = 0;
+else
+	tif_v = 1;
 end
 
 %Declare some vars so it doesn't complain later...
@@ -48,7 +63,7 @@ if isempty(spotsrun.ctrl_path)
                 if bPreloaded
                     sample_light_ch = preloaded_imgs.dat_trans_sample;
                 else
-                    [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
+                    [spotsrun, sample_tif] = spotsrun.loadSampleTif(tif_v);
                     sample_light_ch = sample_tif{spotsrun.light_ch,1};
                 end
                 Bkg_Mask_Core(sample_light_ch, spotsrun.cellseg_path, spotsrun.bkg_path, true);
@@ -88,7 +103,7 @@ if runme
     else
         %Load sample TIF
         if isempty(sample_tif)
-            [spotsrun, sample_tif] = spotsrun.loadSampleTif(verbosity);
+            [spotsrun, sample_tif] = spotsrun.loadSampleTif(tif_v);
         end
         sample_rna_ch = sample_tif{spotsrun.rna_ch,1};
     end
@@ -105,7 +120,7 @@ if runme
     end
     clear sample_rna_ch;
     
-    [auto_zt] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, (verbosity > 0));
+    [auto_zt] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, (debug_lvl > 0));
     spotsrun.ztrim_auto = auto_zt;
     clear img_f;
 end
@@ -117,10 +132,6 @@ end
 spotsrun.ctrl_stem = [];
 if ~isempty(spotsrun.ctrl_path)
     if endsWith(spotsrun.ctrl_path, ".tif")
-        if ~isfile(spotsrun.ctrl_path)
-            RNA_Fisher_State.outputMessageLineStatic(sprintf("Control path %s does not exist. Aborting...", spotsrun.ctrl_path), true);
-            return;
-        end
         
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Running spot detect on control image... (This may take a few hours on large files)"), true);
         %spotsrun.ctrl_stem = Main_RNASpotDetect([spotsrun.img_name '_Control'], spotsrun.ctrl_path, spotsrun.out_dir,...
@@ -142,13 +153,18 @@ if ~isempty(spotsrun.ctrl_path)
             if bPreloaded
                 ctrl_image_channel = preloaded_imgs.dat_rna_control;
             else
-                [spotsrun, ctrl_image_channel] = spotsrun.loadControlChannel(verbosity);
+                if ~isfile(spotsrun.ctrl_path)
+                    RNA_Fisher_State.outputMessageLineStatic(sprintf("Control path %s does not exist. Aborting...", spotsrun.ctrl_path), true);
+                    return;
+                end
+                
+                [spotsrun, ctrl_image_channel] = spotsrun.loadControlChannel(tif_v);
             end
             
             spotdec = RNA_Threshold_SpotDetector;
             [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, outstem, true);
             clear ctrl_image_channel;
-            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max,(verbosity > 0));
+            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max,(debug_lvl > 0));
             clear ctrl_f;
         end
         spotsrun.ctrl_stem = outstem;
@@ -194,39 +210,42 @@ end
 
 %Updated interface:
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
-spotsrun.threshold_results = RNAThreshold.runSavedParameters(spotsrun, verbosity);
+spotsrun.threshold_results = RNAThreshold.runSavedParameters(spotsrun, tif_v);
 spotsrun.intensity_threshold = spotsrun.threshold_results.threshold;
 
 %Print plots & image representation
     %Spot plots (log and linear scale) - w/ chosen threshold marked
     %Max projection of sample and control w circled spots (also max proj)
+   
+if debug_lvl > 1
+    plots_dir = [spotsrun.out_dir filesep 'plots'];
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
+
+    if ~isempty(spotsrun.ctrl_stem)
+        probeNames = [{spotsrun.img_name};
+                    {'Control'}];
+        RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [{spotsrun.ctrl_stem}], probeNames,...
+                spotsrun.intensity_threshold, plots_dir, true, spotsrun.z_min_apply, spotsrun.z_max_apply, false);
+    else
+        probeNames = [{spotsrun.img_name}];
+        RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [], probeNames,...
+                spotsrun.intensity_threshold, plots_dir, true, spotsrun.z_min_apply, spotsrun.z_max_apply, false);
+    end
+
+    %Window score plots and thresholding results.
+    figh = RNAThreshold.resultPlotCombine(spotsrun, 615);
+    if ~isempty(figh)
+        saveas(figh, [plots_dir filesep 'thres_all.png']);
+        close(figh);
+    end
     
-plots_dir = [spotsrun.out_dir filesep 'plots'];
-RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
-
-%TODO: Compatibility with updated interface!
-if ~isempty(spotsrun.ctrl_stem)
-    probeNames = [{spotsrun.img_name};
-                  {'Control'}];
-    RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [{spotsrun.ctrl_stem}], probeNames,...
-                spotsrun.intensity_threshold, plots_dir, true, spotsrun.z_min_apply, spotsrun.z_max_apply, false);
-else
-    probeNames = [{spotsrun.img_name}];
-    RNA_Threshold_Plotter.plotPreprocessedData(spotsrun.out_stem, [], probeNames,...
-                spotsrun.intensity_threshold, plots_dir, true, spotsrun.z_min_apply, spotsrun.z_max_apply, false);
+    fig_handles = RNAThreshold.resultPlotsIndiv(spotsrun, 100);
+    fig_count = size(fig_handles,2);
+    for i = 1:fig_count
+        saveas(fig_handles(1,i), [plots_dir filesep sprintf('thres_plot_%02d.png', i)]);
+        close(fig_handles(1,i));
+    end
 end
-
-    %TODO: Compatibility with updated interface!
-    %Window score plot
-% win_scores(1:scanst-1) = NaN;
-% fighandle = RNA_Threshold_Common.drawWindowscorePlot(spots_sample(:,1), win_scores, score_thresh, thresh);
-% saveas(fighandle, [plots_dir filesep 'autothresh_windowscore.png']);
-% close(fighandle);
-% 
-% fighandle = figure(222);
-% histogram(win_scores,100);
-% saveas(fighandle, [plots_dir filesep 'autothresh_windowscore_histo.png']);
-% close(fighandle);
     
 %Save THIS module's run info (including paths, parameters, chosen threshold etc)
     %Save ztrimmed coords/spotcounts here too. Remove coord tables below

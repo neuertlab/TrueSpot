@@ -247,6 +247,11 @@ classdef RNASpotsRun
             
             %Need to recalculate.
             if isctrl
+                if isempty(obj.ctrl_path)
+                    spots_table = [];
+                    coord_table = [];
+                    return;
+                end
                 [obj, spots_table] = obj.loadControlSpotsTable();
                 [obj, coord_table] = obj.loadControlCoordinateTable();
             else

@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.4.0
-%Updated August 26, 2022
+%Version 1.5.0
+%Updated September 1, 2022
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -19,6 +19,8 @@
 %       "ztrim" deprecated. Instead specify min and max Z.
 %       Can now generate a selector without coordinate table (for agnostic
 %           truthset creation)
+%   1.5.0 | 22.09.01
+%       Added some functions for quickly handling fscores
 
 
 %%
@@ -99,6 +101,7 @@ classdef RNA_Threshold_SpotSelector
         false_negs; %cell(t_count) of int[n][3] - x,y,z (Table of false negatives)
         ref_coords; %int[n][3] - x,y,z (Table of manually selected ref spots)
         f_scores; %double[t][4] (fscore[t][1], truepos[t][2], falsepos[t][3], falseneg[t][4] at each thresh value: recalculated whenever snap to ref coords is performed)
+        f_scores_dirty; %Flag for when fscores need to be updated.
         
         fh_filter; %Figure handle for filtered image max z projection
         fh_raw; %Figure handle for max z proj of (contrast enhanced) raw image
@@ -241,6 +244,7 @@ classdef RNA_Threshold_SpotSelector
             obj.toggle_clr_local = false;
             obj.toggle_singleSlice = false;
             obj.toggle_del_unsnapped = false;
+            obj.f_scores_dirty = false;
             
             obj.toggle_change_zminmax = false;
         end
@@ -346,7 +350,7 @@ classdef RNA_Threshold_SpotSelector
             filimg_path = obj.imgdat_path;
             z_trim = obj.ztrim;
             mask_selection = obj.selmcoords;
-            save_ver = 8;
+            save_ver = 9;
             
             %Version 4+
             toggle_ss = obj.toggle_singleSlice;
@@ -366,9 +370,12 @@ classdef RNA_Threshold_SpotSelector
             zmin = obj.z_min;
             zmax = obj.z_max;
             
+            %Version 9+
+            flag_fscores_dirty = obj.f_scores_dirty;
+            
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
-            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable','refonly','zmin','zmax');
+            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable','refonly','zmin','zmax','flag_fscores_dirty');
             save([save_path '_ptbl'], 'pos_tbl');
             save([save_path '_ntbl'], 'neg_tbl');
             save([save_path '_refset'], 'ref_coord_tbl'); %Ver 7+
@@ -984,8 +991,10 @@ classdef RNA_Threshold_SpotSelector
             if btn == 1 %Mouse click (set/unset f-pos)
                 %Loop until any key pressed that isn't mouse
                 obj = obj.whileMouseListening(x,y,btn);
+                obj.f_scores_dirty = true;
             elseif  btn == 3 %Right click (set/unset f-neg)
                 obj = obj.whileMouseListening(x,y,btn);
+                obj.f_scores_dirty = true;
             elseif btn == 120 %'x' - exit
                 close(obj.fh_filter);
                 close(obj.fh_raw);
@@ -1002,6 +1011,7 @@ classdef RNA_Threshold_SpotSelector
                 obj = obj.clearAtThreshold(obj.threshold_idx);
                 obj = obj.drawImages();
                 obj.threshold_table(obj.threshold_idx, 2) = 1;
+                obj.f_scores_dirty = true;
             elseif btn == 101 %'e' - clear (all but this threshold)
                 fprintf("Clearing all but current threshold...\n");
                 t_count = size(obj.threshold_table,1);
@@ -1010,6 +1020,7 @@ classdef RNA_Threshold_SpotSelector
                         obj = obj.clearAtThreshold(i);
                     end
                 end
+                obj.f_scores_dirty = true;
                 fprintf("Done!\n");
             elseif btn == 97 %'a' - auto-reset (this threshold)
                 obj = obj.clearAtThreshold(obj.threshold_idx);
@@ -1021,10 +1032,12 @@ classdef RNA_Threshold_SpotSelector
                 end
                 obj = obj.drawImages();
                 obj.threshold_table(obj.threshold_idx, 2) = 1;
+                obj.f_scores_dirty = true;
             elseif btn == 114 %'r' - ref
                 obj = obj.checkAgainstRef();
                 obj = obj.drawImages();
                 obj.threshold_table(obj.threshold_idx, 2) = 1;
+                obj.f_scores_dirty = true;
             elseif btn == 112 %'p' - print counts
                 obj = obj.printCounts();
             %elseif btn == 111 %'o' - open original image
@@ -1864,6 +1877,7 @@ classdef RNA_Threshold_SpotSelector
             sensitivity = tpos./totalpos;
             precision = tpos./totalhits;
             obj.f_scores(:,1) = (2 .* sensitivity .* precision)./(sensitivity + precision);
+            obj.f_scores_dirty = false;
         end
         
         %%
@@ -2057,7 +2071,7 @@ classdef RNA_Threshold_SpotSelector
             maskedout = zeros(T,1);
             
             oldt = obj.threshold_idx;
-            size(mask)
+            %size(mask)
             
             for t = 1:T
                 obj.threshold_idx = t;
@@ -2231,6 +2245,7 @@ classdef RNA_Threshold_SpotSelector
             selector.toggle_del_unsnapped = true;
             selector.toggle_cscale_max = true;
             selector.toggle_change_zminmax = false;
+            selector.f_scores_dirty = false;
         end
         
         %%
@@ -2486,6 +2501,12 @@ classdef RNA_Threshold_SpotSelector
             else
                 obj.z_min = obj.ztrim + 1;
                 obj.z_max = obj.max_slice - obj.ztrim;
+            end
+            
+            if save_ver >= 9
+                obj.f_scores_dirty = flag_fscores_dirty;
+            else
+                obj.f_scores_dirty = true;
             end
             
             obj.toggle_change_zminmax = false;
@@ -2769,6 +2790,40 @@ classdef RNA_Threshold_SpotSelector
             end
             
             tblout = tbltmp(1:count,:);
+        end
+       
+        %%
+        function bool_res = selectorExists(save_stem)
+            objpath = [save_stem 'spotAnnoObj.mat'];
+            bool_res = isfile(objpath);
+        end
+        
+        %%
+        function bool_res = refsetExists(save_stem)
+            bool_res = false;
+            objpath = [save_stem 'spotAnnoObj_refset.mat'];
+            if isfile(objpath)
+                %Check if it is empty.
+                load(objpath, 'ref_coord_tbl');
+                bool_res = ~isempty(ref_coord_tbl);
+            end
+        end
+        
+        %%
+        function fscores = loadFScores(save_stem)
+            fscores = [];
+            
+            %Actually, allow it to use manual selections as well...
+            %if ~refsetExists(save_stem); return; end
+            if ~RNA_Threshold_SpotSelector.selectorExists(save_stem); return; end
+            selector = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
+            if selector.f_scores_dirty
+                selector = selector.updateFTable();
+                selector = selector.saveMe();
+            end
+           
+            fscores = selector.f_scores(:,1);
+            clear selector;
         end
         
     end

@@ -1,5 +1,5 @@
 %
-%%  !! UPDATE TO YOUR BASE DIR
+%%
 ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
 % ========================== Image Channels ==========================
@@ -63,74 +63,80 @@ img_paths{i,1} = [ImgDir '\data\preprocess\histones\D2_I8\Ch4\Histone_D2_img8_ch
 addpath('./core');
 path_count = i-1;
 
+%TODO
+%Setup table...
+for j = path_count:1
+    f_table(1,j) = struct('name', '', 'selected_th', 0.0, 'mderived_th', 0.0, 'fitderiv_th', 0.0, 'overallavg_th', 0.0);
+end
+
+i = 1;
 for j = 1:path_count
     mypath = img_paths{j,1};
     path_spotsrun = [mypath '_rnaspotsrun.mat'];
-    fprintf("Now processing %s... (%d of %d)\n", mypath, j, path_count);
     if isfile(path_spotsrun)
         spotsrun = RNASpotsRun.loadFrom(path_spotsrun);
-        if isempty(spotsrun.threshold_results)
-            %Set parameters to default.
-            param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
-            spotsrun.ttune_madf_min = param_struct.mad_factor_min;
-            spotsrun.ttune_madf_max = param_struct.mad_factor_max;
-            spotsrun.ttune_spline_itr = param_struct.spline_iterations;
-            
-            %Option 1
-            spotsrun.ttune_winsz_min = 3;
-            spotsrun.ttune_winsz_max = 21;
-            spotsrun.ttune_winsz_incr = 3;
-            spotsrun.ttune_use_rawcurve = false;
-            spotsrun.ttune_use_diffcurve = false;
-            
-            %Option 2
-%             spotsrun.ttune_winsz_min = 5;
-%             spotsrun.ttune_winsz_max = 25;
-%             spotsrun.ttune_winsz_incr = 5;
-%             spotsrun.ttune_use_rawcurve = true;
-%             spotsrun.ttune_use_diffcurve = true;
-        end
-        
-        %Option 1
-        spotsrun.ttune_winsz_min = 3;
-        spotsrun.ttune_winsz_max = 21;
-        spotsrun.ttune_winsz_incr = 3;
-        spotsrun.ttune_use_rawcurve = false;
-        spotsrun.ttune_use_diffcurve = false;
-            
-        %Option 2
-%       spotsrun.ttune_winsz_min = 5;
-%       spotsrun.ttune_winsz_max = 25;
-%       spotsrun.ttune_winsz_incr = 5;
-%       spotsrun.ttune_use_rawcurve = true;
-%       spotsrun.ttune_use_diffcurve = true;
-        
-        
-        RNA_Pipeline_Core(spotsrun, 2, []);
-        
-        %Look for a selector and ref set to render fscore plot...
+        %Check for ref set.
         if RNA_Threshold_SpotSelector.refsetExists(spotsrun.out_stem)
-            fprintf("Found reference set for %s!\n", mypath);
-            f_scores = RNA_Threshold_SpotSelector.loadFScores(spotsrun.out_stem);
-            if ~isempty(f_scores)
-                fig_handle = RNAThreshold.resultPlotFScore(spotsrun, f_scores, true, true, 615);
-                if ~isempty(fig_handle)
-                    saveas(fig_handle, [spotsrun.out_dir filesep 'plots' filesep 'thres_fscores.png']);
-                    close(fig_handle);
+            thres = spotsrun.threshold_results;
+            fscores = RNA_Threshold_SpotSelector.loadFScores(spotsrun.out_stem);
+            thcount = size(thres.x,1);
+            
+            %Overall threshold
+            f_table(1,i).name = spotsrun.img_name;
+            thval = thres.threshold;
+            thidx = 0;
+            for k = 1:thcount
+                if thres.x(k,1) >= thval
+                    thidx = k;
+                    break;
                 end
             end
+            f_table(1,j).selected_th = fscores(thidx,1);
+            
+            %MAD-derived average (rounded)
+            medths = RNAThreshold.getAllMedThresholds(thres);
+            thval = round(mean(medths, 'all', 'omitnan'));
+            thidx = 0;
+            for k = 1:thcount
+                if thres.x(k,1) >= thval
+                    thidx = k;
+                    break;
+                end
+            end
+            f_table(1,i).mderived_th = fscores(thidx,1);
+
+            %Spline-derived average (rounded)
+            fitths = RNAThreshold.getAllFitThresholds(thres);
+            thval = round(mean(fitths, 'all', 'omitnan'));
+            thidx = 0;
+            for k = 1:thcount
+                if thres.x(k,1) >= thval
+                    thidx = k;
+                    break;
+                end
+            end
+            f_table(1,i).fitderiv_th = fscores(thidx,1);
+            
+            %Overall average (rounded)
+            totalct = size(medths,2) + size(fitths,2);
+            med_prop = size(medths,2)/totalct;
+            fit_prop = size(fitths,2)/totalct;
+            thval = mean(fitths, 'all', 'omitnan') * fit_prop;
+            thval = thval + (mean(medths, 'all', 'omitnan') * med_prop);
+            thidx = 0;
+            for k = 1:thcount
+                if thres.x(k,1) >= thval
+                    thidx = k;
+                    break;
+                end
+            end
+            
+            f_table(1,i).overallavg_th = fscores(thidx,1);
+            i = i+1;
+        else
+            fprintf("WARNING: Could not find ref set for %s. Skipping...\n", mypath);
         end
-        
-%         [spotsrun, img_filter] = spotsrun.loadFilteredImage();
-%         sugg_th_min = RNA_Threshold_Common.suggestMinScanThreshold(img_filter);
-%         sugg_th_max = RNA_Threshold_Common.suggestMaxScanThreshold(img_filter, 20);
-%         fprintf("Suggested Scan Range: %d - %d\n", sugg_th_min, sugg_th_max);
-%         fprintf("break;\n");
     else
         fprintf("WARNING: Could not find run data for %s. Skipping...\n", mypath);
     end
-    
-    %return; %DEBUG
 end
-
-

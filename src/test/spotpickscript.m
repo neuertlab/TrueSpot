@@ -7,7 +7,7 @@ ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc\data\preprocess';
 %De-comment one at a time
 
 %----- mESC Set 1
-save_stem_rna = [ImgDir '\mESC4d\Tsix-AF594\Tsix-AF594_IMG1_all_3d'];
+%save_stem_rna = [ImgDir '\mESC4d\Tsix-AF594\Tsix-AF594_IMG1_all_3d'];
 %save_stem_rna = [ImgDir '\mESC4d\Xist-CY5\Xist-CY5_IMG1_all_3d'];
 
 %----- mESC Set 2 [NOT UPDATED]
@@ -69,7 +69,15 @@ save_stem_rna = [ImgDir '\mESC4d\Tsix-AF594\Tsix-AF594_IMG1_all_3d'];
 %save_stem_rna = [ImgDir '\histones_feb2020\D2I5A\Xist-CY5\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Xist-CY5_all_3d'];
 %save_stem_rna = [ImgDir '\histones_feb2020\D2I5A\Tsix-TMR\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Tsix-TMR_all_3d'];
 %save_stem_rna = [ImgDir '\histones_feb2020\D2I5A\H3K36me3-AF488\20200214_2d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-H3K36me3-AF488_all_3d'];
-%There are more, I haven't added them yet.
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I5B\Xist-CY5\20200218_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I5B\Tsix-TMR\20200218_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I5B\H3K4me2-AF488\20200218_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_5_MMStack-H3K4me2-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I6\Xist-CY5\20200205_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_6_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I6\Tsix-TMR\20200205_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_6_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I6\H3K4me2-AF488\20200205_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_6_MMStack-H3K4me2-AF488_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I7\Xist-CY5\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-Xist-CY5_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I7\Tsix-TMR\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-Tsix-TMR_all_3d'];
+%save_stem_rna = [ImgDir '\histones_feb2020\D2I7\H3K4me2-AF488\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-H3K4me2-AF488_all_3d'];
 
 %----- Xist/Tsix + histones (NOV 2020)
 %save_stem_rna = [ImgDir '\histones_nov2020\D0I4\Xist\Histone_D0_img4_ch2_all_3d'];

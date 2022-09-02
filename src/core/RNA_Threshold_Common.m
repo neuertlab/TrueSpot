@@ -366,7 +366,8 @@ classdef RNA_Threshold_Common
             %param_struct.window_pos = 0.5;
             %param_struct.mad_factor = -0.5;
             param_struct = struct("window_pos", 0.5);
-            param_struct.window_sizes = [5:5:25];
+            %param_struct.window_sizes = [5:5:25];
+            param_struct.window_sizes = [3:3:21];
             param_struct.mad_factor_min = -1.0;
             param_struct.mad_factor_max = 1.0;
             param_struct.spline_iterations = 3;
@@ -611,18 +612,20 @@ classdef RNA_Threshold_Common
                 P_control = 0;
             end
        
-            
             %Find control floor.
-            if ~isempty(threshold_results.window_scores_ctrl)
+            if ~isempty(ctrlderiv)
                 if parameter_info.verbosity > 0
                     fprintf("Finding noise floor...\n");
                 end
-                findres = find(ctrlderiv < 1,1);
+                [~, cdmaxidx] = max(ctrlderiv(:,1), [], 'omitnan');
+                cdtest = ctrlderiv(cdmaxidx:P_control,1);
+                
+                [findres, ~] = find(cdtest < 1,1);
                 if isempty(findres)
-                    findres = find(ctrlderiv < 2,1);
+                    [findres, ~] = find(cdtest < 2,1);
                 end
                 if ~isempty(findres)
-                    threshold_results.control_floor = findres;
+                    threshold_results.control_floor = spotcount_table(findres+cdmaxidx,1);
                 end
             end
             

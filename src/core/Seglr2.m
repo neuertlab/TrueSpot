@@ -22,7 +22,43 @@ classdef Seglr2
             fitp = struct("min", 0.0, "max", 0.0, "start", 0.0);
         end
         
-        function linfit = fitToSpotCurve(data, xmin, xmax, verbosity)
+        function linfit = internal_savetofit(data, linfit, x0, y0, b1, b2)
+            data_points = size(data,1);
+            
+            linfit.break_x = x0;
+            linfit.break_y = y0;
+            for i = 1:data_points
+                if data(i,1) >= x0
+                	linfit.break_index = i;
+                	break;
+                end
+            end
+            
+            linfit.left = Seglr2.genEmptyLineStruct();
+            linfit.left.yintr = b1;
+            linfit.left.slope = (y0 - b1)/(x0);
+            
+            linfit.right = Seglr2.genEmptyLineStruct();
+            linfit.right.yintr = b2;
+            linfit.right.slope = (y0 - b2)/(x0);
+                    
+            %Rsq
+            data_l = data(1:linfit.break_index,:);
+            data_r = data(linfit.break_index:data_points,:);
+            linfit.left.rsquared = Seglr2.rsquared(data_l, linfit.left.slope, linfit.left.yintr);
+            linfit.right.rsquared = Seglr2.rsquared(data_r, linfit.right.slope, linfit.right.yintr);
+                    
+            linfit.left.segrsq = Seglr2.rsquared_seg(data, linfit.break_index, linfit.left, linfit.right);
+            linfit.right.segrsq = linfit.left.segrsq;
+            linfit.segrsq = linfit.left.segrsq;
+                    
+            %Weighted Rsq
+            linfit.left.rsqwavg = Seglr2.rescoreWeighted(data_l, data_r, linfit.left, linfit.right);
+            linfit.right.rsqwavg = linfit.left.rsqwavg;
+            linfit.rsqwavg = linfit.left.rsqwavg;
+        end
+        
+        function linfit = fitToSpotCurve(data, xmin, xmax, verbosity, reweight)
             
             linfit = Seglr2.genEmptySegfitStruct();
             min_points = 3;
@@ -30,6 +66,9 @@ classdef Seglr2
             
             if nargin < 4
                 verbosity = 1;
+            end
+            if nargin < 5
+                reweight = true;
             end
             scanmin = min_points;
             scanmax = data_points - min_points;
@@ -73,45 +112,53 @@ classdef Seglr2
             
             x0_st = scanmin + (rand() * (scanmax - scanmin));
             
-            %(X0,Y0,b1,b2,x)
             if verbosity > 1
                 fprintf("Performing fit...\n");
             end
-            ftobj = fittype('((((x .* (Y0 - b1)) / X0) + b1) .* (x <= X0)) + ((((x .* (Y0 - b2)) / X0) + b2) .* (x > X0))');
-            cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[x0_st,y0_st,b1_st,b2_st],'Lower',[scanmin,y0_min,b1_min,b2_min],'Upper',[scanmax,y0_max,b1_max,b2_max]);
             
-            if verbosity > 1
-                fprintf("Saving fit parameters...\n");
-            end
-            
-            linfit.break_x = cfobj.X0;
-            linfit.break_y = cfobj.Y0;
-            for i = 1:data_points
-                if data(i,1) >= linfit.break_x
-                    linfit.break_index = i;
-                    break;
+            if reweight
+                %Do fits on fixed X0 thru range and pick X0 based
+                %   on best weighted R2 average
+                i = 1;
+                alloc = scanmax - scanmin + 1;
+                fits(1,alloc) = Seglr2.genEmptySegfitStruct();
+                for x_knot = scanmin:scanmax
+                    linfit_test = Seglr2.genEmptySegfitStruct();
+                    
+                    x0_str = num2str(x_knot);
+                    ftobj = fittype(['((((x .* (Y0 - b1)) / ' x0_str ') + b1) .* (x <= ' x0_str ')) + ((((x .* (Y0 - b2)) / ' x0_str ') + b2) .* (x > ' x0_str '))']);
+                    cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[y0_st,b1_st,b2_st],'Lower',[y0_min,b1_min,b2_min],'Upper',[y0_max,b1_max,b2_max]);
+
+                    fits(1,i) = Seglr2.internal_savetofit(data, x_knot, cfobj.Y0, cfobj.b1, cfobj.b2, linfit_test);
+                    i = i + 1;
                 end
+                
+                %Best weighted rsq...
+                best_val = -Inf;
+                best_idx = 0;
+                for i = 1:alloc
+                    thisfit = fits(1,i);
+                    if thisfit.rsqwavg > best_val
+                        best_val = thisfit.rsqwavg;
+                        best_idx = i;
+                    end
+                end
+                
+                if best_idx > 0
+                    linfit = fits(1,best_idx);
+                end
+            else
+                %Let the fit function decide X0
+                %(X0,Y0,b1,b2,x)
+                ftobj = fittype('((((x .* (Y0 - b1)) / X0) + b1) .* (x <= X0)) + ((((x .* (Y0 - b2)) / X0) + b2) .* (x > X0))');
+                cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[x0_st,y0_st,b1_st,b2_st],'Lower',[scanmin,y0_min,b1_min,b2_min],'Upper',[scanmax,y0_max,b1_max,b2_max]);
+            
+                if verbosity > 1
+                    fprintf("Saving fit parameters...\n");
+                end
+                
+                linfit = Seglr2.internal_savetofit(data, cfobj.X0, cfobj.Y0, cfobj.b1, cfobj.b2, linfit);
             end
-            
-            linfit.left = Seglr2.genEmptyLineStruct();
-            linfit.left.yintr = cfobj.b1;
-            linfit.left.slope = (linfit.break_y - linfit.left.yintr)/(linfit.break_x);
-            
-            linfit.right = Seglr2.genEmptyLineStruct();
-            linfit.right.yintr = cfobj.b2;
-            linfit.right.slope = (linfit.break_y - linfit.right.yintr)/(linfit.break_x);
-            
-            %rsq values
-            linfit.left.rsquared = Seglr2.rsquared(data, linfit.left.slope, linfit.left.yintr);
-            linfit.right.rsquared = Seglr2.rsquared(data, linfit.right.slope, linfit.right.yintr);
-            linfit.left.segrsq = Seglr2.rsquared_seg(data, linfit.break_index, linfit.left, linfit.right);
-            linfit.right.segrsq = linfit.left.segrsq;
-            linfit.segrsq = linfit.left.segrsq;
-            data_l = data(1:linfit.break_index,:);
-            data_r = data(linfit.break_index:data_points,:);
-            linfit.left.rsqwavg = Seglr2.rescoreWeighted(data_l, data_r, linfit.left, linfit.right);
-            linfit.right.rsqwavg = linfit.left.rsqwavg;
-            linfit.rsqwavg = linfit.left.rsqwavg;
             
             %For record keeping...
             linfit.input_x0 = Seglr2.genEmptyFitParamStruct();
