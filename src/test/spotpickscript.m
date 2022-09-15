@@ -123,5 +123,12 @@ spotsrun = spotsrun.saveMe();
 % ========================== Spawn AnnoObj ==========================
 
 selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna, true);
+
+%Clear z mask because it's just been a pain in the ass
+selector.ztrim = 0;
+selector.z_min = 1;
+selector.z_max = spotsrun.idims_sample.z;
+
+%Launch GUI
 selector = selector.launchRefSelectGUI();
 
