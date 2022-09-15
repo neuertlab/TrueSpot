@@ -1,6 +1,7 @@
 %
 %%
-ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Image Channels ==========================
 
@@ -65,8 +66,9 @@ path_count = i-1;
 
 %TODO
 %Setup table...
-for j = path_count:1
+for j = path_count:-1:1
     f_table(1,j) = struct('name', '', 'selected_th', 0.0, 'mderived_th', 0.0, 'fitderiv_th', 0.0, 'overallavg_th', 0.0);
+    th_table(j) = struct('name', '', 'selected_th', 0, 'mderived_th', 0, 'fitderiv_th', 0, 'overallavg_th', 0);
 end
 
 i = 1;
@@ -83,6 +85,7 @@ for j = 1:path_count
             
             %Overall threshold
             f_table(1,i).name = spotsrun.img_name;
+            th_table(i).name = spotsrun.img_name;
             thval = thres.threshold;
             thidx = 0;
             for k = 1:thcount
@@ -91,7 +94,8 @@ for j = 1:path_count
                     break;
                 end
             end
-            f_table(1,j).selected_th = fscores(thidx,1);
+            th_table(i).selected_th = thres.x(thidx,1);
+            f_table(1,i).selected_th = fscores(thidx,1);
             
             %MAD-derived average (rounded)
             medths = RNAThreshold.getAllMedThresholds(thres);
@@ -103,6 +107,7 @@ for j = 1:path_count
                     break;
                 end
             end
+            th_table(i).mderived_th = thres.x(thidx,1);
             f_table(1,i).mderived_th = fscores(thidx,1);
 
             %Spline-derived average (rounded)
@@ -115,6 +120,7 @@ for j = 1:path_count
                     break;
                 end
             end
+            th_table(i).fitderiv_th = thres.x(thidx,1);
             f_table(1,i).fitderiv_th = fscores(thidx,1);
             
             %Overall average (rounded)
@@ -130,7 +136,7 @@ for j = 1:path_count
                     break;
                 end
             end
-            
+            th_table(i).overallavg_th = thres.x(thidx,1);
             f_table(1,i).overallavg_th = fscores(thidx,1);
             i = i+1;
         else

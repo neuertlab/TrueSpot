@@ -377,6 +377,12 @@ classdef RNA_Threshold_Common
             param_struct.test_data = false;
             param_struct.test_diff = false;
             param_struct.test_winsc = true;
+            param_struct.reweight_fit = true;
+            param_struct.fit_to_log = true;
+            param_struct.fit_strat = 'default';
+            param_struct.fit_ri_weight = 0.0;
+            param_struct.madth_weight = 0.0;
+            param_struct.fit_weight = 1.0;
         end
         
         %%
@@ -384,6 +390,7 @@ classdef RNA_Threshold_Common
         function sub_struct = genEmptyThresholdInfoStruct()
             sub_struct = struct("spline_fit", []);
             sub_struct.spline_knot_x = 0;
+            sub_struct.spline_knot_y = 0;
             sub_struct.max_index = 0; %Index in data of maximum y
             sub_struct.median = 0;
             sub_struct.mad = 0;
@@ -415,7 +422,13 @@ classdef RNA_Threshold_Common
             res.test_data = [];
             res.test_diff = [];
             %res.test_winsc(1,1) = RNA_Threshold_Common.genEmptyThresholdInfoStruct(); %Array of threshold info structs.
-            res.struct_ver = 2;
+            res.struct_ver = 3;
+            res.reweight_fit = true;
+            res.fit_to_log = true;
+            res.fit_strat = 'default';
+            res.fit_ri_weight = 0.0;
+            res.madth_weight = 0.0;
+            res.fit_weight = 1.0;
             tres_struct = res;
         end
         
@@ -434,13 +447,14 @@ classdef RNA_Threshold_Common
             data_trimmed = data(maxidx:point_count,:);
             
             %This could probably be fully vectorized?
+            data_smoothed(:,1) = smooth(data_trimmed(:,2));
             mfcount = size(thresh_info.scan_value_threshold,2);
             thresh_info.med_suggested_threshold = NaN(1,mfcount);
             bool_has_nonnan = false;
             for i = 1:mfcount
-                findval = find(data_trimmed(:,2) < thresh_info.scan_value_threshold(1,i), 1);
+                findval = find(data_smoothed(:,1) <= thresh_info.scan_value_threshold(1,i), 1);
                 if ~isempty(findval)
-                    thresh_info.med_suggested_threshold(1,i) = findval;
+                    thresh_info.med_suggested_threshold(1,i) = data(findval+maxidx-1,1);
                     bool_has_nonnan = true;
                 end
             end
@@ -482,32 +496,52 @@ classdef RNA_Threshold_Common
             if params.spline_iterations > 0
                 
                 %Log transform
-                ogdata = data;
-                data(:,2) = log10(data(:,2));
-                %Remove invalid values...
-                [okay_rows,~] = find(isfinite(data(:,2)));
-                data = data(okay_rows,:);
+                fitdata = data;
+
+                if params.fit_to_log
+                    fitdata(:,2) = log10(fitdata(:,2));
+                    %Remove invalid values...
+                    [okay_rows,~] = find(isfinite(fitdata(:,2)));
+                    fitdata = fitdata(okay_rows,:);
+                    [okay_rows,~] = find(fitdata(:,2) > -5); %Remove extremes
+                    fitdata = fitdata(okay_rows,:);
+                    
+                    local_count = size(fitdata,1);
+                    [~,maxidx] = max(fitdata(:,2),[],'omitnan');
+                    thresh_info.max_index = maxidx;
+                    fitdata = fitdata(maxidx:local_count,:);
+                else
+                    fitdata = data_trimmed;
+                    [okay_rows,~] = find(isfinite(fitdata(:,2)));
+                    fitdata = fitdata(okay_rows,:);
+                end
                 
-                local_count = size(data,1);
-                [~,maxidx] = max(data(:,2),[],'omitnan');
-                thresh_info.max_index = maxidx;
-                data_trimmed = data(maxidx:local_count,:);
+                
                 
                 if params.verbosity > 0
                     fprintf("Fitting two-piece linear spline...\n");
                 end
                 %thresh_info.spline_fit = Seglr2.fitTo(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.spline_iterations, verbosity);
-                thresh_info.spline_fit = Seglr2.fitToSpotCurve(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.verbosity);
+                if params.reweight_fit
+                    bpstrat = 'weighted_avg';
+                else
+                    bpstrat = 'segrsq';
+                end
+                thresh_info.spline_fit = Seglr2.fitToSpotCurve(fitdata, thresh_info.medth_min, thresh_info.medth_max, params.verbosity, params.fit_strat, bpstrat, params.spline_iterations);
                 if ~isempty(thresh_info.spline_fit)
-                    thresh_info.spline_knot_x = data_trimmed(thresh_info.spline_fit.break_index,1);
+                    thresh_info.spline_knot_x = fitdata(thresh_info.spline_fit.break_index,1);
                     
                     %Adjust break index for original data...
                     for i = 1:point_count
-                        if ogdata(i,1) >= thresh_info.spline_knot_x
+                        if data(i,1) >= thresh_info.spline_knot_x
                             thresh_info.spline_fit.break_index = i;
                             break;
                         end
                     end
+                    
+                    %Calculate the y coord of knot.
+                    thresh_info.spline_knot_y = (thresh_info.spline_fit.right.slope * thresh_info.spline_knot_x) + thresh_info.spline_fit.right.yintr;
+                    
                 end   
             end
             
@@ -588,6 +622,38 @@ classdef RNA_Threshold_Common
             threshold_results.mad_factor_max = parameter_info.mad_factor_max;
             threshold_results.spline_iterations = parameter_info.spline_iterations;
             threshold_results.verbosity = parameter_info.verbosity;
+            threshold_results.reweight_fit = parameter_info.reweight_fit;
+            threshold_results.fit_to_log = parameter_info.fit_to_log;
+            threshold_results.fit_strat = parameter_info.fit_strat;
+            threshold_results.fit_ri_weight = parameter_info.fit_ri_weight;
+            threshold_results.madth_weight = parameter_info.madth_weight;
+            threshold_results.fit_weight = parameter_info.fit_weight;
+            
+            mweight = threshold_results.madth_weight;
+            fweight = threshold_results.fit_weight;
+            iweight = threshold_results.fit_ri_weight;
+            if mweight < 0.0; mweight = 0.0; end
+            if fweight < 0.0; fweight = 0.0; end
+            if iweight < 0.0; iweight = 0.0; end
+            if strcmp(threshold_results.fit_strat, 'three_piece')
+                iweight = 0.0;
+            end
+            if threshold_results.spline_iterations < 1
+                fweight = 0.0; iweight = 0.0; mweight = 1.0;
+            end
+            wsum = mweight + fweight + iweight;
+            if wsum ~= 1.0
+                if mweight == 0.0 & fweight == 0.0 & iweight == 0.0
+                    fweight = 1.0;
+                else
+                    fweight = fweight/wsum;
+                    mweight = mweight/wsum;
+                    iweight = iweight/wsum;
+                end
+            end
+            threshold_results.fit_weight = fweight;
+            threshold_results.madth_weight = mweight;
+            threshold_results.fit_ri_weight = iweight;
             
             %Start by calculating the diff
             spotcount_table = parameter_info.sample_spot_table;
@@ -677,6 +743,7 @@ classdef RNA_Threshold_Common
                 end
                 for i = 1:wincount
                     thresh_info = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
+                    threshold_results.test_winsc(1,i) = thresh_info;
                     %threshold_results.test_winsc(1,i) = thresh_info;
                     winscores_test = NaN(P_sample,2);
                     winscores_test(:,1) = threshold_results.x(1:P_sample,1);
@@ -690,61 +757,23 @@ classdef RNA_Threshold_Common
             end
             
             %Determine a best threshold from test info.
-            %Placeholder - average all spline breakpoints? If none, average
-            % med th averages.
-            tsum = 0.0;
-            tcount = 0;
-            if ~isempty(threshold_results.test_winsc)
-                for i = 1:wincount
-                    thresh_info = threshold_results.test_winsc(1,i);
-                    if thresh_info.spline_knot_x > 0
-                        tsum = tsum + thresh_info.spline_knot_x;
-                        tcount = tcount+1;
-                    end
+            curve_results = RNAThreshold.getAllCurveResultStructs(threshold_results);
+            curve_count = size(curve_results,2);
+            msum = 0.0;
+            fsum = 0.0;
+            isum = 0.0;
+            for i = 1:curve_count
+                msum = msum + curve_results(i).medth_avg;
+                if ~isempty(curve_results(i).spline_fit)
+                    fsum = fsum + curve_results(i).spline_fit.break_x;
+                    isum = isum + curve_results(i).spline_fit.rcurve_intr_x;
                 end
             end
-            if ~isempty(threshold_results.test_diff)
-                thresh_info = threshold_results.test_diff;
-                if thresh_info.spline_knot_x > 0
-                    tsum = tsum + thresh_info.spline_knot_x;
-                    tcount = tcount+1;
-                end
-            end
-            if ~isempty(threshold_results.test_data)
-                thresh_info = threshold_results.test_data;
-                if thresh_info.spline_knot_x > 0
-                    tsum = tsum + thresh_info.spline_knot_x;
-                    tcount = tcount+1;
-                end 
-            end
+            mavg = msum/curve_count;
+            favg = fsum/curve_count;
+            iavg = isum/curve_count;
+            threshold_results.threshold = round((mavg * mweight) + (favg * fweight) + (iavg * iweight));
             
-            if tcount < 1
-                if ~isempty(threshold_results.test_winsc)
-                    for i = 1:wincount
-                        thresh_info = threshold_results.test_winsc(1,i);
-                        if thresh_info.medth_avg > 0
-                            tsum = tsum + thresh_info.medth_avg;
-                            tcount = tcount+1;
-                        end
-                    end
-                end
-                if ~isempty(threshold_results.test_diff)
-                    thresh_info = threshold_results.test_diff;
-                    if thresh_info.spline_knot_x > 0
-                        tsum = tsum + thresh_info.medth_avg;
-                        tcount = tcount+1;
-                    end
-                end
-                if ~isempty(threshold_results.test_data)
-                    thresh_info = threshold_results.test_data;
-                    if thresh_info.spline_knot_x > 0
-                        tsum = tsum + thresh_info.medth_avg;
-                        tcount = tcount+1;
-                    end 
-                end
-            end
-            
-            threshold_results.threshold = round(tsum/tcount);
             if threshold_results.threshold < threshold_results.control_floor
                 if parameter_info.verbosity > 0
                     fprintf("Warning: Auto selected threshold below noise floor. Adjusting.\n");

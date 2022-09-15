@@ -5,6 +5,16 @@ classdef Seglr2
     
     methods (Static)
         
+        function index = getXIndex(data, x)
+            data_points = size(data,1);
+            for i = 1:data_points
+                if data(i,1) >= x
+                	index = i;
+                	return;
+                end
+            end
+        end
+        
         function linestruct = genEmptyLineStruct()
             linestruct = struct("slope", 0.0, "yintr", 0.0, "rsquared", 0.0, "segrsq", 0.0, "rsqwavg", 0.0);
         end
@@ -14,8 +24,12 @@ classdef Seglr2
         end
         
         function linfit = genEmptySegfitStruct()
+            %If three piece, the "secondary" break is actually the left
+            %one. Primary break is the right one as it's where we wanna
+            %look.
             linfit = struct("left", [], "right", [], "break_index", -1, "segrsq", 0.0, "rsqwavg", 0.0, ...
-                "break_x", 0, "break_y", 0.0, "input_x0", [], "input_y0", [], "input_bLeft", [], "input_bRight", []);
+                "break_x", 0.0, "break_y", 0.0, "input_x0", [], "input_y0", [], "input_bLeft", [], "input_bRight", [], ...
+                "rcurve_intr_x", -1, "mid", [], "sec_break_index", -1, "sec_break_x", 0.0, "sec_break_y", 0.0);
         end
         
         function fitp = genEmptyFitParamStruct()
@@ -58,7 +72,109 @@ classdef Seglr2
             linfit.rsqwavg = linfit.left.rsqwavg;
         end
         
-        function linfit = fitToSpotCurve(data, xmin, xmax, verbosity, reweight)
+        function linfit = fitThreePiece(data, xmin, xmax)
+            linfit = Seglr2.genEmptySegfitStruct();
+            min_points = 4;
+            data_points = size(data,1);
+            
+            scanmin = min_points;
+            scanmax = data_points - min_points;
+            if nargin > 1
+                %Min provided.
+                usrmin = find(data(:,1) >= xmin, 1);
+                if usrmin > scanmin
+                    scanmin = usrmin;
+                end
+            end
+            if nargin > 2
+                %Max provided.
+                usrmax = find(data(:,1) >= xmax, 1);
+                if usrmax < scanmax
+                    scanmax = usrmax;
+                end
+            end
+            
+            %Y Range
+            ystd = std(data(:,2),0,'all','omitnan');
+            y0_min = min(data(:,2),[],'omitnan') - ystd;
+            y0_max = mean(data(:,2),'all','omitnan');
+            y0_st = y0_min + ((y0_max - y0_min)/2);
+            
+            %Find left intercept range
+            [~, testb] = Seglr2.lineeqs(data(2:data_points,1),data(2:data_points,2),data(1,1), data(1,2));
+            b1_min = min(testb,[],'all','omitnan') - ystd;
+            b1_max = max(testb,[],'all','omitnan');
+            b1_st = b1_min + ((b1_max - b1_min)/2);
+            
+            %Find right intercept range
+            [~,minidx] = min(data(:,2),[],'omitnan');
+            [~, testb] = Seglr2.lineeqs(data(:,1),data(:,2),data(minidx,1), data(minidx,2));
+            b2_min = min(testb,[],'all','omitnan');
+            b2_max = max(testb,[],'all','omitnan');
+            b2_st = b2_min + ((b2_max - b2_min)/2);
+ 
+            x_min = data(scanmin,1);
+            x_max = data(scanmax,1);
+            x1_st = x_min + (0.33 * (x_max - x_min));
+            x2_st = x_min + (0.66 * (x_max - x_min));
+            
+            left_eq  = '((((x .* (Y1 - b1)) / X1) + b1) .* (x <= X1))';
+            right_eq = '((((x .* (Y2 - b2)) / X2) + b2) .* (x >= X2))';
+            mid_eq   = '((((Y1 * X2) - (X1 * Y2) + (x * (Y2 - Y1)))/(X2 - X1)) .* (x > X1 & x < X2))';
+            
+            ftobj = fittype([left_eq ' + ' mid_eq ' + ' right_eq]);
+            cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[x1_st,x2_st,y0_st,y0_st,b1_st,b2_st],...
+                'Lower',[x_min,x_min,y0_min,y0_min,b1_min,b2_min],'Upper',[x_max,x_max,y0_max,y0_max,b1_max,b2_max]);
+
+            linfit.break_x = cfobj.X2;
+            linfit.break_y = cfobj.Y2;
+            for i = 1:data_points
+                if data(i,1) >= linfit.break_x
+                	linfit.break_index = i;
+                	break;
+                end
+            end
+
+            linfit.sec_break_x = cfobj.X1;
+            linfit.sec_break_y = cfobj.Y1;
+            for i = 1:data_points
+                if data(i,1) >= linfit.sec_break_x
+                	linfit.sec_break_index = i;
+                	break;
+                end
+            end
+            
+            linfit.left = Seglr2.genEmptyLineStruct();
+            linfit.left.yintr = cfobj.b1;
+            linfit.left.slope = (cfobj.Y1 - cfobj.b1)/(cfobj.X1);
+
+            linfit.mid = Seglr2.genEmptyLineStruct();
+            linfit.mid.slope = (cfobj.Y2 - cfobj.Y1)/(cfobj.X2 - cfobj.X1);
+            linfit.mid.yintr = cfobj.Y1 - (cfobj.X1 * linfit.mid.slope);
+            
+            linfit.right = Seglr2.genEmptyLineStruct();
+            linfit.right.yintr = cfobj.b2;
+            linfit.right.slope = (cfobj.Y2 - cfobj.b2)/(cfobj.X2);
+                    
+            %Rsq & weighted rsq?
+            
+        end
+        
+        function linfit = fitToSpotCurve(data, xmin, xmax, verbosity, fit_strategy, breakpick_strategy, slow_iterations)
+            
+            %TODO Make sure linfit.break_y is set before returning...
+            %Also calculate rcurve_intr (the x value where the curve hits
+            % first intersects the right line)
+            
+            %Valid fit strategies: default, slow, section_fit, three_piece (0,1,2,3)
+            %Valid breakpick strategies: segrsq, weighted_avg (0,1)
+            %three_piece just uses MATLAB fit, so doesn't work with
+            %       weighted_avg atm
+            
+            if strcmp(fit_strategy, 'three_piece')
+                linfit = Seglr2.fitThreePiece(data,xmin,xmax);
+                return;
+            end
             
             linfit = Seglr2.genEmptySegfitStruct();
             min_points = 3;
@@ -68,20 +184,26 @@ classdef Seglr2
                 verbosity = 1;
             end
             if nargin < 5
-                reweight = true;
+                fit_strategy = 'default';
+            end
+            if nargin < 6
+                breakpick_strategy = 'segrsq';
+            end
+            if nargin < 7
+                slow_iterations = 3;
             end
             scanmin = min_points;
             scanmax = data_points - min_points;
             if nargin > 1
                 %Min provided.
-                usrmin = find(data(:,1) == xmin, 1);
+                usrmin = find(data(:,1) >= xmin, 1);
                 if usrmin > scanmin
                     scanmin = usrmin;
                 end
             end
             if nargin > 2
                 %Max provided.
-                usrmax = find(data(:,1) == xmax, 1);
+                usrmax = find(data(:,1) >= xmax, 1);
                 if usrmax < scanmax
                     scanmax = usrmax;
                 end
@@ -91,95 +213,197 @@ classdef Seglr2
                 fprintf("Calculating scan ranges...\n");
             end
             
-            %Find Y knot range
-            ystd = std(data(:,2),0,'all','omitnan');
-            y0_min = min(data(:,2),[],'omitnan') - ystd;
-            y0_max = mean(data(:,2),'all','omitnan');
-            y0_st = y0_min + (rand() * (y0_max - y0_min));
-            
-            %Find left intercept range
-            [~, testb] = Seglr2.lineeqs(data(2:data_points,1),data(2:data_points,2),data(1,1), data(1,2));
-            b1_min = min(testb,[],'all','omitnan') - ystd;
-            b1_max = max(testb,[],'all','omitnan');
-            b1_st = b1_min + (rand() * (b1_max - b1_min));
-            
-            %Find right intercept range
-            [~,minidx] = min(data(:,2),[],'omitnan');
-            [~, testb] = Seglr2.lineeqs(data(:,1),data(:,2),data(minidx,1), data(minidx,2));
-            b2_min = min(testb,[],'all','omitnan');
-            b2_max = max(testb,[],'all','omitnan');
-            b2_st = b2_min + (rand() * (b2_max - b2_min));
-            
-            x0_st = scanmin + (rand() * (scanmax - scanmin));
-            
-            if verbosity > 1
-                fprintf("Performing fit...\n");
+            xbp_try = scanmax - scanmin + 1;
+            for j = xbp_try:-1:1
+                fits(j) = Seglr2.genEmptySegfitStruct();
             end
             
-            if reweight
-                %Do fits on fixed X0 thru range and pick X0 based
-                %   on best weighted R2 average
-                i = 1;
-                alloc = scanmax - scanmin + 1;
-                fits(1,alloc) = Seglr2.genEmptySegfitStruct();
-                for x_knot = scanmin:scanmax
-                    linfit_test = Seglr2.genEmptySegfitStruct();
+            if strcmp(fit_strategy, 'slow')
+                j = 1;
+                for i = scanmin:scanmax
+                    if verbosity > 0
+                        fprintf("Trying breakpoint x = %d...\n", data(i,1));
+                    end
+                
+                    %Do initial fit to get y range.
+                    data_l = data(1:i,:);
+                    data_r = data(i:data_points,:);
+                
+                    rawfit_l = fitlm(data_l(:,1), data_l(:,2));
+                    rawfit_r = fitlm(data_r(:,1), data_r(:,2));
+                
+                    yrng = NaN(1,3);
+                    yrng(1,1) = data(i,2);
+                    yrng(1,2) = predict(rawfit_l, data(i,1));
+                    yrng(1,3) = predict(rawfit_r, data(i,1));
+                
+                    yscan_min = min(yrng, [], 'all', 'omitnan');
+                    yscan_max = max(yrng, [], 'all', 'omitnan');
+                
+                    if verbosity > 0
+                    	fprintf("Scanning for knot anchor between y = %d and %d...\n", yscan_min, yscan_max);
+                    end
+                
+                    fits(j).break_index = i;
+                    [fits(j).left, fits(j).right] = Seglr2.tryBreakpoint(data, i, yscan_min, yscan_max, slow_iterations);
+                    if isempty(fits(j).left) | isempty(fits(j).right)
+                        continue;
+                    end
                     
-                    x0_str = num2str(x_knot);
-                    ftobj = fittype(['((((x .* (Y0 - b1)) / ' x0_str ') + b1) .* (x <= ' x0_str ')) + ((((x .* (Y0 - b2)) / ' x0_str ') + b2) .* (x > ' x0_str '))']);
-                    cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[y0_st,b1_st,b2_st],'Lower',[y0_min,b1_min,b2_min],'Upper',[y0_max,b1_max,b2_max]);
-
-                    fits(1,i) = Seglr2.internal_savetofit(data, x_knot, cfobj.Y0, cfobj.b1, cfobj.b2, linfit_test);
-                    i = i + 1;
+                    fits(j).break_x = data(i,1);
+                    fits(j).break_y = (fits(j).break_x * fits(j).right.slope) + fits(j).right.yintr;
+                    
+                    fits(j).segrsq = Seglr2.rsquared_seg(data, fits(j).break_index, fits(j).left, fits(j).right);
+                    fits(j).rsqwavg = Seglr2.rescoreWeighted(data_l, data_r, fits(j).left, fits(j).right);
+                    j = j + 1;
+                end
+            elseif strcmp(fit_strategy, 'section_fit')
+                j = 1;
+                for i = scanmin:scanmax
+                    data_l = data(1:i,:);
+                    data_r = data(i:data_points,:);
+                
+                    rawfit_l = fitlm(data_l(:,1), data_l(:,2));
+                    rawfit_r = fitlm(data_r(:,1), data_r(:,2));
+                    
+                    fits(j).left = Seglr2.genEmptyLineStruct();
+                    fits(j).right = Seglr2.genEmptyLineStruct();
+                    
+                    fits(j).left.slope = rawfit_l.Coefficients.Estimate(2);
+                    fits(j).left.yintr = rawfit_l.Coefficients.Estimate(1);
+                    fits(j).left.rsquared = rawfit_l.Rsquared.Ordinary;
+                    
+                    fits(j).right.slope = rawfit_r.Coefficients.Estimate(2);
+                    fits(j).right.yintr = rawfit_r.Coefficients.Estimate(1);
+                    fits(j).right.rsquared = rawfit_r.Rsquared.Ordinary;
+                    
+                    %Find break index (intersection)
+                    break_x = (fits(j).right.yintr - fits(j).left.yintr)/(fits(j).left.slope - fits(j).right.slope);
+                    fits(j).break_index = Seglr2.getXIndex(data, break_x);
+                    
+                    %Calculate segrsq and rsqwavg
+                    fits(j).segrsq = Seglr2.rsquared_seg(data, fits(j).break_index, fits(j).left, fits(j).right);
+                    
+                    data_l = data(1:fits(j).break_index,:);
+                    data_r = data(fits(j).break_index:data_points,:);
+                    fits(j).rsqwavg = Seglr2.rescoreWeighted(data_l, data_r, fits(j).left, fits(j).right);
+                    
+                    j = j+1;
+                end
+            else
+                %Find Y knot range
+                ystd = std(data(:,2),0,'all','omitnan');
+                y0_min = min(data(:,2),[],'omitnan') - ystd;
+                y0_max = mean(data(:,2),'all','omitnan');
+                %y0_st = y0_min + (rand() * (y0_max - y0_min));
+                y0_st = y0_min + ((y0_max - y0_min)/2);
+            
+                %Find left intercept range
+                [~, testb] = Seglr2.lineeqs(data(2:data_points,1),data(2:data_points,2),data(1,1), data(1,2));
+                b1_min = min(testb,[],'all','omitnan') - ystd;
+                b1_max = max(testb,[],'all','omitnan');
+                %b1_st = b1_min + (rand() * (b1_max - b1_min));
+                b1_st = b1_min + ((b1_max - b1_min)/2);
+            
+                %Find right intercept range
+                [~,minidx] = min(data(:,2),[],'omitnan');
+                [~, testb] = Seglr2.lineeqs(data(:,1),data(:,2),data(minidx,1), data(minidx,2));
+                b2_min = min(testb,[],'all','omitnan');
+                b2_max = max(testb,[],'all','omitnan');
+                %b2_st = b2_min + (rand() * (b2_max - b2_min));
+                b2_st = b2_min + ((b2_max - b2_min)/2);
+            
+                x_min = data(scanmin,1);
+                x_max = data(scanmax,1);
+                x0_st = x_min + (0.5 * (x_max - x_min));
+            
+                if verbosity > 1
+                    fprintf("Performing fit...\n");
                 end
                 
-                %Best weighted rsq...
+                if strcmp(breakpick_strategy, 'weighted_avg')
+                    j = 1;
+                    for i = scanmin:scanmax
+                        linfit_test = Seglr2.genEmptySegfitStruct();
+                        x_knot = data(i,1);
+                        
+                        x0_str = num2str(x_knot);
+                        ftobj = fittype(['((((x .* (Y0 - b1)) / ' x0_str ') + b1) .* (x <= ' x0_str ')) + ((((x .* (Y0 - b2)) / ' x0_str ') + b2) .* (x > ' x0_str '))']);
+                        cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[y0_st,b1_st,b2_st],'Lower',[y0_min,b1_min,b2_min],'Upper',[y0_max,b1_max,b2_max]);
+
+                        fits(j) = Seglr2.internal_savetofit(data, linfit_test, x_knot, cfobj.Y0, cfobj.b1, cfobj.b2);
+                        j = j+1;
+                    end
+                else
+                    %Can do once and don't need to save...
+                    ftobj = fittype('((((x .* (Y0 - b1)) / X0) + b1) .* (x <= X0)) + ((((x .* (Y0 - b2)) / X0) + b2) .* (x > X0))');
+                    cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[x0_st,y0_st,b1_st,b2_st],'Lower',[x_min,y0_min,b1_min,b2_min],'Upper',[x_max,y0_max,b1_max,b2_max]);
+            
+                    if verbosity > 1
+                        fprintf("Saving fit parameters...\n");
+                    end
+                
+                    linfit = Seglr2.internal_savetofit(data, linfit, cfobj.X0, cfobj.Y0, cfobj.b1, cfobj.b2);
+                end
+            end
+            
+            if strcmp(breakpick_strategy, 'weighted_avg')
                 best_val = -Inf;
                 best_idx = 0;
-                for i = 1:alloc
-                    thisfit = fits(1,i);
+                for j = 1:xbp_try
+                    thisfit = fits(j);
                     if thisfit.rsqwavg > best_val
                         best_val = thisfit.rsqwavg;
-                        best_idx = i;
+                        best_idx = j;
                     end
                 end
                 
                 if best_idx > 0
-                    linfit = fits(1,best_idx);
+                    linfit = fits(best_idx);
                 end
             else
-                %Let the fit function decide X0
-                %(X0,Y0,b1,b2,x)
-                ftobj = fittype('((((x .* (Y0 - b1)) / X0) + b1) .* (x <= X0)) + ((((x .* (Y0 - b2)) / X0) + b2) .* (x > X0))');
-                cfobj = fit(data(:,1),data(:,2),ftobj,'StartPoint',[x0_st,y0_st,b1_st,b2_st],'Lower',[scanmin,y0_min,b1_min,b2_min],'Upper',[scanmax,y0_max,b1_max,b2_max]);
-            
-                if verbosity > 1
-                    fprintf("Saving fit parameters...\n");
-                end
+                if ~strcmp(fit_strategy, 'default')
+                    best_val = -Inf;
+                    best_idx = 0;
+                    for j = 1:xbp_try
+                        thisfit = fits(j);
+                        if thisfit.segrsq > best_val
+                        	best_val = thisfit.segrsq;
+                            best_idx = j;
+                        end
+                    end
                 
-                linfit = Seglr2.internal_savetofit(data, cfobj.X0, cfobj.Y0, cfobj.b1, cfobj.b2, linfit);
+                    if best_idx > 0
+                        linfit = fits(best_idx);
+                    end
+                end
             end
             
-            %For record keeping...
-            linfit.input_x0 = Seglr2.genEmptyFitParamStruct();
-            linfit.input_x0.start = x0_st;
-            linfit.input_x0.min = scanmin;
-            linfit.input_x0.max = scanmax;
+            if strcmp(fit_strategy, 'default')
+                %For record keeping...
+                linfit.input_x0 = Seglr2.genEmptyFitParamStruct();
+                linfit.input_x0.start = x0_st;
+                linfit.input_x0.min = x_min;
+                linfit.input_x0.max = x_max;
             
-            linfit.input_y0 = Seglr2.genEmptyFitParamStruct();
-            linfit.input_y0.start = y0_st;
-            linfit.input_y0.min = y0_min;
-            linfit.input_y0.max = y0_max;
+                linfit.input_y0 = Seglr2.genEmptyFitParamStruct();
+                linfit.input_y0.start = y0_st;
+                linfit.input_y0.min = y0_min;
+                linfit.input_y0.max = y0_max;
             
-            linfit.input_bLeft = Seglr2.genEmptyFitParamStruct();
-            linfit.input_bLeft.start = b1_st;
-            linfit.input_bLeft.min = b1_min;
-            linfit.input_bLeft.max = b1_max;
+                linfit.input_bLeft = Seglr2.genEmptyFitParamStruct();
+                linfit.input_bLeft.start = b1_st;
+                linfit.input_bLeft.min = b1_min;
+                linfit.input_bLeft.max = b1_max;
             
-            linfit.input_bRight = Seglr2.genEmptyFitParamStruct();
-            linfit.input_bRight.start = b2_st;
-            linfit.input_bRight.min = b2_min;
-            linfit.input_bRight.max = b2_max;
+                linfit.input_bRight = Seglr2.genEmptyFitParamStruct();
+                linfit.input_bRight.start = b2_st;
+                linfit.input_bRight.min = b2_min;
+                linfit.input_bRight.max = b2_max;
+            end 
+            
+            %Find rcurve_intr
+            linfit.rcurve_intr_x = Seglr2.findDataRightIntercept(data, linfit.right, linfit.break_x);
             
         end
         
@@ -488,6 +712,42 @@ classdef Seglr2
             dsum = sum(dvec,1,'omitnan');
             
             rsq = 1.0 - (nsum./dsum);
+        end
+        
+        function x = findDataRightIntercept(data, line_right, knot_x)
+            min_x = round(knot_x);
+            mindex = Seglr2.getXIndex(data, min_x);
+            data_points = size(data,1);
+            
+            relpos = 0; %0 unset, Pos = data above line, Neg = data below line
+            
+            x = -1;
+            for i = mindex:data_points
+                data_x = data(i,1);
+                data_y = data(i,2);
+                proj_y = (data_x * line_right.slope) + line_right.yintr;
+                diff = data_y - proj_y;
+                if relpos == 0
+                    if diff < 0
+                        x = data_x;
+                        return;
+                    end
+                    relpos = diff;
+                elseif relpos > 0
+                    if diff < 0
+                        x = data_x;
+                        return;
+                    end
+                    relpos = diff;
+                elseif relpos < 0
+                    if diff > 0
+                        x = data_x;
+                        return;
+                    end
+                    relpos = diff;
+                end
+            end
+            
         end
         
         function fig_handle = renderFit(data, linfit, show_scan_ranges, figno)

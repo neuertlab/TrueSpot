@@ -7,11 +7,11 @@
 
 %%
 
-%ImgDir = 'D:\usr\bghos\labdat\imgproc'; %chromat
+ImgDir = 'D:\usr\bghos\labdat\imgproc'; %chromat
 %ImgDir = 'C:\Users\Blythe\labdata\imgproc'; %aelec
-ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
+%ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 
-%save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
 %nucl_seg_path = [ImgDir '\data\cell_seg\mESC_4d\nuclei_20180202_4d_mESC_Tsix-AF594_img_1.mat'];
 
 %save_stem_rna = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist'];
@@ -104,13 +104,13 @@ spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
 spotsrun.out_stem = save_stem_rna;
 spotsrun = spotsrun.saveMe();
 
-selector = RNA_Threshold_SpotSelector;
-selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
-selector.z_min = spotsrun.ztrim+1;
-selector.z_max = spotsrun.idims_sample.z - spotsrun.ztrim;
+% selector = RNA_Threshold_SpotSelector;
+% selector = selector.initializeNew(save_stem_rna, spotsrun.intensity_threshold - spotsrun.t_min + 1);
+% selector.z_min = spotsrun.ztrim+1;
+% selector.z_max = spotsrun.idims_sample.z - spotsrun.ztrim;
 
 %selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna);
-%selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna, true);
+selector = RNA_Threshold_SpotSelector.openSelector(save_stem_rna, true);
 
 %selector = selector.launchGUI(); %Select f+/f- spots from auto detect results
 selector = selector.launchRefSelectGUI(); %Agnostic selection

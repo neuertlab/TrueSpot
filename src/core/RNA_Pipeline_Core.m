@@ -190,7 +190,7 @@ spotsrun.saveMe();
 %Get image dimensions (for ztrim)
 idims = spotsrun.idims_sample;
 if isempty(idims)
-    [spotsrun,~] = spotsrun.loadSampleTif(verbosity);
+    [spotsrun,~] = spotsrun.loadSampleTif(tif_v);
     idims = spotsrun.idims_sample;
 end
 spotsrun = spotsrun.updateZTrimParams();

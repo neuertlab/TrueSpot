@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.5.0
-%Updated September 1, 2022
+%Version 1.6.0
+%Updated September 9, 2022
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -21,6 +21,9 @@
 %           truthset creation)
 %   1.5.0 | 22.09.01
 %       Added some functions for quickly handling fscores
+%   1.6.0 | 22.09.09
+%       Added ability to change color of crosshair
+%       Debugging some z masking and max proj rendering issues
 
 
 %%
@@ -87,6 +90,7 @@ classdef RNA_Threshold_SpotSelector
         slice_drawn; %I think this is a pseudo-boolean for keeping track of whether the specified slice has been drawn yet
         current_slice; %Current z-slice in view (either for orig image or 3D view) 
         max_slice; %Max z-slice or total number of z slices
+        crosshair_color;
         
         ztrim; %[DEPR] Number of z planes from top and bottom to mask out in spot counting and selection.
         z_min; %Index of lowest z plane to include
@@ -247,6 +251,7 @@ classdef RNA_Threshold_SpotSelector
             obj.f_scores_dirty = false;
             
             obj.toggle_change_zminmax = false;
+            obj.crosshair_color = [0.000, 0.000, 0.000];
         end
         
         %%
@@ -373,9 +378,12 @@ classdef RNA_Threshold_SpotSelector
             %Version 9+
             flag_fscores_dirty = obj.f_scores_dirty;
             
+            %Version 10+
+            crossclr = obj.crosshair_color;
+            
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
-            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable','refonly','zmin','zmax','flag_fscores_dirty');
+            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable','refonly','zmin','zmax','flag_fscores_dirty','crossclr');
             save([save_path '_ptbl'], 'pos_tbl');
             save([save_path '_ntbl'], 'neg_tbl');
             save([save_path '_refset'], 'ref_coord_tbl'); %Ver 7+
@@ -956,8 +964,11 @@ classdef RNA_Threshold_SpotSelector
                     end
                 end
             else
+                %Okay, let's actually re-render a max proj to eliminate
+                %hidden z slices. Since it's been friggin confusing.
                 img1 = obj.img_structs(1);
-                imshow(immultiply(img1.image,immul_mask),[img1.Lmin img1.Lmax]);
+                max_proj = max(obj.loaded_ch(:,:,obj.z_min:obj.z_max),[],3);
+                imshow(immultiply(max_proj,immul_mask),[img1.Lmin img1.Lmax]);
                 ref_coords_z = filtered_coords;
             end
             hold on;
@@ -965,7 +976,7 @@ classdef RNA_Threshold_SpotSelector
             if ~isempty(ref_coords_z)
                 plot(ref_coords_z(:,1), ref_coords_z(:,2),'or','markersize',10); 
             end
-            if obj.mode_3d
+            if obj.mode_3d & obj.toggle_singleSlice
                 title(['Spot count: ' num2str(p_count) ' | z = ' num2str(obj.current_slice)]);
             else
                 title(['Spot count: ' num2str(p_count)]);
@@ -985,7 +996,7 @@ classdef RNA_Threshold_SpotSelector
         %%
         function obj = onReadyKey(obj)
 
-            [x,y,btn] = ginput(1);
+            [x,y,btn] = ginput_color(1, obj.crosshair_color);
             %btn
             
             if btn == 1 %Mouse click (set/unset f-pos)
@@ -995,7 +1006,7 @@ classdef RNA_Threshold_SpotSelector
             elseif  btn == 3 %Right click (set/unset f-neg)
                 obj = obj.whileMouseListening(x,y,btn);
                 obj.f_scores_dirty = true;
-            elseif btn == 120 %'x' - exit
+            elseif btn == 'x' %120 'x' - exit
                 close(obj.fh_filter);
                 close(obj.fh_raw);
                 if obj.slice_drawn ~= 0
@@ -1005,14 +1016,14 @@ classdef RNA_Threshold_SpotSelector
                     close(obj.fh_3d);
                 end
                 obj.loop_breaker = 1;
-            elseif btn == 115 %'s' - save
+            elseif btn == 's' %115 's' - save
                 obj = obj.saveMe();
-            elseif btn == 99 %'c' - clear (this threshold)
+            elseif btn == 'c' %99 'c' - clear (this threshold)
                 obj = obj.clearAtThreshold(obj.threshold_idx);
                 obj = obj.drawImages();
                 obj.threshold_table(obj.threshold_idx, 2) = 1;
                 obj.f_scores_dirty = true;
-            elseif btn == 101 %'e' - clear (all but this threshold)
+            elseif btn == 'e' %'e' - clear (all but this threshold)
                 fprintf("Clearing all but current threshold...\n");
                 t_count = size(obj.threshold_table,1);
                 for i = 1:t_count
@@ -1022,7 +1033,7 @@ classdef RNA_Threshold_SpotSelector
                 end
                 obj.f_scores_dirty = true;
                 fprintf("Done!\n");
-            elseif btn == 97 %'a' - auto-reset (this threshold)
+            elseif btn == 'a' %'a' - auto-reset (this threshold)
                 obj = obj.clearAtThreshold(obj.threshold_idx);
                 ref_th_idx = RNA_Threshold_SpotSelector.findAReferenceIndex(obj.threshold_table, obj.threshold_idx);
                 if ref_th_idx
@@ -1033,18 +1044,14 @@ classdef RNA_Threshold_SpotSelector
                 obj = obj.drawImages();
                 obj.threshold_table(obj.threshold_idx, 2) = 1;
                 obj.f_scores_dirty = true;
-            elseif btn == 114 %'r' - ref
+            elseif btn == 'r' %'r' - ref
                 obj = obj.checkAgainstRef();
                 obj = obj.drawImages();
                 obj.threshold_table(obj.threshold_idx, 2) = 1;
                 obj.f_scores_dirty = true;
-            elseif btn == 112 %'p' - print counts
+            elseif btn == 'p' %'p' - print counts
                 obj = obj.printCounts();
-            %elseif btn == 111 %'o' - open original image
-            %    obj = obj.loadSourceImageChannel();
-            %    obj = obj.drawImages(); %This does nothing if no path
-            %    set.\
-            elseif btn == 80 %'P' - print counts+
+            elseif btn == 'P' %'P' - print counts+
                 [obj, ctmask] = obj.genCountMask();
                 [obj, tpos, fpos, fneg, maskedout] = obj.takeCounts(ctmask);
                 tpos
@@ -1058,7 +1065,7 @@ classdef RNA_Threshold_SpotSelector
                     y2 = obj.selmcoords(4,1);
                     fprintf("Mask: (%d,%d)(%d,%d)", x1, y1, x2, y2);
                 end
-            elseif btn == 94 %'^' - Increase Z trim
+            elseif btn == '^' %'^' - Increase Z trim
                 if obj.toggle_change_zminmax
                     if obj.z_max >= obj.max_slice
                         obj.z_max = obj.max_slice;
@@ -1072,9 +1079,10 @@ classdef RNA_Threshold_SpotSelector
                         obj.z_min = obj.z_min + 1;
                     end
                 end
+                obj.f_scores_dirty = true;
                 fprintf("Z Range Updated: %d - %d\n", obj.z_min, obj.z_max);
                 obj = obj.drawImages();
-            elseif btn == 118 %'v' - Decrease Z trim
+            elseif btn == 'v' %'v' - Decrease Z trim
                 if obj.toggle_change_zminmax
                     if obj.z_max <= obj.z_min
                         obj.z_max = obj.z_min;
@@ -1088,48 +1096,49 @@ classdef RNA_Threshold_SpotSelector
                         obj.z_min = obj.z_min - 1;
                     end
                 end
+                obj.f_scores_dirty = true;
                 fprintf("Z Range Updated: %d - %d\n", obj.z_min, obj.z_max);
                 obj = obj.drawImages();
-            elseif btn == 90 %'Z' - Toggle z trim control min/max
+            elseif btn == 'Z' %'Z' - Toggle z trim control min/max
                 obj.toggle_change_zminmax = ~obj.toggle_change_zminmax;
-            elseif btn == 49 %'1' - Remove sample mask
+            elseif btn == '1' %'1' - Remove sample mask
                 obj.selmcoords = [];
+                obj.f_scores_dirty = true;
                 obj = obj.drawImages();
-            elseif btn == 52 %'4' - Apply 1/4 sample mask at clicked point
+            elseif btn == '4' %'4' - Apply 1/4 sample mask at clicked point
                 obj = obj.whileMouseListening_selectMask(2);
+                obj.f_scores_dirty = true;
                 obj = obj.drawImages();
-            elseif btn == 54 %'6' - Apply 1/6 sample mask at clicked point
+            elseif btn == '6' %'6' - Apply 1/6 sample mask at clicked point
                 obj = obj.whileMouseListening_selectMask(2.45);
+                obj.f_scores_dirty = true;
                 obj = obj.drawImages();
-            elseif btn == 56 %'8' - Apply 1/8 sample mask at clicked point
+            elseif btn == '8' %'8' - Apply 1/8 sample mask at clicked point
                 obj = obj.whileMouseListening_selectMask(2.83);
+                obj.f_scores_dirty = true;
                 obj = obj.drawImages();
-            elseif btn == 106 %'j' - toggle single plane/max proj view
+            elseif btn == 'j' %'j' - toggle single plane/max proj view
                 obj.toggle_singleSlice = ~obj.toggle_singleSlice;
                 obj.toggle_allz = false;
                 obj = obj.drawImages();
-            elseif btn == 122 %'z' - toggle all-z selection
+            elseif btn == 'z' %'z' - toggle all-z selection
                 obj.toggle_allz = ~obj.toggle_allz;
                 obj = obj.drawImages();
-            elseif btn == 35 %'#' - toggle spot counts 2D/3D? (I think, I'm not sure what I meant :P)
+            elseif btn == '#' %'#' - toggle spot counts 2D/3D? (I think, I'm not sure what I meant :P)
                 obj.toggle_3dcount = ~obj.toggle_3dcount;
                 obj = obj.drawImages();
-            elseif btn == 37 %'%' - toggle z color scale (nearest 5 planes/all planes)
+            elseif btn == '%' %'%' - toggle z color scale (nearest 5 planes/all planes)
                 obj.toggle_clr_local = ~obj.toggle_clr_local;
                 obj = obj.drawImages();
-            elseif btn == 67 %'C' - toggle contrast scale
+            elseif btn == 'C' %'C' - toggle contrast scale
                 obj.toggle_cscale_max = ~obj.toggle_cscale_max;
                 obj = obj.drawImages();
-            elseif btn == 43 %'+' - Up one slice
+            elseif btn == '+' %'+' - Up one slice
                 if ~isempty(obj.loaded_ch)
                     Z = size(obj.loaded_ch, 3);
                     if (obj.current_slice < Z)
                         obj.current_slice = obj.current_slice + 1;
                         obj = obj.drawImages();
-                        %th_idx = obj.threshold_idx;
-                        %[obj, t_pos, f_pos, f_neg, e_pos] = obj.splitCoordTables(th_idx);
-                        %obj = obj.drawOnlySlice(f_pos, e_pos, f_neg, t_pos);
-                        %obj.fh_filter;
                     else
                         fprintf("Already at top Z slice!\n");
                     end
@@ -1147,7 +1156,7 @@ classdef RNA_Threshold_SpotSelector
                         fprintf("Source image required for 2D mode!\n");
                     end
                 end
-            elseif btn == 45 %'-' - Down one slice
+            elseif btn == '-' %'-' - Down one slice
                 if ~isempty(obj.loaded_ch)
                     if (obj.current_slice > 1)
                         obj.current_slice = obj.current_slice - 1;
@@ -1172,7 +1181,7 @@ classdef RNA_Threshold_SpotSelector
                         fprintf("Source image required for 2D mode!\n");
                     end
                 end
-            elseif btn == 61 %'=' - Up 10 slices
+            elseif btn == '=' %'=' - Up 10 slices
                 if ~isempty(obj.loaded_ch)
                     Z = size(obj.loaded_ch, 3);
                     if (obj.current_slice < Z)
@@ -1199,7 +1208,7 @@ classdef RNA_Threshold_SpotSelector
                         fprintf("Source image required for 2D mode!\n");
                     end
                 end
-            elseif btn == 95 %'_' - Down ten slices
+            elseif btn == '_' %'_' - Down ten slices
                 if ~isempty(obj.loaded_ch)
                     if (obj.current_slice > 1)
                         obj.current_slice = max(obj.current_slice - 10, 1);
@@ -1224,27 +1233,27 @@ classdef RNA_Threshold_SpotSelector
                         fprintf("Source image required for 2D mode!\n");
                     end
                 end
-            elseif btn == 62 %'>' - th_idx + 1
+            elseif btn == '>' %'>' - th_idx + 1
                 th_max = size(obj.threshold_table, 1);
                 new_idx = obj.threshold_idx + 1;
                 if new_idx > th_max
                     new_idx = th_max;
                 end
                 obj = obj.changeThreshold(new_idx);
-            elseif btn == 60 %'<' - th_idx - 1
+            elseif btn == '<' %'<' - th_idx - 1
                 new_idx = obj.threshold_idx - 1;
                 if new_idx < 0
                     new_idx = 0;
                 end
                 obj = obj.changeThreshold(new_idx);
-            elseif btn == 93 %']' - th_idx + 10
+            elseif btn == ']' %']' - th_idx + 10
                 th_max = size(obj.threshold_table, 1);
                 new_idx = obj.threshold_idx + 10;
                 if new_idx > th_max
                     new_idx = th_max;
                 end
                 obj = obj.changeThreshold(new_idx);
-            elseif btn == 91 %'[' - th_idx - 10
+            elseif btn == '[' %'[' - th_idx - 10
                 new_idx = obj.threshold_idx - 10;
                 if new_idx < 0
                     new_idx = 0;
@@ -1256,16 +1265,16 @@ classdef RNA_Threshold_SpotSelector
         
         %%
         function obj = onReadyKey_RefMode(obj)
-            [x,y,btn] = ginput(1);
+            [x,y,btn] = ginput_color(1, obj.crosshair_color);
             
             if btn == 1 %Mouse click (set/unset f-pos)
                 %Loop until any key pressed that isn't mouse
                 obj = obj.whileMouseListening_RefMode(x,y,btn);
-            elseif btn == 106 %'j' - toggle single plane/max proj view
+            elseif btn == 'j' %106 'j' - toggle single plane/max proj view
                 obj.toggle_singleSlice = ~obj.toggle_singleSlice;
                 obj.toggle_allz = ~obj.toggle_singleSlice;
                 obj = obj.drawRefImage();
-            elseif btn == 83 %'S' - snap
+            elseif btn == 'S' %83 'S' - snap
                 %Can only do if not refonly
                 if isempty(obj.positives)
                     fprintf("Can't snap if no auto set to snap to!\n");
@@ -1273,18 +1282,18 @@ classdef RNA_Threshold_SpotSelector
                     obj = obj.refSnapToAutoSpots();
                     obj = obj.drawRefImage();
                 end
-            elseif btn == 85 %'U' - toggle remove unsnapped
+            elseif btn == 'U' %'U' - toggle remove unsnapped
                 obj.toggle_del_unsnapped = ~obj.toggle_del_unsnapped;
                 obj = obj.drawRefImage();
-            elseif btn == 120 %'x' - exit
+            elseif btn == 'x' %'x' - exit
                 close(obj.fh_filter);
                 obj.loop_breaker = 1;
-            elseif btn == 115 %'s' - save
+            elseif btn == 's' %'s' - save
                 obj = obj.saveMe();
-            elseif btn == 99 %'c' - clear
+            elseif btn == 'c' %'c' - clear
                 obj.ref_coords = [];
                 obj = obj.drawRefImage();
-            elseif btn == 94 %'^' - Increase Z trim
+            elseif btn == '^' %'^' - Increase Z trim
                 if obj.toggle_change_zminmax
                     if obj.z_max >= obj.max_slice
                         obj.z_max = obj.max_slice;
@@ -1298,9 +1307,10 @@ classdef RNA_Threshold_SpotSelector
                         obj.z_min = obj.z_min + 1;
                     end
                 end
+                obj.f_scores_dirty = true;
                 fprintf("Z Range Updated: %d - %d\n", obj.z_min, obj.z_max);
                 obj = obj.drawRefImage();
-            elseif btn == 118 %'v' - Decrease Z trim
+            elseif btn == 'v' %'v' - Decrease Z trim
                 if obj.toggle_change_zminmax
                     if obj.z_max <= obj.z_min
                         obj.z_max = obj.z_min;
@@ -1314,26 +1324,31 @@ classdef RNA_Threshold_SpotSelector
                         obj.z_min = obj.z_min - 1;
                     end
                 end
+                obj.f_scores_dirty = true;
                 fprintf("Z Range Updated: %d - %d\n", obj.z_min, obj.z_max);
                 obj = obj.drawRefImage();
-            elseif btn == 90 %'Z' - Toggle z trim control min/max
+            elseif btn == 'Z' %'Z' - Toggle z trim control min/max
                 obj.toggle_change_zminmax = ~obj.toggle_change_zminmax;
-            elseif btn == 49 %'1' - Remove sample mask
+            elseif btn == '1' %'1' - Remove sample mask
                 obj.selmcoords = [];
+                obj.f_scores_dirty = true;
                 obj = obj.drawRefImage();
-            elseif btn == 52 %'4' - Apply 1/4 sample mask at clicked point
+            elseif btn == '4' %'4' - Apply 1/4 sample mask at clicked point
                 obj = obj.whileMouseListening_selectMask(2);
+                obj.f_scores_dirty = true;
                 obj = obj.drawRefImage();
-            elseif btn == 54 %'6' - Apply 1/6 sample mask at clicked point
+            elseif btn == '6' %'6' - Apply 1/6 sample mask at clicked point
                 obj = obj.whileMouseListening_selectMask(2.45);
+                obj.f_scores_dirty = true;
                 obj = obj.drawRefImage();
-            elseif btn == 56 %'8' - Apply 1/8 sample mask at clicked point
+            elseif btn == '8' %'8' - Apply 1/8 sample mask at clicked point
                 obj = obj.whileMouseListening_selectMask(2.83);
+                obj.f_scores_dirty = true;
                 obj = obj.drawRefImage();
-            elseif btn == 67 %'C' - toggle contrast scale
+            elseif btn == 'C' %'C' - toggle contrast scale
                 obj.toggle_cscale_max = ~obj.toggle_cscale_max;
                 obj = obj.drawRefImage();
-            elseif btn == 43 %'+' - Up one slice
+            elseif btn == '+' %'+' - Up one slice
                 if obj.toggle_singleSlice
                     Z = size(obj.loaded_ch, 3);
                     if (obj.current_slice < Z)
@@ -1343,7 +1358,7 @@ classdef RNA_Threshold_SpotSelector
                         fprintf("Already at top Z slice!\n");
                     end
                 end
-            elseif btn == 45 %'-' - Down one slice
+            elseif btn == '-' %'-' - Down one slice
                 if obj.toggle_singleSlice
                     if (obj.current_slice > 1)
                         obj.current_slice = obj.current_slice - 1;
@@ -1352,7 +1367,7 @@ classdef RNA_Threshold_SpotSelector
                         fprintf("Already at bottom Z slice!\n");
                     end
                 end
-            elseif btn == 61 %'=' - Up 10 slices
+            elseif btn == '=' %'=' - Up 10 slices
                 if obj.toggle_singleSlice
                     Z = size(obj.loaded_ch, 3);
                     if (obj.current_slice < Z)
@@ -1366,7 +1381,7 @@ classdef RNA_Threshold_SpotSelector
                         fprintf("Already at top Z slice!\n");
                     end
                 end
-            elseif btn == 95 %'_' - Down ten slices
+            elseif btn == '_' %'_' - Down ten slices
                 if obj.toggle_singleSlice
                     if (obj.current_slice > 1)
                         if obj.current_slice - 10 > 1
@@ -1420,7 +1435,7 @@ classdef RNA_Threshold_SpotSelector
             %Loop
             loopy = 1;
             while loopy == 1
-                [x,y,btn] = ginput(1);
+                [x,y,btn] = ginput_color(1, obj.crosshair_color);
                 %fprintf("Click detected at %f,%f\n", x, y);
                 if btn == 1
                     obj = obj.onLeftClick(x, y, rad);
@@ -1451,7 +1466,7 @@ classdef RNA_Threshold_SpotSelector
             %Loop
             loopy = 1;
             while loopy == 1
-                [x,y,btn] = ginput(1);
+                [x,y,btn] = ginput_color(1, obj.crosshair_color);
                 %fprintf("Click detected at %f,%f\n", x, y);
                 if btn == 1
                     obj = obj.onLeftClick_RefMode(x, y, rad);
@@ -1469,7 +1484,7 @@ classdef RNA_Threshold_SpotSelector
         %%
         function obj = whileMouseListening_selectMask(obj, denom)
 
-            [x1,y1,~] = ginput(1);
+            [x1,y1,~] = ginput_color(1, obj.crosshair_color);
             fullX = size(obj.img_structs(1).image, 2);
             fullY = size(obj.img_structs(1).image, 1);
             
@@ -2246,6 +2261,8 @@ classdef RNA_Threshold_SpotSelector
             selector.toggle_cscale_max = true;
             selector.toggle_change_zminmax = false;
             selector.f_scores_dirty = false;
+            
+            selector.crosshair_color = [0.000, 0.000, 0.000];
         end
         
         %%
@@ -2507,6 +2524,12 @@ classdef RNA_Threshold_SpotSelector
                 obj.f_scores_dirty = flag_fscores_dirty;
             else
                 obj.f_scores_dirty = true;
+            end
+            
+            if save_ver >= 10
+                obj.crosshair_color = crossclr;
+            else
+                obj.crosshair_color = [0.0, 0.0, 0.0];
             end
             
             obj.toggle_change_zminmax = false;

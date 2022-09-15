@@ -1,6 +1,7 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Image Channels ==========================
 
@@ -69,34 +70,52 @@ for j = 1:path_count
     fprintf("Now processing %s... (%d of %d)\n", mypath, j, path_count);
     if isfile(path_spotsrun)
         spotsrun = RNASpotsRun.loadFrom(path_spotsrun);
+        
+        spotsrun.out_stem = mypath;
+        if ~isempty(spotsrun.ctrl_stem)
+            spotsrun.ctrl_stem = [erase(mypath, 'all_3d') 'Control_all_3d'];
+        end
+        [spotsrun.out_dir, ~, ~] = fileparts(mypath);
+        
         if isempty(spotsrun.threshold_results)
             %Set parameters to default.
             param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
             spotsrun.ttune_madf_min = param_struct.mad_factor_min;
             spotsrun.ttune_madf_max = param_struct.mad_factor_max;
             spotsrun.ttune_spline_itr = param_struct.spline_iterations;
-            
-            %Option 1
-            spotsrun.ttune_winsz_min = 3;
-            spotsrun.ttune_winsz_max = 21;
-            spotsrun.ttune_winsz_incr = 3;
-            spotsrun.ttune_use_rawcurve = false;
-            spotsrun.ttune_use_diffcurve = false;
-            
-            %Option 2
-%             spotsrun.ttune_winsz_min = 5;
-%             spotsrun.ttune_winsz_max = 25;
-%             spotsrun.ttune_winsz_incr = 5;
-%             spotsrun.ttune_use_rawcurve = true;
-%             spotsrun.ttune_use_diffcurve = true;
         end
         
         %Option 1
         spotsrun.ttune_winsz_min = 3;
         spotsrun.ttune_winsz_max = 21;
         spotsrun.ttune_winsz_incr = 3;
+        
         spotsrun.ttune_use_rawcurve = false;
         spotsrun.ttune_use_diffcurve = false;
+
+        %Specific
+%         spotsrun.ttune_fit_strat = 3;
+%         spotsrun.ttune_reweight_fit = false;
+%         spotsrun.ttune_fit_to_log = true;
+%         spotsrun.ttune_thweight_med = 0.0;
+%         spotsrun.ttune_thweight_fit = 1.0;
+%         spotsrun.ttune_thweight_fisect = 0.0;
+
+        %Sensitive
+%         spotsrun.ttune_fit_strat = 0;
+%         spotsrun.ttune_reweight_fit = false;
+%         spotsrun.ttune_fit_to_log = true;
+%         spotsrun.ttune_thweight_med = 0.0;
+%         spotsrun.ttune_thweight_fit = 1.0;
+%         spotsrun.ttune_thweight_fisect = 0.0;
+
+        %Default
+        spotsrun.ttune_fit_strat = 0;
+        spotsrun.ttune_reweight_fit = false;
+        spotsrun.ttune_fit_to_log = true;
+        spotsrun.ttune_thweight_med = 0.0;
+        spotsrun.ttune_thweight_fit = 0.1;
+        spotsrun.ttune_thweight_fisect = 0.9;
             
         %Option 2
 %       spotsrun.ttune_winsz_min = 5;
@@ -104,8 +123,7 @@ for j = 1:path_count
 %       spotsrun.ttune_winsz_incr = 5;
 %       spotsrun.ttune_use_rawcurve = true;
 %       spotsrun.ttune_use_diffcurve = true;
-        
-        
+
         RNA_Pipeline_Core(spotsrun, 2, []);
         
         %Look for a selector and ref set to render fscore plot...

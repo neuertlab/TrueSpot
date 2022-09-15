@@ -71,7 +71,69 @@ classdef RNAThreshold
             if spline_itr < 0; spline_itr = 0; end
             param_struct.spline_iterations = spline_itr;
             
+            param_struct.reweight_fit = rnaspots_run.ttune_reweight_fit;
+            param_struct.fit_to_log = rnaspots_run.ttune_fit_to_log;
+            param_struct.fit_ri_weight = rnaspots_run.ttune_thweight_fisect;
+            param_struct.madth_weight = rnaspots_run.ttune_thweight_med;
+            param_struct.fit_weight = rnaspots_run.ttune_thweight_fit;
+            
+            if isempty(rnaspots_run.ttune_fit_strat) | (rnaspots_run.ttune_fit_strat == 0)
+                param_struct.fit_strat = 'default';
+            elseif rnaspots_run.ttune_fit_strat == 1
+                param_struct.fit_strat = 'slow';
+            elseif rnaspots_run.ttune_fit_strat == 2
+                param_struct.fit_strat = 'section_fit';
+            elseif rnaspots_run.ttune_fit_strat == 3
+                param_struct.fit_strat = 'three_piece';
+            else
+                param_struct.fit_strat = 'default';
+            end
+            
             threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
+        end
+        
+        function param_info = paramsFromSpotsrun(rnaspots_run)
+            param_info = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            
+            winmin = rnaspots_run.ttune_winsz_min;
+            if winmin < 2; winmin = 2; end
+            winincr = rnaspots_run.ttune_winsz_incr;
+            if winincr < 1; winincr = 1; end
+            winmax = rnaspots_run.ttune_winsz_max;
+            if winmax < winmin; winmax = winmin+winincr; end
+            param_info.window_sizes = [winmin:winincr:winmax];
+            
+            madmin = rnaspots_run.ttune_madf_min;
+            if isnan(madmin); madmin = -1.0; end
+            madmax = rnaspots_run.ttune_madf_max;
+            if isnan(madmax); madmax = madmin+0.5; end
+            param_info.mad_factor_min = madmin;
+            param_info.mad_factor_max = madmax;
+            
+            param_info.test_data = rnaspots_run.ttune_use_rawcurve;
+            param_info.test_diff = rnaspots_run.ttune_use_diffcurve;
+            
+            spline_itr = rnaspots_run.ttune_spline_itr;
+            if spline_itr < 0; spline_itr = 0; end
+            param_info.spline_iterations = spline_itr;
+            
+            if isempty(rnaspots_run.ttune_fit_strat) | (rnaspots_run.ttune_fit_strat == 0)
+                param_info.fit_strat = 'default';
+            elseif rnaspots_run.ttune_fit_strat == 1
+                param_info.fit_strat = 'slow';
+            elseif rnaspots_run.ttune_fit_strat == 2
+                param_info.fit_strat = 'section_fit';
+            elseif rnaspots_run.ttune_fit_strat == 3
+                param_info.fit_strat = 'three_piece';
+            else
+                param_info.fit_strat = 'default';
+            end
+            
+            param_info.reweight_fit = rnaspots_run.ttune_reweight_fit;
+            param_info.fit_to_log = rnaspots_run.ttune_fit_to_log;
+            param_info.fit_ri_weight = rnaspots_run.ttune_thweight_fisect;
+            param_info.madth_weight = rnaspots_run.ttune_thweight_med;
+            param_info.fit_weight = rnaspots_run.ttune_thweight_fit;
         end
         
         function score_list = getAllMedThresholds(threshold_results)
@@ -97,7 +159,7 @@ classdef RNAThreshold
             if isfield(threshold_results, 'test_winsc') & ~isempty(threshold_results.test_winsc)
                 wincount = size(threshold_results.test_winsc, 2); 
                 curve_count = curve_count + wincount;
-                if madf_count < 0
+                if madf_count < 1
                     cres = threshold_results.test_winsc(1,1);
                     if ~isempty(cres.med_suggested_threshold)
                         madf_count = size(cres.med_suggested_threshold,2);
@@ -113,7 +175,7 @@ classdef RNAThreshold
                 score_list(1,i:i+madf_count-1) = threshold_results.test_data.med_suggested_threshold(1,:);
                 i = i + madf_count;
             end
-            if ~isempty(thres.test_diff)
+            if ~isempty(threshold_results.test_diff)
                 score_list(1,i:i+madf_count-1) = threshold_results.test_diff.med_suggested_threshold(1,:);
                 i = i + madf_count;
             end
@@ -156,6 +218,40 @@ classdef RNAThreshold
                 for j = 1:wincount
                     cres = threshold_results.test_winsc(1,j);
                     score_list(1,i) = cres.spline_knot_x;
+                    i = i + 1;
+                end
+            end
+        end
+        
+        function curve_info_list = getAllCurveResultStructs(threshold_results)
+            curve_count = 0;
+            wincount = 0;
+            
+            if ~isempty(threshold_results.test_data)
+                curve_count = curve_count + 1; 
+            end
+            if ~isempty(threshold_results.test_diff)
+                curve_count = curve_count + 1; 
+            end
+            
+            if isfield(threshold_results, 'test_winsc') & ~isempty(threshold_results.test_winsc)
+                wincount = size(threshold_results.test_winsc, 2); 
+                curve_count = curve_count + wincount;
+            end
+            
+            curve_info_list(curve_count) = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
+            i = 1;
+            if ~isempty(threshold_results.test_data)
+                curve_info_list(i) = threshold_results.test_data;
+                i = i + 1;
+            end
+            if ~isempty(threshold_results.test_diff)
+                curve_info_list(i) = threshold_results.test_diff;
+                i = i + 1;
+            end
+            if wincount > 0
+                for j = 1:wincount
+                    curve_info_list(i) = threshold_results.test_winsc(1,j);
                     i = i + 1;
                 end
             end
@@ -297,6 +393,7 @@ classdef RNAThreshold
                 [~, spots_table, ~] = rnaspots_run.loadZTrimmedTables_Sample();
                 color_idx = usecolors(1,c_idx);
                 log_y = log10(spots_table(:,2));
+                log_y(log_y <= -5)= NaN;
                 [plotlist(1,c_idx), lines] = RNAThreshold.draw_thres_plot(ax, spots_table(:,1), log_y, thres.test_data,...
                     false, colors_base(color_idx,:), colors_dark(color_idx,:), colors_light(color_idx,:), true);
                 line_x(c_idx,:) = lines(1,:);
@@ -316,6 +413,7 @@ classdef RNAThreshold
                 
                 color_idx = usecolors(1,c_idx);
                 log_y = log10(diff_curve(:,1));
+                log_y(log_y <= -5)= NaN;
                 [plotlist(1,c_idx), lines] = RNAThreshold.draw_thres_plot(ax, spots_table(:,1), log_y, thres.test_diff,...
                     false, colors_base(color_idx,:), colors_dark(color_idx,:), colors_light(color_idx,:), true);
                 line_x(c_idx,:) = lines(1,:);
@@ -334,6 +432,7 @@ classdef RNAThreshold
 
                     color_idx = usecolors(1,c_idx);
                     log_y = log10(win_curve(:,1));
+                    log_y(log_y <= -5)= NaN;
                     [plotlist(1,c_idx), lines] = RNAThreshold.draw_thres_plot(ax, thres.x, log_y, thres.test_winsc(1,j),...
                     false, colors_base(color_idx,:), colors_dark(color_idx,:), colors_light(color_idx,:), true);
                     line_x(c_idx,:) = lines(1,:);
@@ -398,6 +497,7 @@ classdef RNAThreshold
                 %Plot curve
                 [~, spots_table, ~] = rnaspots_run.loadZTrimmedTables_Sample();
                 log_y = log10(spots_table(:,2));
+                log_y(log_y <= -5)= NaN;
                 RNAThreshold.draw_thres_plot(ax, spots_table(:,1), log_y, thres.test_data,...
                     true, color_base, color_dark, color_light, false);
                 
@@ -423,6 +523,7 @@ classdef RNAThreshold
                 diff_curve = abs(diff_curve);
                 
                 log_y = log10(diff_curve(:,1));
+                log_y(log_y <= -5)= NaN;
                 RNAThreshold.draw_thres_plot(ax, spots_table(:,1), log_y, thres.test_diff,...
                     true, color_base, color_dark, color_light, false);
                 
@@ -448,6 +549,7 @@ classdef RNAThreshold
                     win_curve = thres.window_scores(:,j);
 
                     log_y = log10(win_curve(:,1));
+                    log_y(log_y <= -5)= NaN;
                     RNAThreshold.draw_thres_plot(ax, thres.x, log_y, thres.test_winsc(1,j),...
                         true, color_base, color_dark, color_light, false);
 

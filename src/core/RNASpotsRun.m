@@ -52,6 +52,12 @@ classdef RNASpotsRun
         ttune_spline_itr;
         ttune_use_rawcurve;
         ttune_use_diffcurve;
+        ttune_fit_to_log;
+        ttune_fit_strat; %Enum: 0,1,2,3
+        ttune_reweight_fit;
+        ttune_thweight_med;
+        ttune_thweight_fit;
+        ttune_thweight_fisect;
         
         overwrite_output;
     end
@@ -303,13 +309,19 @@ classdef RNASpotsRun
             rnaspots_run.intensity_threshold = 0;
             rnaspots_run.ttune_madf_min = -1.0;
             rnaspots_run.ttune_madf_max = 1.0;
-            rnaspots_run.ttune_winsz_min = 5;
-            rnaspots_run.ttune_winsz_max = 25;
-            rnaspots_run.ttune_winsz_incr = 5;
+            rnaspots_run.ttune_winsz_min = 3;
+            rnaspots_run.ttune_winsz_max = 21;
+            rnaspots_run.ttune_winsz_incr = 3;
             rnaspots_run.ttune_spline_itr = 3;
             rnaspots_run.overwrite_output = false;
             rnaspots_run.ttune_use_rawcurve = false;
             rnaspots_run.ttune_use_diffcurve = false;
+            rnaspots_run.ttune_fit_to_log = true;
+            rnaspots_run.ttune_reweight_fit = false;
+            rnaspots_run.ttune_fit_strat = 0;
+            rnaspots_run.ttune_thweight_med = 0.0;
+            rnaspots_run.ttune_thweight_fit = 0.1;
+            rnaspots_run.ttune_thweight_fisect = 0.9;
         end
         
         function rnaspots_run = loadFrom(path)

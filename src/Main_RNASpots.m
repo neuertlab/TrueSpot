@@ -9,6 +9,7 @@ rna_spot_run = RNASpotsRun.initDefault();
 %Highest level set to true is what is used, regardless of other flags.
 arg_debug = true; %CONSTANT used for debugging arg parser.
 debug_lvl = 0;
+senspe_set = false;
 
 lastkey = [];
 for i = 1:nargin
@@ -38,6 +39,14 @@ for i = 1:nargin
             rna_spot_run.ttune_spline_itr = 0;
             if arg_debug; fprintf("Use Spline: Off\n"); end
             lastkey = [];
+        elseif strcmp(lastkey, "fitsegrsq")
+            rna_spot_run.ttune_reweight_fit = false;
+            if arg_debug; fprintf("Use weighted segmented fit: Off\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "fitwavg")
+            rna_spot_run.ttune_reweight_fit = true;
+            if arg_debug; fprintf("Use weighted segmented fit: On\n"); end
+            lastkey = [];
         elseif strcmp(lastkey, "verbose")
             if debug_lvl < 1; debug_lvl = 1; end
             if arg_debug; fprintf("Verbose: On\n"); end
@@ -57,6 +66,39 @@ for i = 1:nargin
             if debug_lvl < 3; debug_lvl = 3; end
             if arg_debug; fprintf("Verbose Debug Mode: On\n"); end
             lastkey = [];
+        elseif strcmp(lastkey, "threepiece")
+            if arg_debug; fprintf("Three Piece Fit: On\n"); end
+            rna_spot_run.ttune_fit_strat = 3;
+            rna_spot_run.ttune_reweight_fit = false;
+            rna_spot_run.ttune_fit_to_log = true;
+            rna_spot_run.ttune_thweight_med = 0.0;
+            rna_spot_run.ttune_thweight_fit = 1.0;
+            rna_spot_run.ttune_thweight_fisect = 0.0;
+            lastkey = [];
+        elseif strcmp(lastkey, "sensitive")
+            if ~senspe_set
+                if arg_debug; fprintf("Tuning Preset: Sensitivity\n"); end
+                senspe_set = true;
+                rna_spot_run.ttune_fit_strat = 0;
+                rna_spot_run.ttune_reweight_fit = false;
+                rna_spot_run.ttune_fit_to_log = true;
+                rna_spot_run.ttune_thweight_med = 0.0;
+                rna_spot_run.ttune_thweight_fit = 1.0;
+                rna_spot_run.ttune_thweight_fisect = 0.0;
+                lastkey = [];
+            end
+        elseif strcmp(lastkey, "specific")
+            if ~senspe_set
+                if arg_debug; fprintf("Tuning Preset: Specificity\n"); end
+                senspe_set = true;
+                rna_spot_run.ttune_fit_strat = 3;
+                rna_spot_run.ttune_reweight_fit = false;
+                rna_spot_run.ttune_fit_to_log = true;
+                rna_spot_run.ttune_thweight_med = 0.0;
+                rna_spot_run.ttune_thweight_fit = 1.0;
+                rna_spot_run.ttune_thweight_fisect = 0.0;
+                lastkey = [];
+            end
         end
         
     else
@@ -132,6 +174,18 @@ for i = 1:nargin
                 rna_spot_run.ttune_spline_itr = round(Force2Num(argval));
                 if arg_debug; fprintf("Spline Iterations: %d\n", rna_spot_run.ttune_spline_itr); end
             end
+        elseif strcmp(lastkey, "thmw")
+            rna_spot_run.ttune_thweight_med = round(Force2Num(argval));
+            if arg_debug; fprintf("Med/MAD Thresholding Weight Set: %f\n", rna_spot_run.ttune_thweight_med); end
+        elseif strcmp(lastkey, "thfw")
+            rna_spot_run.ttune_thweight_fit = round(Force2Num(argval));
+            if arg_debug; fprintf("Fit X Thresholding Weight Set: %f\n", rna_spot_run.ttune_thweight_fit); end
+        elseif strcmp(lastkey, "thiw")
+            rna_spot_run.ttune_thweight_fisect = round(Force2Num(argval));
+            if arg_debug; fprintf("Fit Intersect Thresholding Weight Set: %f\n", rna_spot_run.ttune_thweight_fisect); end
+        elseif strcmp(lastkey, "fitlog")
+            rna_spot_run.ttune_fit_to_log = Force2Bool(argval);
+            if arg_debug; fprintf("Fit Piecewise to Log Plot: %d\n", rna_spot_run.ttune_fit_to_log); end
         elseif strcmp(lastkey, "probetype")
             rna_spot_run.type_probe = argval;
             if arg_debug; fprintf("Probe Set: %s\n", rna_spot_run.type_probe); end
@@ -151,6 +205,12 @@ for i = 1:nargin
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
     end
+end
+
+% ========================== Arg Check ==========================
+
+if rna_spot_run.ttune_fit_strat == 3
+    rna_spot_run.ttune_reweight_fit = false;
 end
 
 % ========================== Run ==========================
