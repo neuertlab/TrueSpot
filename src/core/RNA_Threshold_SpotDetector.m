@@ -1,8 +1,8 @@
 %Master functions for running the RNA thresholding spot detection
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler
-%Version 2.0.0
-%Updated March 24, 2022
+%Version 2.0.1
+%Updated October 17, 2022
 
 %Modified from ABs_Threshold3Dim
 
@@ -15,7 +15,9 @@
 %       uint16 image is used for detect.
 %       - Rearranged things within main detect for better memory efficiency
 %       - Removed deprecated masked bkg detect function
-%
+%   2.0.1 | 22.10.17
+%       Reduced border blackout length
+%       Fixed params for Gaussian
 
 %%
 
@@ -34,9 +36,12 @@ classdef RNA_Threshold_SpotDetector
         %   img_channel(double[Y][X][Z]) - Input image channel.
         %   save_stem (string) - Path stem for saving tables and
         %                        intermediate images.
-        %   dead_pix_detect (bool) - Whether to rerun the dead pixel detection procedure (if false, looks for file with dead pixel coords) 
+        %   dead_pix_detect (bool) - Whether to rerun the dead pixel detection procedure (if false, looks for file with dead pixel coords)
+        %   gaussian_rad (int) - Radius for Gaussian filter (optional, defaults to 7)
         %
-        function [IMG_filtered] = run_spot_detection_pre(img_channel, save_stem, dead_pix_detect)
+        function [IMG_filtered] = run_spot_detection_pre(img_channel, save_stem, dead_pix_detect, gaussian_rad)
+            if nargin < 4; gaussian_rad = 7; end
+            
             %Detect dead pixels...
             dead_pix_path = [save_stem '_deadpix.mat'];
             if (dead_pix_detect)
@@ -47,10 +52,9 @@ classdef RNA_Threshold_SpotDetector
             IMG3D = uint16(img_channel);
             IMG3D = RNA_Threshold_Common.cleanDeadPixels(IMG3D, dead_pix_path);
 
-            fs = 13;
-            IMG_filtered = RNA_Threshold_Common.applyGaussianFilter(IMG3D, fs);
+            IMG_filtered = RNA_Threshold_Common.applyGaussianFilter(IMG3D, gaussian_rad, 2);
             IMG_filtered = RNA_Threshold_Common.applyEdgeDetectFilter(IMG_filtered);
-            IMG_filtered = RNA_Threshold_Common.blackoutBorders(IMG_filtered, fs, 0);
+            IMG_filtered = RNA_Threshold_Common.blackoutBorders(IMG_filtered, gaussian_rad, 0);
             
             %Generate image structs for passing to visualization function
             %This has been moved before detect so that unfiltered image can

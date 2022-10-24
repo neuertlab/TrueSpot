@@ -7,11 +7,11 @@
 
 %%
 
-ImgDir = 'D:\usr\bghos\labdat\imgproc'; %chromat
+%ImgDir = 'D:\usr\bghos\labdat\imgproc'; %chromat
 %ImgDir = 'C:\Users\Blythe\labdata\imgproc'; %aelec
-%ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
+ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc'; %workstation
 
-save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
 %nucl_seg_path = [ImgDir '\data\cell_seg\mESC_4d\nuclei_20180202_4d_mESC_Tsix-AF594_img_1.mat'];
 
 %save_stem_rna = [ImgDir '\data\preprocess\feb2018\Xist_CY5\Xist'];
@@ -59,6 +59,7 @@ save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch2\Histone_D0_img6_ch2_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D0_I6\Ch4\Histone_D0_img6_ch4_all_3d'];
+%save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch2\Histone_D2_img3_ch2_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch3\Histone_D2_img3_ch3_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones\D2_I3\Ch4\Histone_D2_img3_ch4_all_3d'];
 
@@ -69,7 +70,7 @@ save_stem_rna = [ImgDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I2\Tsix-TMR\20200214_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_2_MMStack-Tsix-TMR_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I2\H3K4me2-AF488\20200214_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_2_MMStack-H3K4me2-AF488_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I4\Xist-CY5\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_4_MMStack-Xist-CY5_all_3d'];
-%save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I4\Tsix-TMR\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_4_MMStack-Tsix-TMR_all_3d'];
+save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I4\Tsix-TMR\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_4_MMStack-Tsix-TMR_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I4\H3K4me2-AF488\20200207_0d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_4_MMStack-H3K4me2-AF488_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I9A\Xist-CY5\20200207_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-Xist-CY5_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I9A\Tsix-TMR\20200207_0d_F1-2-1_H3K36me3-AF488-XistInt-CY5-Tsix5Int-TMR_img_9_MMStack-Tsix-TMR_all_3d'];
@@ -129,3 +130,8 @@ selector = selector.launchRefSelectGUI(); %Agnostic selection
 %Counts - 1/4 sampling
 
 %Counts - 1/8 sampling
+
+%%
+% Feb Histone Truthsetted. 2 per day, 1 for each histone mark.
+%D0I2 (Day 0, H3K4me2)
+

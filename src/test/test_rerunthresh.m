@@ -1,7 +1,7 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Image Channels ==========================
 
@@ -93,37 +93,16 @@ for j = 1:path_count
         spotsrun.ttune_use_rawcurve = false;
         spotsrun.ttune_use_diffcurve = false;
 
-        %Specific
-%         spotsrun.ttune_fit_strat = 3;
-%         spotsrun.ttune_reweight_fit = false;
-%         spotsrun.ttune_fit_to_log = true;
-%         spotsrun.ttune_thweight_med = 0.0;
-%         spotsrun.ttune_thweight_fit = 1.0;
-%         spotsrun.ttune_thweight_fisect = 0.0;
-
-        %Sensitive
-%         spotsrun.ttune_fit_strat = 0;
-%         spotsrun.ttune_reweight_fit = false;
-%         spotsrun.ttune_fit_to_log = true;
-%         spotsrun.ttune_thweight_med = 0.0;
-%         spotsrun.ttune_thweight_fit = 1.0;
-%         spotsrun.ttune_thweight_fisect = 0.0;
-
-        %Default
-        spotsrun.ttune_fit_strat = 0;
-        spotsrun.ttune_reweight_fit = false;
-        spotsrun.ttune_fit_to_log = true;
-        spotsrun.ttune_thweight_med = 0.0;
-        spotsrun.ttune_thweight_fit = 0.1;
-        spotsrun.ttune_thweight_fisect = 0.9;
+        %Specific 1
+        spotsrun.ttune_winsz_min = 6;
+    spotsrun.ttune_fit_strat = 0;
+    spotsrun.ttune_reweight_fit = false;
+    spotsrun.ttune_fit_to_log = true;
+    spotsrun.ttune_thweight_med = 0.5;
+    spotsrun.ttune_thweight_fit = 0.0;
+    spotsrun.ttune_thweight_fisect = 0.5;
+    spotsrun.ttune_std_factor = 1.0;
             
-        %Option 2
-%       spotsrun.ttune_winsz_min = 5;
-%       spotsrun.ttune_winsz_max = 25;
-%       spotsrun.ttune_winsz_incr = 5;
-%       spotsrun.ttune_use_rawcurve = true;
-%       spotsrun.ttune_use_diffcurve = true;
-
         RNA_Pipeline_Core(spotsrun, 2, []);
         
         %Look for a selector and ref set to render fscore plot...

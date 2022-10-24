@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.6.0
-%Updated September 9, 2022
+%Version 1.6.1
+%Updated September 28, 2022
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -24,6 +24,8 @@
 %   1.6.0 | 22.09.09
 %       Added ability to change color of crosshair
 %       Debugging some z masking and max proj rendering issues
+%   1.6.1 | 22.09.28
+%       Added timestamp to save file
 
 
 %%
@@ -106,6 +108,7 @@ classdef RNA_Threshold_SpotSelector
         ref_coords; %int[n][3] - x,y,z (Table of manually selected ref spots)
         f_scores; %double[t][4] (fscore[t][1], truepos[t][2], falsepos[t][3], falseneg[t][4] at each thresh value: recalculated whenever snap to ref coords is performed)
         f_scores_dirty; %Flag for when fscores need to be updated.
+        ref_last_modified; %Datetime when reference set was last modified
         
         fh_filter; %Figure handle for filtered image max z projection
         fh_raw; %Figure handle for max z proj of (contrast enhanced) raw image
@@ -252,6 +255,7 @@ classdef RNA_Threshold_SpotSelector
             
             obj.toggle_change_zminmax = false;
             obj.crosshair_color = [0.000, 0.000, 0.000];
+            obj.ref_last_modified = datetime;
         end
         
         %%
@@ -355,7 +359,7 @@ classdef RNA_Threshold_SpotSelector
             filimg_path = obj.imgdat_path;
             z_trim = obj.ztrim;
             mask_selection = obj.selmcoords;
-            save_ver = 9;
+            save_ver = 11;
             
             %Version 4+
             toggle_ss = obj.toggle_singleSlice;
@@ -380,13 +384,17 @@ classdef RNA_Threshold_SpotSelector
             
             %Version 10+
             crossclr = obj.crosshair_color;
+
+            %Version 11+
+            timestamp = datetime;
+            rtimestamp = obj.ref_last_modified;
             
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
-            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable','refonly','zmin','zmax','flag_fscores_dirty','crossclr');
+            save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable','refonly','zmin','zmax','flag_fscores_dirty','crossclr','timestamp');
             save([save_path '_ptbl'], 'pos_tbl');
             save([save_path '_ntbl'], 'neg_tbl');
-            save([save_path '_refset'], 'ref_coord_tbl'); %Ver 7+
+            save([save_path '_refset'], 'ref_coord_tbl', 'rtimestamp'); %Ver 7+
             fprintf("Save complete!\n");
         end
         
@@ -1270,9 +1278,11 @@ classdef RNA_Threshold_SpotSelector
             if btn == 1 %Mouse click (set/unset f-pos)
                 %Loop until any key pressed that isn't mouse
                 obj = obj.whileMouseListening_RefMode(x,y,btn);
+                obj.ref_last_modified = datetime;
             elseif btn == 'j' %106 'j' - toggle single plane/max proj view
                 obj.toggle_singleSlice = ~obj.toggle_singleSlice;
                 obj.toggle_allz = ~obj.toggle_singleSlice;
+                fprintf("Max proj mode: Single Slice Toggle: %d, All Z Toggle: %d\n", obj.toggle_singleSlice,obj.toggle_allz);
                 obj = obj.drawRefImage();
             elseif btn == 'S' %83 'S' - snap
                 %Can only do if not refonly
@@ -1280,6 +1290,7 @@ classdef RNA_Threshold_SpotSelector
                     fprintf("Can't snap if no auto set to snap to!\n");
                 else
                     obj = obj.refSnapToAutoSpots();
+                    obj.ref_last_modified = datetime;
                     obj = obj.drawRefImage();
                 end
             elseif btn == 'U' %'U' - toggle remove unsnapped
@@ -1292,6 +1303,7 @@ classdef RNA_Threshold_SpotSelector
                 obj = obj.saveMe();
             elseif btn == 'c' %'c' - clear
                 obj.ref_coords = [];
+                obj.ref_last_modified = datetime;
                 obj = obj.drawRefImage();
             elseif btn == '^' %'^' - Increase Z trim
                 if obj.toggle_change_zminmax
@@ -1957,7 +1969,8 @@ classdef RNA_Threshold_SpotSelector
         % threshold a nearby spot can be found.
         %
         function obj = refSnapToAutoSpots(obj)
-            %TODO If not in single slice mode, search all z...
+            %TODO If not in single slice mode, ignore z...
+            %Also make sure to ignore masks.
             if isempty(obj.ref_coords)
                 return;
             end
@@ -2028,6 +2041,7 @@ classdef RNA_Threshold_SpotSelector
                                 oidx = oidx+1;
                                 
                                 rtbl(rmatch, 4) = 1; %Flagged as matched
+                                fprintf("DEBUG (%d,%d,%d) snapped to (%d,%d,%d)\n", rtbl(rmatch, 1), rtbl(rmatch, 2), rtbl(rmatch, 3), x0, y0, z0);
                             end  
                         end %for i = 1:N
                     end %if ~isempty(mrows)
@@ -2459,18 +2473,30 @@ classdef RNA_Threshold_SpotSelector
             obj.imgdat_path = filimg_path;
             
             if updatepaths
-                obj.imgdat_path = [save_stem '_prefilteredIMG'];
+                obj.imgdat_path = [save_stem '_prefilteredIMG.mat'];
             end
             
-            load(obj.imgdat_path, 'img_filter');
-            obj.loaded_ch = double(img_filter);
+            if isfile(obj.imgdat_path)
+                load(obj.imgdat_path, 'img_filter');
+                obj.loaded_ch = double(img_filter);
+            else
+                fprintf("Warning: Image data could not be found. GUI will be non-functional.\n");
+                obj.loaded_ch = NaN(5,5,5);
+            end
             
             if save_ver >= 7
                 refsetpath = [save_path '_refset.mat'];
                 if isfile(refsetpath)
-                    load(refsetpath, 'ref_coord_tbl');
+                    if save_ver >= 11
+                        load(refsetpath, 'ref_coord_tbl', 'rtimestamp');
+                        obj.ref_last_modified = rtimestamp;
+                    else
+                        load(refsetpath, 'ref_coord_tbl');
+                        obj.ref_last_modified = datetime;
+                    end
                 else
                     ref_coord_tbl = [];
+                    obj.ref_last_modified = datetime;
                 end
             end
             obj.ref_coords = ref_coord_tbl;
@@ -2531,7 +2557,7 @@ classdef RNA_Threshold_SpotSelector
             else
                 obj.crosshair_color = [0.0, 0.0, 0.0];
             end
-            
+ 
             obj.toggle_change_zminmax = false;
             
             %obj.positives = pos_tbl(:,1);
@@ -2847,6 +2873,24 @@ classdef RNA_Threshold_SpotSelector
            
             fscores = selector.f_scores(:,1);
             clear selector;
+        end
+        
+        %%
+        function timestamp = getRefsetTimestamp(save_stem)
+            timestamp = [];
+            if ~RNA_Threshold_SpotSelector.selectorExists(save_stem); return; end
+            
+            save_path = [save_stem 'spotAnnoObj'];
+            load(save_path, 'save_ver');
+            
+            if save_ver >= 11
+                refsetpath = [save_path '_refset.mat'];
+                if isfile(refsetpath)
+                    load(refsetpath, 'rtimestamp');
+                    timestamp = rtimestamp;
+                end
+            end
+            
         end
         
     end

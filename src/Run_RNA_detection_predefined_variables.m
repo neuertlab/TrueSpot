@@ -5,79 +5,41 @@
 %% Also ajust the threshold range if needed.
 %% The choosen thresholds are save in a file and can be used later for batch processing of images.
 
-function Run_RNA_detection_predefined_variables(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,file_type,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,node_num,max_int_thres,max_int_spot_th,images1,im_prefixes,img_stacks)
+function Run_RNA_detection_predefined_variables(thA,ths,outfile_prefix_RNA,Yth,Ych,ManTh,Ywin,Yim,task_ids,file_type,exp_date,strain,osmo,genepair,file_end,exp_names,positions_touse,segment_mode,Seg_thres,fish_dir,outfile_prefix_seg,img_num,node_num)
 %% Input
-% RNA_thresholds = zeros(6,65);
-% counter6 = 1;                     %counter for RNA_thresholds
-% if not(Ywin)
-%     counter6 = (node_num)*sum(Ych(1:7))+1;
-% end
-ch = Ych(1);
-% chi = find(Ych == 1);
-% ch = size(chi,2);
-max_int_thres = 1;
-max_int_spot_th = 0;
-images1
-im_prefixes
-diary 'thresh text2'
-diary on
-for im_num = 1:size(images1,2) 
+RNA_thresholds = zeros(6,65);
+counter6 = 1;
+if not(Ywin)
+    counter6 = (node_num)*sum(Ych(1:7))+1;
+end
+chi = find(Ych == 1);
+ch = size(chi,2);
 
-%     try
-S = im_num;
-msgbox(im_prefixes{im_num});
-% for S = task_ids
-% for pairnum = pairnums
-     S 
-%     exp_name = [exp_date{S} '_' exp_names{S} '_' strain '_' genepair{pairnum} '_img'];
+for S = task_ids
+    S 
+    exp_name = [exp_date '_' exp_names{S} '_' strain '_' genepair '_img'];
     counter = 1;  
-%     if Ywin
-%         img_num = positions_touse{S}                                      %gives loop all images if doing on windows (not in parallel)
-%     end
-    %% When switching exp date in loop
-% if Ywin == 0;;
-%     fish_dir = strcat('/gpfs23/scratch/neuertg/BenK/',exp_date{S}); %[ B ]
-% else
-%     fish_dir = strcat('C:\Users\keslerbk\Desktop\Microscopy\',exp_date{S}); %[A]
-% end
-%%
-%     for counter=img_num
+    if Ywin
+        img_num = positions_touse{S}                                      %gives loop all images if doing on windows (not in parallel)
+    end
+    for counter=img_num
         counter
         h =sprintf('%01d',counter); 
         
         %% Load trans and dapi images
-% %         fileDAPI = [outfile_prefix_seg 'Lab_' exp_name num2str(counter) '.mat']
-%         fileDAPI = ['Lab_' im_prefixes{im_num} '.mat']
-%         load(fileDAPI,'cells','trans_plane','-mat');
+        fileDAPI = [outfile_prefix_seg 'Lab_' exp_name num2str(counter) '.mat']
+        load(fileDAPI,'cells','trans_plane','-mat');
 
         %% Load micromanger images
-        if true; %strcmp(file_type,'multiple');
+        if strcmp(file_type,'multiple');
     %    figure(1); clf; imshow(stack(1,7).data,[]);
-%             if Ywin
-%                 filename = [fish_dir '\' exp_name '_' num2str(counter) '\' exp_name '_' num2str(counter) file_end]
-%             else
-%                 filename = [fish_dir '/' exp_name '_' num2str(counter) '/' exp_name '_' num2str(counter) file_end]
-%             end
-%             [stack, img_read] = tiffread2(filename);
-images1{im_num}
-            [stack, img_read] = tiffread2(images1{im_num});
-            ImSt = img_read/ch;
-            im_size = size(stack(1,1).data);
-         if false;%Ych(3); %Ych(1) == 1;                                                     % CY7
-                ij = Ych(3);%ij = find(chi==1);
-                TRANSim = [ij:ch:img_read];
-                im_size = size(stack(1,TRANSim(1)).data);                        %BK 12/10/15
-                TRANS_ims = NaN(im_size(1),im_size(2),ImSt);                    %BK 12/10/15 resets the TRANS image so previous ones do not get incorporated
-                for i = 1:ImSt;
-                    TRANS_ims(:,:,i) = stack(1,TRANSim(i)).data;
-                end;
-                cells = max(TRANS_ims(:,:,img_stacks(1):img_stacks(2)),[],3);
-                trans_plane = NaN(im_size(1),im_size(2),ImSt);
+            if Ywin
+                filename = [fish_dir '\' exp_name '_' num2str(counter) '\' exp_name '_' num2str(counter) file_end]
             else
-                TRANS_ims = NaN;
-                cells = NaN;
-                trans_plane = NaN;
-            end;
+                filename = [fish_dir '/' exp_name '_' num2str(counter) '/' exp_name '_' num2str(counter) file_end]
+            end
+            [stack, img_read] = tiffread2(filename);
+            ImSt = img_read/ch;
 
 
         if false; %Ych(1) == 1;                                                     % CY7
@@ -104,49 +66,45 @@ images1{im_num}
                 AF700_ims = NaN;
             end;
 
-            if Ych(4);                                                     % CY5
-                ij = Ych(4) %ij = find(chi==3);
+            if Ych(3) == 1;                                                     % CY5
+                ij = find(chi==3);
                 CY5im = [ij:ch:img_read];
                 im_size = size(stack(1,CY5im(1)).data);                        %BK 12/10/15
                 CY5_ims = NaN(im_size(1),im_size(2),ImSt);                    %BK 12/10/15 resets the TRANS image so previous ones do not get incorporated
                 for i = 1:ImSt;
                     CY5_ims(:,:,i) = stack(1,CY5im(i)).data;
                 end;
-                %CY5_ims = uint16(CY5_ims);
             else
                 CY5_ims = NaN;
             end;
 
-%             if Ych(4) == 1;                                                     % AF594
-            if Ych(5)                                                     % AF594
-                ij = Ych(5);% find(chi==4);
+            if Ych(4) == 1;                                                     % AF594
+                ij = find(chi==4);
                 AF594im = [ij:ch:img_read];
                 im_size = size(stack(1,AF594im(1)).data);                        %BK 12/10/15
                 AF594_ims = NaN(im_size(1),im_size(2),ImSt);                    %BK 12/10/15 resets the TRANS image so previous ones do not get incorporated
                 for i = 1:ImSt;
                     AF594_ims(:,:,i) = stack(1,AF594im(i)).data;
                 end;
-                %AF594_ims = uint16(AF594_ims);
             else
                 AF594_ims = NaN;
             end;
 
 
-            if Ych(6);                                                     % TMR
-                ij = Ych(6);%ij = find(chi==5);
+            if Ych(5) == 1;                                                     % TMR
+                ij = find(chi==5);
                 TMRim = [ij:ch:img_read];
                 im_size = size(stack(1,TMRim(1)).data);                        %BK 12/10/15
                 TMR_ims = NaN(im_size(1),im_size(2),ImSt);                    %BK 12/10/15 resets the TRANS image so previous ones do not get incorporated
                 for i = 1:ImSt;
                     TMR_ims(:,:,i) = stack(1,TMRim(i)).data;
                 end;
-                %TMR_ims = uint16(TMR_ims);
             else
                 TMR_ims = NaN;
             end;
 
 
-            if false; %Ych(6) == 1;                                                     % YFP
+            if Ych(6) == 1;                                                     % YFP
                 ij = find(chi==6);
                 YFPim = [ij:ch:img_read];
                 im_size = size(stack(1,YFPim(1)).data);                        %BK 12/10/15
@@ -158,7 +116,7 @@ images1{im_num}
                 YFP_ims = NaN;
             end;
 
-            if false; %Ych(7) == 1;                                                     % GFP / AF488
+            if Ych(7) == 1;                                                     % GFP / AF488
                 ij = find(chi==7);
                 GFPim = [ij:ch:img_read];
                 im_size = size(stack(1,GFPim(1)).data);                        %BK 12/10/15
@@ -178,7 +136,7 @@ images1{im_num}
                 i = 1;
                 for i = 1:50;
                     h =sprintf('%03d',i-1); 
-                    fileN = [fish_dir exp_date{S} '\' exp_name num2str(counter) '\' filebase h '.tif'];
+                    fileN = [fish_dir exp_date '\' exp_name num2str(counter) '\' filebase h '.tif'];
                     if exist(fileN) == 2;
                         ims = tiffread2(fileN);
                         CY7_ims(:,:,i) = ims.data;
@@ -195,7 +153,7 @@ images1{im_num}
                 i = 1;
                 for i = 1:50;
                     h =sprintf('%03d',i-1); 
-                    fileN = [fish_dir exp_date{S} '\' exp_name num2str(counter) '\' filebase h '.tif'];
+                    fileN = [fish_dir exp_date '\' exp_name num2str(counter) '\' filebase h '.tif'];
                     if exist(fileN) == 2;
                         ims = tiffread2(fileN);
                         AF700_ims(:,:,i) = ims.data;
@@ -212,7 +170,7 @@ images1{im_num}
                 i = 1;
                 for i = 1:50;
                     h =sprintf('%03d',i-1); 
-                    fileN = [fish_dir exp_date{S} '\' exp_name num2str(counter) '\' filebase h '.tif'];
+                    fileN = [fish_dir exp_date '\' exp_name num2str(counter) '\' filebase h '.tif'];
                     if exist(fileN) == 2;
                         ims = tiffread2(fileN);
                         CY5_ims(:,:,i) = ims.data;
@@ -221,7 +179,7 @@ images1{im_num}
                     end;
                 end;
             else
-                CY5_ims = NaN
+                CY5_ims = NaN;
             end;
 
             if Ych(4) == 1;                                                     % AF594
@@ -229,7 +187,7 @@ images1{im_num}
                 i = 1;
                 for i = 1:50;
                     h =sprintf('%03d',i-1); 
-                    fileN = [fish_dir exp_date{S} '\' exp_name num2str(counter) '\' filebase h '.tif'];
+                    fileN = [fish_dir exp_date '\' exp_name num2str(counter) '\' filebase h '.tif'];
                     if exist(fileN) == 2;
                         ims = tiffread2(fileN);
                         AF594_ims(:,:,i) = ims.data;
@@ -246,7 +204,7 @@ images1{im_num}
                 i = 1;
                 for i = 1:50;
                     h =sprintf('%03d',i-1); 
-                    fileN = [fish_dir exp_date{S} '\' exp_name num2str(counter) '\' filebase h '.tif'];
+                    fileN = [fish_dir exp_date '\' exp_name num2str(counter) '\' filebase h '.tif'];
                     if exist(fileN) == 2;
                         ims = tiffread2(fileN);
                         TMR_ims(:,:,i) = ims.data;
@@ -263,7 +221,7 @@ images1{im_num}
                 i = 1;
                 for i = 1:50;
                     h =sprintf('%03d',i-1); 
-                    fileN = [fish_dir exp_date{S} '\' exp_name num2str(counter) '\' filebase h '.tif'];
+                    fileN = [fish_dir exp_date '\' exp_name num2str(counter) '\' filebase h '.tif'];
                     if exist(fileN) == 2;
                         ims = tiffread2(fileN);
                         YFP_ims(:,:,i) = ims.data;
@@ -281,7 +239,7 @@ images1{im_num}
                 i = 1;
                 for i = 1:50;
                     h =sprintf('%03d',i-1); 
-                    fileN = [fish_dir exp_date{S} '\' exp_name num2str(counter) '\' filebase h '.tif'];
+                    fileN = [fish_dir exp_date '\' exp_name num2str(counter) '\' filebase h '.tif'];
                     if exist(fileN) == 2;
                         ims = tiffread2(fileN);
                         GFP_ims(:,:,i) = ims.data;
@@ -335,10 +293,7 @@ images1{im_num}
 %         xlabel('Pixel Intensity');ylabel('Probability within a Cell');
 %         legend('scrambled probes CY5','no probes CY5','GPD1 CY5','scrambled probes AF594','no probes AF594','GPP2 AF594','scrambled probes TMR','no probes TMR','STL1 TMR')
        %%%%%%%%% 
-    im_size = size(stack(1,1).data);
-    whos
-    clear stack
-    [thCY7,thAF700,thCY5,thAF594,thTMR,thYFP,thGFP] = AB_FindThreshold_TMR_AF594_CY5_B(im_size,counter,cells,trans_plane,S,CY7_ims,AF700_ims,CY5_ims,AF594_ims,TMR_ims,YFP_ims,GFP_ims,thA,ths,Ych,max_int_thres,max_int_spot_th);
+    [thCY7,thAF700,thCY5,thAF594,thTMR,thYFP,thGFP,RNA_thresholds,counter6] = AB_FindThreshold_TMR_AF594_CY5_B_BK_auto(counter,cells,trans_plane,S,CY7_ims,AF700_ims,CY5_ims,AF594_ims,TMR_ims,YFP_ims,GFP_ims,thA,ths,Ych,RNA_thresholds,counter6,exp_name,outfile_prefix_RNA);
     % collect all the picked thresholds for CY7, AF700, CY5, AF594, TMR, YFP,GFP
     thCY7Man(1:3,S,counter) = thCY7;
     thAF700Man(1:3,S,counter) = thAF700;
@@ -347,31 +302,25 @@ images1{im_num}
     thTMRMan(1:3,S,counter) = thTMR; 
     thYFPMan(1:3,S,counter) = thYFP; 
     thGFPMan(1:3,S,counter) = thGFP; 
-    clear TMR_ims CY5_ims AF594_ims
-    whos
-%     files = char(strcat('mRNA_TH_',exp_name,num2str(counter),'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
-    files = char(strcat('mRNA_TH_',im_prefixes{im_num},'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
+    
+    files = char(strcat('mRNA_TH_',exp_name,num2str(counter),'.mat')); %strcat(exp_date,'_',ch,'_th',ths,'_p',ps,'_im',h)
     save([outfile_prefix_RNA char(files)],'thCY7Man','thAF700Man','thCY5Man','thAF594Man','thTMRMan','thYFPMan','thGFPMan'); % save the analyzed files
 %     ths(3) = thCY5;
 %     ths(1) = thTMR;
 %     ths(2) = thAF594;
 %     ths(3) = thCY5;
-%     end
-%     end;
+    end;
+filename = ['RNA_thresholds_' exp_date '_' osmo '_' strain '_' genepair '.mat']
+if not(Ywin) & exist([filename,'RNA_thresholds'])
+    temp_RNA_thresholds = RNA_thresholds(1:7,(node_num)*sum(Ych(1:7))+1:(node_num)*sum(Ych(1:7))); 
+    load([outfile_prefix_RNA filename],'RNA_thresholds');
+    RNA_thresholds(1:7,(node_num)*sum(Ych(1:7))+1:(node_num)*sum(Ych(1:7))) = temp_RNA_thresholds;
+    save([outfile_prefix_RNA filename],'RNA_thresholds');
+else
+    save([outfile_prefix_RNA filename],'RNA_thresholds')
 end
-diary off
-% filename = ['RNA_thresholds_' exp_date '_' osmo '_' strain '_' genepair '.mat']
-% if not(Ywin) & exist([filename,'RNA_thresholds'])
-%     temp_RNA_thresholds = RNA_thresholds(1:7,(node_num)*sum(Ych(1:7))+1:(node_num)*sum(Ych(1:7))); 
-%     load([outfile_prefix_RNA filename],'RNA_thresholds');
-%     RNA_thresholds(1:7,(node_num)*sum(Ych(1:7))+1:(node_num)*sum(Ych(1:7))) = temp_RNA_thresholds;
-%     save([outfile_prefix_RNA filename],'RNA_thresholds');
-% else
-%     save([outfile_prefix_RNA filename],'RNA_thresholds')
-% end
-
-
-%% Saves threshold values for each image and each sample separately
+end;
+%% Saves threshold valuse for each image and each sample separately
 % thTMRman, thAF594Man, thCY5Man     
             
             

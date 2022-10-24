@@ -9,6 +9,8 @@ classdef RNASpotsRun
         out_dir;
         cellseg_path;
         ctrl_path;
+
+        sample_matpath; %If using mat instead of tif
         
         bkg_path;
         bkg_filter_stem;
@@ -23,6 +25,8 @@ classdef RNASpotsRun
         
         idims_sample;
         idims_ctrl;
+        idims_voxel; %In nm
+        idims_expspot; %In nm
         
         type_probe; %ie. 'TMR', 'AF594' 
         type_species; %ie. Mus musculus, Saccharomyces cerevisiae
@@ -55,6 +59,7 @@ classdef RNASpotsRun
         ttune_fit_to_log;
         ttune_fit_strat; %Enum: 0,1,2,3
         ttune_reweight_fit;
+        ttune_std_factor;
         ttune_thweight_med;
         ttune_thweight_fit;
         ttune_thweight_fisect;
@@ -166,7 +171,7 @@ classdef RNASpotsRun
                     [X,Y,Z] = GetTifDims(obj.tif_path, obj.total_ch);
                     idims = struct('x', X, 'y', Y, 'z', Z); 
                 end
-                idims
+                %idims
                 obj.idims_sample = idims;
             end
             
@@ -191,7 +196,11 @@ classdef RNASpotsRun
         
         function [obj, tif] = loadSampleTif(obj, verbosity)
             if (nargin < 2); verbosity = 2; end
-            [tif, obj.idims_sample] = LoadTif(obj.tif_path, obj.total_ch, [obj.rna_ch, obj.light_ch], verbosity);
+            if obj.light_ch > 0
+                [tif, obj.idims_sample] = LoadTif(obj.tif_path, obj.total_ch, [obj.rna_ch, obj.light_ch], verbosity);
+            else
+                [tif, obj.idims_sample] = LoadTif(obj.tif_path, obj.total_ch, [obj.rna_ch], verbosity);
+            end
         end
         
         function [obj, ch_dat] = loadControlChannel(obj, verbosity)
@@ -286,12 +295,14 @@ classdef RNASpotsRun
             version = 1;
             save(tbl_path, 'version', 'zmin', 'zmax', 'spots_table', 'coord_table');
         end
+   
     end
     
     methods(Static)
         
         function rnaspots_run = initDefault()
             rnaspots_run = RNASpotsRun;
+            rnaspots_run.sample_matpath = [];
             rnaspots_run.rna_ch = 0;
             rnaspots_run.light_ch = 0;
             rnaspots_run.total_ch = 0;
@@ -320,8 +331,12 @@ classdef RNASpotsRun
             rnaspots_run.ttune_reweight_fit = false;
             rnaspots_run.ttune_fit_strat = 0;
             rnaspots_run.ttune_thweight_med = 0.0;
-            rnaspots_run.ttune_thweight_fit = 0.1;
-            rnaspots_run.ttune_thweight_fisect = 0.9;
+            rnaspots_run.ttune_thweight_fit = 0.2;
+            rnaspots_run.ttune_thweight_fisect = 0.8;
+            rnaspots_run.ttune_std_factor = 0.0;
+            
+            rnaspots_run.idims_voxel = struct('x', -1, 'y', -1, 'z', -1);
+            rnaspots_run.idims_expspot = struct('x', -1, 'y', -1, 'z', -1);
         end
         
         function rnaspots_run = loadFrom(path)

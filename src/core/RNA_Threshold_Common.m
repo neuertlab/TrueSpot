@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.3.1
-%Updated August 30, 2022
+%Version 2.3.3
+%Updated October 20, 2022
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -41,6 +41,12 @@
 %       Overhauled thresholding functions and interface
 %   2.3.1 | 22.08.30
 %       Updated linear piecewise function for thresholder
+%   2.3.2 | 22.10.17
+%       Updated filter funcs to take 2D arguments.
+%       Also fixed params on Gaussian filter funcs.
+%   2.3.3 | 22.10.20
+%       Fixed off-center Gaussian
+%       Added filter for borders
 
 %%
 %
@@ -50,67 +56,158 @@ classdef RNA_Threshold_Common
         %%-------------------------[Filtering]-----------------------------
         
         %%
+        function img_filtered = filterBorder(img_in, img_filtered, filter_mx)
+            Y = size(img_in, 1);
+            X = size(img_in, 2);
+            dim_y = size(filter_mx,1);
+            dim_x = size(filter_mx,2);
+            rad_y = round((dim_y - 1) / 2);
+            rad_x = round((dim_x - 1) / 2);
+            img_in = double(img_in);
+            
+            %Okay no, I need to vectorize it. It's friggin slow.
+            if ndims(img_in) == 3
+                Z = size(img_in, 3);
+                dim_z = size(filter_mx,3);
+                rad_z = round((dim_z - 1) / 2);
+                border_mask = RNAUtils.genBorderMask([Y X Z],[rad_y rad_x rad_z]);
+                
+                for z = 1:Z
+                    for y = 1:Y
+                        for x = 1:X
+                            if ~border_mask(y,x,z); continue; end
+                            [y_min, y_max, ytrim_lo, ytrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(y, Y, rad_y);
+                            [x_min, x_max, xtrim_lo, xtrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(x, X, rad_x);
+                            [z_min, z_max, ztrim_lo, ztrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(z, Z, rad_z);
+                        
+                            my_filter = filter_mx((ytrim_lo + 1):(dim_y - ytrim_hi),(xtrim_lo + 1):(dim_x - xtrim_hi),...
+                                (ztrim_lo + 1):(dim_z - ztrim_hi));
+                            my_data = img_in(y_min:y_max, x_min:x_max, z_min:z_max);
+                            %TODO Needs to be reweighted to account for
+                            %relative number of pixels used versus
+                            %normal...
+                            img_filtered(y,x,z) = round(sum(my_data .* my_filter, 'all'));
+                        end
+                    end
+                end
+            else
+                border_mask = RNAUtils.genBorderMask([Y X],[rad_y rad_x]);
+                for y = 1:Y
+                    for x = 1:X
+                        if ~border_mask(y,x); continue; end
+                        [y_min, y_max, ytrim_lo, ytrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(y, Y, rad_y);
+                        [x_min, x_max, xtrim_lo, xtrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(x, X, rad_x);
+                        
+                        my_filter = filter_mx((ytrim_lo + 1):(dim_y - ytrim_hi),(xtrim_lo + 1):(dim_x - xtrim_hi));
+                        my_data = img_in(y_min:y_max, x_min:x_max);
+                        img_filtered(y,x) = round(sum(my_data .* my_filter, 'all'));
+                    end
+                end
+            end
+            
+        end
+        
+        %%
         %Generate a Gaussian filter matrix
         %ARGS
-        %   fs (int) - ??
+        %   xy_rad (int) - Blur radius (mu1, mu2)
+        %   amt (num) - Strength/Amount (s1)
         %
         %RETURN
         %   gauss_filter 
         %
-        function gauss_filter = getGaussianFilter(fs)
+        function gauss_filter = getGaussianFilter(xy_rad, amt)
             %Set some variable values...
-            mu1 = 7;
-            mu2 = 7;
-            s1 = 2;
-    
-            [X1,Y1] = meshgrid(1:1:fs);
-            gauss_filter = 10 * exp(-((X1-mu1).^2)./(2*s1^2)-((Y1-mu2).^2)./(2*s1^2));
+            xy_dim = (xy_rad * 2) + 1;
+            [X1,Y1] = meshgrid(1:1:xy_dim);
+            
+            x_factor = (X1 - xy_rad - 1).^2;
+            y_factor = (Y1 - xy_rad - 1).^2;
+            
+            gauss_filter = 10 * exp(-((x_factor + y_factor) ./ (2 * amt^2)));
+            gauss_filter = gauss_filter./sum(gauss_filter(:));
+        end
+        
+        %%
+        function gauss_filter = get3DGaussianFilter(xy_rad, z_rad, amt)
+            %Set some variable values...
+            xy_dim = (xy_rad * 2) + 1;
+            z_dim = (z_rad * 2) + 1;
+            [X1,Y1,Z1] = meshgrid(1:xy_dim,1:xy_dim,1:z_dim);
+            
+            x_factor = (X1 - xy_rad - 1).^2;
+            y_factor = (Y1 - xy_rad - 1).^2;
+            z_factor = (Z1 - z_rad - 1).^2;
+            
+            gauss_filter = 10 * exp(-((x_factor + y_factor + z_factor) ./ (2 * amt^2)));
             gauss_filter = gauss_filter./sum(gauss_filter(:));
         end
 
         %%
         %Apply a gaussian filter to a 3D image matrix
         %ARGS
-        %   in_img (num[Y][X][Z]) - Input image
-        %   fs (int) - ??
+        %   in_img (num[Y][X]([Z])) - Input image
+        %   xy_rad (int) - Gaussian radius (mu)
+        %   gauss_amt (num) - Gaussian strength (s)
         %
         %RETURN
-        %   img_filtered (num[Y][X][Z]) - Filtered image
+        %   img_filtered (num[Y][X]([Z])) - Filtered image
         %
         %ASSUMPTIONS
-        %   -> The image matrix is 3D
+        %   -> The image matrix is 2D or 3D
         %
         %FLEXIBILITIES
         %   -> "num" can refer to any numerical type
         %
-        function img_filtered = applyGaussianFilter(in_img,fs)
+        function img_filtered = applyGaussianFilter(in_img, xy_rad, gauss_amt, z_rad)
+            
+            if nargin < 4
+                z_rad = 0;
+            end
+            
             %Get the filter matrix
-            filter_mx = RNA_Threshold_Common.getGaussianFilter(fs);
+            if (z_rad > 0) & (ndims(in_img) == 3)
+                filter_mx = RNA_Threshold_Common.get3DGaussianFilter(xy_rad, z_rad, gauss_amt);
+            else
+                filter_mx = RNA_Threshold_Common.getGaussianFilter(xy_rad, gauss_amt);
+            end
     
             %figure(10101);
             %imshow(filter_mx, []);
     
-            img_filtered = in_img;
-    
-            %Do slice by slice
-            Z = size(in_img,3);
-            for k=1:Z
-                f_slice = imfilter(in_img(:,:,k),filter_mx);
-                img_filtered(:,:,k) = f_slice;
+            if ndims(in_img) == 3
+                if z_rad > 0
+                    img_filtered = imfilter(in_img(:,:,:),filter_mx);
+                    %Clean border.
+                    %img_filtered = RNA_Threshold_Common.filterBorder(in_img, img_filtered, filter_mx);
+                else
+                    %Do slice by slice
+                    img_filtered = in_img;
+                    Z = size(in_img,3);
+                    for k=1:Z
+                        in_slice = in_img(:,:,k);
+                        f_slice = imfilter(in_slice,filter_mx);
+                        %f_slice = RNA_Threshold_Common.filterBorder(in_slice, f_slice, filter_mx);
+                        img_filtered(:,:,k) = f_slice;
+                    end
+                end
+            else
+                img_filtered = imfilter(in_img(:,:),filter_mx);
+                %Clean border.
+                %img_filtered = RNA_Threshold_Common.filterBorder(in_img, img_filtered, filter_mx);
             end
-
         end
 
         %%
         %Apply an edge detection filter to a 3D image matrix
         %ARGS
-        %   in_img (num[Y][X][Z]) - Input image
+        %   in_img (num[Y][X]([Z])) - Input image
         %
         %RETURN
-        %   img_filtered (num[Y][X][Z]) - Filtered image
+        %   img_filtered (num[Y][X]([Z])) - Filtered image
         %
         %ASSUMPTIONS
-        %   -> The image matrix is 3D
+        %   -> The image matrix is 2D or 3D
         %
         %FLEXIBILITIES
         %   -> "num" can refer to any numerical type
@@ -121,15 +218,18 @@ classdef RNA_Threshold_Common
                          -1 +8 -1;...
                          -1 -1 -1];
     
-            img_filtered = in_img;
+            if ndims(in_img) == 3
+                img_filtered = in_img;
     
-            %Do slice by slice
-            Z = size(in_img,3);
-            for k=1:Z
-                f_slice = imfilter(in_img(:,:,k),filter_mx);
-                img_filtered(:,:,k) = f_slice;
+                %Do slice by slice
+                Z = size(in_img,3);
+                for k=1:Z
+                    f_slice = imfilter(in_img(:,:,k),filter_mx);
+                    img_filtered(:,:,k) = f_slice;
+                end
+            else
+                img_filtered = imfilter(in_img(:,:),filter_mx);
             end
-    
         end
         
         %%
@@ -138,47 +238,54 @@ classdef RNA_Threshold_Common
         %%
         %Set the borders of each 2D frame in a 3D image to black
         %ARGS
-        %   in_img (uint16[Y][X][Z]) - Input image
+        %   in_img (uint16[Y][X]([Z])) - Input image
         %   border_width (int) - Number of pixels to trim (blackout) from each side
         %                       of the image
         %   trimZ(bool) - Whether or not to also trim in the Z direction (zeros-out
         %                   planes 1 to border and Z-border to Z)
         %
         %RETURN
-        %   img_filtered (uint16[Y][X][Z]) - Filtered image
+        %   img_filtered (uint16[Y][X]([Z])) - Filtered image
         %
         %ASSUMPTIONS
-        %   -> The image matrix is 3D
+        %   -> The image matrix is 2D or 3D
         %
         %FLEXIBILITIES
         %   -> "int" can refer to any integer type
         %
         function img_filtered = blackoutBorders(in_img,border_width,trimZ)
-    
-            img_filtered = in_img;
-    
+            
             if border_width > 0
                 %Do slice by slice
                 X = size(in_img,2);
                 Y = size(in_img,1);
-                Z = size(in_img,3);
+                
+                if ndims(in_img) == 3
+                    img_filtered = in_img;
+                    Z = size(in_img,3);
         
-                for k=1:Z
-                    if trimZ
-                        if (k <= border_width) || (k >= (Z - border_width))
-                            img_filtered(:,:,k) = zeros(Y,X);
-                            continue;
+                    for k=1:Z
+                        if trimZ
+                            if (k <= border_width) || (k >= (Z - border_width))
+                                img_filtered(:,:,k) = zeros(Y,X);
+                                continue;
+                            end
                         end
+                        slice = in_img(:,:,k);
+                        slice(1:border_width,:) = 0; %Top
+                        slice(:,1:border_width) = 0; %Left
+                        slice(Y-border_width+1:Y,:) = 0; %Bottom
+                        slice(:,X-border_width+1:X) = 0; %Right
+                        img_filtered(:,:,k) = slice;
                     end
-                    slice = in_img(:,:,k);
-                    slice(1:border_width,:) = 0; %Top
-                    slice(:,1:border_width) = 0; %Left
-                    slice(Y-border_width+1:Y,:) = 0; %Bottom
-                    slice(:,X-border_width+1:X) = 0; %Right
-                    img_filtered(:,:,k) = slice;
+                else
+                    img_filtered(:,:) = in_img;
+                    img_filtered(1:border_width,:) = 0; %Top
+                    img_filtered(:,1:border_width) = 0; %Left
+                    img_filtered(Y-border_width+1:Y,:) = 0; %Bottom
+                    img_filtered(:,X-border_width+1:X) = 0; %Right
                 end
             end
-    
         end
 
         %%
@@ -322,16 +429,6 @@ classdef RNA_Threshold_Common
     
             clean_img = in_img;
     
-            %exmat is a matrix containing indices of border coordinates
-            %Border pixels are excluded from cleaning
-            exmat = zeros(max(dim1,dim2),4);
-            sz = dim1 * dim2;
-            exmat(1:dim1,1) = 1:dim1; %Left
-            exmat(1:dim1,4) = (sz-dim1+1):sz; %Right
-            exmat(1:2,2:3) = 1;
-            exmat(3:dim1,2) = dim1*(2:(dim2-1)); %Bottom
-            exmat(3:dim1,3) = dim1*(1:(dim2-2))+1; %Top
-    
             %The notice messages are kept from previous code
             %'Averaging recurring pixels'
             fprintf("Averaging recurring pixels...\t")
@@ -340,14 +437,20 @@ classdef RNA_Threshold_Common
                 slice = in_img(:,:,k); %[uint16[D][D]] 2D slice of image
                 for c = 1:rp_count
                     p = recurring_pixels(c); %[int] 1D coordinate of bad pixel
-                    exclude_check = (exmat == p); %[bool[D][D]] Whether each index in exmat == bad pix val
-                    if max(exclude_check(:)) == 0 %No matches in exclusion matrix
-                        west = p - dim1;
-                        east = p + dim1;
-                        surr_pix = [p-1, p+1, west, east, west-1, east-1, east+1, west+1];
-                        %N S W E NW NE SE SW
-                        slice(p) = mean(slice(surr_pix));
-                    end
+                    
+                    y = mod((p-1), dim1) + 1;
+                    if y <= 1; continue; end
+                    if y >= dim1; continue; end
+                    
+                    x = floor((p-1)/dim1) + 1;
+                    if x <= 1; continue; end
+                    if x >= dim2; continue; end
+                    
+                    west = p - dim1;
+                    east = p + dim1;
+                    surr_pix = [p-1, p+1, west, east, west-1, east-1, east+1, west+1];
+                    %N S W E NW NE SE SW
+                    slice(p) = mean(slice(surr_pix));
                 end
                 clean_img(:,:,k) = slice;
             end
@@ -383,6 +486,7 @@ classdef RNA_Threshold_Common
             param_struct.fit_ri_weight = 0.0;
             param_struct.madth_weight = 0.0;
             param_struct.fit_weight = 1.0;
+            param_struct.std_factor = 0.0;
         end
         
         %%
@@ -429,6 +533,7 @@ classdef RNA_Threshold_Common
             res.fit_ri_weight = 0.0;
             res.madth_weight = 0.0;
             res.fit_weight = 1.0;
+            res.std_factor = 0.0;
             tres_struct = res;
         end
         
@@ -628,6 +733,7 @@ classdef RNA_Threshold_Common
             threshold_results.fit_ri_weight = parameter_info.fit_ri_weight;
             threshold_results.madth_weight = parameter_info.madth_weight;
             threshold_results.fit_weight = parameter_info.fit_weight;
+            threshold_results.std_factor = parameter_info.std_factor;
             
             mweight = threshold_results.madth_weight;
             fweight = threshold_results.fit_weight;
@@ -757,22 +863,28 @@ classdef RNA_Threshold_Common
             end
             
             %Determine a best threshold from test info.
-            curve_results = RNAThreshold.getAllCurveResultStructs(threshold_results);
-            curve_count = size(curve_results,2);
-            msum = 0.0;
-            fsum = 0.0;
-            isum = 0.0;
-            for i = 1:curve_count
-                msum = msum + curve_results(i).medth_avg;
-                if ~isempty(curve_results(i).spline_fit)
-                    fsum = fsum + curve_results(i).spline_fit.break_x;
-                    isum = isum + curve_results(i).spline_fit.rcurve_intr_x;
-                end
+            mscores = RNAThreshold.getAllMedThresholds(threshold_results);
+            fscores = RNAThreshold.getAllFitThresholds(threshold_results);
+            iscores = RNAThreshold.getAllRightISectThresholds(threshold_results);
+
+            if ~isempty(mscores)
+                mfac = mean(mscores, 'all', 'omitnan') + (std(mscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+            else
+                mfac = 0.0;
             end
-            mavg = msum/curve_count;
-            favg = fsum/curve_count;
-            iavg = isum/curve_count;
-            threshold_results.threshold = round((mavg * mweight) + (favg * fweight) + (iavg * iweight));
+
+            if ~isempty(fscores)
+                ffac = mean(fscores, 'all', 'omitnan') + (std(fscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+            else
+                ffac = 0.0;
+            end
+
+            if ~isempty(iscores)
+                ifac = mean(iscores, 'all', 'omitnan') + (std(iscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+            else
+                ifac = 0.0;
+            end
+            threshold_results.threshold = round((mfac * mweight) + (ffac * fweight) + (ifac * iweight));
             
             if threshold_results.threshold < threshold_results.control_floor
                 if parameter_info.verbosity > 0

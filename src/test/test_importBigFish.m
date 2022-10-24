@@ -1,16 +1,16 @@
 %
 
 %%  !! UPDATE TO YOUR BASE DIR
-%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-BaseDir = 'D:\usr\bghos\labdat\imgproc';
+BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Paths ==========================
 
-InputDir = [BaseDir '\data\bigfish\mESC_4d\Tsix-AF594'];
-RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
-BFStem = [InputDir filesep 'BIGFISH_Tsix-AF594'];
-zmin = 14; zmax = 68;
-bf_thresh = 191;
+% InputDir = [BaseDir '\data\bigfish\mESC_4d\Tsix-AF594'];
+% RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+% BFStem = [InputDir filesep 'BIGFISH_Tsix-AF594'];
+% zmin = 14; zmax = 68;
+% bf_thresh = 191;
 %bf_thresh = 36;
 
 % InputDir = [BaseDir '\data\bigfish\mESC_4d\Xist-CY5'];
@@ -91,11 +91,11 @@ bf_thresh = 191;
 % zmin = 17;
 % bf_thresh = 226;
 
-% InputDir = [BaseDir '\data\bigfish\histones\D0I6\Tsix'];
-% RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
-% BFStem = [InputDir filesep 'BIGFISH_Tsix-TMR'];
-% zmin = 14; zmax = 80;
-% bf_thresh = 208;
+InputDir = [BaseDir '\data\bigfish\histones\D0I6\Tsix'];
+RefStem = [BaseDir '\data\preprocess\histones\D0_I6\Ch3\Histone_D0_img6_ch3_all_3d'];
+BFStem = [InputDir filesep 'BIGFISH_Tsix-TMR'];
+zmin = 14; zmax = 80;
+bf_thresh = 208;
 
 % InputDir = [BaseDir '\data\bigfish\sc_protein\Msb2\05m02M'];
 % RefStem = [BaseDir '\data\preprocess\msb2\2M5m_img3\Msb2_02M_5m_img3_GFP_all_3d'];
@@ -237,9 +237,9 @@ ax = axes;
 plot(spot_counts(:,1),log10(spot_counts(:,2)),'LineWidth',2,'Color',color1);
 hold on;
 plot(spot_counts_ref(:,1),log10(spot_counts_ref(:,2)),'-.','LineWidth',2,'Color',color2);
-line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',color1_light,'LineStyle','--','LineWidth',2);
-line([thresh_hb.threshold thresh_hb.threshold], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
-line([thresh_hbbf.threshold thresh_hbbf.threshold], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
+xline(bf_thresh, '--', 'Threshold - BIG-FISH', 'Color', color1_light,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+xline(thresh_hb.threshold, '--', 'Threshold - Homebrew', 'Color', color2_light,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+xline(thresh_hbbf.threshold, '--', 'Threshold - Homebrew on BIG-FISH Callset', 'Color', color3_light,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
 legend_names{1,1} = 'BIG-FISH';
 legend_names{1,2} = 'Homebrew';
 legend(legend_names);
@@ -254,13 +254,16 @@ src_selector = src_selector.updateFTable();
 figh = figure(988);
 clf;
 ax = axes;
-plot(spot_counts(:,1),bf_selector.f_scores(:,1),'LineWidth',2,'Color',color1);
+ph1 = plot(spot_counts(:,1),bf_selector.f_scores(:,1),'LineWidth',2,'Color',color1);
 hold on;
-plot(spot_counts_ref(:,1),src_selector.f_scores(:,1),'-.','LineWidth',2,'Color',color2);
+ph2 = plot(spot_counts_ref(:,1),src_selector.f_scores(:,1),'-.','LineWidth',2,'Color',color2);
 ylim([0.0 1.0]);
-line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',color1_light,'LineStyle','--','LineWidth',2);
-line([thresh_hb.threshold thresh_hb.threshold], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
-line([thresh_hbbf.threshold thresh_hbbf.threshold], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
+%line([bf_thresh bf_thresh], get(ax,'YLim'),'Color',color1_light,'LineStyle','--','LineWidth',2);
+%line([thresh_hb.threshold thresh_hb.threshold], get(ax,'YLim'),'Color',color2_light,'LineStyle','--','LineWidth',2);
+%line([thresh_hbbf.threshold thresh_hbbf.threshold], get(ax,'YLim'),'Color',color3_light,'LineStyle','--','LineWidth',2);
+xline(bf_thresh, '--', 'Threshold - BIG-FISH', 'Color', color1_light,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+xline(thresh_hb.threshold, '--', 'Threshold - Homebrew', 'Color', color2_light,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+xline(thresh_hbbf.threshold, '--', 'Threshold - Homebrew on BIG-FISH Callset', 'Color', color3_light,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
 legend(legend_names);
 xlabel('Threshold');
 ylabel('FScore');

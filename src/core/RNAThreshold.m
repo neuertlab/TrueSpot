@@ -76,6 +76,7 @@ classdef RNAThreshold
             param_struct.fit_ri_weight = rnaspots_run.ttune_thweight_fisect;
             param_struct.madth_weight = rnaspots_run.ttune_thweight_med;
             param_struct.fit_weight = rnaspots_run.ttune_thweight_fit;
+            param_struct.std_factor = rnaspots_run.ttune_std_factor;
             
             if isempty(rnaspots_run.ttune_fit_strat) | (rnaspots_run.ttune_fit_strat == 0)
                 param_struct.fit_strat = 'default';
@@ -134,6 +135,7 @@ classdef RNAThreshold
             param_info.fit_ri_weight = rnaspots_run.ttune_thweight_fisect;
             param_info.madth_weight = rnaspots_run.ttune_thweight_med;
             param_info.fit_weight = rnaspots_run.ttune_thweight_fit;
+            param_info.std_factor = rnaspots_run.ttune_std_factor;
         end
         
         function score_list = getAllMedThresholds(threshold_results)
@@ -219,6 +221,51 @@ classdef RNAThreshold
                     cres = threshold_results.test_winsc(1,j);
                     score_list(1,i) = cres.spline_knot_x;
                     i = i + 1;
+                end
+            end
+        end
+
+        function score_list = getAllRightISectThresholds(threshold_results)
+            curve_count = 0;
+            wincount = 0;
+            
+            if ~isempty(threshold_results.test_data)
+                if ~isempty(threshold_results.test_data.spline_fit)
+                    curve_count = curve_count + 1; 
+                end
+            end
+            if ~isempty(threshold_results.test_diff)
+                if ~isempty(threshold_results.test_diff.spline_fit)
+                    curve_count = curve_count + 1; 
+                end
+            end
+            
+            if isfield(threshold_results, 'test_winsc') & ~isempty(threshold_results.test_winsc)
+                wincount = size(threshold_results.test_winsc, 2); 
+                curve_count = curve_count + wincount;
+            end
+            
+            score_list = NaN(1, curve_count);
+            i = 1;
+            if ~isempty(threshold_results.test_data)
+                if ~isempty(threshold_results.test_data.spline_fit)
+                    score_list(1,i) = threshold_results.test_data.spline_fit.rcurve_intr_x;
+                    i = i + 1;
+                end
+            end
+            if ~isempty(threshold_results.test_diff)
+                if ~isempty(threshold_results.test_diff.spline_fit)
+                    score_list(1,i) = threshold_results.test_diff.spline_fit.rcurve_intr_x;
+                    i = i + 1;
+                end
+            end
+            if wincount > 0
+                for j = 1:wincount
+                    cres = threshold_results.test_winsc(1,j);
+                    if ~isempty(cres.spline_fit)
+                        score_list(1,i) = cres.spline_fit.rcurve_intr_x;
+                        i = i + 1;
+                    end
                 end
             end
         end
@@ -604,6 +651,82 @@ classdef RNAThreshold
             end
         end
         
+        function fig_handle = plotThreshRanges(rnaspots_run, curve, y_lbl, yrange, figno)
+            if isempty(rnaspots_run); fig_handle = []; return; end
+            if isempty(curve); fig_handle = []; return; end
+            if isempty(rnaspots_run.threshold_results); fig_handle = []; return; end
+
+            thres = rnaspots_run.threshold_results;
+            main_th = thres.threshold;
+            curve_info_list = RNAThreshold.getAllCurveResultStructs(thres);
+            curve_count = size(curve_info_list,2);
+            mad_count = size(curve_info_list(1).med_suggested_threshold,2);
+            alloc = 0;
+
+            if thres.fit_ri_weight > 0.0
+                alloc = alloc + curve_count;
+            end
+            if thres.madth_weight > 0.0
+                alloc = alloc + (curve_count * mad_count);
+            end
+            if thres.fit_weight > 0.0
+                alloc = alloc + curve_count;
+            end
+
+            all_thresh = NaN(alloc,1);
+            i = 1;
+            if thres.fit_ri_weight > 0.0
+                for j = 1:curve_count
+                    if ~isempty(curve_info_list(j).spline_fit)
+                        all_thresh(i,1) = curve_info_list(j).spline_fit.rcurve_intr_x;
+                        i = i + 1;
+                    end
+                end
+            end
+            if thres.madth_weight > 0.0
+                for j = 1:curve_count
+                    for k = 1:mad_count
+                        all_thresh(i,1) = curve_info_list(j).med_suggested_threshold(k);
+                        i = i + 1;
+                    end
+                end
+            end
+            if thres.fit_weight > 0.0
+                for j = 1:curve_count
+                    if ~isempty(curve_info_list(j).spline_fit)
+                        all_thresh(i,1) = curve_info_list(j).spline_knot_x;
+                        i = i + 1;
+                    end
+                end
+            end
+
+            th_avg = mean(all_thresh, 'all', 'omitnan');
+            th_std = std(all_thresh, 0, 'all', 'omitnan');
+            th_max = max(all_thresh,[],'all','omitnan');
+            th_min = min(all_thresh,[],'all','omitnan');
+            
+            color_curve = [0.290, 0.290, 0.290];
+            color_A = [0.567, 0.133, 0.133]; %#912222
+            color_B = [0.937, 0.627, 0.627]; %#efa0a0
+
+            fig_handle = figure(figno);
+            clf;
+            ax = axes;
+            if ~isempty(yrange)
+                ylim([0.0 1.0]);
+            else
+                y_hi = max(curve(:,2),[],'all','omitnan');
+                ylim([0.0 y_hi]);
+            end
+            hold on;
+            RNAThreshold.drawVerticalBox(ax, th_avg - th_std, th_avg + th_std, color_B);
+            plot(curve(:,1), curve(:,2), 'LineWidth',2,'Color',color_curve);
+            RNAThreshold.drawVerticalLines(ax, main_th, [th_min th_max], color_A, color_A, 2);
+
+            xlabel('Threshold');
+            ylabel(y_lbl);
+        end
+
         function fig_handle = resultPlotFScore(rnaspots_run, f_scores, include_madth, include_splth, figno)
             %Tertiary (filled rectangle) represents stdev of all threshold
             %candidates

@@ -10,7 +10,7 @@
 %%
 function RNA_Pipeline_Core(spotsrun, debug_lvl, preloaded_imgs)
 
-bPreloaded = (nargin > 2) && (~isempty(preloaded_imgs));
+bPreloaded = (nargin > 2) & (~isempty(preloaded_imgs));
 
 %Debug print
 if debug_lvl > 0
@@ -49,14 +49,13 @@ sample_light_ch = [];
 %Do background extraction if arguments provided.
 %!! Don't redo if target exists and overwrite output is false!
 bkg_mask_dir = [spotsrun.out_dir filesep 'bkgmask'];
-mkdir(bkg_mask_dir);
 spotsrun.bkg_path = [bkg_mask_dir filesep spotsrun.img_name '_bkg'];
-if isempty(spotsrun.ctrl_path)
+if (~bPreloaded & isempty(spotsrun.ctrl_path)) | (bPreloaded & isempty(preloaded_imgs.dat_rna_control))
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Control not provided. Will attempt to use background."), true);
     if ~spotsrun.overwrite_output && isfile([spotsrun.bkg_path '.mat'])
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Background mask already exists at %s! Skipping extraction...", spotsrun.bkg_path), true);
     else
-        if (~isempty(spotsrun.cellseg_path)) && (spotsrun.light_ch > 0)
+        if (~isempty(spotsrun.cellseg_path)) & (spotsrun.light_ch > 0)
             %fprintf("Extracting background...\n");
             %Make sure cellseg data file exists
             if (isfile(spotsrun.cellseg_path))
@@ -66,6 +65,7 @@ if isempty(spotsrun.ctrl_path)
                     [spotsrun, sample_tif] = spotsrun.loadSampleTif(tif_v);
                     sample_light_ch = sample_tif{spotsrun.light_ch,1};
                 end
+                mkdir(bkg_mask_dir);
                 Bkg_Mask_Core(sample_light_ch, spotsrun.cellseg_path, spotsrun.bkg_path, true);
                 %Main_BackgroundMask(spotsrun.tif_path, spotsrun.cellseg_path, spotsrun.bkg_path, spotsrun.total_ch, spotsrun.light_ch, true);
             else
@@ -99,7 +99,7 @@ end
 if runme
     %Load image channel
     if bPreloaded
-        sample_rna_ch = preloaded_imgs.dat_rna_sample;
+        sample_rna_ch = double(preloaded_imgs.dat_rna_sample);
     else
         %Load sample TIF
         if isempty(sample_tif)

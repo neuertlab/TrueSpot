@@ -2,19 +2,22 @@
 %%
 
 function rna_spot_run = Main_RNASpots(varargin)
+addpath('./core');
 
 % ========================== Process args ==========================
 rna_spot_run = RNASpotsRun.initDefault();
+rna_spot_run = setDefaultParams(rna_spot_run);
 
 %Highest level set to true is what is used, regardless of other flags.
 arg_debug = true; %CONSTANT used for debugging arg parser.
 debug_lvl = 0;
 senspe_set = false;
+matvar = [];
 
 lastkey = [];
 for i = 1:nargin
     argval = varargin{i};
-    if startsWith(argval, "-")
+    if ischar(argval) & startsWith(argval, "-")
         %Key
         if size(argval,2) >= 2
             lastkey = argval(2:end);
@@ -79,24 +82,14 @@ for i = 1:nargin
             if ~senspe_set
                 if arg_debug; fprintf("Tuning Preset: Sensitivity\n"); end
                 senspe_set = true;
-                rna_spot_run.ttune_fit_strat = 0;
-                rna_spot_run.ttune_reweight_fit = false;
-                rna_spot_run.ttune_fit_to_log = true;
-                rna_spot_run.ttune_thweight_med = 0.0;
-                rna_spot_run.ttune_thweight_fit = 1.0;
-                rna_spot_run.ttune_thweight_fisect = 0.0;
+                rna_spot_run = setSensitive1(rna_spot_run);
                 lastkey = [];
             end
         elseif strcmp(lastkey, "specific")
             if ~senspe_set
                 if arg_debug; fprintf("Tuning Preset: Specificity\n"); end
                 senspe_set = true;
-                rna_spot_run.ttune_fit_strat = 3;
-                rna_spot_run.ttune_reweight_fit = false;
-                rna_spot_run.ttune_fit_to_log = true;
-                rna_spot_run.ttune_thweight_med = 0.0;
-                rna_spot_run.ttune_thweight_fit = 1.0;
-                rna_spot_run.ttune_thweight_fisect = 0.0;
+                rna_spot_run = setSpecific1(rna_spot_run);
                 lastkey = [];
             end
         end
@@ -114,6 +107,12 @@ for i = 1:nargin
         elseif strcmp(lastkey, "tif")
             rna_spot_run.tif_path = argval;
             if arg_debug; fprintf("TIF Path Set: %s\n", rna_spot_run.tif_path); end
+        elseif strcmp(lastkey, "matimg")
+            rna_spot_run.sample_matpath = argval;
+            if arg_debug; fprintf("MAT Path Set: %s\n", rna_spot_run.sample_matpath); end
+        elseif strcmp(lastkey, "matvar")
+            matvar = argval;
+            if arg_debug; fprintf("MAT Variable Name: %s\n", matvar); end
         elseif strcmp(lastkey, "outdir")
             rna_spot_run.out_dir = argval;
             if arg_debug; fprintf("Output Directory Set: %s\n", rna_spot_run.out_dir); end
@@ -186,6 +185,53 @@ for i = 1:nargin
         elseif strcmp(lastkey, "fitlog")
             rna_spot_run.ttune_fit_to_log = Force2Bool(argval);
             if arg_debug; fprintf("Fit Piecewise to Log Plot: %d\n", rna_spot_run.ttune_fit_to_log); end
+        elseif strcmp(lastkey, "stdfac")
+            rna_spot_run.ttune_std_factor = Force2Num(argval);
+            if arg_debug; fprintf("StDev Add Factor Set: %f\n", rna_spot_run.ttune_std_factor); end
+        elseif strcmp(lastkey, "sensitivity")
+            specval = Force2Num(argval);
+            if specval == 0
+                rna_spot_run = setDefaultParams(rna_spot_run);
+            elseif specval == 1
+                rna_spot_run = setSensitive1(rna_spot_run);
+            elseif specval >= 2
+                rna_spot_run = setSensitive2(rna_spot_run);
+            else
+                %Treated as 0
+                specval = 0;
+                rna_spot_run = setDefaultParams(rna_spot_run);
+            end
+            if arg_debug; fprintf("Sensitivity Preset Level Set: %d\n", specval); end
+        elseif strcmp(lastkey, "specificity")
+            specval = Force2Num(argval);
+            if specval == 0
+                rna_spot_run = setDefaultParams(rna_spot_run);
+            elseif specval == 1
+                rna_spot_run = setSpecific1(rna_spot_run);
+            elseif specval >= 2
+                rna_spot_run = setSpecific2(rna_spot_run);
+            else
+                %Treated as 0
+                specval = 0;
+                rna_spot_run = setDefaultParams(rna_spot_run);
+            end
+            if arg_debug; fprintf("Specificity Preset Level Set: %d\n", specval); end
+        elseif strcmp(lastkey, "voxelsize") | strcmp(lastkey, "pixelsize")
+            rna_spot_run.idims_voxel = parseDimsTo(argval, rna_spot_run.idims_voxel);
+            if rna_spot_run.idims_voxel.z > 0
+                if arg_debug; fprintf("Voxel Size: %d x %d x %d nm\n", ...
+                        rna_spot_run.idims_voxel.x, rna_spot_run.idims_voxel.y, rna_spot_run.idims_voxel.z); end
+            else
+                if arg_debug; fprintf("Pixel Size: %d x %d nm\n", rna_spot_run.idims_voxel.x, rna_spot_run.idims_voxel.y); end
+            end
+        elseif strcmp(lastkey, "expspotsize")
+            rna_spot_run.idims_expspot = parseDimsTo(argval, rna_spot_run.idims_expspot);
+            if rna_spot_run.idims_expspot.z > 0
+                if arg_debug; fprintf("Estimated Spot Size: %d x %d x %d nm\n", ...
+                        rna_spot_run.idims_expspot.x, rna_spot_run.idims_expspot.y, rna_spot_run.idims_expspot.z); end
+            else
+                if arg_debug; fprintf("Estimated Spot Size: %d x %d nm\n", rna_spot_run.idims_expspot.x, rna_spot_run.idims_expspot.y); end
+            end
         elseif strcmp(lastkey, "probetype")
             rna_spot_run.type_probe = argval;
             if arg_debug; fprintf("Probe Set: %s\n", rna_spot_run.type_probe); end
@@ -219,6 +265,94 @@ end
 %     out_dir, t_min, t_max, ztrim, cellseg_path, ctrl_path, ctrl_ch, ctrl_chcount, ttune_winsize,...
 %     ttune_madfactor, overwrite_output, false);
 
-rna_spot_run = Adapter_RNASpots(rna_spot_run, false, debug_lvl);
+if ~isempty(rna_spot_run.sample_matpath)
+    rna_spot_run.total_ch = 1;
+    rna_spot_run.rna_ch = 1;
+    if ~isempty(matvar)
+        img_ch_set = MatImages.loadImageChannels(rna_spot_run.sample_matpath, matvar);
+    else
+        img_ch_set = MatImages.loadImageChannels(rna_spot_run.sample_matpath);
+    end
+    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, img_ch_set, debug_lvl);
+else
+    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, [], debug_lvl);
+end
 
+end
+
+function idims = parseDimsTo(dims_arg, trg_struct)
+    idims = trg_struct;
+	if ischar(dims_arg)
+        %Read as string
+        %'(x,y,z)'
+        repl_str = replace(dims_arg, {'(', ')'}, '');
+        split_str = split(repl_str, ',');
+        ndims = size(split_str,1);
+        idims.x = Force2Num(split_str{1,1});
+        if ndims > 1; idims.y = Force2Num(split_str{2,1}); end
+        if ndims > 2; idims.z = Force2Num(split_str{3,1}); end
+	else
+        %Try to read as vector
+        if isvector(dims_arg)
+            ndims = size(dims_arg,2);
+            idims.x = dims_arg(1);
+            if ndims > 1; idims.y = dims_arg(2); end
+            if ndims > 2; idims.z = dims_arg(3); end
+        end
+	end
+end
+
+function spotsrun = setDefaultParams(spotsrun)
+    spotsrun.ttune_winsz_min = 3;
+    spotsrun.ttune_fit_strat = 0;
+    spotsrun.ttune_reweight_fit = false;
+    spotsrun.ttune_fit_to_log = true;
+    spotsrun.ttune_thweight_med = 0.25;
+    spotsrun.ttune_thweight_fit = 0.0;
+    spotsrun.ttune_thweight_fisect = 0.75;
+    spotsrun.ttune_std_factor = 1.0;
+end
+
+function spotsrun = setSensitive1(spotsrun)
+    spotsrun.ttune_winsz_min = 3;
+    spotsrun.ttune_fit_strat = 0;
+    spotsrun.ttune_reweight_fit = false;
+    spotsrun.ttune_fit_to_log = true;
+    spotsrun.ttune_thweight_med = 0.0;
+    spotsrun.ttune_thweight_fit = 0.2;
+    spotsrun.ttune_thweight_fisect = 0.8;
+    spotsrun.ttune_std_factor = 0.0;
+end
+
+function spotsrun = setSensitive2(spotsrun)
+    spotsrun.ttune_winsz_min = 3;
+    spotsrun.ttune_fit_strat = 0;
+    spotsrun.ttune_reweight_fit = false;
+    spotsrun.ttune_fit_to_log = true;
+    spotsrun.ttune_thweight_med = 0.0;
+    spotsrun.ttune_thweight_fit = 1.0;
+    spotsrun.ttune_thweight_fisect = 0.0;
+    spotsrun.ttune_std_factor = 0.0;
+end
+
+function spotsrun = setSpecific1(spotsrun)
+    spotsrun.ttune_winsz_min = 6;
+    spotsrun.ttune_fit_strat = 0;
+    spotsrun.ttune_reweight_fit = false;
+    spotsrun.ttune_fit_to_log = true;
+    spotsrun.ttune_thweight_med = 0.5;
+    spotsrun.ttune_thweight_fit = 0.0;
+    spotsrun.ttune_thweight_fisect = 0.5;
+    spotsrun.ttune_std_factor = 1.0;
+end
+
+function spotsrun = setSpecific2(spotsrun)
+    spotsrun.ttune_winsz_min = 6;
+    spotsrun.ttune_fit_strat = 0;
+    spotsrun.ttune_reweight_fit = false;
+    spotsrun.ttune_fit_to_log = true;
+    spotsrun.ttune_thweight_med = 0.5;
+    spotsrun.ttune_thweight_fit = 0.0;
+    spotsrun.ttune_thweight_fisect = 0.5;
+    spotsrun.ttune_std_factor = 2.0;
 end
