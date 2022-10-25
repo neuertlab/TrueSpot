@@ -23,16 +23,27 @@ classdef RNAUtils
         
         %%
         function img_filtered = medianifyBorder(img_filtered, rads)
-            %TODO
+            rad_y = rads(1); Y = size(img_filtered,1);
+            rad_x = rads(2); X = size(img_filtered,2);
+            rad_z = rads(3); Z = size(img_filtered,3);
+            mvalue = median(img_filtered(rad_y+1:Y-rad_y,rad_x+1:X-rad_x,rad_z+1:Z-rad_z), 'all');
+
+            img_filtered(1:rad_y+1,:,:) = mvalue;
+            img_filtered(Y-rad_y:Y,:,:) = mvalue;
+            img_filtered(:,1:rad_x+1,:) = mvalue;
+            img_filtered(:,X-rad_x:X,:) = mvalue;
+            img_filtered(:,:,1:rad_z+1) = mvalue;
+            img_filtered(:,:,Z-rad_z:Z) = mvalue;
         end
         
         %%
         function [d_min, d_max, dtrim_lo, dtrim_hi, needs_trim] = getDimSpotIsolationParams(d_coord, max_d, rad)
-            needs_trim = false;
             d_min = d_coord - rad; d_max = d_coord + rad;
-            dtrim_lo = 0; dtrim_hi = 0;
-            if d_min < 1; dtrim_lo = 1 - d_min; d_min = 1; needs_trim = true; end
-            if d_max > max_d; dtrim_hi = d_max - max_d; d_max = max_d; needs_trim = true; end
+            dtrim_lo = max(1 - d_min,0);
+            dtrim_hi = max(d_max - max_d,0);
+            d_min = max(d_min, 1);
+            d_max = min(d_max, max_d);
+            needs_trim = isscalar(d_coord) & (dtrim_lo > 0 | dtrim_hi > 0);
         end
         
         function spot_data = isolateSpotData2D(src_img, x, y, xrad, yrad)

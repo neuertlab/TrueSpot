@@ -1,8 +1,8 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
 %ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Image Channels ==========================
 
@@ -11,7 +11,7 @@ i = 1;
 
 %----- Test
 %img_paths{i,1} = [ImgDir '\img\sim\mESC_RNA_TMRLike_100x_3']; i = i+1;
-img_paths{i,1} = [ImgDir '\img\sim\yeast_proteinGFP_100x_1']; i = i+1;
+img_paths{i,1} = [ImgDir '\img\sim\mESC_RNA_LEHB_100x_3']; i = i+1;
 
 
 % ========================== Cycle ==========================
@@ -68,5 +68,27 @@ for j = 1:path_count
     imgdat = imgdat16;
     key = key_out;
     save([mypath '.mat'], 'imgdat', 'key');
+
+    %(Optional) Apply blur and save again
+%     xy_rad = 7;
+%     z_rad = 2;
+%     g_amt = 4;
+% 
+%     min_o = min(imgdat, [], 'all');
+%     max_o = max(imgdat, [], 'all');
+%     ao = double(min_o);
+%     do = double(max_o - min_o);
+% 
+%     imgdat = RNA_Threshold_Common.applyGaussianFilter(imgdat, xy_rad, g_amt, z_rad, false);
+%     imgdat = RNAUtils.medianifyBorder(imgdat, [xy_rad xy_rad z_rad]);
+% 
+%     min_f = min(imgdat, [], 'all');
+%     max_f = max(imgdat, [], 'all');
+%     af = double(min_f);
+%     df = double(max_f - min_f);
+%     props = (double(imgdat) - af) ./ df;
+%     imgdat = round((props .* do) + ao);
+% 
+%     save([mypath '_blur.mat'], 'imgdat', 'key');
 
 end

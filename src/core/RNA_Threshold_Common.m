@@ -57,54 +57,67 @@ classdef RNA_Threshold_Common
         
         %%
         function img_filtered = filterBorder(img_in, img_filtered, filter_mx)
-            Y = size(img_in, 1);
-            X = size(img_in, 2);
-            dim_y = size(filter_mx,1);
-            dim_x = size(filter_mx,2);
-            rad_y = round((dim_y - 1) / 2);
-            rad_x = round((dim_x - 1) / 2);
             img_in = double(img_in);
-            
-            %Okay no, I need to vectorize it. It's friggin slow.
-            if ndims(img_in) == 3
-                Z = size(img_in, 3);
-                dim_z = size(filter_mx,3);
-                rad_z = round((dim_z - 1) / 2);
-                border_mask = RNAUtils.genBorderMask([Y X Z],[rad_y rad_x rad_z]);
-                
-                for z = 1:Z
-                    for y = 1:Y
-                        for x = 1:X
-                            if ~border_mask(y,x,z); continue; end
-                            [y_min, y_max, ytrim_lo, ytrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(y, Y, rad_y);
-                            [x_min, x_max, xtrim_lo, xtrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(x, X, rad_x);
-                            [z_min, z_max, ztrim_lo, ztrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(z, Z, rad_z);
-                        
-                            my_filter = filter_mx((ytrim_lo + 1):(dim_y - ytrim_hi),(xtrim_lo + 1):(dim_x - xtrim_hi),...
-                                (ztrim_lo + 1):(dim_z - ztrim_hi));
-                            my_data = img_in(y_min:y_max, x_min:x_max, z_min:z_max);
-                            %TODO Needs to be reweighted to account for
-                            %relative number of pixels used versus
-                            %normal...
-                            img_filtered(y,x,z) = round(sum(my_data .* my_filter, 'all'));
-                        end
-                    end
+            i_dims = size(img_in);
+            f_dims = size(filter_mx);
+            f_rads = (f_dims - 1) ./ 2;
+            total_fcells = f_dims(2) * f_dims(1);
+
+            border_mask = RNAUtils.genBorderMask(i_dims,f_rads);
+            b_idxs = find(border_mask);
+            icount = size(b_idxs,1);
+
+            is3d = ndims(img_in) == 3;
+            if is3d
+                [MX, MY, MZ] = meshgrid(1:i_dims(2), 1:i_dims(1), 1:i_dims(3));
+                total_fcells = total_fcells * f_dims(3);
+            else
+                [MX, MY] = meshgrid(1:i_dims(2), 1:i_dims(1));
+            end
+
+            %X
+            [d_min, d_max, dtrim_lo, dtrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(MX, i_dims(2), f_rads(2));
+            x_min = d_min(b_idxs); x_max = d_max(b_idxs);
+            xf_min = dtrim_lo(b_idxs) + 1;
+            xf_max = f_dims(2) - dtrim_hi(b_idxs);
+
+            %Y
+            [d_min, d_max, dtrim_lo, dtrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(MY, i_dims(1), f_rads(1));
+            y_min = d_min(b_idxs); y_max = d_max(b_idxs);
+            yf_min = dtrim_lo(b_idxs) + 1;
+            yf_max = f_dims(1) - dtrim_hi(b_idxs);
+
+            fcells = (y_max - y_min + 1) .* (x_max - x_min + 1);
+            if is3d
+                %Z and apply
+                [d_min, d_max, dtrim_lo, dtrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(MZ, i_dims(3), f_rads(3));
+                z_min = d_min(b_idxs); z_max = d_max(b_idxs);
+                zf_min = dtrim_lo(b_idxs) + 1;
+                zf_max = f_dims(3) - dtrim_hi(b_idxs);
+                fcells = fcells .* (z_max - z_min + 1);
+                scalefactor = double(total_fcells)./double(fcells);
+                %fcells(1)
+                %scalefactor(1)
+
+                for i = 1:icount
+                    mitx = b_idxs(i);
+                    my_data = img_in(y_min(i):y_max(i),x_min(i):x_max(i),z_min(i):z_max(i));
+                    %my_filter = filter_mx(yf_min(i):yf_max(i),xf_min(i):xf_max(i),zf_min(i):zf_max(i)) .* scalefactor(i);
+                    %img_filtered(mitx) = round(sum(my_data .* my_filter, 'all'));
+
+                    my_filter = filter_mx(yf_min(i):yf_max(i),xf_min(i):xf_max(i),zf_min(i):zf_max(i));
+                    img_filtered(mitx) = round(sum(my_data .* my_filter, 'all') * scalefactor(i));
                 end
             else
-                border_mask = RNAUtils.genBorderMask([Y X],[rad_y rad_x]);
-                for y = 1:Y
-                    for x = 1:X
-                        if ~border_mask(y,x); continue; end
-                        [y_min, y_max, ytrim_lo, ytrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(y, Y, rad_y);
-                        [x_min, x_max, xtrim_lo, xtrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(x, X, rad_x);
-                        
-                        my_filter = filter_mx((ytrim_lo + 1):(dim_y - ytrim_hi),(xtrim_lo + 1):(dim_x - xtrim_hi));
-                        my_data = img_in(y_min:y_max, x_min:x_max);
-                        img_filtered(y,x) = round(sum(my_data .* my_filter, 'all'));
-                    end
+                %Apply
+                scalefactor = double(total_fcells)./double(fcells);
+                for i = 1:icount
+                    mitx = b_idxs(i);
+                    my_data = img_in(y_min(i):y_max(i),x_min(i):x_max(i));
+                    my_filter = filter_mx(yf_min(i):yf_max(i),xf_min(i):xf_max(i)) .* scalefactor(i);
+                    img_filtered(mitx) = round(sum(my_data .* my_filter, 'all'));
                 end
             end
-            
         end
         
         %%
@@ -159,10 +172,13 @@ classdef RNA_Threshold_Common
         %FLEXIBILITIES
         %   -> "num" can refer to any numerical type
         %
-        function img_filtered = applyGaussianFilter(in_img, xy_rad, gauss_amt, z_rad)
+        function img_filtered = applyGaussianFilter(in_img, xy_rad, gauss_amt, z_rad, clean_borders)
             
             if nargin < 4
                 z_rad = 0;
+            end
+            if nargin < 5
+                clean_borders = false;
             end
             
             %Get the filter matrix
@@ -179,7 +195,9 @@ classdef RNA_Threshold_Common
                 if z_rad > 0
                     img_filtered = imfilter(in_img(:,:,:),filter_mx);
                     %Clean border.
-                    %img_filtered = RNA_Threshold_Common.filterBorder(in_img, img_filtered, filter_mx);
+                    if clean_borders
+                        img_filtered = RNA_Threshold_Common.filterBorder(in_img, img_filtered, filter_mx);
+                    end
                 else
                     %Do slice by slice
                     img_filtered = in_img;
@@ -187,14 +205,18 @@ classdef RNA_Threshold_Common
                     for k=1:Z
                         in_slice = in_img(:,:,k);
                         f_slice = imfilter(in_slice,filter_mx);
-                        %f_slice = RNA_Threshold_Common.filterBorder(in_slice, f_slice, filter_mx);
+                        if clean_borders
+                            f_slice = RNA_Threshold_Common.filterBorder(in_slice, f_slice, filter_mx);
+                        end
                         img_filtered(:,:,k) = f_slice;
                     end
                 end
             else
                 img_filtered = imfilter(in_img(:,:),filter_mx);
                 %Clean border.
-                %img_filtered = RNA_Threshold_Common.filterBorder(in_img, img_filtered, filter_mx);
+                if clean_borders
+                    img_filtered = RNA_Threshold_Common.filterBorder(in_img, img_filtered, filter_mx);
+                end
             end
         end
 
