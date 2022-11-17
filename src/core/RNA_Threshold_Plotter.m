@@ -77,25 +77,25 @@ classdef RNA_Threshold_Plotter
             ctrl_count = size(save_stem_ctrls, 1);
             idx_rna = 1;
             
-            spot_table_suffix = '_spotTable';
+            spot_table_suffix = '_spotTable.mat';
             tbl_path_RNA = [save_stem_signal spot_table_suffix];
 
             load(tbl_path_RNA, 'spot_table');
             th_table = spot_table(:,1);
-            reg_tables(idx_rna).spot_table = spot_table(:,2);
+            reg_tables(idx_rna).spot_table = double(spot_table(:,2));
             %reg_tables(idx_rna).deriv1 = diff(reg_tables(idx_rna).spot_table);
             %reg_tables(idx_rna).deriv1 = smooth(diff(reg_tables(idx_rna).spot_table));
             for c = 1:ctrl_count
                 %fprintf("-DEBUG- Loading: %s...\n", [save_stem_ctrls{c} spot_table_suffix]);
                 tidx = c+1;
                 load([save_stem_ctrls{c} spot_table_suffix], 'spot_table');
-                reg_tables(tidx).spot_table = spot_table(:,2);
+                reg_tables(tidx).spot_table = double(spot_table(:,2));
                 %reg_tables(tidx).deriv1 = smooth(diff(reg_tables(tidx).spot_table));
             end
             
 
             %Load coordinates
-            coord_table_suffix = '_coordTable';
+            coord_table_suffix = '_coordTable.mat';
             tbl_path_RNA = [save_stem_signal coord_table_suffix];
 
             load(tbl_path_RNA, 'coord_table');

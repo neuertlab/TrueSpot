@@ -7,23 +7,23 @@ classdef BigfishCompare
         
         % ========================== Process ==========================
         
-        function csv_path = getCSVPath(dir, thresh_val)
-            csv_path = [dir filesep 'spots_' sprintf('%04d', thresh_val) '.csv'];
+        function csv_path = getCSVPath(dirpath, thresh_val)
+            csv_path = [dirpath filesep 'spots_' sprintf('%04d', thresh_val) '.csv'];
         end
 
-        function [coord_table, spot_table] = importBigFishCsvs(dir, output_stem, z_offset)
+        function [coord_table, spot_table] = importBigFishCsvs(bfdir, output_stem, z_offset)
             %Figure out t range to preallocate.
             t = 1;
-            filetblname = BigfishCompare.getCSVPath(dir, t);
+            filetblname = BigfishCompare.getCSVPath(bfdir, t);
             while ~isfile(filetblname)
                 t = t+1;
-                filetblname = BigfishCompare.getCSVPath(dir, t);
+                filetblname = BigfishCompare.getCSVPath(bfdir, t);
             end
             tmin = t;
             
             while isfile(filetblname)
                 t = t+1;
-                filetblname = BigfishCompare.getCSVPath(dir, t);
+                filetblname = BigfishCompare.getCSVPath(bfdir, t);
             end
             tmax = t - 1;
             T = tmax - tmin + 1;
@@ -33,11 +33,21 @@ classdef BigfishCompare
             coord_table = cell(T,1);
             spot_table(:,1) = [tmin:1:tmax];
             
+            %TODO It's complaining about something being out of bounds.
+            %WHAT that is, who the fuck knows
             %Import csvs
             i = 1;
             for t = tmin:tmax
-                filetblname = BigfishCompare.getCSVPath(dir, t);
+                filetblname = BigfishCompare.getCSVPath(bfdir, t);
                 if isfile(filetblname)
+                    
+                    %If it's empty, skip.
+                    finfo = dir(filetblname);
+                    if finfo.bytes < 1
+                        break;
+                    end
+                    
+                    %Load in.
                     raw_coord_table = uint16(csvread(filetblname));
                     spot_table(i,1) = t;
                     spot_table(i,2) = size(raw_coord_table,1);
@@ -92,7 +102,7 @@ classdef BigfishCompare
                 clear src_selector;
                 
                 %Create new one
-                annoobj.save_stem = BFStem;
+                annoobj.save_stem = stem;
                 annoobj = annoobj.loadNewSpotset(bf_spot_table, bf_coord_table);
                 
                 %Update refset
@@ -126,7 +136,7 @@ classdef BigfishCompare
 
             line = fgetl(fhandle);
             sspl = split(line, ':');
-            bfthresh = str2num(strtrim(sspl{2}));
+            bfthresh = round(str2num(strtrim(sspl{2})));
             fclose(fhandle);
         end
         
@@ -292,8 +302,12 @@ classdef BigfishCompare
         
         % ========================== Overall ==========================
         
-        function success_bool = doBigfishCompare(hb_stem, bf_dir, bf_imgname, leave_fig, overwrite)
+        function [success_bool, fighandles] = doBigfishCompare(hb_stem, bf_dir, bf_imgname, leave_fig, overwrite)
             success_bool = true;
+            fighandles.spotsfig = [];
+            fighandles.fscorefig = [];
+            fighandles.bfhbimg = [];
+            fighandles.bfhbbfimg = [];
             
             if nargin < 4
                 leave_fig = false;
@@ -319,6 +333,7 @@ classdef BigfishCompare
             if overwrite | ~isfile(bf_ct_path)
                 fprintf("Importing Big-FISH output...\n");
                 [coord_table, spot_table] = BigfishCompare.importBigFishCsvs(bf_dir, bf_stem, zmin);
+                if isempty(coord_table); success_bool = false; return; end
             else
                 %Load from MAT files
                 load([bf_stem '_coordTable'], 'coord_table');
@@ -365,14 +380,15 @@ classdef BigfishCompare
             plotdir = [bf_dir filesep 'plots'];
             mkdir(plotdir);
 
-            fig_handle = BigfishCompare.drawSpotPlot(ref_spot_table, spot_table, bfthresh, bf_thresh_res, ref_spots_run.threshold_results);
-            saveas(fig_handle, [plotdir filesep 'logspots.png']);
-            if ~leave_fig; close(fig_handle); end
+            fighandles.spotsfig = BigfishCompare.drawSpotPlot(ref_spot_table, spot_table, bfthresh, bf_thresh_res, ref_spots_run.threshold_results);
+            saveas(fighandles.spotsfig, [plotdir filesep 'logspots.png']);
+            if ~leave_fig; close(fighandles.spotsfig); fighandles.spotsfig = []; end
 
+            fighandles.fscorefig = [];
             if use_fscores
-                fig_handle = BigfishCompare.drawFScorePlot(fscores_ref, fscores_bf, bfthresh, bf_thresh_res, ref_spots_run.threshold_results);
-                saveas(fig_handle, [plotdir filesep 'fscoreplot.png']);
-                if ~leave_fig; close(fig_handle); end
+                fighandles.fscorefig = BigfishCompare.drawFScorePlot(fscores_ref, fscores_bf, bfthresh, bf_thresh_res, ref_spots_run.threshold_results);
+                saveas(fighandles.fscorefig, [plotdir filesep 'fscoreplot.png']);
+                if ~leave_fig; close(fighandles.fscorefig); fighandles.fscorefig = []; end
             end
 
             %Render spot images?
@@ -388,17 +404,17 @@ classdef BigfishCompare
                 [~, ref_coord_table] = ref_spots_run.loadCoordinateTable();
                 bf_coordset = coord_table{bfthresh,1};
                 hb_coordset = ref_coord_table{ref_spots_run.threshold_results.threshold};
-                fig_handle = BigfishCompare.drawSpotsOnImage(max_proj, hb_coordset, bf_coordset, Lmin, Lmax, 615);
-                saveas(fig_handle, [plotdir filesep 'bf_v_hb_spots.png']);
-                if ~leave_fig; close(fig_handle); end
+                fighandles.bfhbimg = BigfishCompare.drawSpotsOnImage(max_proj, hb_coordset, bf_coordset, Lmin, Lmax, 615);
+                saveas(fighandles.bfhbimg, [plotdir filesep 'bf_v_hb_spots.png']);
+                if ~leave_fig; close(fighandles.bfhbimg); fighandles.bfhbimg = []; end
                 clear hb_coordset;
                 clear ref_coord_table;
             
                 %BF vs. BF curve/HB thresholder
                 hb_coordset = coord_table{bf_thresh_res.threshold};
-                fig_handle = BigfishCompare.drawSpotsOnImage(max_proj, hb_coordset, bf_coordset, Lmin, Lmax, 301);
-                saveas(fig_handle, [plotdir filesep 'bf_v_hbbf_spots.png']);
-                if ~leave_fig; close(fig_handle); end
+                fighandles.bfhbbfimg = BigfishCompare.drawSpotsOnImage(max_proj, hb_coordset, bf_coordset, Lmin, Lmax, 301);
+                saveas(fighandles.bfhbbfimg, [plotdir filesep 'bf_v_hbbf_spots.png']);
+                if ~leave_fig; close(fighandles.bfhbbfimg); fighandles.bfhbbfimg = []; end
             end
         end
         

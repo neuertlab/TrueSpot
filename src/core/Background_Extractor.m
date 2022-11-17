@@ -786,7 +786,7 @@ classdef Background_Extractor
                 %outimg(:,:,z) = imadjust(nplane, [0 maxval], [0 1], 0.5);
             end
             outimg = outimg * 65536.0;
-            outimg = RNA_Threshold_Common.applyGaussianFilter(outimg,13);
+            outimg = RNA_Threshold_Common.applyGaussianFilter(outimg,13,2);
         end
         
     end

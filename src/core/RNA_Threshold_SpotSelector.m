@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.6.1
-%Updated September 28, 2022
+%Version 1.6.2
+%Updated October 26, 2022
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -26,6 +26,8 @@
 %       Debugging some z masking and max proj rendering issues
 %   1.6.1 | 22.09.28
 %       Added timestamp to save file
+%   1.6.2 | 22.10.26
+%       Fixed bug with initializing zmin/zmax of new annoobj
 
 
 %%
@@ -71,7 +73,7 @@ classdef RNA_Threshold_SpotSelector
             %   = - Up 10 slices
             %   _ - Down 10 slices
             %
-            %   j - Toggle between max-proj/single z slice (if 3D)
+            %   m - Toggle between max-proj/single z slice (if 3D)
             %   z - Toggle on/off all-z selection
             %   # - Toggle on/off z spot counts
             %   % - Toggle z-color scale (all z, or just nearest slices?)
@@ -224,6 +226,7 @@ classdef RNA_Threshold_SpotSelector
             %TODO update z trim
             if ~isempty(spotsrun)
                 obj.ztrim = spotsrun.ztrim;
+                spotsrun = spotsrun.updateZTrimParams;
                 obj.threshold_table(:,1) = transpose(spotsrun.t_min:1:spotsrun.t_max);
                 if obj.mode_3d
                     %Find the max z
@@ -975,7 +978,8 @@ classdef RNA_Threshold_SpotSelector
                 %Okay, let's actually re-render a max proj to eliminate
                 %hidden z slices. Since it's been friggin confusing.
                 img1 = obj.img_structs(1);
-                max_proj = max(obj.loaded_ch(:,:,obj.z_min:obj.z_max),[],3);
+                visdata = obj.loaded_ch(:,:,obj.z_min:obj.z_max);
+                max_proj = max(visdata,[],3);
                 imshow(immultiply(max_proj,immul_mask),[img1.Lmin img1.Lmax]);
                 ref_coords_z = filtered_coords;
             end
@@ -1125,7 +1129,7 @@ classdef RNA_Threshold_SpotSelector
                 obj = obj.whileMouseListening_selectMask(2.83);
                 obj.f_scores_dirty = true;
                 obj = obj.drawImages();
-            elseif btn == 'j' %'j' - toggle single plane/max proj view
+            elseif btn == 'm' %'m' - toggle single plane/max proj view
                 obj.toggle_singleSlice = ~obj.toggle_singleSlice;
                 obj.toggle_allz = false;
                 obj = obj.drawImages();
@@ -1279,7 +1283,7 @@ classdef RNA_Threshold_SpotSelector
                 %Loop until any key pressed that isn't mouse
                 obj = obj.whileMouseListening_RefMode(x,y,btn);
                 obj.ref_last_modified = datetime;
-            elseif btn == 'j' %106 'j' - toggle single plane/max proj view
+            elseif btn == 'm' %106 'm' - toggle single plane/max proj view
                 obj.toggle_singleSlice = ~obj.toggle_singleSlice;
                 obj.toggle_allz = ~obj.toggle_singleSlice;
                 fprintf("Max proj mode: Single Slice Toggle: %d, All Z Toggle: %d\n", obj.toggle_singleSlice,obj.toggle_allz);
@@ -1795,30 +1799,38 @@ classdef RNA_Threshold_SpotSelector
             end
             
             %Anything in pos, but not in ref, set to false pos
-            t_tbl = obj.positives{target_th_idx}(:,1:3);
             r_tbl = obj.ref_coords;
+            th_pos = obj.positives{target_th_idx};
+            if ~isempty(th_pos)
+                t_tbl = obj.positives{target_th_idx}(:,1:3);
+                [~, not_idxs] = RNA_Threshold_SpotSelector.findRowMatches(t_tbl, r_tbl);
+                if ~isempty(not_idxs)
+                    obj.positives{target_th_idx}(not_idxs, 4) = 0;
+                end
             
-            [~, not_idxs] = RNA_Threshold_SpotSelector.findRowMatches(t_tbl, r_tbl);
-            if ~isempty(not_idxs)
-                obj.positives{target_th_idx}(not_idxs, 4) = 0;
-            end
-            
-            %Anything in ref, but not in pos, set to false neg
-            [~, not_idxs] = RNA_Threshold_SpotSelector.findRowMatches(r_tbl, t_tbl);
-            if ~isempty(not_idxs)
-                neg_tbl = zeros(size(not_idxs,1), 4);
-                neg_tbl(:,1:3) = r_tbl(not_idxs,:);
+                %Anything in ref, but not in pos, set to false neg
+                [~, not_idxs] = RNA_Threshold_SpotSelector.findRowMatches(r_tbl, t_tbl);
+                if ~isempty(not_idxs)
+                    neg_tbl = zeros(size(not_idxs,1), 4);
+                    neg_tbl(:,1:3) = r_tbl(not_idxs,:);
+                    obj.false_negs{target_th_idx} = neg_tbl;
+                end
+            else
+                rcount = size(r_tbl,1);
+                neg_tbl = zeros(size(rcount,1), 4);
+                neg_tbl(:,1:3) = r_tbl(rcount,:);
                 obj.false_negs{target_th_idx} = neg_tbl;
             end
-
         end
         
         %%
         function obj = clearAtThreshold(obj, target_th_idx)
  
             obj.false_negs{target_th_idx} = [];
-            obj.positives{target_th_idx}(:,4) = 1;
-            
+            if ~isempty(obj.positives{target_th_idx})
+                obj.positives{target_th_idx}(:,4) = 1;
+            end
+
             obj.threshold_table(target_th_idx,2) = 0;
             
         end
@@ -1988,6 +2000,7 @@ classdef RNA_Threshold_SpotSelector
             %Stop at 20th lowest threshold
             for t = T:-1:20
                 fprintf("Trying threshold %d\n",obj.threshold_table(t,1));
+                if isempty(obj.positives{t,1}); continue; end
                 spottbl = obj.positives{t,1}(:,1:3);
                 if ~isempty(spottbl)
                     %fprintf("Trying threshold %d\n",t);
@@ -2107,6 +2120,10 @@ classdef RNA_Threshold_SpotSelector
                 obj = obj.checkAgainstRef();
                 obj.threshold_table(obj.threshold_idx, 2) = 1;
                 
+%                 if t >= 533
+%                     fprintf("Debug\n");
+%                 end
+                
                 [obj, tp, fp, fn, ~] = obj.splitCoordTables(t, false);
                 if isempty(mask)
                     %Can just use find and take sizes
@@ -2216,6 +2233,11 @@ classdef RNA_Threshold_SpotSelector
             obj.positives = cell(t_count, 1);
             for t = 1:t_count
                 src_tbl = coord_table{t};
+                if isempty(src_tbl)
+                    obj.positives{t} = [];
+                    continue;
+                end
+                
                 tbl = ones([size(src_tbl,1) 4]);
                 if dimcount == 2
                     tbl(:,1:2) = src_tbl(:,1:2);
@@ -2696,6 +2718,13 @@ classdef RNA_Threshold_SpotSelector
        
         %%
         function [true_idx, false_idx, exclude_idx] = isolateTFEIndices(my_tbl)
+            
+            if isempty(my_tbl)
+                true_idx = [];
+                false_idx = [];
+                exclude_idx = [];
+                return;
+            end
             
             c_three = my_tbl(:,4);
             %[pos_idx,~,~] = find(c_three);

@@ -13,6 +13,8 @@ arg_debug = true; %CONSTANT used for debugging arg parser.
 debug_lvl = 0;
 senspe_set = false;
 matvar = [];
+thread_request = 1;
+limitSaveSize = true;
 
 lastkey = [];
 for i = 1:nargin
@@ -29,6 +31,10 @@ for i = 1:nargin
         if strcmp(lastkey, "ovrw")
             rna_spot_run.overwrite_output = true;
             if arg_debug; fprintf("Overwrite Output: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "nodpc")
+            rna_spot_run.deadpix_detect = false;
+            if arg_debug; fprintf("Dead Pixel Cleaning: Off\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "usespc")
             rna_spot_run.ttune_use_rawcurve = true;
@@ -49,6 +55,10 @@ for i = 1:nargin
         elseif strcmp(lastkey, "fitwavg")
             rna_spot_run.ttune_reweight_fit = true;
             if arg_debug; fprintf("Use weighted segmented fit: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "bigfiles")
+            limitSaveSize = false;
+            if arg_debug; fprintf("Limit Output File Size to 2GB: Off\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "verbose")
             if debug_lvl < 1; debug_lvl = 1; end
@@ -247,6 +257,13 @@ for i = 1:nargin
         elseif strcmp(lastkey, "celltype")
             rna_spot_run.type_cell = argval;
             if arg_debug; fprintf("Cell Type Set: %s\n", rna_spot_run.type_cell); end
+        elseif strcmp(lastkey, "threads")
+            thread_request = Force2Num(argval);
+            if thread_request < 1; thread_request = 1; end
+            if arg_debug; fprintf("Requested Threads: %d\n", thread_request); end
+        elseif strcmp(lastkey, "gaussrad")
+            rna_spot_run.dtune_gaussrad = argval;
+            if arg_debug; fprintf("XY Gaussian Radius Set: %s\n", rna_spot_run.dtune_gaussrad); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -273,9 +290,9 @@ if ~isempty(rna_spot_run.sample_matpath)
     else
         img_ch_set = MatImages.loadImageChannels(rna_spot_run.sample_matpath);
     end
-    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, img_ch_set, debug_lvl);
+    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, img_ch_set, debug_lvl, limitSaveSize, thread_request);
 else
-    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, [], debug_lvl);
+    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, [], debug_lvl, limitSaveSize, thread_request);
 end
 
 end
@@ -303,56 +320,21 @@ function idims = parseDimsTo(dims_arg, trg_struct)
 end
 
 function spotsrun = setDefaultParams(spotsrun)
-    spotsrun.ttune_winsz_min = 3;
-    spotsrun.ttune_fit_strat = 0;
-    spotsrun.ttune_reweight_fit = false;
-    spotsrun.ttune_fit_to_log = true;
-    spotsrun.ttune_thweight_med = 0.25;
-    spotsrun.ttune_thweight_fit = 0.0;
-    spotsrun.ttune_thweight_fisect = 0.75;
-    spotsrun.ttune_std_factor = 1.0;
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 3);
 end
 
 function spotsrun = setSensitive1(spotsrun)
-    spotsrun.ttune_winsz_min = 3;
-    spotsrun.ttune_fit_strat = 0;
-    spotsrun.ttune_reweight_fit = false;
-    spotsrun.ttune_fit_to_log = true;
-    spotsrun.ttune_thweight_med = 0.0;
-    spotsrun.ttune_thweight_fit = 0.2;
-    spotsrun.ttune_thweight_fisect = 0.8;
-    spotsrun.ttune_std_factor = 0.0;
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 4);
 end
 
 function spotsrun = setSensitive2(spotsrun)
-    spotsrun.ttune_winsz_min = 3;
-    spotsrun.ttune_fit_strat = 0;
-    spotsrun.ttune_reweight_fit = false;
-    spotsrun.ttune_fit_to_log = true;
-    spotsrun.ttune_thweight_med = 0.0;
-    spotsrun.ttune_thweight_fit = 1.0;
-    spotsrun.ttune_thweight_fisect = 0.0;
-    spotsrun.ttune_std_factor = 0.0;
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 5);
 end
 
 function spotsrun = setSpecific1(spotsrun)
-    spotsrun.ttune_winsz_min = 6;
-    spotsrun.ttune_fit_strat = 0;
-    spotsrun.ttune_reweight_fit = false;
-    spotsrun.ttune_fit_to_log = true;
-    spotsrun.ttune_thweight_med = 0.5;
-    spotsrun.ttune_thweight_fit = 0.0;
-    spotsrun.ttune_thweight_fisect = 0.5;
-    spotsrun.ttune_std_factor = 1.0;
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 2);
 end
 
 function spotsrun = setSpecific2(spotsrun)
-    spotsrun.ttune_winsz_min = 6;
-    spotsrun.ttune_fit_strat = 0;
-    spotsrun.ttune_reweight_fit = false;
-    spotsrun.ttune_fit_to_log = true;
-    spotsrun.ttune_thweight_med = 0.5;
-    spotsrun.ttune_thweight_fit = 0.0;
-    spotsrun.ttune_thweight_fisect = 0.5;
-    spotsrun.ttune_std_factor = 2.0;
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 1);
 end

@@ -41,7 +41,8 @@ classdef RNASpotsRun
         z_max; %User set boundary
         z_min_apply; %What is actually used
         z_max_apply; %What is actually used
-        ztrim_auto;
+        ztrim_auto; %DEPRECATED
+        dtune_gaussrad;
         ttune_winsize; %DEPRECATED
         %ttune_wscorethresh;
         ttune_madfactor; %DEPRECATED
@@ -64,6 +65,7 @@ classdef RNASpotsRun
         ttune_thweight_fit;
         ttune_thweight_fisect;
         
+        deadpix_detect;
         overwrite_output;
     end
     
@@ -213,6 +215,26 @@ classdef RNASpotsRun
         end
         
         function obj = updateZTrimParams(obj)
+            %Upper bound. (Index of highest slice included)
+            Z = 1;
+            if ~isempty(obj.idims_sample)
+                Z = obj.idims_sample.z;
+            end
+            
+            %Update zmin and max if unset.
+            if obj.z_max < 1
+                obj.z_max = Z;
+            end
+            if obj.z_max < obj.z_min
+                obj.z_max = obj.z_min;
+            end
+            if obj.z_max > obj.idims_sample.z
+                obj.z_max = obj.idims_sample.z;
+            end
+            if obj.z_min < 1
+                obj.z_min = 1;
+            end
+            
             %Trim
             trim_val = obj.ztrim;
             if obj.ztrim_auto > trim_val; trim_val = obj.ztrim_auto; end
@@ -220,12 +242,6 @@ classdef RNASpotsRun
             %Lower bound. (Index of lowest slice included)
             obj.z_min_apply = 1 + trim_val;
             if obj.z_min > obj.z_min_apply; obj.z_min_apply = obj.z_min; end
-            
-            %Upper bound. (Index of highest slice included)
-            Z = 1;
-            if ~isempty(obj.idims_sample)
-                Z = obj.idims_sample.z;
-            end
             
             obj.z_max_apply = Z - trim_val;
             if obj.z_max < obj.z_max_apply; obj.z_max_apply = obj.z_max; end
@@ -276,7 +292,7 @@ classdef RNASpotsRun
             
             T = size(coord_table,1);
             masked_coord_table = cell(T,1);
-            masked_spots_table = zeros(T,2);
+            masked_spots_table = uint16(zeros(T,2));
             masked_spots_table(:,1) = spots_table(:,1);
             for t = 1:T
                 tcoords = coord_table{t,1};
@@ -310,11 +326,12 @@ classdef RNASpotsRun
             rnaspots_run.ctrl_chcount = 0;
             rnaspots_run.t_min = 10;
             rnaspots_run.t_max = 500;
-            rnaspots_run.ztrim = 5;
+            rnaspots_run.ztrim = 0;
             rnaspots_run.z_min = -1;
             rnaspots_run.z_max = -1;
             rnaspots_run.z_min_apply = -1;
             rnaspots_run.z_max_apply = -1;
+            rnaspots_run.dtune_gaussrad = 7;
             rnaspots_run.ttune_winsize = -1; %DEPR
             rnaspots_run.ttune_madfactor = 0.0; %DEPR
             rnaspots_run.intensity_threshold = 0;
@@ -334,6 +351,7 @@ classdef RNASpotsRun
             rnaspots_run.ttune_thweight_fit = 0.2;
             rnaspots_run.ttune_thweight_fisect = 0.8;
             rnaspots_run.ttune_std_factor = 0.0;
+            rnaspots_run.deadpix_detect = true;
             
             rnaspots_run.idims_voxel = struct('x', -1, 'y', -1, 'z', -1);
             rnaspots_run.idims_expspot = struct('x', -1, 'y', -1, 'z', -1);
@@ -343,7 +361,48 @@ classdef RNASpotsRun
             if ~endsWith(path, '_rnaspotsrun.mat')
                 path = [path '_rnaspotsrun.mat'];
             end
-            load(path, 'rnaspots_run');
+            if isfile(path)
+                load(path, 'rnaspots_run');
+            else
+                rnaspots_run = [];
+            end
+        end
+        
+        function [spot_table, coord_table] = saveTables(spot_table, coord_table, save_stem, limitSize)
+            %Shrink to uint16 in case they are double.
+            spot_table = uint16(spot_table);
+            cell_count = size(coord_table,1);
+            for c = 1:cell_count
+                coord_table{c,1} = uint16(coord_table{c,1});
+            end
+            
+            if limitSize
+                %If over 2GB, will trim low thresholds until it fits under
+                %2GB.
+                tstart = 1;
+                csize = RNA_Threshold_Common.estimateCoordtableSize(coord_table,2);
+                while csize > 2000000000
+                    reduction = size(coord_table{tstart,1},1) * 3 * 2;
+                    tstart = tstart + 1;
+                    csize = csize - reduction;
+                end
+                
+                if tstart > 1
+                    %Will have to trim those off the tables.
+                    spot_table = spot_table(tstart:cell_count,:);
+                    coord_table = coord_table(tstart:cell_count,:);
+                end
+                
+                %Spot count table
+                save([save_stem '_spotTable.mat'], 'spot_table');
+                %Spot coords
+                save([save_stem '_coordTable.mat'], 'coord_table');
+            else
+                %Spot count table
+                save([save_stem '_spotTable.mat'], 'spot_table', '-v7.3');
+                %Spot coords
+                save([save_stem '_coordTable.mat'], 'coord_table', '-v7.3');
+            end
         end
         
     end

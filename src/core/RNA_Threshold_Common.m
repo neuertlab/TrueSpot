@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.3.3
-%Updated October 20, 2022
+%Version 2.4.0
+%Updated November 3, 2022
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -47,6 +47,11 @@
 %   2.3.3 | 22.10.20
 %       Fixed off-center Gaussian
 %       Added filter for borders
+%   2.3.4 | 22.10.26
+%       Added "suggestion" parameter for thresholding
+%   2.4.0 | 22.11.03
+%       Added function to estimate memory size of coord_tables
+%       Fixed(?) parallelization for 3D run.
 
 %%
 %
@@ -332,89 +337,85 @@ classdef RNA_Threshold_Common
         %FLEXIBILITIES
         %   -> "num" can refer to any numerical type
         %
-        function px_counts = saveDeadPixels(in_img, savepath)
-        %Copied wholesale from AB_FindThreshold_TMR_AF594_CY5_B.m
+        function px_counts = saveDeadPixels(in_img, savepath, verbose)
+        %Originally copied wholesale from AB_FindThreshold_TMR_AF594_CY5_B.m
 
+            if nargin < 3; verbose = false; end
+        
             if isempty(savepath)
                 savepath = 'recurring pixels 3 out of 6';
             end
         
             Y = size(in_img,1);
             X = size(in_img,2);
+            Z = size(in_img,3);
+            A = Y * X;
 
-            %testmat = zeros(3,1);
-            %counter_test = 1;
-            px_counts = zeros(3,1);
+            px_counts = struct('recurring_all', 0, 'random', 0, 'recurring', 0);
             slice_cut = 4/8;
-            slice_check = 6;
-            counter99 = 0;
-            hi_pixels_all = zeros(1,1);
-            %'determining recurring pixels'
-            fprintf("Determining recurring pixels...\n")
+            slice_check = round(min(Z,max(Z./4, 6)));
+            hi_pixels = cell(slice_check, 1);
+            hi_pixels_all = [];
+            if verbose; fprintf("Determining recurring pixels...\n"); end
     
             w2 = [-1 -1 -1;...
                   -1 +8 -1;...
                   -1 -1 -1;];
       
+            %For some subgroup of z slices, find pixels with unusually
+            %   high values after edge filter is applied.
             if size(in_img,1) > 1
                 for i = 1:slice_check
-                    counter99 = counter99 + 1;
                     slice = imfilter(in_img(:,:,i),w2);
-                    cutoff = mean(slice(:)) + 3 * std(slice(:));
+                    cutoff = mean(slice(:)) + (3 * std(slice(:)));
                     temp_pix = find(slice > cutoff);
-                    hi_pixels_all(counter99,1:size(temp_pix,1)) = temp_pix;
+                    hi_pixels{i,1} = temp_pix;
+                    hi_pixels_all = cat(1, hi_pixels_all, temp_pix);
                 end
             end
     
-            slice_num = size(hi_pixels_all,1);
-            rand_hi = zeros(size(hi_pixels_all));
-    
-            for j = 1:slice_num
-                temp_hi = hi_pixels_all(j,:);
-                temp_hi1 = temp_hi;
-                temp_hi1(temp_hi1 == 0) = [];
-                rand_hi_temp = randsample(Y * X, size(temp_hi1,2));
+            %For each processed slice, pick the same number
+            %   of pixels randomly
+            rand_hi = [];
+            for j = 1:slice_check
+                temp_hi = hi_pixels{j,1};
+                rand_hi_temp = randsample(A, size(temp_hi,2));
                 rand_hi_temp = rand_hi_temp';
-                rand_hi(j, 1:size(rand_hi_temp,2)) = rand_hi_temp;
+                rand_hi = cat(1, rand_hi, rand_hi_temp);
             end
             
-            imhistc_exists = exist('imhistc');
-            if imhistc_exists == 3
-                %this is a binary mex file - the one I have is only gonna
-                %run on win x64 I think
-                fprintf("imhistc was found. Using imhistc.\n");
-                hist_pix_rand = imhistc(double(rand_hi(:)), double(Y*X), 0, double(Y*X));
-            else
-                fprintf("imhistc was NOT found. Using histcounts.\n");
-                %[hist_pix_rand, ~] = imhist(double(rand_hi(:)), double(Y*X));
-                [hist_pix_rand, ~] = histcounts(double(rand_hi(:)), double(Y*X));
-                hist_pix_rand = transpose(hist_pix_rand);
-            end
-            %hist_pix_rand = imhist(double(rand_hi(:)), double(Y*Y), 0, double(Y*Y));
-            rand_recur_pix = find(hist_pix_rand >= slice_num*slice_cut);
-            %testmat(2, counter_test) = size(rand_recur_pix,1);
-            px_counts(2, 1) = size(rand_recur_pix,1);
-            %[num2str(size(rand_recur_pix,1)) ' randomly recurring pixels' ]
-            fprintf("%d randomly recurring pixels\n", size(rand_recur_pix,1));
-            hi_pixels_all(hi_pixels_all == 0) = [];
-            if imhistc_exists == 3
-                hist_pix = imhistc(double(hi_pixels_all(:)), double(Y * X), 0, double(Y * X));
-            else
-                %[hist_pix, ~] = imhist(double(hi_pixels_all(:)), double(Y * X));
-                [hist_pix, ~] = histcounts(double(hi_pixels_all(:)), double(Y * X));
-                hist_pix = transpose(hist_pix);
-            end
-            recurring_pixels = find(hist_pix >= slice_num*slice_cut);
-            %[num2str(size(recurring_pixels,1)) ' recurring pixels' ]
-            fprintf("%d recurring pixels\n", size(recurring_pixels,1));
-            %testmat(3, counter_test) = size(recurring_pixels,1);
-            px_counts(3, 1) = size(recurring_pixels,1);
-            %counter_test = counter_test + 1;
+            %See how often each pixel appears in random selection
+            [hist_pix_rand, ~] = histcounts(double(rand_hi(:)), A);
+            hist_pix_rand = transpose(hist_pix_rand);
             
-            %Convert back to 2D coordinates to save
+            %Note which occur more than slice_cut proportion of the time.
+            rand_recur_pix = find(hist_pix_rand >= slice_check*slice_cut);
+            px_counts.random = size(rand_recur_pix,1);
+            if verbose; fprintf("%d randomly recurring pixels\n", px_counts.random); end
             
-            save(savepath, 'recurring_pixels')
-   
+            %Repeat with high value pixels
+            [hist_pix, ~] = histcounts(double(hi_pixels_all(:)), A);
+            hist_pix = transpose(hist_pix);
+            recurring_pixels_all = find(hist_pix >= slice_check*slice_cut);
+            px_counts.recurring_all = size(recurring_pixels_all,1);
+            if verbose; fprintf("%d total recurring pixels\n", px_counts.recurring_all); end
+            
+            %Remove border pixels
+            recmtx = NaN(px_counts.recurring_all,3);
+            recmtx(:,1) = recurring_pixels_all(:,1); %1D
+            recmtx(:,2) = floor((recmtx(:,1) - 1)./Y) + 1; %x
+            recmtx(:,3) = mod((recmtx(:,1) - 1), Y) + 1; %y
+            testmtx = recmtx(:,2) > 1;
+            testmtx = testmtx & (recmtx(:,2) < X);
+            testmtx = testmtx & (recmtx(:,3) < Y);
+            testmtx = testmtx & (recmtx(:,3) > 1);
+            [keeprows, ~] = find(testmtx);
+            recurring_pixels = recmtx(keeprows,1);
+            px_counts.recurring = size(recurring_pixels,1);
+            if verbose; fprintf("%d non-border recurring pixels\n", px_counts.recurring); end
+            
+            %Save
+            save(savepath, 'recurring_pixels', 'recurring_pixels_all');
         end
 
         %%
@@ -435,14 +436,16 @@ classdef RNA_Threshold_Common
         %FLEXIBILITIES
         %   -> "num" can refer to any numerical type
         %
-        function clean_img = cleanDeadPixels(in_img, savepath)
+        function clean_img = cleanDeadPixels(in_img, savepath, verbose)
 
+            if nargin < 3; verbose = false; end
             if isempty(savepath)
                 savepath = 'recurring pixels 3 out of 6';
             end
             
             load(savepath, 'recurring_pixels') %Load previously saved list of dead pixels
             rp_count = size(recurring_pixels,1);
+            cleaned_count = 0;
     
             %Get size(s) and save. Cleans up code.
             dim1 = size(in_img,1); %Height
@@ -450,11 +453,13 @@ classdef RNA_Threshold_Common
             dim3 = size(in_img,3); %Depth
     
             clean_img = in_img;
-    
+                
             %The notice messages are kept from previous code
             %'Averaging recurring pixels'
-            fprintf("Averaging recurring pixels...\t")
-            tic
+            if verbose
+                fprintf("Averaging recurring pixels...\t")
+                tic
+            end
             for k = 1:dim3
                 slice = in_img(:,:,k); %[uint16[D][D]] 2D slice of image
                 for c = 1:rp_count
@@ -473,12 +478,16 @@ classdef RNA_Threshold_Common
                     surr_pix = [p-1, p+1, west, east, west-1, east-1, east+1, west+1];
                     %N S W E NW NE SE SW
                     slice(p) = mean(slice(surr_pix));
+                    cleaned_count = cleaned_count+1;
                 end
                 clean_img(:,:,k) = slice;
             end
-            toc
+            if verbose
+                toc; 
+                fprintf("Recurring voxels cleaned: %d\n", cleaned_count);
+            end
     
-            clear recurring_pixels
+            clear recurring_pixels;
         end
         
         %%
@@ -493,6 +502,7 @@ classdef RNA_Threshold_Common
             param_struct = struct("window_pos", 0.5);
             %param_struct.window_sizes = [5:5:25];
             param_struct.window_sizes = [3:3:21];
+            param_struct.suggestion = [0 0]; %Suggested thresh range from outside data
             param_struct.mad_factor_min = -1.0;
             param_struct.mad_factor_max = 1.0;
             param_struct.spline_iterations = 3;
@@ -536,6 +546,7 @@ classdef RNA_Threshold_Common
             %res.mad_factor = 0.0;
             res = struct("window_pos", 0.0);
             res.window_sizes = [];
+            res.suggestion = [0 0];
             res.mad_factor_min = -1.0;
             res.mad_factor_max = 1.5;
             res.spline_iterations = 0;
@@ -744,6 +755,7 @@ classdef RNA_Threshold_Common
             %threshold_results.window_size = parameter_info.window_size;
             threshold_results.window_sizes = parameter_info.window_sizes;
             threshold_results.window_pos = parameter_info.window_pos;
+            threshold_results.suggestion = parameter_info.suggestion;
             %threshold_results.mad_factor = parameter_info.mad_factor;
             threshold_results.mad_factor_min = parameter_info.mad_factor_min;
             threshold_results.mad_factor_max = parameter_info.mad_factor_max;
@@ -784,7 +796,7 @@ classdef RNA_Threshold_Common
             threshold_results.fit_ri_weight = iweight;
             
             %Start by calculating the diff
-            spotcount_table = parameter_info.sample_spot_table;
+            spotcount_table = double(parameter_info.sample_spot_table);
             threshold_results.x = spotcount_table(:,1);
             deriv1 = diff(spotcount_table(:,2));
             deriv1 = smooth(deriv1);
@@ -793,7 +805,7 @@ classdef RNA_Threshold_Common
             P_sample = T_sample - 1;
             
             %Repeat for control, if present
-            ctrl_spotcount_table = parameter_info.control_spot_table;
+            ctrl_spotcount_table = double(parameter_info.control_spot_table);
             if ~isempty(ctrl_spotcount_table)
                 ctrlderiv = diff(ctrl_spotcount_table(:,2));
                 ctrlderiv = smooth(ctrlderiv);
@@ -888,25 +900,58 @@ classdef RNA_Threshold_Common
             mscores = RNAThreshold.getAllMedThresholds(threshold_results);
             fscores = RNAThreshold.getAllFitThresholds(threshold_results);
             iscores = RNAThreshold.getAllRightISectThresholds(threshold_results);
+            allscores = [];
 
             if ~isempty(mscores)
                 mfac = mean(mscores, 'all', 'omitnan') + (std(mscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+                allscores = cat(2, allscores, mscores);
             else
                 mfac = 0.0;
             end
 
             if ~isempty(fscores)
                 ffac = mean(fscores, 'all', 'omitnan') + (std(fscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+                allscores = cat(2, allscores, fscores);
             else
                 ffac = 0.0;
             end
 
             if ~isempty(iscores)
                 ifac = mean(iscores, 'all', 'omitnan') + (std(iscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+                allscores = cat(2, allscores, iscores);
             else
                 ifac = 0.0;
             end
             threshold_results.threshold = round((mfac * mweight) + (ffac * fweight) + (ifac * iweight));
+
+            sugg_min = threshold_results.suggestion(1);
+            sugg_max = threshold_results.suggestion(2);
+            if sugg_min > 0
+                if sugg_max > 0
+                    %Find std of all suggested thresholds to generate a
+                    %range.
+                    %Find the overlap (if there is one) between suggested
+                    %range and this image's range.
+                    allstd = std(allscores, 0, 'all', 'omitnan');
+                    det_min = (threshold_results.threshold - allstd);
+                    det_max = (threshold_results.threshold + allstd);
+                    ovl_min = max(det_min, sugg_min);
+                    ovl_max = min(det_max, sugg_max);
+                    if ovl_min > ovl_max
+                        %No overlap. Just pull up or down thresh.
+                        if sugg_min >= det_max
+                            %Suggestion is higher
+                            threshold_results.threshold = round((sugg_min + det_max) / 2);
+                        else
+                            %Suggestion is lower.
+                            threshold_results.threshold = round((sugg_max + det_min) / 2);
+                        end
+                    else
+                        %Overlap. Set thresh to middle of overlap.
+                        threshold_results.threshold = round((ovl_min + ovl_max) / 2);
+                    end
+                end
+            end
             
             if threshold_results.threshold < threshold_results.control_floor
                 if parameter_info.verbosity > 0
@@ -1220,7 +1265,7 @@ classdef RNA_Threshold_Common
         %%
         %Apply spot detection to 3D image as a whole.
         %ARGS
-        %   in_slice (uint16[Y][X][Z]) - Input image
+        %   in_img (uint16[Y][X][Z]) - Input image
         %   th1 (num) - Raw threshold value. Pixels below this get filtered first.
         %   th2 (num[Z]) - Additional threshold value/plane. Spot nucleating pixels get
         %               filtered if below this.
@@ -1265,10 +1310,10 @@ classdef RNA_Threshold_Common
             img_filtered = in_img;
             if ~pretrimmed
                 for z = 1:(minZ-1)
-                    img_filtered(:,:,z) = zeros(Y,X);
+                    img_filtered(:,:,z) = 0;
                 end
                 for z = (maxZ+1):Z
-                    img_filtered(:,:,z) = zeros(Y,X);
+                    img_filtered(:,:,z) = 0;
                 end
             end
             %toc
@@ -1277,6 +1322,7 @@ classdef RNA_Threshold_Common
             %fprintf("Filter 1\t")
             %tic
             IM = immultiply(img_filtered, img_filtered > th1); % Filters out pixels at or below threshold
+            clear img_filtered; %Not using for now.
             %toc
     
             if sum(IM(:)) > 0 %Are there any spots at all?
@@ -1292,10 +1338,12 @@ classdef RNA_Threshold_Common
                 %tic
                 IM3 = immultiply(in_img, IM2);
                 clear IM2; %It's not much, but maybe it'll help the memory spikes?
+                %clear in_img; %Hopefully only deletes local copy of it?
                 %toc
         
                 %fprintf("Finding points...\t")
                 %tic
+                img_filtered = uint16(zeros(Y,X,Z));
                 for z = minZ:maxZ
                     %IM3 = immultiply(in_img(:,:,z), IM2);
                     %idx = z - minZ + 1;
@@ -1424,6 +1472,146 @@ classdef RNA_Threshold_Common
     
         end
         
+        %%
+        function common_ctx = generateThreshContextStruct(img_filter)
+            common_ctx = struct('img_filter', img_filter);
+            common_ctx.coord_table = [];
+            common_ctx.spot_table = [];
+            common_ctx.plane_avgs = [];
+            common_ctx.th_list = [];
+            common_ctx.zBorder = 0;
+            common_ctx.minZ = 0;
+            common_ctx.maxZ = 0;
+            common_ctx.save_stem = '';
+            common_ctx.th_strategy = '';
+            common_ctx.save_filtered = false;
+            common_ctx.collapse3D = false;
+            common_ctx.verbose = false;
+            common_ctx.threads = 1;
+            common_ctx.fimg_max_val = 0;
+            common_ctx.valbin = [];
+        end
+        
+        %%
+        function [common_ctx, t_coords] = do3DThresholdLoop_serial(common_ctx, th_idx)
+            th = common_ctx.th_list(1,th_idx);
+            if common_ctx.verbose
+                tic;
+                fprintf("Processing image using threshold = %f\n", th);
+            end
+                    
+            check_th = th+1;
+            if ((check_th <= size(common_ctx.valbin,2)) & (common_ctx.valbin(1,check_th) ~= 0)) | (th_idx == 1)
+                %Spot detect
+                [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(common_ctx.img_filter,th,common_ctx.plane_avgs,common_ctx.zBorder,true);
+                
+                %Whittle down spots
+                if common_ctx.collapse3D
+                    if common_ctx.verbose; fprintf("Determining unique XY spots...\n"); end
+                    [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
+                    common_ctx.spot_table(th_idx,2) = spot_count;
+                    common_ctx.coord_table{th_idx,1} = t_coords;
+                else
+                    [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,common_ctx.minZ,common_ctx.maxZ);
+                    common_ctx.spot_table(th_idx,2) = spot_count;
+                    common_ctx.coord_table{th_idx,1} = t_coords;
+                end
+                
+                if(common_ctx.save_filtered); save([common_ctx.save_stem '_sfimg_t' num2str(th)], 'f_img'); end
+                clear f_img;
+            else
+                t_coords = common_ctx.coord_table{th_idx-1,1};
+            	common_ctx.spot_table(th_idx,2) = common_ctx.spot_table(th_idx-1,2);
+                common_ctx.coord_table{th_idx,1} = t_coords;
+            end
+            if common_ctx.verbose; toc; end
+        end
+        
+        %%
+        function initParallel(threads, workers, workdir)
+            mkdir(workdir);
+            local_cluster = parcluster();
+            local_cluster.NumThreads = threads;
+            local_cluster.NumWorkers = workers;
+            local_cluster.JobStorageLocation = workdir;
+            parpool(local_cluster);
+        end
+        
+        %%
+        function do3DThresholdLoop_parallel(common_ctx, th_val)
+            %Spot detect
+            [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(common_ctx.img_filter,th_val,common_ctx.plane_avgs,common_ctx.zBorder,true);
+            %common_ctx.img_filter = []; See if keeping it read-only helps?
+            
+            if(common_ctx.save_filtered); save([common_ctx.save_stem '_sfimg_t' num2str(th_val)], 'f_img'); end
+            clear f_img;
+            
+            if common_ctx.collapse3D
+                [~, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
+            else
+                [~, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,common_ctx.minZ,common_ctx.maxZ);
+            end
+            
+            save([common_ctx.save_stem '_coords_' sprintf('%04d', th_val)], 't_coords', '-v7.3');
+        end
+        
+        %%
+        function common_ctx = runThresholdList3D(common_ctx)
+
+            T = size(common_ctx.th_list,2);
+            
+            if common_ctx.threads > 1
+                ctx_clean.img_filter = common_ctx.img_filter;
+                ctx_clean.plane_avgs = common_ctx.plane_avgs;
+                ctx_clean.zBorder = common_ctx.zBorder;
+                ctx_clean.minZ = common_ctx.minZ;
+                ctx_clean.maxZ = common_ctx.maxZ;
+                ctx_clean.save_stem = common_ctx.save_stem;
+                ctx_clean.collapse3D = common_ctx.collapse3D;
+                ctx_clean.save_filtered = common_ctx.save_filtered;
+                tlist = common_ctx.th_list;
+                
+                if common_ctx.verbose
+                    fprintf("Now testing thresholds using %d workers...\n", common_ctx.threads);
+                    tic; 
+                end
+
+                %parpool(common_ctx.threads);
+                [outdir, ~, ~] = fileparts(common_ctx.save_stem);
+                pardir = [outdir filesep 'parallel'];
+                RNA_Threshold_Common.initParallel(1, common_ctx.threads, pardir);
+                parfor c = 1:T
+                    RNA_Threshold_Common.do3DThresholdLoop_parallel(ctx_clean, tlist(1,c));
+                end
+                delete(gcp('nocreate'));
+                rmres = rmdir(pardir, 's');
+                if common_ctx.verbose; toc; end
+                
+                %Rejoin into tables...
+                for c = 1:T
+                    th_val = tlist(1,c);
+                    load([common_ctx.save_stem '_coords_' sprintf('%04d', th_val)], 't_coords');
+                    common_ctx.coord_table{c,1} = t_coords;
+                    common_ctx.spot_table(c,2) = size(t_coords,1);
+                end
+            else
+                 %Skip threshes with no spots at that intensity.
+                common_ctx.fimg_max_val = max(common_ctx.img_filter, [], 'all', 'omitnan');
+                common_ctx.valbin = histcounts(common_ctx.img_filter, common_ctx.fimg_max_val+1);
+%                 ptotal = 0;
+%                 bincount = size(common_ctx.valbin, 2);
+%                 for i = 1:bincount
+%                     ptotal = ptotal + common_ctx.valbin(1, i);
+%                     common_ctx.valbin(1,i) = ptotal;
+%                 end
+                
+                %fprintf("breakpoint\n");
+                for c = 1:T
+                    [common_ctx, ~] = RNA_Threshold_Common.do3DThresholdLoop_serial(common_ctx, c);
+                end
+            end
+        end
+        
          %%
         %Run spot detection on the provided 3D image channel using the
         %provided threshold list and strategy
@@ -1450,178 +1638,79 @@ classdef RNA_Threshold_Common
         %   coord_table (cell{int[N][M]}) - Cell array with coordinate
         %                                   table for each threshold level.
         %
-        function [spot_table, coord_table] = run_spotDetectOnThresholdList(img_filter, th_list, th_strategy, zBorder,... 
-                                                            save_filtered, saveStem, collapse3D, verbose)
-    
-                                                        
-            if nargin < 8
-                verbose = true;
-            end
+        function common_ctx = run_spotDetectOnThresholdList(common_ctx)
             
             %Save the basics
-            Z = size(img_filter, 3);
-            Y = size(img_filter, 1);
-            X = size(img_filter, 2);
-            T = size(th_list, 2);
-            minZ = zBorder+1;
-            maxZ = Z-zBorder;
+            Z = size(common_ctx.img_filter, 3);
+            T = size(common_ctx.th_list, 2);
+            minZ = common_ctx.zBorder+1;
+            maxZ = Z-common_ctx.zBorder;
+            common_ctx.minZ = minZ;
+            common_ctx.maxZ = maxZ;
 
             %Pre-allocate some vars we gonna use later...
-            plane_avgs = NaN(Z);
+            common_ctx.plane_avgs = NaN(1,Z);
             for z = minZ:maxZ
                 %plane_avgs(z) = mean2(img_filter(:,:,z));
-                plane_avgs(z) = RNA_Threshold_Common.mean_noZeros(img_filter(:,:,z));
+                common_ctx.plane_avgs(z) = RNA_Threshold_Common.mean_noZeros(common_ctx.img_filter(:,:,z));
             end
             
-            if (zBorder > 0)
-                for z = 1:(minZ-1)
-                	img_filter(:,:,z) = zeros(Y,X);
-                end
-                for z = (maxZ+1):Z
-                    img_filter(:,:,z) = zeros(Y,X);
-                end
+            if (common_ctx.zBorder > 0)
+                common_ctx.img_filter(:,:,1:(minZ-1)) = 0;
+                common_ctx.img_filter(:,:,(maxZ+1):Z) = 0;
             end
     
-            spot_table = NaN(T,2); %Columns are threshold, spot count. Rows are entries.
-            coord_table = cell(T,1); %Cell vector. Each cell is an x,y table.
+            common_ctx.spot_table = NaN(T,2); %Columns are threshold, spot count. Rows are entries.
+            common_ctx.coord_table = cell(T,1); %Cell vector. Each cell is an x,y table.
     
             %Move this list population up here
             for c = 1:T
-                spot_table(c,1) = th_list(1,c);
+                common_ctx.spot_table(c,1) = common_ctx.th_list(1,c);
             end
     
             %Generate coord & spot tables (do spot detection)
-            if strcmp(th_strategy, 'max_proj')
+            if strcmp(common_ctx.th_strategy, 'max_proj')
                 %Use only the max projection slice for spot detection
                 for c = 1:T
-                    th = th_list(1,c);
+                    th = common_ctx.th_list(1,c);
                     %Spot detect
-                    [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_maxZ(img_filter,th);
+                    [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_maxZ(common_ctx.img_filter,th);
                     %Spot count
                     spot_count = RNA_Threshold_Common.countSpots_total(xx);
                     %spot_table(c,1) = th;
-                    spot_table(c,2) = spot_count;
+                    common_ctx.spot_table(c,2) = spot_count;
                     %Save coordinates
                     t_coords = [xx(:) yy(:)];
-                    coord_table{c,1} = t_coords;
-                    if save_filtered
-                        savepath = sprintf("%s%s%s", saveStem, '_t', num2str(c));
+                    common_ctx.coord_table{c,1} = t_coords;
+                    if common_ctx.save_filtered
+                        savepath = sprintf("%s%s%s", common_ctx.save_stem, '_t', num2str(c));
                         save(savepath, 'f_img');
                     end
                 end
             else
-                if strcmp(th_strategy, 'max_avg')
+                if strcmp(common_ctx.th_strategy, 'max_avg')
                     %Use only the slice w/ highest avg intensity for spot detection
-                    [~,I] = nanmax(plane_avgs(:));
+                    [~,I] = nanmax(common_ctx.plane_avgs(:));
                     for c = 1:T
-                        th = th_list(1,c);
+                        th = common_ctx.th_list(1,c);
                         %Spot detect
-                        [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_selectZ(img_filter,th,plane_avgs,I);
+                        [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_selectZ(common_ctx.img_filter,th,common_ctx.plane_avgs,I);
                         %Spot count
                         spot_count = RNA_Threshold_Common.countSpots_total(xx);
                         %spot_table(c,1) = th;
-                        spot_table(c,2) = spot_count;
+                        common_ctx.spot_table(c,2) = spot_count;
                         %Save coordinates
                         t_coords = [xx(:) yy(:)];
-                        coord_table{c,1} = t_coords;
-                        if save_filtered
-                            save([saveStem '_t' num2str(c)], 'f_img');
+                        common_ctx.coord_table{c,1} = t_coords;
+                        if common_ctx.save_filtered
+                            save([common_ctx.save_stem '_t' num2str(c)], 'f_img');
                         end
                     end
                 else
-                    %TODO - Pretrim the unwanted Z slices. There is no
-                    %reason to do this for EVERY thresh.
-                    %TODO - Skip threshes with no spots at that intensity.
-                    fimg_max_val = max(img_filter, [], 'all', 'omitnan');
-                    valbin = histcounts(img_filter, fimg_max_val+1);
-                    ptotal = 0;
-                    bincount = size(valbin, 2);
-                    for i = 1:bincount
-                        ptotal = ptotal + valbin(1, i);
-                        valbin(1,i) = ptotal;
-                    end
-
-                    %Run full 3D image. Yay!
-                    last_th_pcount = 0;
-                    this_th_pcount = 0;
-                    thmax = size(valbin,2);
-                    if save_filtered
-                        for c = 1:T
-                            if verbose; tic; end
-                            th = th_list(1,c);
-                            if verbose; fprintf("Processing image using threshold = %f\t", th); end
-                            if th+1 <= thmax
-                                this_th_pcount = valbin(1,th+1);
-                            else
-                                this_th_pcount = last_th_pcount;
-                            end
-                            if this_th_pcount ~= last_th_pcount
-                                %Spot detect
-                                [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder,true);
-                                
-                                %Whittle down spots
-                                if verbose; toc; end
-
-                                if collapse3D
-                                    if verbose; tic; end
-                                    if verbose; fprintf("Determining unique XY spots...\t"); end
-                                    [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
-                                    spot_table(c,2) = spot_count;
-                                    coord_table{c,1} = t_coords;
-                                    if verbose; toc; end
-                                else
-                                    [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,minZ,maxZ);
-                                    spot_table(c,2) = spot_count;
-                                    coord_table{c,1} = t_coords;
-                                end
-                                save([saveStem '_t' num2str(c)], 'f_img');
-                            else
-                                if verbose; toc; end
-                                
-                                spot_table(c,2) = spot_table(c-1,2);
-                                coord_table{c,1} = coord_table{c-1,1};
-                            end
-                            last_th_pcount = this_th_pcount;
-                        end
-                    else
-                        for c = 1:T
-                        %parfor c = 1:T
-                            th = th_list(1,c);
-                            if verbose
-                                tic;
-                                fprintf("Processing image using threshold = %f\n", th);
-                            end
-                            
-                            if th+1 <= thmax
-                                this_th_pcount = valbin(1,th+1);
-                            else
-                                this_th_pcount = last_th_pcount;
-                            end
-                            if this_th_pcount ~= last_th_pcount
-                                %Spot detect
-                                [~,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_3D(img_filter,th,plane_avgs,zBorder,true);
-                                %Whittle down spots
-                                if collapse3D
-                                    if verbose; fprintf("Determining unique XY spots...\n"); end
-                                    [spot_count, t_coords] = RNA_Threshold_Common.countSpots_xyUnique(xx,yy);
-                                    spot_table(c,2) = spot_count;
-                                    coord_table{c,1} = t_coords;
-                                else
-                                    [spot_count, t_coords] = RNA_Threshold_Common.gen3DCoordTable(xx,yy,minZ,maxZ);
-                                    spot_table(c,2) = spot_count;
-                                    coord_table{c,1} = t_coords;
-                                end
-                            else
-                                spot_table(c,2) = spot_table(c-1,2);
-                                coord_table{c,1} = coord_table{c-1,1};
-                            end
-                            last_th_pcount = this_th_pcount;
-                            if verbose; toc; end
-                        end
-                    end
+                    %All 3D! The slow one!
+                    common_ctx = RNA_Threshold_Common.runThresholdList3D(common_ctx);
                 end
             end
-                  
         end
         
         %%
@@ -2659,6 +2748,19 @@ classdef RNA_Threshold_Common
         end
         
         %%-------------------------[Misc. Utilities]-----------------------------
+        
+        %%
+        function bytes_size = estimateCoordtableSize(coord_table, element_size)
+            cell_count = size(coord_table,1);
+            coord_count = 0;
+            for i = 1:cell_count
+                coord_count = coord_count + size(coord_table{i,1},1);
+            end
+            bytes_size = cell_count * 8; %Loosely assuming 1 ptr per cell
+            bytes_size = bytes_size + (coord_count * 3 * element_size);
+            %I'm sure there's more overhead, but I'll force it to 2 billion
+            %bytes instead of 2GiB maybe that'll help?
+        end
         
         %%
         function th_min = suggestMinScanThreshold(img_filter, bkg_mask)

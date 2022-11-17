@@ -100,6 +100,8 @@ save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D0I4\Tsix-TMR\20200207_0d
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I7\Tsix-TMR\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-Tsix-TMR_all_3d'];
 %save_stem_rna = [ImgDir '\data\preprocess\histones_feb\D2I7\H3K4me2-AF488\20200214_2d_F1-2-1_H3K4me2-AF488-XistInt-CY5-Tsix5Int-TMR_img_7_MMStack-H3K4me2-AF488_all_3d'];
 
+%save_stem_rna = [ImgDir '\data\preprocess\sim\mESC_RNA_100x_1\RNA-AF594\mESC_RNA_100x_1_all_3d'];
+
 addpath('./core');
 spotsrun = RNASpotsRun.loadFrom(save_stem_rna);
 spotsrun.out_stem = save_stem_rna;

@@ -36,10 +36,12 @@ classdef RNAThreshold
             param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
             
             if nargin >= 3 & ~isempty(spot_table)
-                param_struct.sample_spot_table = spot_table;
+                param_struct.sample_spot_table = double(spot_table);
             else
-                [rnaspots_run, param_struct.sample_spot_table, ~] = rnaspots_run.loadZTrimmedTables_Sample();
+                [rnaspots_run, spot_table, ~] = rnaspots_run.loadZTrimmedTables_Sample();
+                param_struct.sample_spot_table = double(spot_table);
             end
+            
             
             if nargin >= 4 & ~isempty(ctrl_table)
                 param_struct.control_spot_table = ctrl_table;
@@ -138,6 +140,92 @@ classdef RNAThreshold
             param_info.std_factor = rnaspots_run.ttune_std_factor;
         end
         
+        function preset_struct = genPresetStruct()
+            preset_struct = struct("ttune_fit_strat", 0);
+        	preset_struct.ttune_winsz_min = 3;
+            preset_struct.ttune_winsz_max = 21;
+            preset_struct.ttune_winsz_incr = 3;
+            preset_struct.ttune_reweight_fit = false;
+            preset_struct.ttune_fit_to_log = true;
+            preset_struct.ttune_thweight_med = 0.0;
+            preset_struct.ttune_thweight_fit = 1.0;
+            preset_struct.ttune_thweight_fisect = 0.0;
+            preset_struct.ttune_std_factor = 0.0;
+            preset_struct.ttune_spline_itr = 3;
+            preset_struct.ttune_use_rawcurve = false;
+            preset_struct.ttune_use_diffcurve = false;
+            preset_struct.ttune_madf_min = -1.0;
+            preset_struct.ttune_madf_max = 1.0;
+        end
+        
+        function presets = loadPresets()
+            filepath = ['.' filesep 'core' filesep 'ths_presets.mat'];
+            if isfile(filepath)
+                load(filepath, 'presets');
+            else
+                presets = [];
+            end
+        end
+        
+        function presets = setPreset(preset_struct, preset_index)
+            presets = RNAThreshold.loadPresets();
+            presets(preset_index) = preset_struct;
+            filepath = ['.' filesep 'core' filesep 'ths_presets.mat'];
+            save(filepath, 'presets');
+        end
+        
+        function spotsrun = applyPreset(spotsrun, preset_index)
+            presets = RNAThreshold.loadPresets();
+            if isempty(presets); return; end
+            if preset_index < 1; return; end
+            if preset_index > size(presets,2); return; end
+            preset_struct = presets(preset_index);
+            
+            spotsrun.ttune_fit_strat = preset_struct.ttune_fit_strat;
+            spotsrun.ttune_winsz_min = preset_struct.ttune_winsz_min;
+            spotsrun.ttune_winsz_max = preset_struct.ttune_winsz_max;
+            spotsrun.ttune_winsz_incr = preset_struct.ttune_winsz_incr;
+            spotsrun.ttune_reweight_fit = preset_struct.ttune_reweight_fit;
+            spotsrun.ttune_fit_to_log = preset_struct.ttune_fit_to_log;
+            spotsrun.ttune_thweight_med = preset_struct.ttune_thweight_med;
+            spotsrun.ttune_thweight_fit = preset_struct.ttune_thweight_fit;
+            spotsrun.ttune_thweight_fisect = preset_struct.ttune_thweight_fisect;
+            spotsrun.ttune_std_factor = preset_struct.ttune_std_factor;
+            spotsrun.ttune_spline_itr = preset_struct.ttune_spline_itr;
+            spotsrun.ttune_use_rawcurve = preset_struct.ttune_use_rawcurve;
+            spotsrun.ttune_use_diffcurve = preset_struct.ttune_use_diffcurve;
+            spotsrun.ttune_madf_min = preset_struct.ttune_madf_min;
+            spotsrun.ttune_madf_max = preset_struct.ttune_madf_max;
+        end
+        
+        function [peak_x, min_x, max_x] = threshSuggestionFromFScores(fscores)
+            if isempty(fscores)
+                peak_x = 0; min_x = 0; max_x = 0;
+                return;
+            end
+
+            [maxval, idx] = max(fscores(:,2), [], 'omitnan');
+            minval = min(fscores(:,2), [], 'omitnan');
+            roff = (maxval - minval) * 0.05;
+            peak_x = f_score(idx, 1);
+            min_x = peak_x; max_x = peak_x;
+            
+            scount = size(fscores,1);
+            t = maxval - roff;
+            for i = idx:-1:1
+                if fscores(i,2) <= t
+                    min_x = fscore(i,1);
+                    break;
+                end
+            end
+            for i = idx:scount
+                if fscores(i,2) <= t
+                    max_x = fscore(i,1);
+                    break;
+                end
+            end
+        end
+
         function score_list = getAllMedThresholds(threshold_results)
             madf_count = 0;
             curve_count = 0;
@@ -611,44 +699,38 @@ classdef RNAThreshold
             
         end
         
-        function rec = drawVerticalBox(ax, x_min, x_max, color)
+        function rec = drawVerticalBox(ax, x_min, x_max, color, label, label_color)
             %Should go under plot since I'm not sure how to change alpha.
             %get(ax,'YLim')
             y_lim = get(ax,'YLim');
-            r_height = y_lim(1,2) - y_lim(1,1);
+            x_lim = get(ax,'XLim');
+            y_max = y_lim(1,2);
+            y_min = y_lim(1,1);
+            r_height = y_max - y_min;
             r_width = x_max - x_min;
+            xlim_hi = x_lim(1,2);
             
-            rec = rectangle('Position', [x_min y_lim(1,1) r_width r_height],...
+            rec = rectangle('Position', [x_min y_min r_width r_height],...
                 'FaceColor', color, 'LineStyle', 'none');
+            %dim = [x_min/x_lim(1,2) 1.0 r_width/x_lim(1,2) 1.0];
+            if nargin > 4
+%                 rec = annotation('textbox', dim, 'FitBoxToText', 'off', ...
+%                     'String', label, 'Color', label_color, 'LineStyle', 'none', 'HorizontalAlignment', 'center', ...
+%                     'BackgroundColor', color, 'FaceAlpha', 0.5);
+                xctr = round((x_max + x_min) / 2);
+                xpos = xctr/xlim_hi;
+                if xpos > 0.99; xpos = 0.99; end
+                %y_shift = r_height / 40;
+                %text(xctr, y_max - y_shift, label, 'Color', label_color, 'HorizontalAlignment', 'center');
+                annotation('textbox', [xpos 0.82 0.1 0.1], 'String', label, 'HorizontalAlignment', 'center',...
+                    'FontWeight', 'bold', 'BackgroundColor', 'w', 'FaceAlpha', 0.7,...
+                    'LineWidth', 1, 'FitBoxToText', 'on');
+            else
+%                 rec = annotation('rectangle', dim, ...
+%                     'LineStyle', 'none', ...
+%                     'FaceColor', color, 'FaceAlpha', 0.5);
+            end
             %fprintf("break;\n");
-        end
-        
-        function drawVerticalLines(ax, primary_x, secondary_x, primary_color, secondary_color, primary_thickness)
-            if ~isempty(primary_x)
-                if isvector(primary_x)
-                    vsize = size(primary_x,2);
-                    for i = 1:vsize
-                        line_x = primary_x(1,i);
-                        line([line_x line_x], get(ax,'YLim'),'Color',primary_color,'LineStyle','--','LineWidth',primary_thickness);
-                    end
-                else
-                    line_x = primary_x;
-                    line([line_x line_x], get(ax,'YLim'),'Color',primary_color,'LineStyle','--','LineWidth',primary_thickness);
-                end
-            end
-            
-            if ~isempty(secondary_x)
-                if isvector(secondary_x)
-                    vsize = size(secondary_x,2);
-                    for i = 1:vsize
-                        line_x = secondary_x(1,i);
-                        line([line_x line_x], get(ax,'YLim'),'Color',secondary_color,'LineStyle',':','LineWidth',1);
-                    end
-                else
-                    line_x = secondary_x;
-                    line([line_x line_x], get(ax,'YLim'),'Color',secondary_color,'LineStyle',':','LineWidth',1);
-                end
-            end
         end
         
         function fig_handle = plotThreshRanges(rnaspots_run, curve, y_lbl, yrange, figno)
@@ -707,7 +789,9 @@ classdef RNAThreshold
             
             color_curve = [0.290, 0.290, 0.290];
             color_A = [0.567, 0.133, 0.133]; %#912222
-            color_B = [0.937, 0.627, 0.627]; %#efa0a0
+            %color_B = [0.780, 0.118, 0.118]; %#
+            color_B = [1.000, 0.718, 0.718]; %#ffb7b7
+            color_C = [0.392, 0.020, 0.020]; %#640505
 
             fig_handle = figure(figno);
             clf;
@@ -718,128 +802,18 @@ classdef RNAThreshold
                 y_hi = max(curve(:,2),[],'all','omitnan');
                 ylim([0.0 y_hi]);
             end
+            x_hi = max(curve(:,1), [], 'all', 'omitnan');
+            xlim([0.0 x_hi]);
             hold on;
-            RNAThreshold.drawVerticalBox(ax, th_avg - th_std, th_avg + th_std, color_B);
+            RNAThreshold.drawVerticalBox(ax, th_avg - th_std, th_avg + th_std, color_B, 'Mean +- 1 StDev', color_C);
             plot(curve(:,1), curve(:,2), 'LineWidth',2,'Color',color_curve);
-            RNAThreshold.drawVerticalLines(ax, main_th, [th_min th_max], color_A, color_A, 2);
+            xline(main_th, '--', 'Selected Threshold', 'Color', color_A,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+            xline(th_min, ':', 'Minimum', 'Color', color_A,'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+            xline(th_max, ':', 'Maximum', 'Color', color_A,'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+            %RNAThreshold.drawVerticalLines(ax, main_th, [th_min th_max], color_A, color_A, 2);
 
             xlabel('Threshold');
             ylabel(y_lbl);
-        end
-
-        function fig_handle = resultPlotFScore(rnaspots_run, f_scores, include_madth, include_splth, figno)
-            %Tertiary (filled rectangle) represents stdev of all threshold
-            %candidates
-            %Secondary (light outer lines) represents full range.
-            %Primary (main darker line) represents called threshold
-            
-            %Stdev and range are recalculated based on the two bool params
-            if isempty(rnaspots_run); fig_handle = []; return; end
-            if isempty(f_scores); fig_handle = []; return; end
-            if isempty(rnaspots_run.threshold_results); fig_handle = []; return; end
-            
-            thres = rnaspots_run.threshold_results;
-            main_th = thres.threshold;
-            curve_count = 0;
-            wincount = 0;
-            madf_count = -1;
-            if ~isempty(thres.test_data)
-                curve_count = curve_count + 1; 
-                cres = thres.test_data;
-                if ~isempty(cres.med_suggested_threshold)
-                	madf_count = size(cres.med_suggested_threshold,2);
-                end
-            end
-            if ~isempty(thres.test_diff) 
-                curve_count = curve_count + 1; 
-                if madf_count < 0
-                    cres = thres.test_diff;
-                    if ~isempty(cres.med_suggested_threshold)
-                        madf_count = size(cres.med_suggested_threshold,2);
-                    end
-                end
-            end
-            if isfield(thres, 'test_winsc') & ~isempty(thres.test_winsc)
-                wincount = size(thres.test_winsc, 2); 
-                curve_count = curve_count + wincount;
-                if madf_count < 0
-                    cres = thres.test_winsc(1,1);
-                    if ~isempty(cres.med_suggested_threshold)
-                        madf_count = size(cres.med_suggested_threshold,2);
-                    end
-                end
-            end
-            if curve_count < 1; fig_handle = []; return; end
-            
-            alloc = 0;
-            if include_madth
-                if madf_count > 0
-                    alloc = madf_count * curve_count;
-                end
-            end
-            if include_splth
-                alloc = alloc + curve_count;
-            end
-            
-            i = 1;
-            thvals = NaN(1, alloc);
-            if ~isempty(thres.test_data)
-                if include_madth & (madf_count > 0)
-                    thvals(1,i:i+madf_count-1) = thres.test_data.med_suggested_threshold(1,:);
-                    i = i + madf_count;
-                end
-                if include_splth
-                    thvals(1,i) = thres.test_data.spline_knot_x;
-                    i = i + 1;
-                end
-            end
-            if ~isempty(thres.test_diff)
-                if include_madth & (madf_count > 0)
-                    thvals(1,i:i+madf_count-1) = thres.test_diff.med_suggested_threshold(1,:);
-                    i = i + madf_count;
-                end
-                if include_splth
-                    thvals(1,i) = thres.test_diff.spline_knot_x;
-                    i = i + 1;
-                end
-            end
-            if wincount > 0
-                for j = 1:wincount
-                    cres = thres.test_winsc(1,j);
-                    if include_madth & (madf_count > 0)
-                        thvals(1,i:i+madf_count-1) = cres.med_suggested_threshold(1,:);
-                        i = i + madf_count;
-                    end
-                    if include_splth
-                        thvals(1,i) = cres.spline_knot_x;
-                        i = i + 1;
-                    end
-                end
-            end
-            th_avg = mean(thvals, 'all', 'omitnan');
-            th_std = std(thvals, 0, 'all', 'omitnan');
-            th_max = max(thvals,[],'all','omitnan');
-            th_min = min(thvals,[],'all','omitnan');
-            
-            color_curve = [0.290, 0.290, 0.290];
-            color_A = [0.567, 0.133, 0.133]; %#912222
-            color_B = [0.937, 0.627, 0.627]; %#efa0a0
-            
-            fig_handle = figure(figno);
-            clf;
-            ax = axes;
-            ylim([0.0 1.0]);
-            hold on;
-            RNAThreshold.drawVerticalBox(ax, th_avg - th_std, th_avg + th_std, color_B);
-            plot(thres.x(:,1), f_scores(:,1), 'LineWidth',2,'Color',color_curve);
-            RNAThreshold.drawVerticalLines(ax, main_th, [th_min th_max], color_A, color_A, 2);
-%             if th_avg ~= main_th
-%                 RNAThreshold.drawVerticalLines(ax, th_avg, [], color_A, color_A, 1);
-%             end
-
-            xlabel('Threshold');
-            ylabel('F-Score');
-            
         end
         
     end

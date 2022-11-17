@@ -8,9 +8,21 @@
 %   3 - High verbosity + output plots
 
 %%
-function RNA_Pipeline_Core(spotsrun, debug_lvl, preloaded_imgs)
+function spotsrun = RNA_Pipeline_Core(spotsrun, debug_lvl, preloaded_imgs, limitSaveSize, thread_request)
 
-bPreloaded = (nargin > 2) & (~isempty(preloaded_imgs));
+if nargin > 2
+    bPreloaded = ~isempty(preloaded_imgs);
+else
+    bPreloaded = false;
+end
+
+if nargin < 4
+    limitSaveSize = true;
+end
+
+if nargin < 5
+    thread_request = 1;
+end
 
 %Debug print
 if debug_lvl > 0
@@ -31,6 +43,8 @@ if debug_lvl > 0
     %RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_winsize = %d", spotsrun.ttune_winsize), false);
     %RNA_Fisher_State.outputMessageLineStatic(sprintf("ttune_wscorethresh = %f", spotsrun.ttune_wscorethresh), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("overwrite_output = %d", spotsrun.overwrite_output), false);
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("limitSaveSize = %d", limitSaveSize), false);
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("thread_request = %d", thread_request), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
 end
 
@@ -99,6 +113,14 @@ end
 if runme
     %Load image channel
     if bPreloaded
+        spotsrun.idims_sample = struct('x', 0, 'y', 0, 'z', 0);
+        spotsrun.idims_sample.x = size(preloaded_imgs.dat_rna_sample,2);
+        spotsrun.idims_sample.y = size(preloaded_imgs.dat_rna_sample,1);
+        if ndims(preloaded_imgs.dat_rna_sample) > 2
+            spotsrun.idims_sample.z = size(preloaded_imgs.dat_rna_sample,3);
+        else 
+            spotsrun.idims_sample.z = 1;
+        end
         sample_rna_ch = double(preloaded_imgs.dat_rna_sample);
     else
         %Load sample TIF
@@ -106,10 +128,18 @@ if runme
             [spotsrun, sample_tif] = spotsrun.loadSampleTif(tif_v);
         end
         sample_rna_ch = sample_tif{spotsrun.rna_ch,1};
+        spotsrun.idims_sample = struct('x', 0, 'y', 0, 'z', 0);
+        spotsrun.idims_sample.x = size(sample_rna_ch,2);
+        spotsrun.idims_sample.y = size(sample_rna_ch,1);
+        if ndims(sample_rna_ch) > 2
+            spotsrun.idims_sample.z = size(sample_rna_ch,3);
+        else 
+            spotsrun.idims_sample.z = 1;
+        end
     end
     
     spotdec = RNA_Threshold_SpotDetector;
-    [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, spotsrun.out_stem, true);
+    [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, spotsrun.out_stem, spotsrun.deadpix_detect, spotsrun.dtune_gaussrad);
     
     %Clear original image to free (a ton of) memory
     if ~isempty(sample_tif)
@@ -120,8 +150,9 @@ if runme
     end
     clear sample_rna_ch;
     
-    [auto_zt] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, (debug_lvl > 0));
+    [auto_zt, new_th_min] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, spotsrun.ztrim, limitSaveSize, (debug_lvl > 0), thread_request);
     spotsrun.ztrim_auto = auto_zt;
+    spotsrun.t_min = new_th_min;
     clear img_f;
 end
 
@@ -151,6 +182,14 @@ if ~isempty(spotsrun.ctrl_path)
 
         if runme
             if bPreloaded
+                spotsrun.idims_control = struct('x', 0, 'y', 0, 'z', 0);
+                spotsrun.idims_control.x = size(preloaded_imgs.dat_rna_control,2);
+                spotsrun.idims_control.y = size(preloaded_imgs.dat_rna_control,1);
+                if ndims(preloaded_imgs.dat_rna_control) > 2
+                    spotsrun.idims_control.z = size(preloaded_imgs.dat_rna_control,3);
+                else 
+                    spotsrun.idims_control.z = 1;
+                end
                 ctrl_image_channel = preloaded_imgs.dat_rna_control;
             else
                 if ~isfile(spotsrun.ctrl_path)
@@ -162,9 +201,9 @@ if ~isempty(spotsrun.ctrl_path)
             end
             
             spotdec = RNA_Threshold_SpotDetector;
-            [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, outstem, true);
+            [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, outstem, spotsrun.deadpix_detect, spotsrun.dtune_gaussrad);
             clear ctrl_image_channel;
-            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max,(debug_lvl > 0));
+            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max, spotsrun.ztrim, limitSaveSize, (debug_lvl > 0), thread_request);
             clear ctrl_f;
         end
         spotsrun.ctrl_stem = outstem;

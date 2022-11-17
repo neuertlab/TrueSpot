@@ -5,11 +5,6 @@
 
 function success = Mtx2Tiff(my_image, outpath)
 
-    if ndims(my_image) > 3
-        success = false;
-        return;
-    end
-
     success = true;
     Y = size(my_image,1);
     X = size(my_image,2);
@@ -23,11 +18,12 @@ function success = Mtx2Tiff(my_image, outpath)
     tagstruct.SamplesPerPixel = 1;
     tagstruct.PlanarConfiguration = Tiff.PlanarConfiguration.Chunky;
     tagstruct.Software = 'MATLAB';
+    dimcount = ndims(my_image);
     
-    if ndims(my_image) == 2
+    if dimcount == 2
         setTag(out_tiff, tagstruct);
         write(out_tiff,squeeze(my_image));
-    elseif ndims(my_image) == 3
+    elseif dimcount == 3
         Z = size(my_image,3);
         for z = 1:Z
             if z > 1
@@ -35,6 +31,21 @@ function success = Mtx2Tiff(my_image, outpath)
             end
             setTag(out_tiff, tagstruct);
             write(out_tiff,squeeze(my_image(:,:,z)));
+        end
+    elseif dimcount == 4
+        C = size(my_image,4);
+        for c = 1:C
+            if c > 1
+                writeDirectory(out_tiff);
+            end
+            Z = size(my_image,3);
+            for z = 1:Z
+                if z > 1
+                    writeDirectory(out_tiff);
+                end
+                setTag(out_tiff, tagstruct);
+                write(out_tiff,squeeze(my_image(:,:,z)));
+            end
         end
     else
         success = false;

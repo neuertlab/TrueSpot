@@ -6,9 +6,12 @@ BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
 % ========================== Paths ==========================
 
-InputDir = [BaseDir '\data\bigfish\mESC_4d\AF594\Tsix'];
-RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
-BFName = 'BIGFISH_Tsix-AF594';
+% InputDir = [BaseDir '\data\bigfish\mESC_4d\AF594\Tsix'];
+% RefStem = [BaseDir '\data\preprocess\feb2018\Tsix_AF594\Tsix\Tsix-AF594_IMG1_all_3d'];
+% BFName = 'BIGFISH_Tsix-AF594';
+
+InputDir = [BaseDir '\data\bigfish\sim\yeast_RNA_LE_CY5like_100x_1'];
+BFName = 'BIGFISH_yeast_RNA_LE_CY5like_100x_1';
 
 % ========================== Conversion via Main ==========================
 Main_Bigfish2Mat(InputDir, [InputDir filesep BFName]);
