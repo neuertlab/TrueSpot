@@ -252,6 +252,17 @@ classdef RNASpotsRun
                 %You've included zero slices for some reason.
             end
         end
+
+        function obj = deleteSavedZTrimmedTables(obj)
+            tbl_path = [obj.out_stem '_spotTablesZTrimmed.mat'];
+            if isfile(tbl_path)
+                delete(tbl_path);
+            end
+            tbl_path = [obj.out_stem '_ctrlTablesZTrimmed.mat'];
+            if isfile(tbl_path)
+                delete(tbl_path);
+            end
+        end
         
         function [obj, spots_table, coord_table] = loadZTrimmedTables_Sample(obj)
             [obj, spots_table, coord_table] = obj.loadZTrimmedTables('_spotTablesZTrimmed.mat', false);
@@ -312,6 +323,60 @@ classdef RNASpotsRun
             save(tbl_path, 'version', 'zmin', 'zmax', 'spots_table', 'coord_table');
         end
    
+        function obj = fixSpotcountTables(obj)
+            [obj, thresh_table] = obj.loadThresholdTable();
+            [obj, coord_table] = obj.loadCoordinateTable();
+            T = size(coord_table,1);
+            spot_table = NaN(T,2);
+            for t = 1:T
+                spot_table(t,1) = thresh_table(t);
+                if ~isempty(coord_table{t,1})
+                    spot_table(t,2) = size(coord_table{t,1},1);
+                else
+                    spot_table(t,2) = 0;
+                end
+            end
+            tbl_path = [obj.out_stem '_spotTable.mat'];
+            save(tbl_path, 'spot_table');
+
+            %Repeat for 2D, if present
+            tbl_path = [obj.out_stem '_coordTable2d.mat'];
+            if isfile(tbl_path)
+                load(tbl_path, 'coord_table_2D');
+                spot_table_2D = NaN(T,2);
+                for t = 1:T
+                    spot_table_2D(t,1) = thresh_table(t);
+                    if ~isempty(coord_table_2D{t,1})
+                        spot_table_2D(t,2) = size(coord_table_2D{t,1},1);
+                    else
+                        spot_table_2D(t,2) = 0;
+                    end
+                end
+                tbl_path = [obj.out_stem '_spotTable2d.mat'];
+                save(tbl_path, 'spot_table_2D');
+                save(tbl_path, 'spot_table');
+            end
+
+            %Repeat for control, if present
+            if ~isempty(obj.ctrl_stem)
+                [obj, coord_table] = obj.loadControlCoordinateTable();
+                if ~isempty(coord_table)
+                    spot_table = NaN(T,2);
+                    for t = 1:T
+                        spot_table(t,1) = thresh_table(t);
+                        if ~isempty(coord_table{t,1})
+                            spot_table(t,2) = size(coord_table{t,1},1);
+                        else
+                            spot_table(t,2) = 0;
+                        end
+                    end
+                    tbl_path = [obj.ctrl_stem '_spotTable.mat'];
+                    save(tbl_path, 'spot_table');
+                end
+            end
+
+        end
+
     end
     
     methods(Static)
@@ -369,8 +434,7 @@ classdef RNASpotsRun
         end
         
         function [spot_table, coord_table] = saveTables(spot_table, coord_table, save_stem, limitSize)
-            %Shrink to uint16 in case they are double.
-            spot_table = uint16(spot_table);
+            spot_table = double(spot_table); %NO NOT UINT16 FOR SPOT COUNTS FOOL
             cell_count = size(coord_table,1);
             for c = 1:cell_count
                 coord_table{c,1} = uint16(coord_table{c,1});

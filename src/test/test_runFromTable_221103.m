@@ -7,21 +7,21 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
 % ========================== Constants ==========================
 
-DETECT_THREADS = 2;
-TARGET_MOL = 'lncRNA';
-SPECIES = 'Mus musculus';
+DETECT_THREADS = 1;
 
-TH_MIN = 50;
-TH_MAX = 70;
-Z_TRIM = 5;
+TH_MIN = 1;
+TH_MAX = 500;
+Z_TRIM = 0;
+OVERWRITE_BOOL = false;
 
 % ========================== Load csv Table ==========================
 
 InputTablePath = [DataDir filesep 'test_images.csv'];
-imgtbl = readtable(InputTablePath,'Delimiter',',','ReadVariableNames',true,'Format','%s%s%d%d%d%d%s%s%s%s%s%d%s%s%s%d%d%d%d%d%d%d%d%s');
+imgtbl = testutil_opentable(InputTablePath);
 
-SingleImgName = 'mESC4d_Tsix-AF594';
-OverrideName = 'Tsix-AF594_IMG1';
+SingleImgName = 'rsfish_sim_bgs_30A';
+%OverrideName = 'Tsix-AF594_IMG1';
+OverrideName = SingleImgName;
 
 % ========================== Find Record ==========================
 addpath('./core');
@@ -80,12 +80,14 @@ rnaspots_run.idims_expspot.z = imgtbl{rec_row, 'POINT_Z'};
 rnaspots_run.type_probe = getTableValue(imgtbl, rec_row, 'PROBE');
 rnaspots_run.type_cell = getTableValue(imgtbl, rec_row, 'CELLTYPE');
 rnaspots_run.type_target = getTableValue(imgtbl, rec_row, 'TARGET');
-rnaspots_run.type_targetmol = TARGET_MOL;
-rnaspots_run.type_species = SPECIES;
+rnaspots_run.type_targetmol = getTableValue(imgtbl, rec_row, 'TARGET_TYPE');
+rnaspots_run.type_species = getTableValue(imgtbl, rec_row, 'SPECIES');
 
 rnaspots_run.t_min = TH_MIN;
 rnaspots_run.t_max = TH_MAX;
 rnaspots_run.ztrim = Z_TRIM;
+
+rnaspots_run.overwrite_output = OVERWRITE_BOOL;
 
 rnaspots_run = RNAThreshold.applyPreset(rnaspots_run, imgtbl{rec_row,'THRESH_SETTING'});
 %rnaspots_run.saveMe();

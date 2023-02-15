@@ -5,9 +5,10 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'mESC4d_Tsix-AF594';
+ImgName = 'mESC_loday_D1I15_Xist';
 RefMode = true;
-NewAnno = true;
+NewAnno = false;
+JustLoad = false;
 
 % ========================== Read Table ==========================
 
@@ -53,6 +54,11 @@ else
     selector = RNA_Threshold_SpotSelector.openSelector(outstem, true);
 end
 
+if JustLoad
+    return;
+end
+
+selector.crosshair_color = [1.0 1.0 0.0];
 if RefMode
     selector.launchRefSelectGUI();
 else

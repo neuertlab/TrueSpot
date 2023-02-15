@@ -4,8 +4,10 @@ ImgDir = 'C:\Users\hospelb\labdata\imgproc';
 %ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
 ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ClusterWorkDir = '/scratch/hospelb/imgproc';
 ClusterSlurmDir = '/scratch/hospelb/imgproc/slurm/script';
@@ -14,18 +16,31 @@ ClusterPyenvDir = '/scratch/hospelb/pyvenv';
 
 % ========================== Constants ==========================
 
-DETECT_THREADS = 4;
-RAM_PER_CORE=16;
+DETECT_THREADS = 2;
+RAM_PER_CORE = 8;
+RAM_PER_CORE_BF = 6;
+HB_PARALLEL_HR = 2;
+HB_SERIAL_HR = 8;
+BF_SERIAL_HR = 4;
+
+QUANT_SERIAL_HR = 6;
+QUANT_PARALLEL_HR = 4;
+RAM_PER_CORE_QUANT = 12;
+DETECT_THREADS_QUANT = 1;
+QUANT_DO_CLOUDS = false;
+QUANT_FIXED_TH = 111;
 
 TH_MIN = 10;
 TH_MAX = 500;
-Z_TRIM = 3;
-BF_SOBJSZ = 50;
-BF_NUCSZ = 200;
-BF_RESCALE = false;
+Z_TRIM = 0;
+BF_SOBJSZ = 10;
+BF_NUCSZ = 100; %200 yeast, 256 mesc
+%BF_RESCALE = false;
 
-RUN_HB = true;
-RUN_BF = false;
+RUN_HB = false;
+RUN_BFNR = false;
+RUN_BFRS = false;
+RUN_QUANT = true;
 
 MODULE_NAME = 'MATLAB/2018b';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
@@ -35,8 +50,8 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix='mESC4d_';
-
+GroupPrefix = 'sctc_E2R2_';
+GroupSuffix = 'CTT1';
 % ========================== Find Record ==========================
 addpath('./core');
 
@@ -58,12 +73,26 @@ script_master = fopen([ScriptDir filesep 'runall.sh'], 'w');
 fprintf(script_master, '#!/bin/bash\n\n');
 fprintf(script_master, 'SCRIPTDIR=%s\n', ClusterSlurmDir);
 
+if RUN_QUANT
+    script_master_quant = fopen([ScriptDir filesep 'runall_q.sh'], 'w');
+    fprintf(script_master_quant, '#!/bin/bash\n\n');
+    fprintf(script_master_quant, 'SCRIPTDIR=%s\n', ClusterSlurmDir);
+end
+
 rec_count = size(image_table,1);
 for r = 1:rec_count
     iname = getTableValue(image_table, r, 'IMGNAME');
     
     if ~startsWith(iname, GroupPrefix); continue; end
+    if ~isempty(GroupSuffix)
+        if ~endsWith(iname, GroupSuffix); continue; end
+    end
     hb_outstem = getTableValue(image_table, r, 'OUTSTEM');
+    
+    ipath = getTableValue(image_table, r, 'IMAGEPATH');
+    if endsWith(ipath, '.mat')
+        ipath = replace(ipath, '.mat', '.tif');
+    end
     
     %HB Script
     if RUN_HB
@@ -75,7 +104,6 @@ for r = 1:rec_count
         fprintf(script_hb, 'Main_RNASpots(');
 
         printMatArg(script_hb, 'imgname', iname, false);
-        ipath = getTableValue(image_table, r, 'IMAGEPATH');
         if endsWith(ipath, '.mat')
             printMatArg(script_hb, 'matimg', [ClusterWorkDir ipath], true);
         elseif endsWith(ipath, '.tif')
@@ -137,54 +165,149 @@ for r = 1:rec_count
 %BF Script
     bfstem = getTableValue(image_table, r, 'BIGFISH_OUTSTEM');
     [bfoutdir, ~, ~] = fileparts(bfstem);
-    if RUN_BF
-        script_bf = fopen([ScriptDir filesep iname '_bf.sh'], 'w');
-        fprintf(script_bf, '#!/bin/bash\n\n');
-        fprintf(script_bf, 'source %s/bigfish/bin/activate\n', ClusterPyenvDir);
-        fprintf(script_bf, 'python3 %s/bigfish_wrapper.py "%s" "%s"', ClusterScriptsDir, [ClusterWorkDir ipath], [ClusterWorkDir bfoutdir]);
+    vx = 0; vy = 0; vz = 0;
+    px = 0; py = 0; pz = 0;
+    if RUN_BFNR
+        script_bfnr = fopen([ScriptDir filesep iname '_bfnr.sh'], 'w');
+        fprintf(script_bfnr, '#!/bin/bash\n\n');
+        fprintf(script_bfnr, 'source %s/bigfish/bin/activate\n', ClusterPyenvDir);
+        fprintf(script_bfnr, 'python3 %s/bigfish_wrapper.py "%s" "%s"', ClusterScriptsDir, [ClusterWorkDir ipath], [ClusterWorkDir bfoutdir]);
     
         %- BF Options
-        fprintf(script_bf, ' --ch_dapi %d', getTableValue(image_table, r, 'CH_DAPI'));
-        fprintf(script_bf, ' --ch_light %d', getTableValue(image_table, r, 'CH_LIGHT'));
-        fprintf(script_bf, ' --ch_target %d', getTableValue(image_table, r, 'CHANNEL'));
-        fprintf(script_bf, ' --minth 10');
-        fprintf(script_bf, ' --maxth 1000');
+        fprintf(script_bfnr, ' --ch_dapi %d', getTableValue(image_table, r, 'CH_DAPI'));
+        fprintf(script_bfnr, ' --ch_light %d', getTableValue(image_table, r, 'CH_LIGHT'));
+        fprintf(script_bfnr, ' --ch_target %d', getTableValue(image_table, r, 'CHANNEL'));
+        fprintf(script_bfnr, ' --minth 10');
+        fprintf(script_bfnr, ' --maxth 1000');
         
-        x = getTableValue(image_table, r, 'VOXEL_X');
-        y = getTableValue(image_table, r, 'VOXEL_Y');
-        z = getTableValue(image_table, r, 'VOXEL_Z');
-        fprintf(script_bf, ' --voxelsz "(%d,%d,%d)"', z,y,x);
-        x = getTableValue(image_table, r, 'POINT_X');
-        y = getTableValue(image_table, r, 'POINT_Y');
-    	z = getTableValue(image_table, r, 'POINT_Z');
-        fprintf(script_bf, ' --pointsz "(%d,%d,%d)"', z,y,x);
+        vx = getTableValue(image_table, r, 'VOXEL_X');
+        vy = getTableValue(image_table, r, 'VOXEL_Y');
+        vz = getTableValue(image_table, r, 'VOXEL_Z');
+        fprintf(script_bfnr, ' --voxelsz "(%d,%d,%d)"', vz,vy,vx);
+        px = getTableValue(image_table, r, 'POINT_X');
+        py = getTableValue(image_table, r, 'POINT_Y');
+    	pz = getTableValue(image_table, r, 'POINT_Z');
+        
+        %Big-FISH has been acting wierd if point size is not >= vox size?
+        %I don't know if it is supposed to do that, but I'm sick of it
+        %crashing.
+        px = max(vx,px);
+        py = max(vy,py);
+        pz = max(vz,pz);
+        fprintf(script_bfnr, ' --pointsz "(%d,%d,%d)"', pz,py,px);
 
-        fprintf(script_bf, ' --sobjsznuc %d', BF_SOBJSZ);
-        fprintf(script_bf, ' --trgsznuc %d', BF_NUCSZ);
+        fprintf(script_bfnr, ' --sobjsznuc %d', BF_SOBJSZ);
+        fprintf(script_bfnr, ' --trgsznuc %d', BF_NUCSZ);
 
         if startsWith(iname, 'sim_')
-            fprintf(script_bf, ' --zkeep 1.0');
+            fprintf(script_bfnr, ' --zkeep 1.0');
         else
-            fprintf(script_bf, ' --zkeep 0.8');
+            fprintf(script_bfnr, ' --zkeep 0.8');
         end
 
-        if ~BF_RESCALE
-            fprintf(script_bf, ' --norescale');
-        end
-        fprintf(script_bf, '\ndeactivate\n\n');
-        fprintf(script_bf, 'module load %s\n', MODULE_NAME);
-        fprintf(script_bf, 'cd %s\n', MATLAB_DIR);
-        fprintf(script_bf, 'matlab -nodisplay -nosplash -logfile "%s" -r "cd %s; Main_Bigfish2Mat(''%s'',''%s''); quit;"\n',...
+        fprintf(script_bfnr, ' --norescale');
+        fprintf(script_bfnr, '\ndeactivate\n\n');
+        fprintf(script_bfnr, 'module load %s\n', MODULE_NAME);
+        fprintf(script_bfnr, 'cd %s\n', MATLAB_DIR);
+        fprintf(script_bfnr, 'matlab -nodisplay -nosplash -logfile "%s" -r "cd %s; Main_Bigfish2Mat(''%s'',''%s''); quit;"\n',...
             [ClusterWorkDir bfstem '_mat.log'], MATLAB_DIR, [ClusterWorkDir bfoutdir], [ClusterWorkDir bfstem]);
-        fprintf(script_bf, 'module unload\n\n');
+        fprintf(script_bfnr, 'module unload\n\n');
 
-        fprintf(script_bf, 'if [ -s "%s_coordTable.mat" ]; then\n', [ClusterWorkDir bfstem]);
-        fprintf(script_bf, '\techo -e "Coord table file found. Assuming conversion success."\n');
-        fprintf(script_bf, '\tcd "%s"\n', [ClusterWorkDir bfoutdir]);
-        fprintf(script_bf, '\trm ./spots_*.csv\n');
-        fprintf(script_bf, 'fi\n\n');
+        fprintf(script_bfnr, 'if [ -s "%s_coordTable.mat" ]; then\n', [ClusterWorkDir bfstem]);
+        fprintf(script_bfnr, '\techo -e "Coord table file found. Assuming conversion success."\n');
+        fprintf(script_bfnr, '\tcd "%s"\n', [ClusterWorkDir bfoutdir]);
+        fprintf(script_bfnr, '\trm ./spots_*.csv\n');
+        fprintf(script_bfnr, 'fi\n\n');
 
-        fclose(script_bf);
+        fclose(script_bfnr);
+    end
+    
+    bfrs_stem = replace(bfstem, '/data/bigfish/', '/data/bigfish/_rescaled/');
+    [bfrs_outdir, ~, ~] = fileparts(bfrs_stem);
+    if RUN_BFRS
+        script_bfrs = fopen([ScriptDir filesep iname '_bfrs.sh'], 'w');
+        fprintf(script_bfrs, '#!/bin/bash\n\n');
+        fprintf(script_bfrs, 'source %s/bigfish/bin/activate\n', ClusterPyenvDir);
+        fprintf(script_bfrs, 'python3 %s/bigfish_wrapper.py "%s" "%s"', ClusterScriptsDir, [ClusterWorkDir ipath], [ClusterWorkDir bfrs_outdir]);
+    
+        %- BF Options
+        fprintf(script_bfrs, ' --ch_dapi %d', getTableValue(image_table, r, 'CH_DAPI'));
+        fprintf(script_bfrs, ' --ch_light %d', getTableValue(image_table, r, 'CH_LIGHT'));
+        fprintf(script_bfrs, ' --ch_target %d', getTableValue(image_table, r, 'CHANNEL'));
+        fprintf(script_bfrs, ' --minth 10');
+        fprintf(script_bfrs, ' --maxth 1000');
+        
+        vx = getTableValue(image_table, r, 'VOXEL_X');
+        vy = getTableValue(image_table, r, 'VOXEL_Y');
+        vz = getTableValue(image_table, r, 'VOXEL_Z');
+        fprintf(script_bfnr, ' --voxelsz "(%d,%d,%d)"', vz,vy,vx);
+        px = getTableValue(image_table, r, 'POINT_X');
+        py = getTableValue(image_table, r, 'POINT_Y');
+    	pz = getTableValue(image_table, r, 'POINT_Z');
+        
+        px = max(vx,px);
+        py = max(vy,py);
+        pz = max(vz,pz);
+        fprintf(script_bfnr, ' --pointsz "(%d,%d,%d)"', pz,py,px);
+
+        fprintf(script_bfrs, ' --sobjsznuc %d', BF_SOBJSZ);
+        fprintf(script_bfrs, ' --trgsznuc %d', BF_NUCSZ);
+
+        if Z_TRIM <= 0
+            fprintf(script_bfrs, ' --zkeep 1.0');
+        else
+            fprintf(script_bfrs, ' --zkeep 0.8');
+        end
+
+        fprintf(script_bfrs, '\ndeactivate\n\n');
+        fprintf(script_bfrs, 'module load %s\n', MODULE_NAME);
+        fprintf(script_bfrs, 'cd %s\n', MATLAB_DIR);
+        fprintf(script_bfrs, 'matlab -nodisplay -nosplash -logfile "%s" -r "cd %s; Main_Bigfish2Mat(''%s'',''%s''); quit;"\n',...
+            [ClusterWorkDir bfrs_stem '_mat.log'], MATLAB_DIR, [ClusterWorkDir bfrs_outdir], [ClusterWorkDir bfrs_stem]);
+        fprintf(script_bfrs, 'module unload\n\n');
+
+        fprintf(script_bfrs, 'if [ -s "%s_coordTable.mat" ]; then\n', [ClusterWorkDir bfrs_stem]);
+        fprintf(script_bfrs, '\techo -e "Coord table file found. Assuming conversion success."\n');
+        fprintf(script_bfrs, '\tcd "%s"\n', [ClusterWorkDir bfrs_outdir]);
+        fprintf(script_bfrs, '\trm ./spots_*.csv\n');
+        fprintf(script_bfrs, 'fi\n\n');
+
+        fclose(script_bfrs);
+    end
+    
+    if RUN_QUANT
+        script_qt = fopen([ScriptDir filesep iname '_qt.sh'], 'w');
+        fprintf(script_qt, '#!/bin/bash\n\n');
+        fprintf(script_qt, 'module load %s\n', MODULE_NAME);
+        fprintf(script_qt, 'cd %s\n', MATLAB_DIR);
+        fprintf(script_qt, 'matlab -nodisplay -nosplash -logfile "%s_quant_mat.log" -r "cd %s; ', [ClusterWorkDir hb_outstem], MATLAB_DIR);
+        fprintf(script_qt, 'Main_RNAQuant(');
+        
+        printMatArg(script_qt, 'runinfo', [ClusterWorkDir hb_outstem '_rnaspotsrun.mat'], false);
+        printMatArg(script_qt, 'tif', [ClusterWorkDir ipath], true);
+        
+        [hb_outdir, ~, ~] = fileparts(hb_outstem);
+        printMatArg(script_qt, 'outdir', [ClusterWorkDir hb_outdir], true);
+        
+        csegdir = getTableValue(image_table, r, 'CELLSEG_DIR');
+        csegsfx = getTableValue(image_table, r, 'CELLSEG_SFX');
+        printMatArg(script_qt, 'cellsegdir', [ClusterWorkDir csegdir], true);
+        printMatArg(script_qt, 'cellsegname', csegsfx, true);
+        
+        if QUANT_FIXED_TH > 0
+            printMatArg(script_qt, 'mthresh', num2str(QUANT_FIXED_TH), true);
+        end
+        
+        if DETECT_THREADS_QUANT > 1
+            printMatArg(script_qt, 'workers', num2str(DETECT_THREADS_QUANT), true);
+        end
+        
+        if ~QUANT_DO_CLOUDS
+            printMatFlagArg(script_qt, 'noclouds', true);
+        end
+        
+        fprintf(script_qt, '); quit;"\n');
+        fclose(script_qt);
     end
 
     %When adding master script lines, make sure to check if image is there
@@ -199,33 +322,76 @@ for r = 1:rec_count
         fprintf(script_master, ' --job-name="%s"', ['SpotDetect_' iname]);
         if DETECT_THREADS > 1
             fprintf(script_master, ' --cpus-per-task=%d', DETECT_THREADS);
-            fprintf(script_master, ' --time=4:00:00');
+            fprintf(script_master, ' --time=%d:00:00', HB_PARALLEL_HR);
             fprintf(script_master, ' --mem=%dg', (RAM_PER_CORE * DETECT_THREADS));
         else
             fprintf(script_master, ' --cpus-per-task=2');
-            fprintf(script_master, ' --time=8:00:00');
+            fprintf(script_master, ' --time=%d:00:00', HB_SERIAL_HR);
             fprintf(script_master, ' --mem=%dg', RAM_PER_CORE);
         end
         fprintf(script_master, ' --error="%s"', [ClusterWorkDir hb_outstem '_slurm.err']);
         fprintf(script_master, ' --output="%s"', [ClusterWorkDir hb_outstem '_slurm.out']);
         fprintf(script_master, ' "${SCRIPTDIR}/%s"\n', [iname '_hb.sh']);
     end
-    if RUN_BF
-        fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bf.sh']);
+    if RUN_BFNR
+        fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfnr.sh']);
         fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir bfoutdir]);
         fprintf(script_master, '\tsbatch');
         fprintf(script_master, ' --job-name="%s"', ['Bigfish_' iname]);
         fprintf(script_master, ' --cpus-per-task=4');
-        fprintf(script_master, ' --time=8:00:00');
-        fprintf(script_master, ' --mem=%dg', RAM_PER_CORE);
+        fprintf(script_master, ' --time=%d:00:00', BF_SERIAL_HR);
+        fprintf(script_master, ' --mem=%dg', RAM_PER_CORE_BF);
         fprintf(script_master, ' --error="%s"', [ClusterWorkDir bfstem '_slurm.err']);
         fprintf(script_master, ' --output="%s"', [ClusterWorkDir bfstem '_slurm.out']);
-        fprintf(script_master, ' "${SCRIPTDIR}/%s"\n', [iname '_bf.sh']);
+        fprintf(script_master, ' "${SCRIPTDIR}/%s"\n', [iname '_bfnr.sh']);
+    end
+    if RUN_BFRS
+        fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfrs.sh']);
+        fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir bfrs_outdir]);
+        fprintf(script_master, '\tsbatch');
+        fprintf(script_master, ' --job-name="%s"', ['BigfishRS_' iname]);
+        fprintf(script_master, ' --cpus-per-task=4');
+        fprintf(script_master, ' --time=%d:00:00', BF_SERIAL_HR);
+        fprintf(script_master, ' --mem=%dg', RAM_PER_CORE_BF);
+        fprintf(script_master, ' --error="%s"', [ClusterWorkDir bfrs_stem '_slurm.err']);
+        fprintf(script_master, ' --output="%s"', [ClusterWorkDir bfrs_stem '_slurm.out']);
+        fprintf(script_master, ' "${SCRIPTDIR}/%s"\n', [iname '_bfrs.sh']);
     end
 
     fprintf(script_master, 'fi\n\n');
+    
+    if RUN_QUANT
+        fprintf(script_master_quant, 'if [ -s "%s" ]; then\n', [ClusterWorkDir ipath]);
+        fprintf(script_master_quant, '\tif [ -s "%s" ]; then\n', [ClusterWorkDir hb_outstem '_rnaspotsrun.mat']);
+        fprintf(script_master_quant, '\t\techo -e "Requested run found: %s"\n', hb_outstem);
+        
+        fprintf(script_master_quant, '\t\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_qt.sh']);
+        fprintf(script_master_quant, '\t\tsbatch');
+        fprintf(script_master_quant, ' --job-name="%s"', ['RNAQuant_' iname]);
+        
+        if DETECT_THREADS_QUANT > 1
+            fprintf(script_master_quant, ' --cpus-per-task=%d', DETECT_THREADS_QUANT);
+            fprintf(script_master_quant, ' --time=%d:00:00', QUANT_PARALLEL_HR);
+            fprintf(script_master_quant, ' --mem=%dg', (RAM_PER_CORE_QUANT * DETECT_THREADS_QUANT));
+        else
+            fprintf(script_master_quant, ' --cpus-per-task=2');
+            fprintf(script_master_quant, ' --time=%d:00:00', QUANT_SERIAL_HR);
+            fprintf(script_master_quant, ' --mem=%dg', RAM_PER_CORE_QUANT);
+        end
+        fprintf(script_master_quant, ' --error="%s"', [ClusterWorkDir hb_outstem '_quant_slurm.err']);
+        fprintf(script_master_quant, ' --output="%s"', [ClusterWorkDir hb_outstem '_quant_slurm.out']);
+        fprintf(script_master_quant, ' "${SCRIPTDIR}/%s"\n', [iname '_qt.sh']);
+        
+        fprintf(script_master_quant, '\tfi\n');
+        fprintf(script_master_quant, 'fi\n\n');
+    end
+    
 end
 fclose(script_master);
+
+if RUN_QUANT
+    fclose(script_master_quant);
+end
 
 % ========================== Helper Functions ==========================
 

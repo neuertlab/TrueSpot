@@ -1,8 +1,8 @@
 %Master functions for running the RNA thresholding spot detection
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler
-%Version 2.1.0
-%Updated November 3, 2022
+%Version 2.2.0
+%Updated January 23, 2023
 
 %Modified from ABs_Threshold3Dim
 
@@ -22,6 +22,11 @@
 %       Removed auto z-trim. 0 by default.
 %   2.1.0 | 22.11.03
 %       Added handling for coord table saves > 2GB.
+%   2.2.0 | 23.01.23
+%       Added auto-rescaling if filtered image doesn't have sufficient
+%       dynamic range.
+%       Also updated so filtered image remains as double instead of uint16
+%       through filtering, since data were being lost for dim or noisy images.
 
 %%
 
@@ -60,7 +65,17 @@ classdef RNA_Threshold_SpotDetector
 
             IMG_filtered = RNA_Threshold_Common.applyGaussianFilter(IMG3D, gaussian_rad, 2);
             IMG_filtered = RNA_Threshold_Common.applyEdgeDetectFilter(IMG_filtered);
-            IMG_filtered = RNA_Threshold_Common.blackoutBorders(IMG_filtered, gaussian_rad, 0);
+            IMG_filtered = RNA_Threshold_Common.blackoutBorders(IMG_filtered, gaussian_rad+1, 0);
+            
+            %Rescale the filtered image if not enough range
+            ifmin = min(IMG_filtered, [], 'all');
+            ifmax = max(IMG_filtered, [], 'all');
+            ifrng = ifmax - ifmin;
+            if ifrng < 25
+                fprintf("WARNING: Filtered image has low dynamic range. Rescale triggered!\n");
+                %Linear rescale to 0-255
+                IMG_filtered = ((IMG_filtered - ifmin) .* 255) ./ ifrng;
+            end
             
             %Generate image structs for passing to visualization function
             %This has been moved before detect so that unfiltered image can
@@ -83,6 +98,8 @@ classdef RNA_Threshold_SpotDetector
 
             %Save
             save([save_stem '_imgviewstructs'], 'my_images');
+            
+            IMG_filtered = uint16(IMG_filtered); %To reduce memory usage. Note that on dim images this can have a dramatic effect.
         end
         
         %%
@@ -190,7 +207,7 @@ classdef RNA_Threshold_SpotDetector
             cdims = size(coord_table{1},2);
             if cdims == 3
                 coord_table_2D = cell(T,1);
-                spot_table_2D = uint16(zeros(T,2));
+                spot_table_2D = zeros(T,2);
                 for thi = 1:T
                     spot_table_2D(thi,1) = spot_table(thi,1);
                     coord_table_2D{thi} = RNA_Threshold_Common.collapse3DCoordTable(coord_table{thi});

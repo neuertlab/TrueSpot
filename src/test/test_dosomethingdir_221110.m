@@ -5,8 +5,8 @@ addpath('./core');
 
 ImgBaseDir = 'C:\Users\hospelb\labdata\imgproc\img';
 
-ScanDir = [ImgBaseDir '\histones_febc'];
-do_recursive = false;
+ScanDir = [ImgBaseDir '\simvar'];
+do_recursive = true;
 
 % ========================== Go ==========================
 
@@ -41,53 +41,114 @@ end
 % ========================== Do Func ==========================
 
 function doathing(filepath, state_obj)
-    if ~endsWith(filepath, '.tif'); return; end
-    [~, fname, ~] = fileparts(filepath);
-    iname_base = ['histonesc_' fname];
+    if ~endsWith(filepath, '.mat'); return; end
+    [parentdir, fname, ~] = fileparts(filepath);
     
-    for i = 2:4
-        target = '';
-        if i == 2
-            target = 'Xist'; 
-            probe = 'CY5';
-        elseif i == 3
-            target = 'Tsix';
-            probe = 'TMR';
-        elseif i == 4
-            target = 'Histone'; 
-            probe = 'AF488';
-        end
-        
-        fprintf("%s\t", [iname_base '_' target]);
-        fprintf("%s\t", ['/img/histones_febc/' fname '.tif']);
-        fprintf("%d\t5\t1\t5\t", i);
-        
-        if i == 4
-            if contains(fname, 'H3K36me3'); target = 'H3K36me3'; end
-            if contains(fname, 'H3K4me2'); target = 'H3K4me2'; end
-        end
-        fprintf("%s\t", ['/data/preprocess/histones_febc/' fname '/' target '-' probe '/' fname '-' target '-' probe '_all_3d']);
-        fprintf("mESC\t%s\t%s\t", target, probe);
-        if i == 4
-            fprintf("Histone Mark\t");
-        else
-            fprintf("lncRNA\t");
-        end
-        fprintf("Mus musculus\t");
-        fprintf("%s\t", ['/data/bigfish/histones_febc/' fname '/' target '-' probe '/BIGFISH_' fname '-' target '-' probe]);
-        fprintf("3\t.\t/data/cell_seg/histones_febc\t%s\t", fname);
-        fprintf("65\t65\t300\t");
-        if i == 4
-            fprintf("160\t160\t300\t");
-        else
-            fprintf("195\t195\t310\t");
-        end
-        fprintf("0\t0\t.");
-        fprintf("\n");
+    %Copy to tif
+    tifpath = [parentdir filesep 'tif' filesep fname '.tif'];
+    if ~isfile(tifpath)
+        %fprintf("Converting %s to tif...\n", filepath);
+        load(filepath, 'imgdat');
+        saveastiff(imgdat, tifpath); clear imgdat;
     end
     
-    
+    iname = ['simvar_' fname];
+    fprintf('%s\t%s\t1\t0\t0\t1\t', iname, ['/img/simvar/tif/' fname '.tif']);
+    fprintf('%s\t', ['/data/preprocess/simvar/' fname '/' iname '_all_3d']);
+    fprintf('Sim\tSim\tSim\tSim\tSim\t');
+    fprintf('%s\t', ['/data/bigfish/simvar/' fname '/BIGFISH_' iname]);
+    fprintf('5\t.\t.\t.\t');
+    fprintf('65\t65\t300\t');
+    fprintf('95\t95\t340\t');
+    fprintf('0\t0\t1\t.\n');
 end
+
+% function doathing(filepath, state_obj)
+%     if ~endsWith(filepath, '.tif'); return; end
+%     
+%     [parentdir, fname, ~] = fileparts(filepath);
+% 	[~, parentdir, ~] = fileparts(parentdir);
+%     
+%     %Split by underscores...
+%     if ~contains(fname, 'Exp'); return; end
+%     fname_parts = split(fname, '_');
+%     expno = replace(fname_parts{1}, 'Exp', '');
+%     repno = replace(fname_parts{2}, 'rep', '');
+%     timep = replace(fname_parts{3}, 'min', '');
+%     imgno = replace(fname_parts{4}, 'im', '');
+%     
+%     iname = ['sctc_E' expno 'R' repno '_' timep 'm_I' imgno];
+%     
+%     for i = 1:2
+%         target = 'STL1';
+%         if i == 2; target = 'CTT1'; end
+%         fprintf("%s_%s\t", iname, target);
+%         fprintf("/img/yeast_full/%s/%s.tif\t", parentdir, fname);
+%         fprintf("%d\t4\t3\t4\t", i);
+%         
+%         probe = 'TMR';
+%         if i == 2; probe = 'CY5'; end
+%         fprintf("/data/preprocess/yeast_tc/%s/%s-%s/%s_%s_all_3d\t", iname, target, probe, iname, target);
+%         fprintf("Yeast\t%s\t%s\tmRNA\tSaccharomyces cerevisiae\t", target, probe);
+%         fprintf("/data/bigfish/yeast_tc/%s/%s-%s/BIGFISH_%s\t", iname, target, probe, iname);
+%         fprintf("3\t.\t");
+%         fprintf("/data/cell_seg/yeast_full/E%sR%s\t", expno, repno);
+%         fprintf("%s\t", fname);
+%         fprintf("65\t65\t200\t195\t195\t210\t");
+%         fprintf("0\t0\t1\t.\n");
+%     end
+%     
+% end
+
+% function doathing(filepath, state_obj)
+%     if ~endsWith(filepath, '.tif'); return; end
+%     if contains(filepath, 'H3K4me2'); return; end
+%     [~, fname, ~] = fileparts(filepath);
+%     iname_base = ['histonesc_' fname];
+%     
+%     for i = 2:4
+%         target = '';
+%         if i == 2
+%             target = 'Xist'; 
+%             probe = 'CY5';
+%         elseif i == 3
+%             target = 'Tsix';
+%             probe = 'TMR';
+%         elseif i == 4
+%             target = 'Histone'; 
+%             probe = 'AF488';
+%         end
+%         
+%         iname = [iname_base '_' target];
+%         fprintf("%s\t", [iname_base '_' target]);
+%         fprintf("%s\t", ['/img/histones_febc/' fname '.tif']);
+%         fprintf("%d\t5\t1\t5\t", i);
+%         
+%         if i == 4
+%             if contains(fname, 'H3K36me3'); target = 'H3K36me3'; end
+%             if contains(fname, 'H3K4me2'); target = 'H3K4me2'; end
+%         end
+%         %fprintf("%s\t", ['/data/preprocess/histones_febc/' fname '/' target '-' probe '/' fname '-' target '-' probe '_all_3d']);
+%         fprintf("%s\t", ['/data/preprocess/histones_febc/' fname '/' target '-' probe '/' iname '_all_3d']);
+%         fprintf("mESC\t%s\t%s\t", target, probe);
+%         if i == 4
+%             fprintf("Histone Mark\t");
+%         else
+%             fprintf("lncRNA\t");
+%         end
+%         fprintf("Mus musculus\t");
+%         fprintf("%s\t", ['/data/bigfish/histones_febc/' fname '/' target '-' probe '/BIGFISH_' fname '-' target '-' probe]);
+%         fprintf("3\t.\t/data/cell_seg/histones_febc\t%s\t", fname);
+%         fprintf("65\t65\t300\t");
+%         if i == 4
+%             fprintf("160\t160\t300\t");
+%         else
+%             fprintf("195\t195\t310\t");
+%         end
+%         fprintf("0\t0\t.");
+%         fprintf("\n");
+%     end
+% end
 
 % function doathing(filepath, state_obj)
 %     if ~endsWith(filepath, '.tif'); return; end

@@ -1,8 +1,8 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
 %ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Image Channels ==========================
 
@@ -12,7 +12,6 @@ i = 1;
 %----- Test
 %img_paths{i,1} = [ImgDir '\img\sim\mESC_RNA_TMRLike_100x_3']; i = i+1;
 img_paths{i,1} = [ImgDir '\img\sim\mESC_RNA_LEHB_100x_3']; i = i+1;
-
 
 % ========================== Cycle ==========================
 

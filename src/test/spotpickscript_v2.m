@@ -51,6 +51,8 @@ else
     selector = RNA_Threshold_SpotSelector.openSelector(outstem, true);
 end
 
+%Set crosshair color
+selector.crosshair_color = [1.0 1.0 0.0];
 selector.launchRefSelectGUI();
 
 % ========================== Helper Functions ==========================

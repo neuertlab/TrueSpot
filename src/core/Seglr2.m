@@ -180,6 +180,11 @@ classdef Seglr2
             min_points = 3;
             data_points = size(data,1);
             
+            if data_points < ((min_points * 2) + 1)
+                linfit = [];
+                return;
+            end
+            
             if nargin < 4
                 verbosity = 1;
             end
@@ -295,6 +300,11 @@ classdef Seglr2
                 ystd = std(data(:,2),0,'all','omitnan');
                 y0_min = min(data(:,2),[],'omitnan') - ystd;
                 y0_max = mean(data(:,2),'all','omitnan');
+                if y0_min >= y0_max
+                    pmean = (y0_min + y0_max) / 2;
+                    y0_max = max(y0_max, pmean + 10);
+                    y0_min = min(y0_min, pmean - 10);
+                end
                 %y0_st = y0_min + (rand() * (y0_max - y0_min));
                 y0_st = y0_min + ((y0_max - y0_min)/2);
             
@@ -302,6 +312,11 @@ classdef Seglr2
                 [~, testb] = Seglr2.lineeqs(data(2:data_points,1),data(2:data_points,2),data(1,1), data(1,2));
                 b1_min = min(testb,[],'all','omitnan') - ystd;
                 b1_max = max(testb,[],'all','omitnan');
+                if b1_min >= b1_max
+                    pmean = (b1_min + b1_max) / 2;
+                    b1_max = max(b1_max, pmean + 10);
+                    b1_min = min(b1_min, pmean - 10);
+                end
                 %b1_st = b1_min + (rand() * (b1_max - b1_min));
                 b1_st = b1_min + ((b1_max - b1_min)/2);
             
@@ -310,11 +325,21 @@ classdef Seglr2
                 [~, testb] = Seglr2.lineeqs(data(:,1),data(:,2),data(minidx,1), data(minidx,2));
                 b2_min = min(testb,[],'all','omitnan');
                 b2_max = max(testb,[],'all','omitnan');
+                if b2_min >= b2_max
+                    pmean = (b2_min + b2_max) / 2;
+                    b2_max = max(b2_max, pmean + 10);
+                    b2_min = min(b2_min, pmean - 10);
+                end
                 %b2_st = b2_min + (rand() * (b2_max - b2_min));
                 b2_st = b2_min + ((b2_max - b2_min)/2);
             
                 x_min = data(scanmin,1);
                 x_max = data(scanmax,1);
+                if x_min >= x_max
+                    xmean = (x_min + x_max) / 2;
+                    x_max = max(x_max, xmean + 5);
+                    x_min = min(x_min, xmean - 5);
+                end
                 x0_st = x_min + (0.5 * (x_max - x_min));
             
                 if verbosity > 1

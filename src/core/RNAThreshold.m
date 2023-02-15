@@ -52,13 +52,17 @@ classdef RNAThreshold
             param_struct.verbosity = verbosity;
             
             winmin = rnaspots_run.ttune_winsz_min;
-            if winmin < 2; winmin = 2; end
-            winincr = rnaspots_run.ttune_winsz_incr;
-            if winincr < 1; winincr = 1; end
             winmax = rnaspots_run.ttune_winsz_max;
-            if winmax < winmin; winmax = winmin+winincr; end
-            param_struct.window_sizes = [winmin:winincr:winmax];
-            
+            if winmin == 0 & winmax == 0
+                param_struct.window_sizes = [];
+            else
+                if winmin < 2; winmin = 2; end
+                winincr = rnaspots_run.ttune_winsz_incr;
+                if winincr < 1; winincr = 1; end
+                if winmax < winmin; winmax = winmin+winincr; end
+                param_struct.window_sizes = [winmin:winincr:winmax];
+            end
+
             madmin = rnaspots_run.ttune_madf_min;
             if isnan(madmin); madmin = -1.0; end
             madmax = rnaspots_run.ttune_madf_max;
@@ -95,16 +99,52 @@ classdef RNAThreshold
             threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
         end
         
+        function threshold_results = runWithPreset(spot_count_table, ctrl_count_table, preset_index)
+            presets = RNAThreshold.loadPresets();
+            if isempty(presets); return; end
+            if preset_index < 1; return; end
+            if preset_index > size(presets,2); return; end
+            preset_struct = presets(preset_index);
+            
+            param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            param_struct.sample_spot_table = spot_count_table;
+            param_struct.control_spot_table = ctrl_count_table;
+            
+            win_min = preset_struct.ttune_winsz_min;
+            win_max = preset_struct.ttune_winsz_max;
+            win_incr = preset_struct.ttune_winsz_incr;
+            
+            param_struct.fit_strat = preset_struct.ttune_fit_strat;
+            param_struct.window_sizes = [win_min:win_incr:win_max];
+            param_struct.reweight_fit = preset_struct.ttune_reweight_fit;
+            param_struct.fit_to_log = preset_struct.ttune_fit_to_log;
+            param_struct.madth_weight = preset_struct.ttune_thweight_med;
+            param_struct.fit_weight = preset_struct.ttune_thweight_fit;
+            param_struct.fit_ri_weight = preset_struct.ttune_thweight_fisect;
+            param_struct.std_factor = preset_struct.ttune_std_factor;
+            param_struct.spline_iterations = preset_struct.ttune_spline_itr;
+            param_struct.test_data = preset_struct.ttune_use_rawcurve;
+            param_struct.test_diff = preset_struct.ttune_use_diffcurve;
+            param_struct.mad_factor_min = preset_struct.ttune_madf_min;
+            param_struct.mad_factor_max = preset_struct.ttune_madf_max;
+            
+            threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
+        end
+        
         function param_info = paramsFromSpotsrun(rnaspots_run)
             param_info = RNA_Threshold_Common.genEmptyThresholdParamStruct();
             
             winmin = rnaspots_run.ttune_winsz_min;
-            if winmin < 2; winmin = 2; end
-            winincr = rnaspots_run.ttune_winsz_incr;
-            if winincr < 1; winincr = 1; end
             winmax = rnaspots_run.ttune_winsz_max;
-            if winmax < winmin; winmax = winmin+winincr; end
-            param_info.window_sizes = [winmin:winincr:winmax];
+            if winmin == 0 & winmax == 0
+                param_info.window_sizes = [];
+            else
+                if winmin < 2; winmin = 2; end
+                winincr = rnaspots_run.ttune_winsz_incr;
+                if winincr < 1; winincr = 1; end
+                if winmax < winmin; winmax = winmin+winincr; end
+                param_info.window_sizes = [winmin:winincr:winmax];
+            end
             
             madmin = rnaspots_run.ttune_madf_min;
             if isnan(madmin); madmin = -1.0; end
@@ -227,33 +267,18 @@ classdef RNAThreshold
         end
 
         function score_list = getAllMedThresholds(threshold_results)
+            %TODO Only include good ones.
+            curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
+            if isempty(curve_info_list); return; end
+            
+            curve_count = size(curve_info_list,2);
             madf_count = 0;
-            curve_count = 0;
-            wincount = 0;
             
-            if ~isempty(threshold_results.test_data)
-                curve_count = curve_count + 1; 
-                cres = threshold_results.test_data;
-                if ~isempty(cres.med_suggested_threshold)
-                	madf_count = size(cres.med_suggested_threshold,2);
-                end
-            end
-            if ~isempty(threshold_results.test_diff)
-                curve_count = curve_count + 1; 
-                cres = threshold_results.test_diff;
-                if madf_count < 1 & ~isempty(cres.med_suggested_threshold)
-                	madf_count = size(cres.med_suggested_threshold,2);
-                end
-            end
-            
-            if isfield(threshold_results, 'test_winsc') & ~isempty(threshold_results.test_winsc)
-                wincount = size(threshold_results.test_winsc, 2); 
-                curve_count = curve_count + wincount;
-                if madf_count < 1
-                    cres = threshold_results.test_winsc(1,1);
-                    if ~isempty(cres.med_suggested_threshold)
-                        madf_count = size(cres.med_suggested_threshold,2);
-                    end
+            for i = 1:curve_count
+                if isempty(curve_info_list(i)); continue; end
+                if ~isempty(curve_info_list(i).med_suggested_threshold)
+                    madf_count = size(curve_info_list(i).med_suggested_threshold,2);
+                    break;
                 end
             end
             
@@ -261,103 +286,87 @@ classdef RNAThreshold
             score_list = NaN(1, alloc);
             
             i = 1;
-            if ~isempty(threshold_results.test_data)
-                score_list(1,i:i+madf_count-1) = threshold_results.test_data.med_suggested_threshold(1,:);
-                i = i + madf_count;
-            end
-            if ~isempty(threshold_results.test_diff)
-                score_list(1,i:i+madf_count-1) = threshold_results.test_diff.med_suggested_threshold(1,:);
-                i = i + madf_count;
-            end
-            if wincount > 0
-                for j = 1:wincount
-                    cres = threshold_results.test_winsc(1,j);
-                    score_list(1,i:i+madf_count-1) = cres.med_suggested_threshold(1,:);
+            for c = 1:curve_count
+                if isempty(curve_info_list(c)); continue; end
+                if ~isempty(curve_info_list(c).med_suggested_threshold)
+                    score_list(1,i:i+madf_count-1) = curve_info_list(c).med_suggested_threshold(1,:);
                     i = i + madf_count;
                 end
             end
         end
         
         function score_list = getAllFitThresholds(threshold_results)
-            curve_count = 0;
-            wincount = 0;
+            %TODO Only include good ones.
+            curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
+            if isempty(curve_info_list); return; end
             
-            if ~isempty(threshold_results.test_data)
-                curve_count = curve_count + 1; 
-            end
-            if ~isempty(threshold_results.test_diff)
-                curve_count = curve_count + 1; 
-            end
-            
-            if isfield(threshold_results, 'test_winsc') & ~isempty(threshold_results.test_winsc)
-                wincount = size(threshold_results.test_winsc, 2); 
-                curve_count = curve_count + wincount;
-            end
-            
+            curve_count = size(curve_info_list,2);
             score_list = NaN(1, curve_count);
+            
             i = 1;
-            if ~isempty(threshold_results.test_data)
-                score_list(1,i) = threshold_results.test_data.spline_knot_x;
-                i = i + 1;
-            end
-            if ~isempty(threshold_results.test_diff)
-                score_list(1,i) = threshold_results.test_diff.spline_knot_x;
-                i = i + 1;
-            end
-            if wincount > 0
-                for j = 1:wincount
-                    cres = threshold_results.test_winsc(1,j);
-                    score_list(1,i) = cres.spline_knot_x;
+            for c = 1:curve_count
+                if isempty(curve_info_list(c)); continue; end
+                if ~isempty(curve_info_list(c).spline_fit)
+                    score_list(i) = curve_info_list(c).spline_knot_x;
                     i = i + 1;
                 end
             end
         end
 
         function score_list = getAllRightISectThresholds(threshold_results)
-            curve_count = 0;
-            wincount = 0;
+            %TODO Only include good ones.
+            curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
+            if isempty(curve_info_list); return; end
             
-            if ~isempty(threshold_results.test_data)
-                if ~isempty(threshold_results.test_data.spline_fit)
-                    curve_count = curve_count + 1; 
-                end
-            end
-            if ~isempty(threshold_results.test_diff)
-                if ~isempty(threshold_results.test_diff.spline_fit)
-                    curve_count = curve_count + 1; 
-                end
-            end
-            
-            if isfield(threshold_results, 'test_winsc') & ~isempty(threshold_results.test_winsc)
-                wincount = size(threshold_results.test_winsc, 2); 
-                curve_count = curve_count + wincount;
-            end
-            
+            curve_count = size(curve_info_list,2);
             score_list = NaN(1, curve_count);
+            
             i = 1;
-            if ~isempty(threshold_results.test_data)
-                if ~isempty(threshold_results.test_data.spline_fit)
-                    score_list(1,i) = threshold_results.test_data.spline_fit.rcurve_intr_x;
+            for c = 1:curve_count
+                if isempty(curve_info_list(c)); continue; end
+                if ~isempty(curve_info_list(c).spline_fit)
+                    score_list(i) = curve_info_list(c).spline_fit.rcurve_intr_x;
                     i = i + 1;
-                end
-            end
-            if ~isempty(threshold_results.test_diff)
-                if ~isempty(threshold_results.test_diff.spline_fit)
-                    score_list(1,i) = threshold_results.test_diff.spline_fit.rcurve_intr_x;
-                    i = i + 1;
-                end
-            end
-            if wincount > 0
-                for j = 1:wincount
-                    cres = threshold_results.test_winsc(1,j);
-                    if ~isempty(cres.spline_fit)
-                        score_list(1,i) = cres.spline_fit.rcurve_intr_x;
-                        i = i + 1;
-                    end
                 end
             end
         end
         
+        function score_list = getAllThresholdSuggestions(threshold_results)
+            %TODO Only include good ones.
+            curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
+            if isempty(curve_info_list); return; end
+            
+            curve_count = size(curve_info_list,2);
+            madf_count = 0;
+            
+            for c = 1:curve_count
+                if isempty(curve_info_list(c)); continue; end
+                if ~isempty(curve_info_list(c).med_suggested_threshold)
+                    madf_count = size(curve_info_list(c).med_suggested_threshold,2);
+                    break;
+                end
+            end
+            
+            alloc = (madf_count * curve_count) + (curve_count * 2);
+            score_list = NaN(1, alloc);
+            
+            i = 1;
+            for c = 1:curve_count
+                if isempty(curve_info_list(c)); continue; end
+                if ~isempty(curve_info_list(c).med_suggested_threshold)
+                    score_list(1,i:i+madf_count-1) = curve_info_list(c).med_suggested_threshold(1,:);
+                    i = i + madf_count;
+                end
+                if ~isempty(curve_info_list(c).spline_fit)
+                    score_list(i) = curve_info_list(c).spline_knot_x;
+                    i = i + 1;
+                    
+                    score_list(i) = curve_info_list(c).spline_fit.rcurve_intr_x;
+                    i = i + 1;
+                end
+            end
+        end
+
         function curve_info_list = getAllCurveResultStructs(threshold_results)
             curve_count = 0;
             wincount = 0;

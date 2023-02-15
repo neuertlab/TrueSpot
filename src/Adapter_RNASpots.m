@@ -23,7 +23,7 @@
 
 %%
 
-function rna_spot_run = Adapter_RNASpots(rna_spot_run, guimode, preloaded_images, debug_lvl, limitSaveSize, thread_request)
+function rna_spot_run = Adapter_RNASpots(rna_spot_run, guimode, preloaded_images, debug_lvl, limitSaveSize, thread_request, max_proj)
 
 addpath('./core');
 RNA_Fisher_State.setGUIMode(guimode);
@@ -39,6 +39,10 @@ end
 
 if nargin < 6
     thread_request = 1;
+end
+
+if nargin < 7
+    max_proj = false;
 end
 
 %Check required arguments
@@ -112,9 +116,9 @@ end
 
 %Call core
 if bPreloaded
-    RNA_Pipeline_Core(rna_spot_run, debug_lvl, preloaded_images, limitSaveSize, thread_request);
+    RNA_Pipeline_Core(rna_spot_run, debug_lvl, preloaded_images, limitSaveSize, thread_request, max_proj);
 else
-    RNA_Pipeline_Core(rna_spot_run, debug_lvl, [], limitSaveSize, thread_request);
+    RNA_Pipeline_Core(rna_spot_run, debug_lvl, [], limitSaveSize, thread_request, max_proj);
 end
 
 RNA_Fisher_State.clearStaticState();

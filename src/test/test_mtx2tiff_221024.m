@@ -23,7 +23,7 @@ img_paths{i,1} = [ImgDir '\img\sim\mESC_RNA_100x_1']; i = i+1;
 
 % ========================== Read from dir ==========================
 
-dir_path = [ImgDir '\img\histones_febc'];
+dir_path = [ImgDir '\img\histones_febc\mat'];
 dir_contents = dir(dir_path);
 
 % ========================== Cycle ==========================
@@ -37,6 +37,7 @@ for j = 1:path_count
     fname = dir_contents(j).name;
     if dir_contents(j).isdir; continue; end
     if ~endsWith(fname, '.mat'); continue; end
+    if ~contains(fname, 'H3K4me2'); continue; end
     [~, fname, ~] = fileparts(fname);
     mypath = [dir_path filesep fname];
     

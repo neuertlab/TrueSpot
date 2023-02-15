@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.4.0
-%Updated November 3, 2022
+%Version 2.5.2
+%Updated December 16, 2022
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -52,6 +52,21 @@
 %   2.4.0 | 22.11.03
 %       Added function to estimate memory size of coord_tables
 %       Fixed(?) parallelization for 3D run.
+%   2.5.0 | 22.11.28
+%       Added function to cull lower thresholds from runs
+%   2.5.1 | 22.12.01
+%       If fitting to log transformation, fill log10 projection holes using
+%       interpolation to make fitting easier when lots of very low values.
+%   2.5.2 | 22.12.16
+%       Fixed thresh function to handle requests with no fano
+%       transformations. Prev made a lot of assumptions that there would be
+%       at least one window size input.
+%   2.5.3 | 23.02.15
+%       Tidy up thresholding functions to better catch errors when a
+%       particular curve is not workable - this can occur when few
+%       threshold values are tested or the curve drops to zero too quickly.
+%       Should auto-reroute to use original spot count and diff curves if
+%       window score curves aren't really appropriate for a case.
 
 %%
 %
@@ -129,7 +144,7 @@ classdef RNA_Threshold_Common
         %Generate a Gaussian filter matrix
         %ARGS
         %   xy_rad (int) - Blur radius (mu1, mu2)
-        %   amt (num) - Strength/Amount (s1)
+        %   amt (num) - Strength/Amount/Width (s1)
         %
         %RETURN
         %   gauss_filter 
@@ -185,6 +200,8 @@ classdef RNA_Threshold_Common
             if nargin < 5
                 clean_borders = false;
             end
+            
+            in_img = double(in_img);
             
             %Get the filter matrix
             if (z_rad > 0) & (ndims(in_img) == 3)
@@ -244,6 +261,8 @@ classdef RNA_Threshold_Common
             filter_mx = [-1 -1 -1;...
                          -1 +8 -1;...
                          -1 -1 -1];
+                     
+            in_img = double(in_img);
     
             if ndims(in_img) == 3
                 img_filtered = in_img;
@@ -350,6 +369,7 @@ classdef RNA_Threshold_Common
             X = size(in_img,2);
             Z = size(in_img,3);
             A = Y * X;
+            in_img = double(in_img);
 
             px_counts = struct('recurring_all', 0, 'random', 0, 'recurring', 0);
             slice_cut = 4/8;
@@ -536,6 +556,9 @@ classdef RNA_Threshold_Common
             sub_struct.medth_max = 0;
             sub_struct.medth_avg = 0;
             sub_struct.medth_std = 0;
+            sub_struct.spline_okay = false;
+            sub_struct.med_okay = false;
+            sub_struct.log_used_spline = false;
         end
         
         %%
@@ -572,18 +595,131 @@ classdef RNA_Threshold_Common
         
         %
         %%
+        function thresh_info = thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, min_points)
+            thresh_info.spline_okay = true;
+            
+            thresh_info.spline_fit = [];
+            thresh_info.spline_knot_x = 0;
+            thresh_info.spline_knot_y = 0;
+            
+            fitdata = data;
+            point_count = size(data,1);
+            
+            if thresh_info.log_used_spline
+                fitdata(:,2) = log10(fitdata(:,2));
+                
+                %Remove invalid values...
+                total_rows = size(fitdata,1);
+                [okay_rows,~] = find(isfinite(fitdata(:,2)));
+                if ~isempty(okay_rows)
+                    keep_row_count = size(okay_rows,1);
+                    if (total_rows - keep_row_count) < min_points
+                        thresh_info.spline_okay = false;
+                        return;
+                    end
+                end
+                
+                fitdata = fitdata(okay_rows,:);
+                [okay_rows,~] = find(fitdata(:,2) > -5); %Remove extremes
+                if ~isempty(okay_rows)
+                    total_rows = size(fitdata,1);
+                    keep_row_count = size(okay_rows,1);
+                    if (total_rows - keep_row_count) < min_points
+                        thresh_info.spline_okay = false;
+                        return;
+                    end
+                end
+                
+                try
+                    fitdata = fitdata(okay_rows,:);
+                    
+                    local_count = size(fitdata,1);
+                    [~,maxidx] = max(fitdata(:,2),[],'omitnan');
+                    thresh_info.max_index = maxidx;
+                    fitdata = fitdata(maxidx:local_count,:);
+                    
+                    %Re-interpolate the removed values
+                    min_x = fitdata(1,1);
+                    max_x = fitdata(size(fitdata,1),1);
+                    xx = [min_x:1:max_x].';
+                    yy = pchip(fitdata(:,1), fitdata(:,2), xx);
+                    fitdata = NaN(size(xx,1),2);
+                    fitdata(:,1) = xx;
+                    fitdata(:,2) = yy;
+                catch ME
+                    thresh_info.spline_okay = false;
+                    return;
+                end
+            else
+                fitdata = data_trimmed;
+                [okay_rows,~] = find(isfinite(fitdata(:,2)));
+                if ~isempty(okay_rows)
+                    total_rows = size(fitdata,1);
+                    keep_row_count = size(okay_rows,1);
+                    if (total_rows - keep_row_count) < min_points
+                        thresh_info.spline_okay = false;
+                        return;
+                    end
+                end
+                
+                fitdata = fitdata(okay_rows,:);
+            end
+            
+            if params.verbosity > 0
+                fprintf("Fitting two-piece linear spline...\n");
+            end
+            %thresh_info.spline_fit = Seglr2.fitTo(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.spline_iterations, verbosity);
+            if params.reweight_fit
+                bpstrat = 'weighted_avg';
+            else
+                bpstrat = 'segrsq';
+            end
+            
+            %Trycatch, try again as non log if tried log
+            try
+                thresh_info.spline_fit = Seglr2.fitToSpotCurve(fitdata, thresh_info.medth_min, thresh_info.medth_max, params.verbosity, params.fit_strat, bpstrat, params.spline_iterations);
+                if ~isempty(thresh_info.spline_fit)
+                    thresh_info.spline_knot_x = fitdata(thresh_info.spline_fit.break_index,1);
+                    
+                    %Adjust break index for original data...
+                    for i = 1:point_count
+                        if data(i,1) >= thresh_info.spline_knot_x
+                            thresh_info.spline_fit.break_index = i;
+                            break;
+                        end
+                    end
+                    
+                    %Calculate the y coord of knot.
+                    thresh_info.spline_knot_y = (thresh_info.spline_fit.right.slope * thresh_info.spline_knot_x) + thresh_info.spline_fit.right.yintr;
+                end
+            catch ME
+                %Set up a loop to try again...
+                thresh_info.spline_okay = false;
+                return;
+            end
+        end
+        
+        %%
         function thresh_info = thresholdTestCurve(data, thresh_info, params)
             
             thresh_info.median = median(data(:,2), 'omitnan');
             thresh_info.mad = mad(data(:,2),1);
-            %thresh_info.scan_value_threshold = thresh_info.median + (thresh_info.mad * params.mad_factor);
             thresh_info.scan_value_threshold = thresh_info.median + (thresh_info.mad .* [params.mad_factor_min:0.25:params.mad_factor_max]);
+            thresh_info.log_used_spline = params.fit_to_log;
             
+            %Trim everything before the initial peak
             point_count = size(data,1);
             [~,maxidx] = max(data(:,2),[],'omitnan');
-            thresh_info.max_index = maxidx;
+            thresh_info.max_index = maxidx; 
+            if (point_count - maxidx) < 5
+                %Not enough to work with. Return.
+                thresh_info.med_okay = false;
+                thresh_info.spline_okay = false;
+                return;
+            end
             data_trimmed = data(maxidx:point_count,:);
             
+            %Run median-based threshold determination
             %This could probably be fully vectorized?
             data_smoothed(:,1) = smooth(data_trimmed(:,2));
             mfcount = size(thresh_info.scan_value_threshold,2);
@@ -596,7 +732,7 @@ classdef RNA_Threshold_Common
                     bool_has_nonnan = true;
                 end
             end
-            
+
             %Evaluate medth values.
             if bool_has_nonnan
                 thresh_info.medth_avg = mean(thresh_info.med_suggested_threshold,'all','omitnan');
@@ -612,6 +748,7 @@ classdef RNA_Threshold_Common
                 if thresh_info.medth_max > maxt
                     thresh_info.medth_max = maxt;
                 end
+                thresh_info.med_okay = true;
             else
                 thresh_info.medth_avg = NaN;
                 thresh_info.medth_std = NaN;
@@ -619,68 +756,22 @@ classdef RNA_Threshold_Common
                 thresh_info.medth_max = data(point_count,1);
             end
             
-            %Scan using median appr. threshold method
-            %TODO This could probably replaced with "find"
-            %   ie. thresh_idx = find(data_trimmed(:,2) <= scanthresh, 1)
-%             trimmed_count = size(data_trimmed,1);
-%             for i = 1:trimmed_count
-%                 if data_trimmed(i,2) <= thresh_info.scan_value_threshold
-%                     thresh_info.med_suggested_threshold = data_trimmed(i,1);
-%                     break;
-%                 end
-%             end
-            
             %If user specified (spline itr > 0), fit spline
             if params.spline_iterations > 0
+                thresh_info = RNA_Threshold_Common.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
                 
-                %Log transform
-                fitdata = data;
-
                 if params.fit_to_log
-                    fitdata(:,2) = log10(fitdata(:,2));
-                    %Remove invalid values...
-                    [okay_rows,~] = find(isfinite(fitdata(:,2)));
-                    fitdata = fitdata(okay_rows,:);
-                    [okay_rows,~] = find(fitdata(:,2) > -5); %Remove extremes
-                    fitdata = fitdata(okay_rows,:);
-                    
-                    local_count = size(fitdata,1);
-                    [~,maxidx] = max(fitdata(:,2),[],'omitnan');
-                    thresh_info.max_index = maxidx;
-                    fitdata = fitdata(maxidx:local_count,:);
-                else
-                    fitdata = data_trimmed;
-                    [okay_rows,~] = find(isfinite(fitdata(:,2)));
-                    fitdata = fitdata(okay_rows,:);
-                end
-                
-                
-                
-                if params.verbosity > 0
-                    fprintf("Fitting two-piece linear spline...\n");
-                end
-                %thresh_info.spline_fit = Seglr2.fitTo(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.spline_iterations, verbosity);
-                if params.reweight_fit
-                    bpstrat = 'weighted_avg';
-                else
-                    bpstrat = 'segrsq';
-                end
-                thresh_info.spline_fit = Seglr2.fitToSpotCurve(fitdata, thresh_info.medth_min, thresh_info.medth_max, params.verbosity, params.fit_strat, bpstrat, params.spline_iterations);
-                if ~isempty(thresh_info.spline_fit)
-                    thresh_info.spline_knot_x = fitdata(thresh_info.spline_fit.break_index,1);
-                    
-                    %Adjust break index for original data...
-                    for i = 1:point_count
-                        if data(i,1) >= thresh_info.spline_knot_x
-                            thresh_info.spline_fit.break_index = i;
-                            break;
-                        end
+                    if ~thresh_info.spline_okay
+                        thresh_info.log_used_spline = false;
+                        thresh_info = RNA_Threshold_Common.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
                     end
-                    
-                    %Calculate the y coord of knot.
-                    thresh_info.spline_knot_y = (thresh_info.spline_fit.right.slope * thresh_info.spline_knot_x) + thresh_info.spline_fit.right.yintr;
-                    
-                end   
+                end
+                
+                if ~thresh_info.spline_okay
+                    thresh_info.spline_fit = [];
+                    thresh_info.spline_knot_x = 0;
+                    thresh_info.spline_knot_y = 0;
+                end
             end
             
         end
@@ -693,9 +784,9 @@ classdef RNA_Threshold_Common
         %
         % RETURN
         %
-        function [window_scores, adj_window_size, adj_window_pos] = calculateWindowScores(diff, window_size, window_pos)
+        function [window_scores, adj_window_size, adj_window_pos] = calculateWindowScores(diff_curve, window_size, window_pos)
             %Take some counts
-            P_count = size(diff,1);
+            P_count = size(diff_curve,1);
             
             %Calculate window position shift.
             winshift = 0;
@@ -730,7 +821,12 @@ classdef RNA_Threshold_Common
                 if w_front > P_count
                     w_front = P_count;
                 end
-                winout(i) = var(diff(w_back:w_front,1)) / mean(diff(w_back:w_front,1));
+                wmean = mean(diff_curve(w_back:w_front,1);
+                if wmean ~= 0
+                    winout(i) = var(diff_curve(w_back:w_front,1)) / mean(diff_curve(w_back:w_front,1));
+                else
+                    winout(i) = NaN;
+                end
             end
             
             %Shift back
@@ -836,13 +932,16 @@ classdef RNA_Threshold_Common
             end
             
             %Alloc window score mtxs in return struct
-            wincount = size(parameter_info.window_sizes,2);
-            threshold_results.window_scores = NaN(P_sample,wincount);
-            if ~isempty(ctrlderiv)
-                threshold_results.window_scores_ctrl = NaN(P_control,wincount);
+            wincount = 0;
+            if ~isempty(parameter_info.window_sizes)
+                wincount = size(parameter_info.window_sizes,2);
+                threshold_results.window_scores = NaN(P_sample,wincount);
+                if ~isempty(ctrlderiv)
+                    threshold_results.window_scores_ctrl = NaN(P_control,wincount);
+                end
+                threshold_results.test_winsc(1,wincount) = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
             end
-            threshold_results.test_winsc(1,wincount) = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
-            
+           
             %For each window size...
             for i = 1:wincount
                 wsz = parameter_info.window_sizes(1,i);
@@ -858,6 +957,38 @@ classdef RNA_Threshold_Common
            
             %Test the spot curve, the diff, and the win score curve (as
             %   wanted)
+            %If window scores are not useful, we need to turn on curve and
+            %diff use
+            med_okay = 0;
+            fit_okay = 0;
+            if parameter_info.test_winsc
+                if parameter_info.verbosity > 0
+                    fprintf("Testing winscore curve...\n");
+                end
+                for i = 1:wincount
+                    thresh_info = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
+                    threshold_results.test_winsc(1,i) = thresh_info;
+                    %threshold_results.test_winsc(1,i) = thresh_info;
+                    winscores_test = NaN(P_sample,2);
+                    winscores_test(:,1) = threshold_results.x(1:P_sample,1);
+                    winscores_test(:,2) = threshold_results.window_scores(:,i);
+                    
+                    ws_results = ...
+                        RNA_Threshold_Common.thresholdTestCurve(winscores_test, thresh_info, parameter_info);
+                    threshold_results.test_winsc(1,i) = ws_results;
+                    
+                    if ~isempty(ws_results)
+                        if ws_results.med_okay; med_okay = med_okay + 1; end
+                        if ws_results.spline_okay; fit_okay = fit_okay + 1; end
+                    end
+                end
+            else 
+                threshold_results.test_winsc = [];
+            end
+            
+            %TODO Check med_okay and fit_okay to determine whether to auto
+            %turn on data and diff checks
+            
             if parameter_info.test_data
                 if parameter_info.verbosity > 0
                     fprintf("Testing sample spot curve...\n");
@@ -877,24 +1008,6 @@ classdef RNA_Threshold_Common
                     RNA_Threshold_Common.thresholdTestCurve(diff_curve, RNA_Threshold_Common.genEmptyThresholdInfoStruct(), parameter_info);
             end
             
-            if parameter_info.test_winsc
-                if parameter_info.verbosity > 0
-                    fprintf("Testing winscore curve...\n");
-                end
-                for i = 1:wincount
-                    thresh_info = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
-                    threshold_results.test_winsc(1,i) = thresh_info;
-                    %threshold_results.test_winsc(1,i) = thresh_info;
-                    winscores_test = NaN(P_sample,2);
-                    winscores_test(:,1) = threshold_results.x(1:P_sample,1);
-                    winscores_test(:,2) = threshold_results.window_scores(:,i);
-                    
-                    threshold_results.test_winsc(1,i) = ...
-                        RNA_Threshold_Common.thresholdTestCurve(winscores_test, thresh_info, parameter_info);
-                end
-            else 
-                threshold_results.test_winsc = [];
-            end
             
             %Determine a best threshold from test info.
             mscores = RNAThreshold.getAllMedThresholds(threshold_results);
@@ -1240,8 +1353,6 @@ classdef RNA_Threshold_Common
         %
         function [img_filtered,xx,yy,minVal,maxVal] = testThreshold_slice(in_slice,th1,th2)
             %Initialize outputs
-            xx = NaN(10);
-            yy = NaN(10);
             minVal = 0;
             maxVal = 0;
 
@@ -1257,6 +1368,8 @@ classdef RNA_Threshold_Common
                 [yy,xx] = find(IM3 > round(th2));
                 img_filtered = IM3;
             else
+                xx = [];
+                yy = [];
                 img_filtered = IM; %Nothing to see here
             end
 
@@ -1384,7 +1497,7 @@ classdef RNA_Threshold_Common
         function [img_filtered,xx,yy,minVal,maxVal] = testThreshold_maxZ(in_img,threshold)
    
             %Prepare slice
-            max_proj = max(in_img,[],3); % uint16[X][Y] - A 2D projection of the brightest pixels in each Z column
+            max_proj = max(double(in_img),[],3); % A 2D projection of the brightest pixels in each Z column
             p_std = std2(max_proj);
     
             %Run slice
@@ -1670,9 +1783,17 @@ classdef RNA_Threshold_Common
     
             %Generate coord & spot tables (do spot detection)
             if strcmp(common_ctx.th_strategy, 'max_proj')
+                if common_ctx.verbose
+                    fprintf("Running on max projection!\n");
+                end
                 %Use only the max projection slice for spot detection
                 for c = 1:T
                     th = common_ctx.th_list(1,c);
+                    if common_ctx.verbose
+                        fprintf("Testing threshold %d...\n", th);
+                        tic;
+                    end
+                    
                     %Spot detect
                     [f_img,xx,yy,~,~] = RNA_Threshold_Common.testThreshold_maxZ(common_ctx.img_filter,th);
                     %Spot count
@@ -1680,11 +1801,14 @@ classdef RNA_Threshold_Common
                     %spot_table(c,1) = th;
                     common_ctx.spot_table(c,2) = spot_count;
                     %Save coordinates
-                    t_coords = [xx(:) yy(:)];
+                    t_coords = [xx(:) yy(:) uint16(ones(spot_count,1))];
                     common_ctx.coord_table{c,1} = t_coords;
                     if common_ctx.save_filtered
                         savepath = sprintf("%s%s%s", common_ctx.save_stem, '_t', num2str(c));
                         save(savepath, 'f_img');
+                    end
+                    if common_ctx.verbose
+                        toc;
                     end
                 end
             else
@@ -2760,6 +2884,49 @@ classdef RNA_Threshold_Common
             bytes_size = bytes_size + (coord_count * 3 * element_size);
             %I'm sure there's more overhead, but I'll force it to 2 billion
             %bytes instead of 2GiB maybe that'll help?
+        end
+
+        function spotsrun = cullRunThresholds(spotsrun, max_size)
+            spotsrun = spotsrun.deleteSavedZTrimmedTables();
+            %Samples
+            [spotsrun, spot_table] = spotsrun.loadSpotsTable();
+            [spotsrun, coord_table] = spotsrun.loadCoordinateTable();
+
+            T = size(coord_table,1);
+            bytes_est = 0;
+            for c = T:-1:1
+                bytes_est = bytes_est + 8;
+                entries = size(coord_table{c,1}, 1);
+                bytes_est = bytes_est + (entries * 4 * 2);
+                if bytes_est >= max_size; break; end
+            end
+
+            if c > 1
+                %trim it.
+                oldmin = spot_table(1,1);
+                newmin = spot_table(c+1,1);
+                fprintf("Trimming out thresholds %d - %d\n", oldmin, newmin);
+
+                spot_table = spot_table(c+1:T,:);
+                coord_table = coord_table(c+1:T,:);
+                save([spotsrun.out_stem '_coordTable.mat'], 'coord_table');
+                save([spotsrun.out_stem '_spotTable.mat'], 'spot_table');
+
+                %Control, if present
+                if ~isempty(spotsrun.ctrl_stem)
+                    [spotsrun, spot_table] = spotsrun.loadControlSpotsTable();
+                    [spotsrun, coord_table] = spotsrun.loadControlCoordinateTable();
+                    spot_table = spot_table(c+1:T,:);
+                    coord_table = coord_table(c+1:T,:);
+                    save([spotsrun.ctrl_stem '_coordTable.mat'], 'coord_table');
+                    save([spotsrun.ctrl_stem '_spotTable.mat'], 'spot_table');
+                end
+                spotsrun.t_min = newmin;
+                spotsrun = spotsrun.saveMe();
+            else
+                fprintf("No threshold trim needed!\n");
+            end
+
         end
         
         %%

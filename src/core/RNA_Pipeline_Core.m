@@ -8,7 +8,7 @@
 %   3 - High verbosity + output plots
 
 %%
-function spotsrun = RNA_Pipeline_Core(spotsrun, debug_lvl, preloaded_imgs, limitSaveSize, thread_request)
+function spotsrun = RNA_Pipeline_Core(spotsrun, debug_lvl, preloaded_imgs, limitSaveSize, thread_request, use_max_proj)
 
 if nargin > 2
     bPreloaded = ~isempty(preloaded_imgs);
@@ -22,6 +22,10 @@ end
 
 if nargin < 5
     thread_request = 1;
+end
+
+if nargin < 6
+    use_max_proj = false;
 end
 
 %Debug print
@@ -98,7 +102,12 @@ end
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Running spot detect... (This may take a few hours on large files)"), true);
 %spotsrun.out_stem = Main_RNASpotDetect(spotsrun.img_name, spotsrun.tif_path, spotsrun.out_dir,...
 %    spotsrun.rna_ch, spotsrun.total_ch, spotsrun.t_min, spotsrun.t_max, true, spotsrun.overwrite_output);
-strat = 'all_3d';
+
+if use_max_proj 
+    strat = 'max_proj';
+else
+    strat = 'all_3d'; 
+end
 %outdir = [spotsrun.out_dir filesep strat];
 mkdir(spotsrun.out_dir);
 spotsrun.out_stem = [spotsrun.out_dir filesep spotsrun.img_name '_' strat];

@@ -6,6 +6,20 @@ classdef RNAUtils
     methods (Static)
         
         %%
+        function thresh_idx = findThresholdIndex(thresh_value, thresh_x_tbl)
+            %Give thresh_x_tbl as vector (single row)
+            
+            isge = thresh_x_tbl >= thresh_value;
+            if nnz(isge) < 1
+                %Nothing found
+                thresh_idx = size(thresh_x_tbl,2);
+                return;
+            end
+            
+            thresh_idx = find(isge,1);
+        end
+        
+        %%
         function border_mask = genBorderMask(dims, rads)
             dimcount = size(dims,2);
             
@@ -46,6 +60,7 @@ classdef RNAUtils
             needs_trim = isscalar(d_coord) & (dtrim_lo > 0 | dtrim_hi > 0);
         end
         
+        %%
         function spot_data = isolateSpotData2D(src_img, x, y, xrad, yrad)
             Y = size(src_img,1);
             X = size(src_img,2);
@@ -77,6 +92,18 @@ classdef RNAUtils
             spot_data = zeros(xydim, xydim, zdim);
             spot_data(ytrim_lo+1:xydim-ytrim_hi, xtrim_lo+1:xydim-xtrim_hi, ztrim_lo+1:zdim-ztrim_hi) = ...
                 src_img(y_min:y_max, x_min:x_max, z_min:z_max);
+        end
+
+        %%
+        function gauss_spot = generateGaussian2D(xdim, ydim, mu_x, mu_y, w_x, w_y, peak)
+            [XX,YY] = meshgrid(1:1:xdim,1:1:ydim);
+            
+            x_factor = (XX - mu_x - 1).^2;
+            y_factor = (YY - mu_y - 1).^2;
+            xw_factor = 2 * (w_x^2);
+            yw_factor = 2 * (w_y^2);
+            
+            gauss_spot = peak * exp(-((x_factor ./ xw_factor) + (y_factor ./ yw_factor)));
         end
         
     end

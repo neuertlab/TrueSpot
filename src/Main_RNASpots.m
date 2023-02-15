@@ -15,6 +15,7 @@ senspe_set = false;
 matvar = [];
 thread_request = 1;
 limitSaveSize = true;
+use_max_proj = false;
 
 lastkey = [];
 for i = 1:nargin
@@ -78,6 +79,10 @@ for i = 1:nargin
         elseif strcmp(lastkey, "debugv")
             if debug_lvl < 3; debug_lvl = 3; end
             if arg_debug; fprintf("Verbose Debug Mode: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "maxzproj")
+            use_max_proj = true;
+            if arg_debug; fprintf("Use Max Z Projection: On\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "threepiece")
             if arg_debug; fprintf("Three Piece Fit: On\n"); end
@@ -290,9 +295,9 @@ if ~isempty(rna_spot_run.sample_matpath)
     else
         img_ch_set = MatImages.loadImageChannels(rna_spot_run.sample_matpath);
     end
-    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, img_ch_set, debug_lvl, limitSaveSize, thread_request);
+    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, img_ch_set, debug_lvl, limitSaveSize, thread_request, use_max_proj);
 else
-    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, [], debug_lvl, limitSaveSize, thread_request);
+    rna_spot_run = Adapter_RNASpots(rna_spot_run, false, [], debug_lvl, limitSaveSize, thread_request, use_max_proj);
 end
 
 end

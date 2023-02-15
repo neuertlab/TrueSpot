@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
 %ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Image Channels ==========================
 
 %----- Test
-data_file = [ImgDir '\img\sim\mESC_RNA_LEHB_100x_1.mat'];
+data_file = [ImgDir '\img\sim\yeast_proteinGFP_100x_1_blur.mat'];
 
 % ========================== Run ==========================
 
@@ -61,4 +61,4 @@ load(data_file, 'imgdat');
 % 
 % ptiles_f = prctile(imgdat, [10 20 30 40 50 60 70 80 90], 'all');
 
-fig_handle = MatImages.viewMaxProjection(imgdat, true, 505);
+fig_handle = MatImages.viewMaxProjection(imgdat, false, 505);
