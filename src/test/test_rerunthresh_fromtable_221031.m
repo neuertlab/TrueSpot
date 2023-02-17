@@ -20,16 +20,21 @@ imgtbl = testutil_opentable(InputTablePath);
 
 %For one image
 %SingleImgName = [];
-SingleImgName = 'mESC4d_Tsix-AF594';
+%SingleImgName = 'mESC4d_Tsix-AF594';
+
+START_IDX = 1;
+END_IDX = 1024;
 
 % ========================== Iterate through table entries ==========================
 entry_count = size(imgtbl,1);
+
+if END_IDX > entry_count; END_IDX = entry_count; end
 
 %report_path = [ImgProcDir filesep 'th_report.tsv'];
 %report_file = fopen(report_path);
 %fprintf(report_file, 'IMGNAME\tCURVE_CLASS\tHB_TH_PRESET\tAVG_SPOTS\tSTD_SPOTS\tHB_STDS\tBF_STDS\tRS_STDS\tHBBF_STDS\tHBRS_STDS\tHB_COUNT\tBF_COUNT\tRS_COUNT\tHBBF_COUNT\tHBRS_COUNT');
 
-for i = 1:entry_count
+for i = START_IDX:END_IDX
     if ~isempty(SingleImgName)
         myname = getTableValue(imgtbl, i, 'IMGNAME');
         if ~strcmp(myname, SingleImgName); continue; end
@@ -38,11 +43,11 @@ for i = 1:entry_count
     mystem = replace(getTableValue(imgtbl, i, 'OUTSTEM'), '/', filesep);
     mystem = [ImgDir mystem];
     
-    skipme = getTableValue(imgtbl, i, 'SKIP_RERUN');
-    if skipme ~= 0
-        fprintf("Image %d of %d - Skip requested for %s! Skipping...\n", i, entry_count, mystem);
-        continue;
-    end
+%     skipme = getTableValue(imgtbl, i, 'SKIP_RERUN');
+%     if skipme ~= 0
+%         fprintf("Image %d of %d - Skip requested for %s! Skipping...\n", i, entry_count, mystem);
+%         continue;
+%     end
     
     spotsrun = RNASpotsRun.loadFrom(mystem);
     if isempty(spotsrun)

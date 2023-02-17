@@ -267,7 +267,6 @@ classdef RNAThreshold
         end
 
         function score_list = getAllMedThresholds(threshold_results)
-            %TODO Only include good ones.
             curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
             if isempty(curve_info_list); return; end
             
@@ -276,6 +275,7 @@ classdef RNAThreshold
             
             for i = 1:curve_count
                 if isempty(curve_info_list(i)); continue; end
+                if ~curve_info_list(i).med_okay; continue; end
                 if ~isempty(curve_info_list(i).med_suggested_threshold)
                     madf_count = size(curve_info_list(i).med_suggested_threshold,2);
                     break;
@@ -288,6 +288,7 @@ classdef RNAThreshold
             i = 1;
             for c = 1:curve_count
                 if isempty(curve_info_list(c)); continue; end
+                if ~curve_info_list(c).med_okay; continue; end
                 if ~isempty(curve_info_list(c).med_suggested_threshold)
                     score_list(1,i:i+madf_count-1) = curve_info_list(c).med_suggested_threshold(1,:);
                     i = i + madf_count;
@@ -296,7 +297,6 @@ classdef RNAThreshold
         end
         
         function score_list = getAllFitThresholds(threshold_results)
-            %TODO Only include good ones.
             curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
             if isempty(curve_info_list); return; end
             
@@ -306,6 +306,7 @@ classdef RNAThreshold
             i = 1;
             for c = 1:curve_count
                 if isempty(curve_info_list(c)); continue; end
+                if ~curve_info_list(c).spline_okay; continue; end
                 if ~isempty(curve_info_list(c).spline_fit)
                     score_list(i) = curve_info_list(c).spline_knot_x;
                     i = i + 1;
@@ -314,7 +315,6 @@ classdef RNAThreshold
         end
 
         function score_list = getAllRightISectThresholds(threshold_results)
-            %TODO Only include good ones.
             curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
             if isempty(curve_info_list); return; end
             
@@ -324,6 +324,7 @@ classdef RNAThreshold
             i = 1;
             for c = 1:curve_count
                 if isempty(curve_info_list(c)); continue; end
+                if ~curve_info_list(c).spline_okay; continue; end
                 if ~isempty(curve_info_list(c).spline_fit)
                     score_list(i) = curve_info_list(c).spline_fit.rcurve_intr_x;
                     i = i + 1;
@@ -332,7 +333,6 @@ classdef RNAThreshold
         end
         
         function score_list = getAllThresholdSuggestions(threshold_results)
-            %TODO Only include good ones.
             curve_info_list = RNAThreshold.getAllCurveResultStructs(threshold_results);
             if isempty(curve_info_list); return; end
             
@@ -341,6 +341,7 @@ classdef RNAThreshold
             
             for c = 1:curve_count
                 if isempty(curve_info_list(c)); continue; end
+                if ~curve_info_list(c).med_okay; continue; end
                 if ~isempty(curve_info_list(c).med_suggested_threshold)
                     madf_count = size(curve_info_list(c).med_suggested_threshold,2);
                     break;
@@ -354,10 +355,12 @@ classdef RNAThreshold
             for c = 1:curve_count
                 if isempty(curve_info_list(c)); continue; end
                 if ~isempty(curve_info_list(c).med_suggested_threshold)
+                    if ~curve_info_list(c).med_okay; continue; end
                     score_list(1,i:i+madf_count-1) = curve_info_list(c).med_suggested_threshold(1,:);
                     i = i + madf_count;
                 end
                 if ~isempty(curve_info_list(c).spline_fit)
+                    if ~curve_info_list(c).spline_okay; continue; end
                     score_list(i) = curve_info_list(c).spline_knot_x;
                     i = i + 1;
                     

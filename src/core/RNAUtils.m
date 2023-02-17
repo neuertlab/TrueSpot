@@ -106,6 +106,12 @@ classdef RNAUtils
             gauss_spot = peak * exp(-((x_factor ./ xw_factor) + (y_factor ./ yw_factor)));
         end
         
+        %%
+        function auc_value = calculateAUC(x, y)
+            %TODO
+            [~, sorted_idx] = sort(x);
+        end
+        
     end
     
 end

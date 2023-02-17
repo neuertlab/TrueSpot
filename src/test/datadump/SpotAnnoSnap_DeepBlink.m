@@ -24,11 +24,12 @@ function spotanno = SpotAnnoSnap_DeepBlink(spotanno)
             break;
         end
         
-        spotcount = size(spotanno.positives{t,1},1);
+        thpos = spotanno.positives{t,1};
+        spotcount = size(thpos,1);
         pos_tbl = NaN(spotcount,6);
-        pos_tbl(:,1:3) = spotanno.positives{t,1};
+        pos_tbl(:,1:3) = thpos(:,1:3);
         
-        for r = 1:temp_tbl_size
+        for r = 1:refspots
             if (t < minthidx_add) & (temp_ref_tbl(r,4))
                 continue;
             end
@@ -37,12 +38,13 @@ function spotanno = SpotAnnoSnap_DeepBlink(spotanno)
             y_dist = pos_tbl(:,2) - temp_ref_tbl(r,2);
             z_dist = pos_tbl(:,3) - temp_ref_tbl(r,3);
             
-            pos_tbl(:,4) = z_dist;
+            pos_tbl(:,4) = abs(z_dist);
             pos_tbl(:,5) = sqrt(x_dist.^2 + y_dist.^2);
             pos_tbl(:,6) = sqrt(x_dist.^2 + y_dist.^2 + z_dist.^2);
             
             match_bool = (pos_tbl(:,6) <= maxdist_3);
             match_bool = and(match_bool, (pos_tbl(:,4) <= maxdist_z));
+            match_bool = and(match_bool, ~ismember(pos_tbl(:,1:3), temp_ref_tbl(:,1:3),'rows'));
             
             if nnz(match_bool) > 0
                 [match_rows, ~] = find(match_bool);
@@ -53,7 +55,7 @@ function spotanno = SpotAnnoSnap_DeepBlink(spotanno)
                     [~,I] = min(rmatches(:,6));
                     old_pt = temp_ref_tbl(r,1:3);
                     temp_ref_tbl(r,1:3) = rmatches(I,1:3);
-                    fprintf('DEBUG -- (%d,%d,%d) snapped to (%d,%d,%d)\n', ...
+                    fprintf('DEBUG -- SpotAnnoSnap_DeepBlink -- (%d,%d,%d) snapped to (%d,%d,%d)\n', ...
                         old_pt(1,1), old_pt(1,2), old_pt(1,3),...
                         temp_ref_tbl(r,1), temp_ref_tbl(r,2), temp_ref_tbl(r,3));
                     temp_ref_tbl(r,4) = 1;
@@ -62,17 +64,23 @@ function spotanno = SpotAnnoSnap_DeepBlink(spotanno)
                 if t >= minthidx_add
                     %Add sufficiently close z spots to ref table, if not
                     %already added.
-                    not_added = ~ismember(rmatches(1:3), temp_ref_tbl(1:3));
+                    rz = temp_ref_tbl(r,3);
+                    not_added = ~ismember(rmatches(:,1:3), temp_ref_tbl(:,1:3),'rows');
+                    %not_added = not_added & (rmatches(:,3) ~= rz);
                     add_count = nnz(not_added);
                     if add_count > 0
-                        mcount = size(rmatches,1);
-                        for j = 1:mcount
-                            if ~not_added(j,1); continue; end
-                            fprintf('DEBUG -- adding (%d,%d,%d)\n', ...
-                                rmatches(j,1), rmatches(j,2), rmatches(j,3));
-                            temp_tbl_sz = temp_tbl_sz+1;
-                            temp_ref_tbl(temp_tbl_sz,1:3) = rmatches(j,1:3);
-                            temp_ref_tbl(temp_tbl_sz,4) = 1;
+                        for zz = (rz-maxdist_z):1:(rz+maxdist_z)
+                            if zz == rz; continue; end
+                            zmatch = find(and(not_added, rmatches(:,3) == zz));
+                            if ~isempty(zmatch)
+                                zset = rmatches(zmatch,:);
+                                [~,min_i] = min(zset(:,6));
+                                fprintf('DEBUG -- SpotAnnoSnap_DeepBlink -- adding (%d,%d,%d)\n', ...
+                                    zset(min_i,1), zset(min_i,2), zset(min_i,3));
+                                temp_tbl_sz = temp_tbl_sz+1;
+                                temp_ref_tbl(temp_tbl_sz,1:3) = zset(min_i,1:3);
+                                temp_ref_tbl(temp_tbl_sz,4) = 1;
+                            end
                         end
                     end
                 end
@@ -81,4 +89,7 @@ function spotanno = SpotAnnoSnap_DeepBlink(spotanno)
         
     end
 
+    %Save new ref table
+    spotanno.ref_coords = temp_ref_tbl(1:temp_tbl_sz,1:3);
+    
 end

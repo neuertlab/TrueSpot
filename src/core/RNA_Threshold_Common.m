@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.5.2
-%Updated December 16, 2022
+%Version 2.5.3
+%Updated February 15, 2023
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -609,25 +609,29 @@ classdef RNA_Threshold_Common
                 fitdata(:,2) = log10(fitdata(:,2));
                 
                 %Remove invalid values...
-                total_rows = size(fitdata,1);
                 [okay_rows,~] = find(isfinite(fitdata(:,2)));
                 if ~isempty(okay_rows)
                     keep_row_count = size(okay_rows,1);
-                    if (total_rows - keep_row_count) < min_points
+                    if keep_row_count < min_points
                         thresh_info.spline_okay = false;
                         return;
                     end
+                else
+                    thresh_info.spline_okay = false;
+                    return;
                 end
                 
                 fitdata = fitdata(okay_rows,:);
                 [okay_rows,~] = find(fitdata(:,2) > -5); %Remove extremes
                 if ~isempty(okay_rows)
-                    total_rows = size(fitdata,1);
                     keep_row_count = size(okay_rows,1);
-                    if (total_rows - keep_row_count) < min_points
+                    if keep_row_count < min_points
                         thresh_info.spline_okay = false;
                         return;
                     end
+                else
+                    thresh_info.spline_okay = false;
+                    return;
                 end
                 
                 try
@@ -654,14 +658,16 @@ classdef RNA_Threshold_Common
                 fitdata = data_trimmed;
                 [okay_rows,~] = find(isfinite(fitdata(:,2)));
                 if ~isempty(okay_rows)
-                    total_rows = size(fitdata,1);
                     keep_row_count = size(okay_rows,1);
-                    if (total_rows - keep_row_count) < min_points
+                    if keep_row_count < min_points
                         thresh_info.spline_okay = false;
                         return;
                     end
+                else
+                    thresh_info.spline_okay = false;
+                    return;
                 end
-                
+
                 fitdata = fitdata(okay_rows,:);
             end
             
@@ -693,7 +699,6 @@ classdef RNA_Threshold_Common
                     thresh_info.spline_knot_y = (thresh_info.spline_fit.right.slope * thresh_info.spline_knot_x) + thresh_info.spline_fit.right.yintr;
                 end
             catch ME
-                %Set up a loop to try again...
                 thresh_info.spline_okay = false;
                 return;
             end
@@ -821,12 +826,8 @@ classdef RNA_Threshold_Common
                 if w_front > P_count
                     w_front = P_count;
                 end
-                wmean = mean(diff_curve(w_back:w_front,1);
-                if wmean ~= 0
-                    winout(i) = var(diff_curve(w_back:w_front,1)) / mean(diff_curve(w_back:w_front,1));
-                else
-                    winout(i) = NaN;
-                end
+                wmean = mean(diff_curve(w_back:w_front,1));
+                winout(i) = var(diff_curve(w_back:w_front,1)) / wmean;
             end
             
             %Shift back
@@ -986,8 +987,21 @@ classdef RNA_Threshold_Common
                 threshold_results.test_winsc = [];
             end
             
-            %TODO Check med_okay and fit_okay to determine whether to auto
+            %Check med_okay and fit_okay to determine whether to auto
             %turn on data and diff checks
+            if threshold_results.madth_weight > 0.0
+                if med_okay < 1
+                    parameter_info.test_data = true;
+                    parameter_info.test_diff = true;
+                end
+            end
+
+            if threshold_results.fit_weight > 0.0 | threshold_results.fit_ri_weight > 0.0
+                if fit_okay < 1
+                    parameter_info.test_data = true;
+                    parameter_info.test_diff = true;
+                end
+            end
             
             if parameter_info.test_data
                 if parameter_info.verbosity > 0

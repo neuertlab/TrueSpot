@@ -201,10 +201,28 @@ classdef RNA_Threshold_SpotSelector
             
             %Load image structure
             imgstructs_suffix = '_imgviewstructs';
-            istruct_path = [save_stem imgstructs_suffix];
+            istruct_path = [save_stem imgstructs_suffix '.mat'];
 
-            load(istruct_path, 'my_images');
-            obj.img_structs = my_images;
+            Z = 1;
+            if isfile(istruct_path)
+                load(istruct_path, 'my_images');
+                obj.img_structs = my_images;
+                s_img = my_images(1).image;
+                Y = size(s_img, 1);
+                X = size(s_img, 2);
+            else
+                %Estimate size from coords and generate dummy
+                fprintf('WARNING: Image struct file could not be found. GUI will be unavailable for selector.\n');
+                th_coords = coord_table{1,1};
+                X = max(th_coords(:,1),[],'all');
+                Y = max(th_coords(:,2),[],'all');
+                Z = max(th_coords(:,3),[],'all');
+                dummy_img = NaN(Y,X);
+                my_images(2) = struct('image', dummy_img, 'Lmin', 0, 'Lmax', 0);
+                my_images(1) = struct('image', dummy_img, 'Lmin', 0, 'Lmax', 0);
+                obj.img_structs = my_images;
+                save(istruct_path, 'my_images');
+            end
             
             %Load filtered image channel
             obj.imgdat_path = [save_stem '_prefilteredIMG.mat'];
@@ -212,7 +230,7 @@ classdef RNA_Threshold_SpotSelector
                 load(obj.imgdat_path, 'img_filter');
                 obj.loaded_ch = double(img_filter);
             else
-                obj.loaded_ch = NaN(5,5,5);
+                obj.loaded_ch = NaN(Y,X,Z);
             end
             
             %Set defaults
@@ -225,8 +243,7 @@ classdef RNA_Threshold_SpotSelector
             %obj.ztrim = 0;
             obj.selmcoords = [];
             
-            s_img = my_images(1).image;
-            obj.alloc_size = size(s_img, 1) * size(s_img,2);
+            obj.alloc_size = X*Y;
             obj.n_alloc = 0;
             obj.n_used = 0;
             
@@ -2564,6 +2581,16 @@ classdef RNA_Threshold_SpotSelector
                 end
             else
                 obj.ref_last_modified = datetime;
+            end
+            if ~isempty(ref_coord_tbl)
+                good_rows = RNA_Threshold_SpotSelector.findNonzeroCoords(ref_coord_tbl, bool3d);
+                if isempty(good_rows)
+                    ref_coord_tbl = [];
+                else
+                    ref_coord_tbl = ref_coord_tbl(good_rows,:);
+                end
+                obj.ref_last_modified = datetime;
+                flag_fscores_dirty = true;
             end
             obj.ref_coords = ref_coord_tbl;
             

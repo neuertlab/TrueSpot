@@ -173,7 +173,7 @@ classdef ImageResults
             %Check for annoobj
             %If there, update fscores etc.
             if RNA_Threshold_SpotSelector.refsetExists(save_stem)
-                spotanno = RNA_Threshold_SpotSelector.openSelector(true);
+                spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
                 obj.mask_bounds.z0 = spotanno.z_min;
                 obj.mask_bounds.z1 = spotanno.z_max;
                 if ~isempty(spotanno.selmcoords)
@@ -220,26 +220,26 @@ classdef ImageResults
             if match_idx > 0
                 %Quant found, load
                 load([hb_dir filesep dir_contents(match_idx,1).name], 'quant_results');
-                qcells = quant_results.cell_rna_data;
-                cell_count = size(qcells,2);
-                for c = 1:cell_count
-                    this_cell = qcells(c);
-                    if isempty(this_cell.spots); continue; end
-                    cell_spot_count = size(this_cell.spots, 2);
-                    cell_x = this_cell.cell_loc.left;
-                    cell_y = this_cell.cell_loc.top;
-                    cell_z = this_cell.cell_loc.z_bottom;
-                    for j = 1:cell_spot_count
-                        this_spot = this_cell.spots(j);
-                        spot_x = this_spot.x + cell_x;
-                        spot_y = this_spot.y + cell_y;
-                        spot_z = this_spot.z + cell_z;
-                        [~, match_idx] = ImageResults.findMatchingCall(callset, spot_x, spot_y, spot_z);
-                        if match_idx > 0
-                            callset(match_idx) = callset(match_idx).importFromQuantSpot(this_spot, cell_x, cell_y, cell_z);
-                        end
-                    end
-                end
+%                 qcells = quant_results.cell_rna_data;
+%                 cell_count = size(qcells,2);
+%                 for c = 1:cell_count
+%                     this_cell = qcells(c);
+%                     if isempty(this_cell.spots); continue; end
+%                     cell_spot_count = size(this_cell.spots, 2);
+%                     cell_x = this_cell.cell_loc.left;
+%                     cell_y = this_cell.cell_loc.top;
+%                     cell_z = this_cell.cell_loc.z_bottom;
+%                     for j = 1:cell_spot_count
+%                         this_spot = this_cell.spots(j);
+%                         spot_x = this_spot.x + cell_x;
+%                         spot_y = this_spot.y + cell_y;
+%                         spot_z = this_spot.z + cell_z;
+%                         [~, match_idx] = ImageResults.findMatchingCall(callset, spot_x, spot_y, spot_z);
+%                         if match_idx > 0
+%                             callset(match_idx) = callset(match_idx).importFromQuantSpot(this_spot, cell_x, cell_y, cell_z);
+%                         end
+%                     end
+%                 end
             end
 
             if (truthset_index > 1) | iscell(obj.callset_homebrew)
@@ -277,8 +277,8 @@ classdef ImageResults
             end
             
             %See if need to import...
-            spot_table_path = [bf_dir filesep bf_pfx '_coordTable.mat'];
-            coord_table_path = [bf_dir filesep bf_pfx '_spotTable.mat'];
+            spot_table_path = [bf_dir filesep bf_pfx '_spotTable.mat'];
+            coord_table_path = [bf_dir filesep bf_pfx '_coordTable.mat'];
             if ~isfile(coord_table_path)
                 [coord_table, spot_table] = BigfishCompare.importBigFishCsvs(bf_dir, save_stem, zmin);
             else
@@ -318,7 +318,7 @@ classdef ImageResults
             
             %Check for spotanno, import if present
             if RNA_Threshold_SpotSelector.refsetExists(save_stem)
-                spotanno = RNA_Threshold_SpotSelector.openSelector(true);
+                spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
@@ -326,6 +326,7 @@ classdef ImageResults
 
                 %Match spots to truthset spots?
                 thpos = spotanno.positives{obj.threshold_index_hb,1};
+                scount = size(thpos, 1);
                 for i = 1:scount
                     if thpos(i,4) == 1
                         spot_list(i).tfcall = 0;
@@ -391,7 +392,7 @@ classdef ImageResults
             th_idx = 0;
             call_values = [];
             if RNA_Threshold_SpotSelector.refsetExists(save_stem)
-                spotanno = RNA_Threshold_SpotSelector.openSelector(true);
+                spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
@@ -517,7 +518,7 @@ classdef ImageResults
             
             %Check for spotsanno.
             if RNA_Threshold_SpotSelector.refsetExists(save_stem)
-                spotanno = RNA_Threshold_SpotSelector.openSelector(true);
+                spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
@@ -526,6 +527,7 @@ classdef ImageResults
                 postbl = spotanno.positives{th_idx,1};
                 clear spotanno;
                 
+                scount = size(postbl,1);
                 for i = 1:scount
                     if postbl(i,4) == 1
                         spot_list(i).tfcall = 0;
@@ -558,9 +560,9 @@ classdef ImageResults
                 for j = 1:import_count
                     if import_mtx(j,3) >= 0.95
                         this_spot = spot_list(s);
-                        this_spot.fit_x = import_mtx(j,1);
-                        this_spot.fit_y = import_mtx(j,2);
-                        this_spot.fit_z = import_mtx(j,4);
+                        this_spot.fit_x = import_mtx(j,1) + 1;
+                        this_spot.fit_y = import_mtx(j,2) + 1;
+                        this_spot.fit_z = import_mtx(j,4) + 1;
                         spot_list(s) = this_spot;
                         s = s + 1;
                     end
@@ -890,17 +892,30 @@ classdef ImageResults
             res_table = table('Size', [th_count, 5], 'VariableTypes',varTypes, 'VariableNames',varNames);
         end
         
+        function call_table = initializeSpotCallTable(alloc)
+            varNames = {'init_x' 'init_y' 'init_z' 'init_peak' 'init_total'...
+                'fit_x' 'fit_y' 'fit_z' 'fit_peak' 'fit_total'...
+                'fit_xFWHM' 'fit_yFWHM' 'tfcall'...
+                'x_nearest_true' 'y_nearest_true' 'z_nearest_true'};
+            varTypes = {'uint16' 'uint16' 'uint16' 'double' 'double'...
+                'double' 'double' 'double' 'double' 'double'...
+                'double' 'double' 'uint8'...
+                'double' 'double' 'double'};
+            table_size = [alloc size(varNames,2)];
+            call_table = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+        end
+        
         function image_results = initializeNew()
             image_results = ImageResults;
             image_results.threshold_results = struct.empty();
             image_results.mask_bounds = struct('x0', 1, 'y0', 1, 'z0', 1, 'x1', 1, 'y1', 1, 'z1', 1);
             
             image_results.truthset = cell.empty();
-            image_results.callset_homebrew = SpotCall.empty();
-            image_results.callset_bigfish = SpotCall.empty();
-            image_results.callset_bigfish_nr = SpotCall.empty();
-            image_results.callset_rsfish = SpotCall.empty();
-            image_results.callset_deepblink = SpotCall.empty();
+            image_results.callset_homebrew = table.empty();
+            image_results.callset_bigfish = table.empty();
+            image_results.callset_bigfish_nr = table.empty();
+            image_results.callset_rsfish = table.empty();
+            image_results.callset_deepblink = table.empty();
             
             image_results.res_homebrew = cell.empty();
             image_results.res_bigfish = cell.empty();
@@ -909,7 +924,7 @@ classdef ImageResults
             image_results.res_deepblink = cell.empty();
             
             varTypes = {'uint16' 'double' 'double' 'double' 'double'...
-                'double' 'double' 'double' 'double'};
+                'double' 'double' 'double' 'double' 'double'};
             varNames = {'cellCount' 'onProp' 'meanRNACell'...
                 'stdevRNACell' 'meanRNAOnCell' 'stdevRNAOnCell'...
                 'meanRNANuc' 'stdevRNANuc'...
