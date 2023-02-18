@@ -11,6 +11,8 @@
 %%
 classdef ImageResults
     
+    %TODO Update the other importers to use tables instead of SpotCalls
+    
     properties
         image_name = '';
         mask_bounds; %Coordinates of area of image actually evaluated
@@ -74,19 +76,9 @@ classdef ImageResults
             ref_tbl = spotanno.ref_coords;
             clear spotanno;
             
-            %convert to SpotCalls
             spot_count = size(ref_tbl,1);
-            ref_spots(spot_count) = SpotCall;
-            for s = 1:spot_count
-                this_spot = SpotCall;
-                this_spot = this_spot.initializeMe();
-                
-                this_spot.init_x = ref_tbl(s,1);
-                this_spot.init_y = ref_tbl(s,2);
-                this_spot.init_z = ref_tbl(s,3);
-                
-                ref_spots(s) = this_spot;
-            end
+            ref_spots = ImageResults.initializeSpotCallTable(spot_count);
+            ref_spots(:,1:3) = array2table(ref_tbl(:,1:3));
             
             if isempty(obj.truthset)
                 obj.truthset = cell(1,1);
@@ -153,16 +145,8 @@ classdef ImageResults
             th_coords = coord_table{obj.threshold_index_hb, 1};
             clear coord_table;
             scount = size(th_coords,1);
-            callset(scount) = SpotCall;
-            for i = 1:scount
-                call = SpotCall;
-                call = call.initializeMe();
-                call.init_x = th_coords(i,1);
-                call.init_y = th_coords(i,2);
-                call.init_z = th_coords(i,3);
-
-                callset(i) = call;
-            end
+            callset = ImageResults.initializeSpotCallTable(scount);
+            callset(:,1:3) = array2table(th_coords(:,1:3));
 
             %Import spot counts
             [~, spot_table] = spotsrun.loadSpotsTable();
@@ -189,13 +173,16 @@ classdef ImageResults
 
                 %Match spots to truthset spots?
                 thpos = spotanno.positives{obj.threshold_index_hb,1};
-                for i = 1:scount
-                    if thpos(i,4) == 1
-                        callset(i).tfcall = 0;
-                    else
-                        callset(i).tfcall = 1;
-                    end
-                end
+                callset(:,'tfcall') = array2table(thpos(:,4));
+%                 for i = 1:scount
+%                     if thpos(i,4) == 1
+%                         callset(i,'tfcall') = table(0);
+%                         callset(i,'tfcall_desc') = table("true pos");
+%                     else
+%                         callset(i,'tfcall') = table(1);
+%                         callset(i,'tfcall_desc') = table("false pos");
+%                     end
+%                 end
             end
 
             %Save res_tbl to obj
@@ -242,11 +229,7 @@ classdef ImageResults
 %                 end
             end
 
-            if (truthset_index > 1) | iscell(obj.callset_homebrew)
-                obj.callset_homebrew{truthset_index} = callset;
-            else
-                obj.callset_homebrew = callset;
-            end
+            obj.callset_homebrew = callset;
 
             success = true;
         end
@@ -886,6 +869,13 @@ classdef ImageResults
             res_table_var_names = {'thresholdValue' 'spotCount' 'sensitivity' 'precision' 'fScore'};
         end
         
+        function call_table_var_names = getCallTableVarNames()
+            call_table_var_names = {'init_x' 'init_y' 'init_z' 'init_peak' 'init_total'...
+                'fit_x' 'fit_y' 'fit_z' 'fit_peak' 'fit_total'...
+                'fit_xFWHM' 'fit_yFWHM' 'tfcall'...
+                'x_nearest_true' 'y_nearest_true' 'z_nearest_true' 'dist_nearest_true'};
+        end
+        
         function res_table = initializeResTable(th_count)
             varTypes = {'double' 'uint32' 'double' 'double' 'double'};
             varNames = ImageResults.getResTableVarNames();
@@ -893,16 +883,34 @@ classdef ImageResults
         end
         
         function call_table = initializeSpotCallTable(alloc)
-            varNames = {'init_x' 'init_y' 'init_z' 'init_peak' 'init_total'...
-                'fit_x' 'fit_y' 'fit_z' 'fit_peak' 'fit_total'...
-                'fit_xFWHM' 'fit_yFWHM' 'tfcall'...
-                'x_nearest_true' 'y_nearest_true' 'z_nearest_true'};
+            varNames = ImageResults.getCallTableVarNames();
             varTypes = {'uint16' 'uint16' 'uint16' 'double' 'double'...
                 'double' 'double' 'double' 'double' 'double'...
-                'double' 'double' 'uint8'...
-                'double' 'double' 'double'};
+                'double' 'double' 'uint8' ...
+                'double' 'double' 'double' 'double'};
             table_size = [alloc size(varNames,2)];
             call_table = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+            nanvec = NaN(alloc,1);
+            nantbl = array2table(nanvec);
+            call_table(:,'init_peak') = nantbl;
+            call_table(:,'init_total') = nantbl;
+            call_table(:,'fit_x') = nantbl;
+            call_table(:,'fit_y') = nantbl;
+            call_table(:,'fit_z') = nantbl;
+            call_table(:,'fit_peak') = nantbl;
+            call_table(:,'fit_total') = nantbl;
+            call_table(:,'fit_xFWHM') = nantbl;
+            call_table(:,'fit_yFWHM') = nantbl;
+            call_table(:,'x_nearest_true') = nantbl;
+            call_table(:,'y_nearest_true') = nantbl;
+            call_table(:,'z_nearest_true') = nantbl;
+            call_table(:,'dist_nearest_true') = nantbl;
+            
+            call_table(:,'tfcall') = array2table(repmat(2,alloc,1));
+            
+%             tfcall_vec = repmat("none", alloc, 1);
+%             tfcall_tbl = array2table(tfcall_vec);
+%             call_table(:,'tfcall_desc') = tfcall_tbl;
         end
         
         function image_results = initializeNew()

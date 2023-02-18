@@ -19,11 +19,11 @@ InputTablePath = [ImgDir filesep 'test_images.csv'];
 imgtbl = testutil_opentable(InputTablePath);
 
 %For one image
-%SingleImgName = [];
+SingleImgName = [];
 %SingleImgName = 'mESC4d_Tsix-AF594';
 
 START_IDX = 1;
-END_IDX = 1024;
+END_IDX = 38;
 
 % ========================== Iterate through table entries ==========================
 entry_count = size(imgtbl,1);
