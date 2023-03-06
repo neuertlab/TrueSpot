@@ -88,6 +88,10 @@ classdef BigfishCompare
                         fprintf("Truthset needs to be updated...\n");
                         annoobj.toggle_del_unsnapped = false;
                         
+                        src_selector = RNA_Threshold_SpotSelector.openSelector(ref_stem, true);
+                        annoobj.ref_coords = src_selector.ref_coords;
+                        clear src_selector;
+                        
                         %All z toggle - OFF. (Should only snap to
                         %NEARBY z options!!)
                         annoobj.toggle_singleSlice = true;
@@ -99,6 +103,10 @@ classdef BigfishCompare
                 else
                     fprintf("Truthset needs to be updated...\n");
                     annoobj.toggle_del_unsnapped = false;
+                    
+                    src_selector = RNA_Threshold_SpotSelector.openSelector(ref_stem, true);
+                    annoobj.ref_coords = src_selector.ref_coords;
+                    clear src_selector;
 
                     annoobj.toggle_singleSlice = true;
                     annoobj.toggle_allz = ~annoobj.toggle_singleSlice;

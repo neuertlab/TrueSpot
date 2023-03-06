@@ -303,7 +303,7 @@ classdef RNASpotsRun
             
             T = size(coord_table,1);
             masked_coord_table = cell(T,1);
-            masked_spots_table = uint16(zeros(T,2));
+            masked_spots_table = NaN(T,2);
             masked_spots_table(:,1) = spots_table(:,1);
             for t = 1:T
                 tcoords = coord_table{t,1};

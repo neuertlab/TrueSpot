@@ -114,7 +114,6 @@ classdef RNAThreshold
             win_max = preset_struct.ttune_winsz_max;
             win_incr = preset_struct.ttune_winsz_incr;
             
-            param_struct.fit_strat = preset_struct.ttune_fit_strat;
             param_struct.window_sizes = [win_min:win_incr:win_max];
             param_struct.reweight_fit = preset_struct.ttune_reweight_fit;
             param_struct.fit_to_log = preset_struct.ttune_fit_to_log;
@@ -127,6 +126,18 @@ classdef RNAThreshold
             param_struct.test_diff = preset_struct.ttune_use_diffcurve;
             param_struct.mad_factor_min = preset_struct.ttune_madf_min;
             param_struct.mad_factor_max = preset_struct.ttune_madf_max;
+            
+            if isempty(preset_struct.ttune_fit_strat) | (preset_struct.ttune_fit_strat == 0)
+                param_struct.fit_strat = 'default';
+            elseif preset_struct.ttune_fit_strat == 1
+                param_struct.fit_strat = 'slow';
+            elseif preset_struct.ttune_fit_strat == 2
+                param_struct.fit_strat = 'section_fit';
+            elseif preset_struct.ttune_fit_strat == 3
+                param_struct.fit_strat = 'three_piece';
+            else
+                param_struct.fit_strat = 'default';
+            end
             
             threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
         end

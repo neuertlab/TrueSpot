@@ -166,6 +166,7 @@ classdef ImageResults
                     obj.mask_bounds.y0 = spotanno.selmcoords(3,1);
                     obj.mask_bounds.y1 = spotanno.selmcoords(4,1);
                 end
+                spotanno.f_scores_dirty = true;
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
@@ -173,7 +174,7 @@ classdef ImageResults
 
                 %Match spots to truthset spots?
                 thpos = spotanno.positives{obj.threshold_index_hb,1};
-                callset(:,'tfcall') = array2table(thpos(:,4));
+                callset(:,'tfcall') = array2table(~thpos(:,4));
 %                 for i = 1:scount
 %                     if thpos(i,4) == 1
 %                         callset(i,'tfcall') = table(0);
@@ -282,17 +283,8 @@ classdef ImageResults
             th_coords = coord_table{thresh_idx,1};
             clear coord_table;
             spot_count = size(th_coords,1);
-            spot_list(spot_count) = SpotCall;
-            for s = 1:spot_count
-                this_spot = SpotCall;
-                this_spot = this_spot.initializeMe();
-                
-                this_spot.init_x = th_coords(s,1);
-                this_spot.init_y = th_coords(s,2);
-                this_spot.init_z = th_coords(s,3);
-                
-                spot_list(s) = this_spot;
-            end
+            callset = ImageResults.initializeSpotCallTable(spot_count);
+            callset(:,1:3) = array2table(th_coords(:,1:3));
             
             %Start restbl
             T = size(spot_table,1);
@@ -302,35 +294,36 @@ classdef ImageResults
             %Check for spotanno, import if present
             if RNA_Threshold_SpotSelector.refsetExists(save_stem)
                 spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
+                spotanno.f_scores_dirty = true;
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
                 res_tbl(:,4) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,3));
 
                 %Match spots to truthset spots?
-                thpos = spotanno.positives{obj.threshold_index_hb,1};
-                scount = size(thpos, 1);
-                for i = 1:scount
-                    if thpos(i,4) == 1
-                        spot_list(i).tfcall = 0;
-                    else
-                        spot_list(i).tfcall = 1;
-                    end
-                end
+                thpos = spotanno.positives{thresh_idx,1};
+                callset(:,'tfcall') = array2table(~thpos(:,4));
+%                 for i = 1:scount
+%                     if thpos(i,4) == 1
+%                         spot_list(i).tfcall = 0;
+%                     else
+%                         spot_list(i).tfcall = 1;
+%                     end
+%                 end
             end
             
             %Save
             varnames = ImageResults.getResTableVarNames();
             res_tbl_table = array2table(res_tbl, 'VariableNames', varnames);
             if is_rescaled
-                obj.callset_bigfish = spot_list;
+                obj.callset_bigfish = callset;
                 if (truthset_index > 1) | iscell(obj.res_bigfish)
                     obj.res_bigfish{truthset_index} = res_tbl_table;
                 else
                     obj.res_bigfish = res_tbl_table;
                 end
             else
-                obj.callset_bigfish_nr = spot_list;
+                obj.callset_bigfish_nr = callset;
                 if (truthset_index > 1) | iscell(obj.res_bigfish_nr)
                     obj.res_bigfish_nr{truthset_index} = res_tbl_table;
                 else
@@ -361,6 +354,55 @@ classdef ImageResults
             
             %Load spot table and coord table
             load([save_stem '_spotTable'], 'spot_table');
+            
+            %Fix tables
+            if nnz(isnan(spot_table(:,1))) > 0
+                %Trim NaN rows, coord tables, and fit tables
+                fit_table_old = [];
+                fit_table_path = [save_stem '_fitTable.mat'];
+                if isfile(fit_table_path)
+                    load(fit_table_path, 'fit_table');
+                    fit_table_old = fit_table;
+                end
+                
+                load(coord_table_path, 'coord_table');
+                
+                realloc = nnz(~isnan(spot_table(:,1)));
+                spot_table_old = spot_table;
+                coord_table_old = coord_table;
+                spot_table = NaN(realloc, 2);
+                coord_table = cell(realloc,1);
+                fit_table = [];
+                if ~isempty(fit_table_old); fit_table = cell(realloc,1); end
+                T = size(spot_table_old,1);
+                
+                j = 1;
+                for i = 1:T
+                    if isnan(spot_table_old(i,1)); continue; end
+                    spot_table(j,:) = spot_table_old(i,:);
+                    coord_table{j,1} = coord_table_old{i,1};
+                    if ~isempty(fit_table_old)
+                        fit_table{j,1} = fit_table_old{i,1};
+                    end
+                    j = j+1;
+                end
+                
+                
+                %Save
+                writerver = 23022100;
+                writer_ver_str = 'v 23.02.21.0*';
+                save([save_stem '_coordTable.mat'], 'coord_table', 'writerver', 'writer_ver_str');
+                save([save_stem '_spotTable.mat'], 'spot_table', 'writerver', 'writer_ver_str');
+                save([save_stem '_fitTable.mat'], 'fit_table', 'writerver', 'writer_ver_str');
+                
+                clear coord_table;
+                clear coord_table_old;
+                clear spot_table_old;
+                if ~isempty(fit_table)
+                    clear fit_table;
+                    clear fit_table_old;
+                end
+            end
             
             %Update spot table threshold values
             spot_table_int = spot_table;
@@ -406,41 +448,21 @@ classdef ImageResults
             th_coords = coord_table{th_idx,1};
             clear coord_table;
             spot_count = size(th_coords,1);
-            spot_list(spot_count) = SpotCall;
-            for s = 1:spot_count
-                this_spot = SpotCall;
-                this_spot = this_spot.initializeMe();
-                
-                this_spot.init_x = th_coords(s,1);
-                this_spot.init_y = th_coords(s,2);
-                this_spot.init_z = th_coords(s,3);
-                
-                if ~isempty(call_values)
-                    if call_values(s) == 1
-                        this_spot.tfcall = 0;
-                    else
-                        this_spot.tfcall = 1;
-                    end
-                end
-                
-                spot_list(s) = this_spot;
+            callset = ImageResults.initializeSpotCallTable(spot_count);
+            callset(:,1:3) = array2table(th_coords(:,1:3));
+            if ~isempty(call_values)
+                callset(:,'tfcall') = array2table(~call_values(:,1));
             end
-            
+
             %Check for fit data and import if present
             fit_table_path = [save_stem '_fitTable.mat'];
             if isfile(fit_table_path)
                 load(fit_table_path, 'fit_table');
                 th_fits = fit_table{th_idx,1};
-                for s = 1:spot_count
-                    this_spot = spot_list(s);
-                    
-                    this_spot.fit_x = th_fits(s,1);
-                    this_spot.fit_y = th_fits(s,2);
-                    this_spot.fit_z = th_fits(s,3);
-                    this_spot.fit_peak = th_fits(s,4);
-                    
-                    spot_list(s) = this_spot;
-                end
+                callset(:,'fit_x') = array2table(th_fits(:,1));
+                callset(:,'fit_y') = array2table(th_fits(:,2));
+                callset(:,'fit_z') = array2table(th_fits(:,3));
+                callset(:,'fit_peak') = array2table(th_fits(:,4));
             end
             
             %Save callset and restable
@@ -452,9 +474,9 @@ classdef ImageResults
             end
             
             if (truthset_index > 1) | iscell(obj.callset_rsfish)
-                obj.callset_rsfish{truthset_index} = spot_list;
+                obj.callset_rsfish{truthset_index} = callset;
             else
-                obj.callset_rsfish = spot_list;
+                obj.callset_rsfish = callset;
             end
             
             success = true;
@@ -470,26 +492,25 @@ classdef ImageResults
                 fprintf('Coord table for DeepBlink run %s not found. Check to see if import is required...\n', save_stem);
                 return;
             end
-
-            prob_cutoffs = [0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99];
-            prob_count = size(prob_cutoffs,2);
-            th_idx = prob_count - 1;
+            
+            spot_table_path = [save_stem '_spotTable.mat'];
+            if isfile(spot_table_path)
+                load(spot_table_path, 'spot_table');
+                prob_cutoffs = transpose(spot_table(:,1));
+                prob_count = size(prob_cutoffs,2);
+                th_idx = RNAUtils.findThresholdIndex(0.95, prob_cutoffs);
+            else
+                prob_cutoffs = [0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 0.99];
+                prob_count = size(prob_cutoffs,2);
+                th_idx = prob_count - 1;
+            end
 
             %Import callset
             load(coord_table_path, 'coord_table');
             th_coords = coord_table{th_idx,1};
             spot_count = size(th_coords,1);
-            spot_list(spot_count) = SpotCall;
-            for s = 1:spot_count
-                this_spot = SpotCall;
-                this_spot = this_spot.initializeMe();
-                
-                this_spot.init_x = th_coords(s,1);
-                this_spot.init_y = th_coords(s,2);
-                this_spot.init_z = th_coords(s,3);
-                
-                spot_list(s) = this_spot;
-            end
+            callset = ImageResults.initializeSpotCallTable(spot_count);
+            callset(:,1:3) = array2table(th_coords(:,1:3));
 
             %Init restbl
             res_tbl = NaN(prob_count,5);
@@ -510,14 +531,7 @@ classdef ImageResults
                 postbl = spotanno.positives{th_idx,1};
                 clear spotanno;
                 
-                scount = size(postbl,1);
-                for i = 1:scount
-                    if postbl(i,4) == 1
-                        spot_list(i).tfcall = 0;
-                    else
-                        spot_list(i).tfcall = 1;
-                    end
-                end
+                callset(:,'tfcall') = array2table(~postbl(:,4));
             end
 
             %Check for original table
@@ -537,20 +551,13 @@ classdef ImageResults
                 import_table = readtable(input_file,'Delimiter',',','ReadVariableNames',true,'Format',...
                     '%f%f%f%f');
                 import_mtx = table2array(import_table);
-
-                import_count = size(import_mtx,1);
-                s = 1;
-                for j = 1:import_count
-                    if import_mtx(j,3) >= 0.95
-                        this_spot = spot_list(s);
-                        this_spot.fit_x = import_mtx(j,1) + 1;
-                        this_spot.fit_y = import_mtx(j,2) + 1;
-                        this_spot.fit_z = import_mtx(j,4) + 1;
-                        spot_list(s) = this_spot;
-                        s = s + 1;
-                    end
+                import_keep_idxs = find(import_mtx(:,3) >= 0.95);
+                
+                if ~isempty(import_keep_idxs)
+                    callset(:,'fit_x') = array2table(import_mtx(import_keep_idxs,1));
+                    callset(:,'fit_y') = array2table(import_mtx(import_keep_idxs,2));
+                    callset(:,'fit_z') = array2table(import_mtx(import_keep_idxs,4));
                 end
-
             end
 
             %Save to obj
@@ -562,9 +569,9 @@ classdef ImageResults
             end
             
             if (truthset_index > 1) | iscell(obj.callset_deepblink)
-                obj.callset_deepblink{truthset_index} = spot_list;
+                obj.callset_deepblink{truthset_index} = callset;
             else
-                obj.callset_deepblink = spot_list;
+                obj.callset_deepblink = callset;
             end
             
             success = true;
@@ -662,12 +669,15 @@ classdef ImageResults
             success = true;
         end
         
-        function fig_handle = renderSpotCountPlot(obj, tool_code, color, figno)
+        function fig_handle = renderSpotCountPlot(obj, tool_code, color, figno, existing_fig)
             if nargin < 4
                 figno = round(rand() * 10000);
             end
             if nargin < 3
                 color = [0 0 0];
+            end
+            if nargin < 5
+                existing_fig = [];
             end
 
             %Get data
@@ -696,9 +706,18 @@ classdef ImageResults
 
             color_light = color + ((1.0 - color) .* 0.5);
 
-            fig_handle = figure(figno);
-            clf;
-            plot(res_tbl(:,1),log10(res_tbl(:,2)),'LineWidth',2,'Color',color);
+            if isempty(existing_fig)
+                fig_handle = figure(figno);
+                clf;
+            else
+                fig_handle = existing_fig;
+                figure(fig_handle);
+            end
+            if isempty(res_tbl); return; end
+
+            x = table2array(res_tbl(:,1));
+            y = log10(double(table2array(res_tbl(:,2))));
+            plot(x,y,'LineWidth',2,'Color',color);
             hold on;
 
             if thval > 0
@@ -723,7 +742,7 @@ classdef ImageResults
             ylabel('log10(# Spots Detected)');
         end
         
-        function fig_handle = renderFScorePlot(obj, tool_code, color, truthset_index, figno)
+        function fig_handle = renderFScorePlot(obj, tool_code, color, truthset_index, figno, existing_fig)
             if nargin < 5
                 figno = round(rand() * 10000);
             end
@@ -732,6 +751,9 @@ classdef ImageResults
             end
             if nargin < 4
                 truthset_index = 1;
+            end
+            if nargin < 6
+                existing_fig = [];
             end
 
             %Get data
@@ -760,9 +782,17 @@ classdef ImageResults
 
             color_light = color + ((1.0 - color) .* 0.5);
 
-            fig_handle = figure(figno);
-            clf;
-            plot(res_tbl(:,1),log10(res_tbl(:,2)),'LineWidth',2,'Color',color);
+            if isempty(existing_fig)
+                fig_handle = figure(figno);
+                clf;
+            else
+                fig_handle = existing_fig;
+                figure(fig_handle);
+            end
+
+            x = table2array(res_tbl(:,1));
+            y = table2array(res_tbl(:,5));
+            plot(x,y,'LineWidth',2,'Color',color);
             hold on;
 
             if thval > 0
@@ -788,7 +818,7 @@ classdef ImageResults
             ylabel('F-Score');
         end
         
-        function fig_handle = renderROCPlot(obj, tool_code, color, truthset_index, figno)
+        function fig_handle = renderROCPlot(obj, tool_code, color, truthset_index, figno, existing_fig)
             if nargin < 5
                 figno = round(rand() * 10000);
             end
@@ -797,6 +827,9 @@ classdef ImageResults
             end
             if nargin < 4
                 truthset_index = 1;
+            end
+            if nargin < 6
+                existing_fig = [];
             end
 
             %Get data
@@ -823,28 +856,39 @@ classdef ImageResults
                 res_tbl = obj.res_deepblink{truthset_index};
             end
 
-            color_dark = color - ((1.0 - color) .* 0.5);
+            color_dark = max(color - ((1.0 - color) .* 0.5),[0,0,0]);
 
-            fig_handle = figure(figno);
-            clf;
+            if isempty(existing_fig)
+                fig_handle = figure(figno);
+                clf;
+            else
+                fig_handle = existing_fig;
+                figure(fig_handle);
+            end
 
-            ax = axes();
-            ax.XLim = [0.0 1.0];
-            ax.YLim = [0.0 1.0];
-            ax.XDir = 'reverse';
+%             ax = axes();
+%             ax.XLim = [0.0 1.0];
+%             ax.YLim = [0.0 1.0];
+%             ax.XDir = 'reverse';
+%             hold on;
+
+            x = table2array(res_tbl(:,3));
+            y = table2array(res_tbl(:,4));
+            plot(x, y, 'LineStyle', 'none', 'Marker', '.', 'MarkerEdgeColor', color);
             hold on;
 
-            x = res_tbl(:,3);
-            y = res_tbl(:,4);
-            plot(x, y, 'LineStyle', 'none', 'Marker', '.', 'MarkerEdgeColor', color);
-
             if thidx > 0
-                plot(res_tbl(thidx,3), res_tbl(thidx,4), 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 15, 'MarkerEdgeColor', color_dark);
+                plot(x(thidx), y(thidx), 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 15, 'MarkerEdgeColor', color_dark);
             end
+
+            ylim([0.0 1.0]);
+            xlim([0.0 1.0]);
+            ax = gca;
+            ax.XDir = 'reverse';
 
             xlabel('Sensitivity');
             ylabel('Precision');
-            axes(ax);
+            %axes(ax);
         end
         
         function [obj, success] = updateCallsetTruthsetCompares(obj)

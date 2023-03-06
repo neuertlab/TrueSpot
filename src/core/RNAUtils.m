@@ -108,8 +108,51 @@ classdef RNAUtils
         
         %%
         function auc_value = calculateAUC(x, y)
-            %TODO
-            [~, sorted_idx] = sort(x);
+            pcount = size(x,2);
+            data = NaN(pcount,2);
+            data(:,1) = x;
+            data(:,2) = y;
+            data = unique(data, 'rows');
+
+            %Remove duplicate x values (take higher y value)
+            [~,uxi,uxic] = unique(data(:,1));
+            uxi_count = size(uxi,2);
+            if(uxi_count < pcount)
+                keep_bool = true(1,pcount);
+                uidiff = diff(uxic);
+                zmode = false;
+                for p = 1:pcount-1
+                    %p-1 is index in original
+                    if uidiff(p) == 0
+                        keep_bool(p) = false;
+                        if ~zmode
+                            keep_bool(p-1) = false;
+                            zmode = true;
+                        end
+                    else
+                        if zmode
+                            keep_bool(p-1) = true;
+                            zmode = false;
+                        end
+                    end
+                end
+
+                data = data(find(keep_bool), :);
+            end
+
+            %Add point on left to bring to y axis
+            data_adj = NaN(pcount+1,2);
+                data_adj(2:pcount,:) = data(:,:);
+            data_adj(1,1) = 0.0;
+            data_adj(1,2) = data_adj(1,2);
+
+            ddiff = NaN(pcount,2);
+            ddiff(:,1) = diff(data_adj(:,1));
+            ddiff(:,2) = diff(data_adj(:,2));
+            
+            area_a = 0.5 .* abs(ddiff(:,1)) .* abs(ddiff(:,1));
+            area_b = abs(ddiff(:,1)) .* min(data_adj(1:pcount,2), data_adj(2:pcount+1,2));
+            auc_value = sum(area_a) + sum(area_b);
         end
         
     end

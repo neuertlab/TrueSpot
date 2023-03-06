@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%DataDir = 'D:\usr\bghos\labdat\imgproc';
+%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
@@ -29,10 +29,12 @@ DETECT_THREADS = 4;
 RAM_PER_CORE = 16;
 HRS_PER_IMAGE = 4;
 
+MIN_PROB = 0.01;
+
 DO_IMG_SPLIT = false;
 
-OutDirTail = '/scprotein';
-ModelName = 'receptor';
+OutDirTail = '/rsfish';
+ModelName = 'smfish';
 
 NewTifDir = ['/img' OutDirTail];
 
@@ -41,7 +43,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'scprotein_';
+GroupPrefix = 'rsfish_';
 GroupSuffix = [];
 
 % ========================== Do things ==========================
@@ -108,8 +110,8 @@ for r = 1:rec_count
     fprintf(my_script, 'source ${PYVENV_DIR}/%s/bin/activate\n', PyenvModule);
     fprintf(my_script, 'deepblink check "%s"\n', cluster_tif_path);
     fprintf(my_script, 'echo $(date +''%%Y/%%m/%%d %%H:%%M:%%S:%%3N'')\n');
-    fprintf(my_script, 'deepblink predict -i "%s" -o "${OUTPUT_DIR}" -m "%s" -p 0.5 -ps 1\n', ...
-        cluster_tif_path, [ClusterModelsDir '/deepblink_' ModelName '.h5']);
+    fprintf(my_script, 'deepblink predict -i "%s" -o "${OUTPUT_DIR}" -m "%s" -p %.2f -ps 1\n', ...
+        cluster_tif_path, [ClusterModelsDir '/deepblink_' ModelName '.h5'], MIN_PROB);
     fprintf(my_script, 'echo $(date +''%%Y/%%m/%%d %%H:%%M:%%S:%%3N'')\n');
     fprintf(my_script, 'deactivate\n\n');
     

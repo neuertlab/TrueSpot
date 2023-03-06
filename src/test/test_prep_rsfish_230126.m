@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%DataDir = 'D:\usr\bghos\labdat\imgproc';
+%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
@@ -28,9 +28,12 @@ DETECT_THREADS = 8;
 RAM_PER_CORE = 8;
 HRS_PER_IMAGE = 8;
 
+USE_ANISOTROPY = false;
+
 TH_ITR = 250;
 TH_NTR = 0.1/TH_ITR;
-MIN_TH = 0.005;
+MIN_TH = 0.002;
+%MIN_TH = TH_NTR;
 START_I = 1; %Maybe cutting out the lowest thresholds will help the memory problem?
 while ((START_I * TH_NTR) < MIN_TH)
     START_I = START_I + 1;
@@ -42,12 +45,12 @@ DO_IMG_SPLIT = false;
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/histonesc';
+RSDirTail = '/sim';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'histonesc_';
-GroupSuffix = 'Histone';
+GroupPrefix = 'sim_';
+GroupSuffix = [];
 
 % ========================== Do things ==========================
 
@@ -109,7 +112,7 @@ for r = 1:rec_count
     pnt_x = double(getTableValue(image_table, r, 'POINT_X'));
     
     anisotropy = (vox_x/vox_z) * 2.0;
-    sigma = (pnt_x/vox_x)/2.0;
+    sigma = (pnt_x/vox_x)/2.25;
     
     fprintf(my_script, '#!/bin/bash\n\n');
     fprintf(my_script, 'RSFISH_PATH=%s\n', ClusterRsFishPath);
@@ -123,7 +126,10 @@ for r = 1:rec_count
     fprintf(my_script, '\tTH_DOG=$(echo "scale = 5; %f * $i" | bc)\n', TH_NTR);
     fprintf(my_script, '\techo "itr $i, TH_DOG = ${TH_DOG}"\n');
     fprintf(my_script, '\techo $(date +''%%Y/%%m/%%d %%H:%%M:%%S:%%3N'')\n');
-    fprintf(my_script, '\t${RSFISH_PATH} -a %.2f', anisotropy);
+    fprintf(my_script, '\t${RSFISH_PATH}');
+    if USE_ANISOTROPY
+        fprintf(my_script, ' -a %.2f', anisotropy);
+    end
     fprintf(my_script, ' -i "%s"', cluster_tif_path);
     fprintf(my_script, ' -o "${OUTPUT_PATH}"');
     fprintf(my_script, ' -s %.2f', sigma);

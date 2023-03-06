@@ -22,8 +22,8 @@ imgtbl = testutil_opentable(InputTablePath);
 SingleImgName = [];
 %SingleImgName = 'mESC4d_Tsix-AF594';
 
-START_IDX = 1;
-END_IDX = 38;
+START_IDX = 76;
+END_IDX = 76;
 
 % ========================== Iterate through table entries ==========================
 entry_count = size(imgtbl,1);
@@ -56,7 +56,7 @@ for i = START_IDX:END_IDX
     end
     fprintf("Image %d of %d - Thresholding %s...\n", i, entry_count, mystem);
     
-    try
+    %try
         %TODO Fix this - most used bkgmasked, some use Control... etc. Messing
         %up the bkgmasked ones.
         spotsrun.out_stem = mystem;
@@ -82,7 +82,7 @@ for i = START_IDX:END_IDX
         saveas(figh, [AllFigDir filesep 'spotcount' filesep spotsrun.img_name '_spotcount.png']);
         close(figh);
         
-        %RNA_Threshold_SpotSelector.touchRefset(mystem); %This forces a bigfish resnap. Comment out when not needed.
+        RNA_Threshold_SpotSelector.touchRefset(mystem); %This forces a bigfish resnap. Comment out when not needed.
         if RNA_Threshold_SpotSelector.refsetExists(mystem)
             %Make sure anno's z trim is the same! Otherwise, a bunch of
             %false negs!
@@ -123,11 +123,11 @@ for i = START_IDX:END_IDX
                 close(fighandles.bfhbbfimg);
             end
         end
-    catch excp
-        fprintf("Caught Exception: %s\n", excp.identifier);
-        fprintf("\t%s\n", excp.message);
-        fprintf("Exception caught when trying to run image. Continuing...\n");
-    end
+%     catch excp
+%         fprintf("Caught Exception: %s\n", excp.identifier);
+%         fprintf("\t%s\n", excp.message);
+%         fprintf("Exception caught when trying to run image. Continuing...\n");
+%     end
 end
 
 %fclose(report_file);

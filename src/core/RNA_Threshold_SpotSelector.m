@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.7.0
-%Updated December 15, 2022
+%Version 1.8.0
+%Updated February 24, 2023
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -32,6 +32,8 @@
 %       Added ability to swap between views of raw or filtered images in
 %       ref mod (max proj only - need to rearrange some stuff to be able to
 %       look at full 3D raw image...)
+%   1.8.0 | 23.02.24
+%       Misc bug fixes, added a couple of functions
 
 
 %%
@@ -2272,6 +2274,7 @@ classdef RNA_Threshold_SpotSelector
             copy.n_used = 0;
             copy.n_table = [];
             copy.slice_drawn = 0;
+            copy.crosshair_color = obj.crosshair_color;
         end
         
         %%
@@ -2307,6 +2310,14 @@ classdef RNA_Threshold_SpotSelector
             
             obj.f_scores = NaN(t_count,4);
             obj = obj.updateFTable();
+        end
+        
+        %%
+        function idims = getImageDimensions(obj)
+            idims = struct('x', 0, 'y', 0, 'z', 0);
+            idims.z = obj.max_slice;
+            idims.y = size(obj.img_structs(1).image,1);
+            idims.x = size(obj.img_structs(1).image,2);
         end
         
     end
@@ -2544,6 +2555,7 @@ classdef RNA_Threshold_SpotSelector
             obj.max_slice = maxz;
             obj.imgdat_path = filimg_path;
             
+            %TODO is there an alternative?
             if updatepaths
                 obj.imgdat_path = [save_stem '_prefilteredIMG.mat'];
             end
