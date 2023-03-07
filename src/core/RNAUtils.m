@@ -108,51 +108,42 @@ classdef RNAUtils
         
         %%
         function auc_value = calculateAUC(x, y)
-            pcount = size(x,2);
-            data = NaN(pcount,2);
-            data(:,1) = x;
-            data(:,2) = y;
-            data = unique(data, 'rows');
+            %Sort by y, then by x
+            [~, ysort_idx] = sort(y);
+            x_sorted = x(ysort_idx);
+            y_sorted = y(ysort_idx);
 
-            %Remove duplicate x values (take higher y value)
-            [~,uxi,uxic] = unique(data(:,1));
-            uxi_count = size(uxi,2);
-            if(uxi_count < pcount)
-                keep_bool = true(1,pcount);
-                uidiff = diff(uxic);
-                zmode = false;
-                for p = 1:pcount-1
-                    %p-1 is index in original
-                    if uidiff(p) == 0
-                        keep_bool(p) = false;
-                        if ~zmode
-                            keep_bool(p-1) = false;
-                            zmode = true;
-                        end
-                    else
-                        if zmode
-                            keep_bool(p-1) = true;
-                            zmode = false;
-                        end
-                    end
-                end
+            [~, xsort_idx] = sort(x_sorted);
+            x_sorted = x_sorted(xsort_idx);
+            y_sorted = y_sorted(xsort_idx);
 
-                data = data(find(keep_bool), :);
+            %Remove duplicate x values
+            ptcount = size(x_sorted,2);
+            keep_bool = false(1,ptcount);
+            keep_bool(1:(ptcount-1)) = (x_sorted(1:ptcount-1) ~= x_sorted(2:ptcount));
+            keep_bool(ptcount) = true;
+            
+            keep_idx = find(keep_bool);
+            x_sorted = x_sorted(keep_idx);
+            y_sorted = y_sorted(keep_idx);
+
+            %Add end points
+            if(x_sorted(1) > 0.0)
+                x_sorted = [0 0 x_sorted];
+                y_sorted = [0 y_sorted(1) y_sorted];
+            else
+                x_sorted = [0 x_sorted];
+                y_sorted = [0 y_sorted];
+            end
+            ptcount = size(x_sorted,2);
+
+            if(y_sorted(ptcount) > 0.0)
+                x_sorted = [x_sorted x_sorted(ptcount)];
+                y_sorted = [y_sorted 0];
             end
 
-            %Add point on left to bring to y axis
-            data_adj = NaN(pcount+1,2);
-                data_adj(2:pcount,:) = data(:,:);
-            data_adj(1,1) = 0.0;
-            data_adj(1,2) = data_adj(1,2);
-
-            ddiff = NaN(pcount,2);
-            ddiff(:,1) = diff(data_adj(:,1));
-            ddiff(:,2) = diff(data_adj(:,2));
-            
-            area_a = 0.5 .* abs(ddiff(:,1)) .* abs(ddiff(:,1));
-            area_b = abs(ddiff(:,1)) .* min(data_adj(1:pcount,2), data_adj(2:pcount+1,2));
-            auc_value = sum(area_a) + sum(area_b);
+            ply = polyshape(x_sorted, y_sorted);
+            auc_value = area(ply);
         end
         
     end
