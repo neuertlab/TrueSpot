@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.8.0
-%Updated February 24, 2023
+%Version 1.9.0
+%Updated March 7, 2023
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -34,6 +34,11 @@
 %       look at full 3D raw image...)
 %   1.8.0 | 23.02.24
 %       Misc bug fixes, added a couple of functions
+%   1.9.0 | 23.03.07
+%       Overhauled snap function to make it faster.
+%       Also allowed it to take parameters specifying search 3d and z radii
+%       3D radius defaults to 4, z radius defaults to 2 (reduced from
+%       before - also before didn't limit on z alone)
 
 
 %%
@@ -2028,123 +2033,125 @@ classdef RNA_Threshold_SpotSelector
         % nearest auto-detected spot in 3D, starting at the highest
         % threshold a nearby spot can be found.
         %
-        function obj = refSnapToAutoSpots(obj, stopAt)
-            %TODO If not in single slice mode, ignore z...
+        function obj = refSnapToAutoSpots(obj, stopAt, maxrad_3d, maxrad_z, verbose)
+            %If not in single slice mode, ignore z...
             %Also make sure to ignore masks.
             if nargin < 2
                 stopAt = 20;
+            end
+            if nargin < 3
+                maxrad_3d = 4;
+            end
+            if nargin < 4
+                maxrad_z = 2;
+            end
+            if nargin < 5
+                verbose = true;
             end
             
             if isempty(obj.ref_coords)
                 return;
             end
             
-            searchrad = 5;
-            S = size(obj.ref_coords, 1);
-            rtbl = zeros(S, 4);
-            rtbl(:,1:3) = obj.ref_coords(:,1:3);
-            snapped = zeros(S,3);
             T = size(obj.threshold_table, 1);
-            oidx = 1;
+            for t = 1:T
+                obj = obj.clearAtThreshold(t);
+            end
+            if verbose; fprintf("Max Threshold: %d\n",obj.threshold_table(T,1)); end
             
-            fprintf("Max Threshold: %d\n",obj.threshold_table(T,1));
+            ref_spot_count = size(obj.ref_coords,1);
+            snapped_tbl = zeros(ref_spot_count,4);
+            snapped_tbl(:,1:3) = obj.ref_coords(:,1:3);
             
-            %Stop at 20th lowest threshold
             for t = T:-1:stopAt
-                fprintf("Trying threshold %d\n",obj.threshold_table(t,1));
+                if verbose; fprintf("Trying threshold %d...\n",obj.threshold_table(t,1)); end
                 if isempty(obj.positives{t,1}); continue; end
-                spottbl = obj.positives{t,1}(:,1:3);
-                if ~isempty(spottbl)
-                    %fprintf("Trying threshold %d\n",t);
-                    %Reduce to only those spots that haven't been looked at
-                    matches = ismember(spottbl, snapped, 'rows');
-                    mrows = find(~matches);
-                    if ~isempty(mrows)
-                        spottbl = spottbl(mrows, :);
-                        N = size(spottbl,1);
-                        for i = 1:N
-                            x0 = double(spottbl(i,1));
-                            y0 = double(spottbl(i,2));
-                            z0 = double(spottbl(i,3));
-                            
-                            %Scan the ref table for closest spot that hasn't
-                            %already been linked to another.
-                            rmatch = -1;
-                            lastrad = 1000000000;
-                            for j = 1:S
-                                if rtbl(j,4) ~= 0
-                                    continue;
-                                end
-                                
-                                x1 = double(rtbl(j,1));
-                                y1 = double(rtbl(j,2));
-                                z1 = double(rtbl(j,3));
-                            
-                                %Calculate distance
-                                xsqr = (x0 - x1)^2;
-                                ysqr = (y0 - y1)^2;
-                                zsqr = (z0 - z1)^2;
-                                
-                                if obj.toggle_allz
-                                    dist = sqrt(xsqr + ysqr);
-                                else
-                                    dist = sqrt(xsqr + ysqr + zsqr);
-                                end
-
-                                if (dist <= searchrad) && (dist < lastrad)
-                                    %This is the new closest
-                                    lastrad = dist;
-                                    rmatch = j;
-                                end
-                            end %for j = 1:S
-                            
-                            if rmatch > 0
-                                %Found a match. Record in out table.
-                                snapped(oidx, 1) = x0;
-                                snapped(oidx, 2) = y0;
-                                snapped(oidx, 3) = z0;
-                                oidx = oidx+1;
-                                
-                                rtbl(rmatch, 4) = 1; %Flagged as matched
-                                fprintf("DEBUG (%d,%d,%d) snapped to (%d,%d,%d)\n", rtbl(rmatch, 1), rtbl(rmatch, 2), rtbl(rmatch, 3), x0, y0, z0);
-                            end  
-                        end %for i = 1:N
-                    end %if ~isempty(mrows)
-                end %if ~isempty(spottbl)
-                %If all spots in ref table have been matched, save new ref
-                %table and return...
-                if isempty(find(~rtbl(:,4),1))
-                    obj.ref_coords = snapped;
-                    return;
+                
+                %Find yet unsnapped spots
+                unsnapped_count = nnz(~snapped_tbl(:,4));
+                if unsnapped_count < 1
+                    %All spots have been snapped. We're done here.
+                    break;
                 end
                 
-            end %for t = T:20
-            
-            %If this loop ends without all matches, just copy in the ones
-            %that weren't matched
-            umrows = find(~rtbl(:,4));
-            if isempty(umrows) 
-                return; 
-            end
-            U = size(umrows,1);
-            if(obj.toggle_del_unsnapped)
-                if U > 0
-                    cpy = snapped(1:oidx,:);
-                    snapped = cpy;
-                    fprintf("Removed %d unsnapped spots.\n",U);
+                unsnapped_rows = find(~snapped_tbl(:,4));
+                already_snapped = snapped_tbl(find(snapped_tbl(:,4)), :);
+                
+                thpos = obj.positives{t,1};
+                spotcount = size(thpos,1);
+                pos_tbl = NaN(spotcount,6);
+                pos_tbl(:,1:3) = thpos(:,1:3);
+                
+                for ri = 1:unsnapped_count
+                    r = unsnapped_rows(ri);
+                    
+                    x_dist = pos_tbl(:,1) - snapped_tbl(r,1);
+                    y_dist = pos_tbl(:,2) - snapped_tbl(r,2);
+                    z_dist = pos_tbl(:,3) - snapped_tbl(r,3);
+                    
+                    %This behavior changes based on whether we are looking
+                    %at all z...
+                    if obj.toggle_allz
+                        pos_tbl(:,4) = 0;
+                        pos_tbl(:,5) = sqrt(x_dist.^2 + y_dist.^2);
+                        pos_tbl(:,6) = pos_tbl(:,5);
+                    else
+                        pos_tbl(:,4) = abs(z_dist);
+                        pos_tbl(:,5) = sqrt(x_dist.^2 + y_dist.^2);
+                        pos_tbl(:,6) = sqrt(x_dist.^2 + y_dist.^2 + z_dist.^2);
+                    end
+                    
+                    match_bool = (pos_tbl(:,6) <= maxrad_3d);
+                    match_bool = and(match_bool, (pos_tbl(:,4) <= maxrad_z));
+                    
+                    if nnz(match_bool) > 0
+                        %Isolate matches
+                        [match_rows, ~] = find(match_bool);
+                        rmatches = pos_tbl(match_rows,:);
+                        
+                        %Remove any of those already in snapped set
+                        if ~isempty(already_snapped)
+                            match_bool = ~ismember(rmatches(:,1:3), already_snapped(:,1:3),'rows');
+                            if nnz(match_bool) < 1; continue; end
+                            [match_rows, ~] = find(match_bool);
+                            rmatches = rmatches(match_rows,:);
+                        end
+                        
+                        %Now, snap to nearest match.
+                        [~,I] = min(rmatches(:,6));
+                        old_pt = snapped_tbl(r,1:3);
+                        snapped_tbl(r,1:3) = rmatches(I,1:3);
+                        if verbose
+                            fprintf('DEBUG -- (%d,%d,%d) snapped to (%d,%d,%d)\n', ...
+                            old_pt(1,1), old_pt(1,2), old_pt(1,3),...
+                            snapped_tbl(r,1), snapped_tbl(r,2), snapped_tbl(r,3));
+                        end
+                        snapped_tbl(r,4) = 1;
+                    end
                 end
-            else
-                fprintf("Unsnapped spots: %d\n",U);
-                for u = 1:U
-                    snapped(oidx, 1) = rtbl(umrows(u), 1);
-                    snapped(oidx, 2) = rtbl(umrows(u), 2);
-                    snapped(oidx, 3) = rtbl(umrows(u), 3);
-                    oidx = oidx+1;
+            end
+            
+            %Count still unsnapped spots, print message,
+            %   and remove if toggle is on
+            unsnapped_count = nnz(~snapped_tbl(:,4));
+            if unsnapped_count > 0
+                if obj.toggle_del_unsnapped
+                    unsnapped_rows = find(~snapped_tbl(:,4));
+                    snapped_tbl(unsnapped_rows,:) = [];
+                    if verbose
+                        fprintf('Removed %d unsnapped spots.\n', unsnapped_count);
+                    end
+                else
+                    if verbose
+                        fprintf('%d spots could not be snapped.\n', unsnapped_count);
+                    end
                 end
             end
             
-            obj.ref_coords = snapped;
-            
+            %Copy back to refset and return
+            obj.ref_coords = snapped_tbl(:,1:3);
+            obj.ref_last_modified = datetime;
+            obj.f_scores_dirty = true;
         end
         
         %%

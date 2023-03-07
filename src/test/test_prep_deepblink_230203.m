@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-DataDir = 'D:\usr\bghos\labdat\imgproc';
+DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
@@ -33,7 +33,7 @@ MIN_PROB = 0.01;
 
 DO_IMG_SPLIT = false;
 
-OutDirTail = '/rsfish';
+OutDirTail = '/munsky_lab';
 ModelName = 'smfish';
 
 NewTifDir = ['/img' OutDirTail];
@@ -43,7 +43,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'rsfish_';
+GroupPrefix = 'ROI';
 GroupSuffix = [];
 
 % ========================== Do things ==========================

@@ -111,6 +111,8 @@ classdef ImageResults
                 success = false;
                 return;
             end
+            spotsrun.out_stem = save_stem;
+            spotsrun.saveMe();
 
             %Update mask dims from spotsrun (overwrite with spotanno later, if it
             %is present)

@@ -14,17 +14,18 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1;
-END_INDEX = 10;
+START_INDEX = 39;
+END_INDEX = 68;
 
-DO_HOMEBREW = false;
+DO_HOMEBREW = true;
 DO_BIGFISH = false;
 DO_BIGFISHNR = false;
-DO_RSFISH = true;
+DO_RSFISH = false;
 DO_DEEPBLINK = false;
 
 OVERWRITE_SPOTANNO_RS = true;
 OVERWRITE_SPOTANNO_DB = true;
+FORCE_HB_BF_RESNAP = true; %TODO
 
 HB_FIXED_TH = 0; %Maybe have a separate script for this?
 
@@ -74,12 +75,15 @@ for r = START_INDEX:END_INDEX
     myname = getTableValue(imgtbl, r, 'IMGNAME');
     fprintf('> Now processing %s (%d of %d)...\n', myname, r, entry_count);
     
-    resetSim(imgtbl, r);
+    resetSim(imgtbl, r, BaseDir, ImgDir);
 
     %----------------- BF
     if DO_BIGFISH
         bf_stem_base = replace(getTableValue(imgtbl, r, 'BIGFISH_OUTSTEM'), '/bigfish/', '/bigfish/_rescaled/');
         bf_stem = [BaseDir replace(bf_stem_base, '/', filesep)];
+        if FORCE_HB_BF_RESNAP
+            RNA_Threshold_SpotSelector.touchRefset(bf_stem);
+        end
         [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, true);
         if ~bool_okay
             fprintf('WARNING: BF (Rescaled) Import of %s failed!\n', myname);
@@ -175,9 +179,11 @@ for r = START_INDEX:END_INDEX
         hb_stem = [BaseDir replace(hb_stem_base, '/', filesep)];
         
         %Resnap truthset if sim.
-        if startsWith(myname, 'sim_') | startsWith(myname, 'simvar_') | startsWith(myname, 'rsfish_sim_')
+        if FORCE_HB_BF_RESNAP | startsWith(myname, 'sim_') | startsWith(myname, 'simvar_') | startsWith(myname, 'rsfish_sim_')
             if RNA_Threshold_SpotSelector.refsetExists(hb_stem)
-                spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
+                spotanno = RNA_Threshold_SpotSelector.openSelector(hb_stem, true);
+                spotanno.toggle_singleSlice = true;
+                spotanno.toggle_allz = false;
                 spotanno = spotanno.refSnapToAutoSpots();
                 spotanno.saveMe();
             end
@@ -249,14 +255,22 @@ function deleteCSVs(dir_path)
     end
 end
 
-function resetSimSF(image_table, row_index)
+function key_mtx = keyStructs2Mtx(my_key)
+    ptcount = size(my_key,2);
+    key_mtx = uint16(zeros(ptcount,3));
+    key_mtx(:,1) = [my_key.x];
+    key_mtx(:,2) = [my_key.y];
+    key_mtx(:,3) = [my_key.z];
+end
+
+function resetSimSF(image_table, row_index, BaseDir, ImgDir)
     %For simfish sims
     myname = getTableValue(image_table, row_index, 'IMGNAME');
     srcpath_raw = getTableValue(image_table, row_index, 'IMAGEPATH');
     outstem_raw = getTableValue(image_table, row_index, 'OUTSTEM');
     
     srcpath = [ImgDir replace(srcpath_raw, '/', filesep)];
-    hb_path = [ImgDir replace(outstem_raw, '/', filesep)];
+    hb_path = [BaseDir replace(outstem_raw, '/', filesep)];
     
     key = [];
     if endsWith(srcpath, '.mat')
@@ -280,7 +294,7 @@ function resetSimSF(image_table, row_index)
         spotsrun = RNASpotsRun.loadFrom(hb_path);
         selector = RNA_Threshold_SpotSelector;
         th_idx = round((spotsrun.t_max - spotsrun.t_min) ./ 2);
-        selector = selector.initializeNew(outstem, th_idx, []);
+        selector = selector.initializeNew(hb_path, th_idx, []);
         selector.z_min = 1;
         selector.z_max = spotsrun.idims_sample.z;
     else
@@ -288,19 +302,22 @@ function resetSimSF(image_table, row_index)
     end
     
     %Swap out refset and save
-    selector.ref_coords = key(:,1:3); %Importer already adjusts to 1 based coords.
-    selector.rtimestamp = datetime;
+    selector.ref_coords = keyStructs2Mtx(key); %Importer already adjusts to 1 based coords.
+    selector.ref_last_modified = datetime;
+    selector.f_scores_dirty = true;
     selector.saveMe();
 end
 
-function resetSimRS(image_table, row_index)
+function resetSimRS(image_table, row_index, BaseDir, ImgDir)
     %For rsfish sims
     myname = getTableValue(image_table, row_index, 'IMGNAME');
     srcpath_raw = getTableValue(image_table, row_index, 'IMAGEPATH');
+    outstem_raw = getTableValue(image_table, row_index, 'OUTSTEM');
     
     %I had to convert the locs to csv because MATLAB is a fussbudget
     srcpath = [ImgDir replace(srcpath_raw, '/', filesep)];
     srcpath = replace(srcpath, '.tif', '.csv');
+    hb_path = [BaseDir replace(outstem_raw, '/', filesep)];
     
     if ~isfile(srcpath)
         fprintf('ERROR: Could not find sim truthset for %s!\n', myname);
@@ -308,7 +325,7 @@ function resetSimRS(image_table, row_index)
     end
     
     import_table = table2array(readtable(srcpath,'ReadVariableNames',false));
-    import_table = uint16(round(import_table)); %Make it less spicy
+    import_table = uint16(round(import_table))+1; %Make it less spicy
     
     %Look for spotsanno in hb dir
     %If not there, create new one.
@@ -316,7 +333,7 @@ function resetSimRS(image_table, row_index)
         spotsrun = RNASpotsRun.loadFrom(hb_path);
         selector = RNA_Threshold_SpotSelector;
         th_idx = round((spotsrun.t_max - spotsrun.t_min) ./ 2);
-        selector = selector.initializeNew(outstem, th_idx, []);
+        selector = selector.initializeNew(hb_path, th_idx, []);
         selector.z_min = 1;
         selector.z_max = spotsrun.idims_sample.z;
     else
@@ -324,19 +341,20 @@ function resetSimRS(image_table, row_index)
     end
     
     %Swap out refset and save
-    selector.ref_coords = import_table(:,1:3);
-    selector.rtimestamp = datetime;
+    selector.ref_coords = import_table;
+    selector.ref_last_modified = datetime;
+    selector.f_scores_dirty = true;
     selector.saveMe();
 end
 
-function resetSim(image_table, row_index)
+function resetSim(image_table, row_index, BaseDir, ImgDir)
     %Checks if sim image, and resets truthset if so
     myname = getTableValue(image_table, row_index, 'IMGNAME');
     if startsWith(myname, 'sim_')
-        resetSimSF(image_table, row_index);
+        resetSimSF(image_table, row_index, BaseDir, ImgDir);
     elseif startsWith(myname, 'simvar_')
-        resetSimSF(image_table, row_index);
+        resetSimSF(image_table, row_index, BaseDir, ImgDir);
     elseif startsWith(myname, 'rsfish_sim')
-        resetSimRS(image_table, row_index);
+        resetSimRS(image_table, row_index, BaseDir, ImgDir);
     end
 end

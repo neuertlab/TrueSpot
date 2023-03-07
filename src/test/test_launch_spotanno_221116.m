@@ -1,12 +1,12 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-DataDir = 'D:\usr\bghos\labdat\imgproc';
+DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'ROI001_P03_XY1657818950_Z00_T0_CY5';
+ImgName = 'mESC4d_Tsix-AF594';
 RefMode = true;
 NewAnno = false;
 JustLoad = false;

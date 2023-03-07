@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-DataDir = 'D:\usr\bghos\labdat\imgproc';
+DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
@@ -32,7 +32,7 @@ USE_ANISOTROPY = false;
 
 TH_ITR = 250;
 TH_NTR = 0.1/TH_ITR;
-MIN_TH = 0.002;
+MIN_TH = 0.001;
 %MIN_TH = TH_NTR;
 START_I = 1; %Maybe cutting out the lowest thresholds will help the memory problem?
 while ((START_I * TH_NTR) < MIN_TH)
@@ -45,11 +45,11 @@ DO_IMG_SPLIT = false;
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/sim';
+RSDirTail = '/munsky_lab';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sim_';
+GroupPrefix = 'ROI';
 GroupSuffix = [];
 
 % ========================== Do things ==========================

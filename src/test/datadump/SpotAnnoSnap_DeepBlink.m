@@ -57,9 +57,14 @@ function spotanno = SpotAnnoSnap_DeepBlink(spotanno)
             if nnz(match_bool) > 0
                 %Only run ismember if there are still matches remaining! Maybe
                     %even run on subset of matches that have already been found?
-                [match_rows, ~] = find(match_bool);
-                rmatches = pos_tbl(match_rows,:);
-                match_bool = ~ismember(rmatches(:,1:3), temp_ref_tbl(:,1:3),'rows');
+                    
+                already_count = nnz(temp_ref_tbl(:,4));
+                if already_count > 0
+                    already_snapped = temp_ref_tbl(find(temp_ref_tbl(:,4)),1:3);
+                    [match_rows, ~] = find(match_bool);
+                    rmatches = pos_tbl(match_rows,:);
+                    match_bool = ~ismember(rmatches(:,1:3), already_snapped(:,1:3),'rows');
+                end
                 
                 if nnz(match_bool) <= 0
                     %fprintf('DEBUG -- SpotAnnoSnap_DeepBlink -- No remaining matches found!\n');
