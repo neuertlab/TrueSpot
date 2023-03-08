@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.9.0
-%Updated March 7, 2023
+%Version 1.9.1
+%Updated March 8, 2023
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -39,6 +39,9 @@
 %       Also allowed it to take parameters specifying search 3d and z radii
 %       3D radius defaults to 4, z radius defaults to 2 (reduced from
 %       before - also before didn't limit on z alone)
+%   1.9.1 | 23.03.08
+%       (Begrudgingly) updated to save ptbl to v7.3 so can store enormous
+%       tables.
 
 
 %%
@@ -399,7 +402,7 @@ classdef RNA_Threshold_SpotSelector
             filimg_path = obj.imgdat_path;
             z_trim = obj.ztrim;
             mask_selection = obj.selmcoords;
-            save_ver = 12;
+            save_ver = 13;
             
             %Version 4+
             toggle_ss = obj.toggle_singleSlice;
@@ -435,7 +438,7 @@ classdef RNA_Threshold_SpotSelector
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'tiff_path', 'tiff_channels', 'tiff_ch_selected', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz');
             %save(save_path, 'istructs', 'th_idx', 'th_tbl', 'pos_tbl', 'neg_tbl', 'ref_coord_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver');
             save(save_path, 'istructs', 'th_idx', 'th_tbl', 'bool3d', 'lastz', 'maxz', 'filimg_path', 'z_trim', 'mask_selection', 'save_ver', 'toggle_ss', 'toggle_az' ,'toggle_3dc','toggle_cl','toggle_du','toggle_cs','ftable','refonly','zmin','zmax','flag_fscores_dirty','crossclr','timestamp','toggle_rvr');
-            save([save_path '_ptbl'], 'pos_tbl');
+            save([save_path '_ptbl'], 'pos_tbl', '-v7.3'); %Ver 13+, upped to v7.3. This will be very bad for disk space but oh well.
             save([save_path '_ntbl'], 'neg_tbl');
             save([save_path '_refset'], 'ref_coord_tbl', 'rtimestamp'); %Ver 7+
             fprintf("Save complete!\n");
@@ -1843,6 +1846,8 @@ classdef RNA_Threshold_SpotSelector
         
         %%
         function obj = checkAgainstRef(obj)
+            %Make this (and findRowMatches) more efficient for HUGE
+            %spotcall sets
  
             %Clear
             target_th_idx = obj.threshold_idx;
@@ -1850,19 +1855,31 @@ classdef RNA_Threshold_SpotSelector
             if isempty(obj.ref_coords)
                 return;
             end
+            fprintf('DEBUG -- Checking spots against ref for threshold index %d...\n', target_th_idx);
             
-            %Anything in pos, but not in ref, set to false pos
             r_tbl = obj.ref_coords;
             th_pos = obj.positives{target_th_idx};
             if ~isempty(th_pos)
-                t_tbl = obj.positives{target_th_idx}(:,1:3);
-                [~, not_idxs] = RNA_Threshold_SpotSelector.findRowMatches(t_tbl, r_tbl);
+                %Presort th_pos(?)
+                [~, si] = sort(th_pos(:,3));
+                th_pos = th_pos(si, :);
+                [~, si] = sort(th_pos(:,2));
+                th_pos = th_pos(si, :);
+                [~, si] = sort(th_pos(:,1));
+                th_pos = th_pos(si, :);
+                
+                %Anything in pos, but not in ref, set to false pos
+                th_pos(:,4) = 1;
+                mres = ~ismember(th_pos(:,1:3), r_tbl, 'rows');
+                not_idxs = find(mres);
                 if ~isempty(not_idxs)
-                    obj.positives{target_th_idx}(not_idxs, 4) = 0;
+                    th_pos(not_idxs,4) = 0;
                 end
-            
+                obj.positives{target_th_idx} = th_pos;
+
                 %Anything in ref, but not in pos, set to false neg
-                [~, not_idxs] = RNA_Threshold_SpotSelector.findRowMatches(r_tbl, t_tbl);
+                mres = ~ismember(r_tbl, th_pos(:,1:3), 'rows');
+                not_idxs = find(mres);
                 if ~isempty(not_idxs)
                     neg_tbl = zeros(size(not_idxs,1), 4);
                     neg_tbl(:,1:3) = r_tbl(not_idxs,:);
@@ -3066,6 +3083,33 @@ classdef RNA_Threshold_SpotSelector
                     save(refsetpath, 'ref_coord_tbl', 'rtimestamp');
                 end
             end
+        end
+        
+        %%
+        function fixPosTable(save_stem)
+            if ~RNA_Threshold_SpotSelector.selectorExists(save_stem); return; end
+            
+            %Check for pos tbl. Substitute dummy if file is empty.
+            save_path = [save_stem 'spotAnnoObj'];
+            pt_path = [save_path '_ptbl.mat'];
+            finfo = who('-file', pt_path);
+            if isempty(find(ismember(finfo, 'pos_tbl'),1))
+                pos_tbl = [];
+                save(pt_path, 'pos_tbl');
+            else
+                fprintf('Pos table is intact. To replace callset, use loadNewSpotset.\n');
+                return;
+            end
+            
+            coord_path = [save_stem '_coordTable.mat'];
+            spot_table_path = [save_stem '_spotTable.mat'];
+            
+            load(coord_path, 'coord_table');
+            load(spot_table_path, 'spot_table');
+            
+            myanno = RNA_Threshold_SpotSelector.openSelector(save_stem);
+            myanno = myanno.loadNewSpotset(spot_table, coord_table);
+            myanno.saveMe();
         end
         
     end

@@ -15,7 +15,7 @@ addpath('./test');
 % ========================== Constants ==========================
 
 START_INDEX = 39;
-END_INDEX = 68;
+END_INDEX = 39;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = false;
@@ -146,9 +146,9 @@ for r = START_INDEX:END_INDEX
 
             [db_dir, ~, ~] = fileparts(db_stem);
             coord_table_path = [db_stem '_coordTable.mat'];
-            if ~isfile(coord_table_path)
+            %if ~isfile(coord_table_path)
                 Main_DeepBlink2Mat([db_stem '.csv'], db_stem);
-            end
+            %end
             
             if ~isfile(coord_table_path)
                 fprintf('WARNING: DeepBlink run for %s not found! Skipping...\n', myname);

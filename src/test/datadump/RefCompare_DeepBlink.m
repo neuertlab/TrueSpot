@@ -89,8 +89,6 @@ else
     %Replace coords with deepblink callset
     load(deep_coord_path, 'coord_table');
     if needs_ceiling
-        writerver = 23022400;
-        writer_ver_str = 'v 23.02.24.0';
         ceilinged_bool = true;
         
         %Make sure coords do not exceed image dims

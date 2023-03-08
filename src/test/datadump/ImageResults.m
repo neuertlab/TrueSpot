@@ -153,7 +153,7 @@ classdef ImageResults
             %Import spot counts
             [~, spot_table] = spotsrun.loadSpotsTable();
             T = size(spot_table,1);
-            res_tbl = NaN(T,5);
+            res_tbl = NaN(T,8);
             res_tbl(:,1:2) = spot_table(:,1:2);
 
             %Check for annoobj
@@ -171,6 +171,9 @@ classdef ImageResults
                 spotanno.f_scores_dirty = true;
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
+                res_tbl(:,6) = spotanno.f_scores(:,2);
+                res_tbl(:,7) = spotanno.f_scores(:,3);
+                res_tbl(:,8) = spotanno.f_scores(:,4);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
                 res_tbl(:,4) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,3));
 
@@ -290,7 +293,7 @@ classdef ImageResults
             
             %Start restbl
             T = size(spot_table,1);
-            res_tbl = NaN(T,5);
+            res_tbl = NaN(T,8);
             res_tbl(:,1:2) = spot_table(:,1:2);
             
             %Check for spotanno, import if present
@@ -299,6 +302,9 @@ classdef ImageResults
                 spotanno.f_scores_dirty = true;
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
+                res_tbl(:,6) = spotanno.f_scores(:,2);
+                res_tbl(:,7) = spotanno.f_scores(:,3);
+                res_tbl(:,8) = spotanno.f_scores(:,4);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
                 res_tbl(:,4) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,3));
 
@@ -412,7 +418,7 @@ classdef ImageResults
             
             %Initialize restbl
             T = size(spot_table,1);
-            res_tbl = NaN(T,5);
+            res_tbl = NaN(T,8);
             res_tbl(:,1:2) = spot_table(:,1:2);
             
             %Check for spotsanno.
@@ -422,6 +428,9 @@ classdef ImageResults
                 spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
+                res_tbl(:,6) = spotanno.f_scores(:,2);
+                res_tbl(:,7) = spotanno.f_scores(:,3);
+                res_tbl(:,8) = spotanno.f_scores(:,4);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
                 res_tbl(:,4) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,3));
                 
@@ -515,7 +524,7 @@ classdef ImageResults
             callset(:,1:3) = array2table(th_coords(:,1:3));
 
             %Init restbl
-            res_tbl = NaN(prob_count,5);
+            res_tbl = NaN(prob_count,8);
             res_tbl(:,1) = prob_cutoffs(:);
             for i = 1:prob_count
                 res_tbl(i,2) = size(coord_table{i,1}, 1);
@@ -527,6 +536,9 @@ classdef ImageResults
                 spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem, true);
                 spotanno = spotanno.updateFTable();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
+                res_tbl(:,6) = spotanno.f_scores(:,2);
+                res_tbl(:,7) = spotanno.f_scores(:,3);
+                res_tbl(:,8) = spotanno.f_scores(:,4);
                 res_tbl(:,3) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,4));
                 res_tbl(:,4) = spotanno.f_scores(:,2) ./ (spotanno.f_scores(:,2) + spotanno.f_scores(:,3));
                 
@@ -912,7 +924,8 @@ classdef ImageResults
         end
 
         function res_table_var_names = getResTableVarNames()
-            res_table_var_names = {'thresholdValue' 'spotCount' 'sensitivity' 'precision' 'fScore'};
+            res_table_var_names = {'thresholdValue' 'spotCount' 'sensitivity' 'precision' 'fScore'...
+                'true_pos', 'false_pos', 'false_neg'};
         end
         
         function call_table_var_names = getCallTableVarNames()
@@ -923,7 +936,7 @@ classdef ImageResults
         end
         
         function res_table = initializeResTable(th_count)
-            varTypes = {'double' 'uint32' 'double' 'double' 'double'};
+            varTypes = {'double' 'uint32' 'double' 'double' 'double', 'uint32', 'uint32', 'uint32'};
             varNames = ImageResults.getResTableVarNames();
             res_table = table('Size', [th_count, 5], 'VariableTypes',varTypes, 'VariableNames',varNames);
         end

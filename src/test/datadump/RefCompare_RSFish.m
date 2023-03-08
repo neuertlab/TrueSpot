@@ -73,8 +73,20 @@ else
     refanno = RNA_Threshold_SpotSelector.openSelector(ref_data_path,true);
     [~, myanno] = refanno.makeCopy();
     
-    %Replace coords with deepblink callset
+    %Replace coords with rsfish callset
     load(rsfish_coordtbl_path, 'coord_table');
+    %Ceiling the coords...
+    refdims = refanno.getImageDimensions();
+    T = size(coord_table,1);
+    for t = 1:T
+        thtbl = coord_table{t,1};
+        thtbl(:,1) = min(refdims.x, thtbl(:,1));
+        thtbl(:,2) = min(refdims.y, thtbl(:,2));
+        thtbl(:,3) = min(refdims.z, thtbl(:,3));
+        coord_table{t,1} = thtbl;
+    end
+    save(rsfish_coordtbl_path, 'coord_table', 'writer_ver_str', 'writerver');
+    
     myanno = myanno.loadNewSpotset(spot_table(:,1), coord_table);
     myanno.save_stem = rsfish_save_stem;
     
