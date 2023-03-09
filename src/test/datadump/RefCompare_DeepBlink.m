@@ -96,6 +96,9 @@ else
         T = size(coord_table,1);
         for t = 1:T
             these_coords = coord_table{t,1};
+            if isempty(these_coords)
+                break;
+            end
             these_coords(:,1) = min(these_coords(:,1), idims.x);
             these_coords(:,2) = min(these_coords(:,2), idims.y);
             these_coords(:,3) = min(these_coords(:,3), idims.z);

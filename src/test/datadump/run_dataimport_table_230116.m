@@ -14,14 +14,14 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 39;
-END_INDEX = 39;
+START_INDEX = 1018;
+END_INDEX = 1024;
 
 DO_HOMEBREW = true;
-DO_BIGFISH = false;
-DO_BIGFISHNR = false;
-DO_RSFISH = false;
-DO_DEEPBLINK = false;
+DO_BIGFISH = true;
+DO_BIGFISHNR = true;
+DO_RSFISH = true;
+DO_DEEPBLINK = true;
 
 OVERWRITE_SPOTANNO_RS = true;
 OVERWRITE_SPOTANNO_DB = true;
@@ -147,7 +147,12 @@ for r = START_INDEX:END_INDEX
             [db_dir, ~, ~] = fileparts(db_stem);
             coord_table_path = [db_stem '_coordTable.mat'];
             %if ~isfile(coord_table_path)
+            try
                 Main_DeepBlink2Mat([db_stem '.csv'], db_stem);
+            catch
+                fprintf('WARNING: DeepBlink run for %s could not be imported! Skipping...\n', myname);
+                continue;
+            end
             %end
             
             if ~isfile(coord_table_path)
@@ -195,6 +200,8 @@ for r = START_INDEX:END_INDEX
         end
     end
 
+    %Maybe save after each successful image import?
+    save(DataFilePath, 'image_analyses');
 end
 
 save(DataFilePath, 'image_analyses');

@@ -8,10 +8,11 @@
 %Ver 23022400 -- x and y were switched :)
 %Ver 23022700 -- So I DID have x and y switched by accident, but it looks
 %   like DeepBlink has been reading the x and y dims the other way round??
+%Ver 23030900 -- Wasn't saving to tables if spot count is 0.
 
 function Main_DeepBlink2Mat(input_file, output_stem)
-writerver = 23022700;
-writer_ver_str = 'v 23.02.27.0';
+writerver = 23030900;
+writer_ver_str = 'v 23.03.09.0';
 fprintf('Main_DeepBlink2Mat (%s)\n', writer_ver_str);
 
 addpath('./core');
@@ -66,6 +67,9 @@ for i = 1:prob_count
         spot_table(i,2) = found_count;
         coord_table{i,1} = uint16(these_coords);
     else
+        spot_table(i,1) = prob_cutoffs(i);
+        spot_table(i,2) = 0;
+        coord_table{i,1} = [];
     end
 end
 

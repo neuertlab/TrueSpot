@@ -451,6 +451,12 @@ classdef ImageResults
                     th_idx = thresh_res.threshold - spot_table_int(1,1) + 1;
                 end
             end
+            if isnan(th_idx)
+                %Still having issues with the thresholder malfunctioning
+                %Look into this AGAIN when have more time.
+                fprintf('Thresholding failed. Using lowest value...\n');
+                th_idx = 1;
+            end
             obj.threshold_index_rs = th_idx;
             obj.threshold_value_rs = spot_table(th_idx,1);
             

@@ -22,7 +22,7 @@ imgtbl = testutil_opentable(InputTablePath);
 SingleImgName = [];
 %SingleImgName = 'mESC4d_Tsix-AF594';
 
-START_IDX = 40;
+START_IDX = 39;
 END_IDX = 68;
 
 % ========================== Iterate through table entries ==========================

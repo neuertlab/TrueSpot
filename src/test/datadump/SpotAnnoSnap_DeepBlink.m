@@ -32,6 +32,8 @@ function spotanno = SpotAnnoSnap_DeepBlink(spotanno)
         fprintf('DEBUG -- SpotAnnoSnap_DeepBlink -- Looking at spots >= prob %.2f\n', thresh_x(t));
         
         thpos = spotanno.positives{t,1};
+        if isempty(thpos); break; end
+        
         spotcount = size(thpos,1);
         pos_tbl = NaN(spotcount,6);
         pos_tbl(:,1:3) = thpos(:,1:3);
