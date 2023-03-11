@@ -77,7 +77,7 @@ classdef ImageResults
             clear spotanno;
             
             spot_count = size(ref_tbl,1);
-            ref_spots = ImageResults.initializeSpotCallTable(spot_count);
+            ref_spots = ImageResults.initializeTrueCallTable(spot_count);
             ref_spots(:,1:3) = array2table(ref_tbl(:,1:3));
             
             if isempty(obj.truthset)
@@ -95,6 +95,25 @@ classdef ImageResults
             obj.res_bigfish_nr{index} = [];
             obj.res_rsfish{index} = [];
             obj.res_deepblink{index} = [];
+        end
+        
+        function obj = setTruthset(obj, save_stem, ts_index)
+            if ~RNA_Threshold_SpotSelector.refsetExists(save_stem)
+                return;
+            end
+            spotanno = RNA_Threshold_SpotSelector.openSelector(save_stem); 
+            ref_tbl = spotanno.ref_coords;
+            clear spotanno;
+            
+            spot_count = size(ref_tbl,1);
+            ref_spots = ImageResults.initializeTrueCallTable(spot_count);
+            ref_spots(:,1:3) = array2table(ref_tbl(:,1:3));
+            
+            if isempty(obj.truthset)
+                obj.truthset = cell(1,ts_index);
+            end
+            
+            obj.truthset{ts_index} = ref_spots;
         end
         
         function [obj, success] = importHBResults(obj, save_stem, fixed_th, truthset_index)
@@ -945,6 +964,28 @@ classdef ImageResults
             varTypes = {'double' 'uint32' 'double' 'double' 'double', 'uint32', 'uint32', 'uint32'};
             varNames = ImageResults.getResTableVarNames();
             res_table = table('Size', [th_count, 5], 'VariableTypes',varTypes, 'VariableNames',varNames);
+        end
+        
+        function call_table = initializeTrueCallTable(alloc)
+            varNames = {'isnap_x' 'isnap_y' 'isnap_z' 'isnap_peak' 'isnap_total'...
+                'exact_x' 'exact_y' 'exact_z' 'exact_peak' 'exact_total'...
+                'fit_xFWHM' 'fit_yFWHM'};
+            varTypes = {'uint16' 'uint16' 'uint16' 'double' 'double'...
+                'double' 'double' 'double' 'double' 'double'...
+                'double' 'double'};
+            table_size = [alloc size(varNames,2)];
+            call_table = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+            nanvec = NaN(alloc,1);
+            nantbl = array2table(nanvec);
+            call_table(:,'isnap_peak') = nantbl;
+            call_table(:,'isnap_total') = nantbl;
+            call_table(:,'exact_x') = nantbl;
+            call_table(:,'exact_y') = nantbl;
+            call_table(:,'exact_z') = nantbl;
+            call_table(:,'exact_peak') = nantbl;
+            call_table(:,'exact_total') = nantbl;
+            call_table(:,'fit_xFWHM') = nantbl;
+            call_table(:,'fit_yFWHM') = nantbl;
         end
         
         function call_table = initializeSpotCallTable(alloc)

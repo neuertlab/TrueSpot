@@ -1,5 +1,7 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
+clear all;
+
 %ImgDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 ImgDir = 'C:\Users\hospelb\labdata\imgproc';
 %ImgDir = 'D:\usr\bghos\labdat\imgproc';
@@ -9,9 +11,12 @@ ImgDir = 'C:\Users\hospelb\labdata\imgproc';
 img_paths = cell(48,1);
 i = 1;
 
+my_dir = [ImgDir '\img\sim'];
+img_name = 'mESC_RNA_LE_100x_3';
+
 %----- Test
 %img_paths{i,1} = [ImgDir '\img\sim\mESC_RNA_TMRLike_100x_3']; i = i+1;
-img_paths{i,1} = [ImgDir '\img\sim\mESC_RNA_LEHB_100x_3']; i = i+1;
+img_paths{i,1} = [my_dir '\mESC_RNA_LE_100x_3']; i = i+1;
 
 % ========================== Cycle ==========================
 
@@ -66,7 +71,12 @@ for j = 1:path_count
     %Save
     imgdat = imgdat16;
     key = key_out;
-    save([mypath '.mat'], 'imgdat', 'key');
+    save([my_dir filesep img_name '.mat'], 'imgdat', 'key');
+    clear key_out;
+    clear key;
+    
+    saveastiff(imgdat, [my_dir '\tif\' img_name '.tif']);
+    clear imgdat;
 
     %(Optional) Apply blur and save again
 %     xy_rad = 7;

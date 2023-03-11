@@ -33,7 +33,7 @@ MIN_PROB = 0.01;
 
 DO_IMG_SPLIT = false;
 
-OutDirTail = '/munsky_lab';
+OutDirTail = '/simvar';
 ModelName = 'smfish';
 
 NewTifDir = ['/img' OutDirTail];
@@ -43,7 +43,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'ROI';
+GroupPrefix = 'simvar_';
 GroupSuffix = [];
 
 % ========================== Do things ==========================

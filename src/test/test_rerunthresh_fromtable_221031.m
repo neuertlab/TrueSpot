@@ -22,8 +22,8 @@ imgtbl = testutil_opentable(InputTablePath);
 SingleImgName = [];
 %SingleImgName = 'mESC4d_Tsix-AF594';
 
-START_IDX = 39;
-END_IDX = 68;
+START_IDX = 1018;
+END_IDX = 1024;
 
 % ========================== Iterate through table entries ==========================
 entry_count = size(imgtbl,1);

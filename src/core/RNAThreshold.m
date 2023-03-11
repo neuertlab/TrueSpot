@@ -422,6 +422,7 @@ classdef RNAThreshold
             hold on;
                 
             %Plot fit
+            thx = 0;
             if ~isempty(curveres.spline_fit)
                  line_x = data_x(1:curveres.spline_fit.break_index,1);
                  line_y = (line_x .* curveres.spline_fit.left.slope) + curveres.spline_fit.left.yintr;
@@ -451,7 +452,7 @@ classdef RNAThreshold
                 end
             end
             
-            if thx <= 0
+            if isnan(thx) | thx <= 0
                 %Grab threshold from mad scan avg?
                 thx = round(curveres.medth_avg);
             end

@@ -3097,8 +3097,11 @@ classdef RNA_Threshold_SpotSelector
                 pos_tbl = [];
                 save(pt_path, 'pos_tbl');
             else
-                fprintf('Pos table is intact. To replace callset, use loadNewSpotset.\n');
-                return;
+                load(pt_path, 'pos_tbl');
+                if ~isempty(pos_tbl)
+                    fprintf('Pos table is intact. To replace callset, use loadNewSpotset.\n');
+                    return;
+                end
             end
             
             coord_path = [save_stem '_coordTable.mat'];

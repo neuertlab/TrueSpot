@@ -14,12 +14,12 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1018;
-END_INDEX = 1024;
+START_INDEX = 948;
+END_INDEX = 989;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
-DO_BIGFISHNR = true;
+DO_BIGFISHNR = false;
 DO_RSFISH = true;
 DO_DEEPBLINK = true;
 
@@ -27,7 +27,11 @@ OVERWRITE_SPOTANNO_RS = true;
 OVERWRITE_SPOTANNO_DB = true;
 FORCE_HB_BF_RESNAP = true; %TODO
 
+IMPORT_TS = false;
+TS_IDX = 1;
+
 HB_FIXED_TH = 0; %Maybe have a separate script for this?
+RS_TH_IVAL = 0.1/250;
 
 % ========================== Other paths ==========================
 
@@ -76,15 +80,31 @@ for r = START_INDEX:END_INDEX
     fprintf('> Now processing %s (%d of %d)...\n', myname, r, entry_count);
     
     resetSim(imgtbl, r, BaseDir, ImgDir);
+    
+    %----------------- Truthset
+    if IMPORT_TS
+        %Check for truthset.
+        hb_stem_base = getTableValue(imgtbl, r, 'OUTSTEM');
+        hb_stem = [BaseDir replace(hb_stem_base, '/', filesep)];
+        if RNA_Threshold_SpotSelector.refsetExists(hb_stem)
+            %Has a substantial refset. Import.
+            image_analyses(r).analysis = image_analyses(r).analysis.setTruthset(hb_stem, TS_IDX);
+        end
+    end
 
     %----------------- BF
     if DO_BIGFISH
         bf_stem_base = replace(getTableValue(imgtbl, r, 'BIGFISH_OUTSTEM'), '/bigfish/', '/bigfish/_rescaled/');
         bf_stem = [BaseDir replace(bf_stem_base, '/', filesep)];
-        if FORCE_HB_BF_RESNAP
-            RNA_Threshold_SpotSelector.touchRefset(bf_stem);
+        if FORCE_HB_BF_RESNAP & RNA_Threshold_SpotSelector.selectorExists(bf_stem)
+            RNA_Threshold_SpotSelector.fixPosTable(bf_stem);
+            spotanno = RNA_Threshold_SpotSelector.openSelector(bf_stem, true);
+            spotanno.toggle_singleSlice = true;
+            spotanno.toggle_allz = false;
+            spotanno = spotanno.refSnapToAutoSpots();
+            spotanno.saveMe();
         end
-        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, true);
+        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, true, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: BF (Rescaled) Import of %s failed!\n', myname);
         end
@@ -94,7 +114,15 @@ for r = START_INDEX:END_INDEX
     if DO_BIGFISHNR
         bf_stem_base = getTableValue(imgtbl, r, 'BIGFISH_OUTSTEM');
         bf_stem = [BaseDir replace(bf_stem_base, '/', filesep)];
-        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, false);
+        if FORCE_HB_BF_RESNAP & RNA_Threshold_SpotSelector.selectorExists(bf_stem)
+            RNA_Threshold_SpotSelector.fixPosTable(bf_stem);
+            spotanno = RNA_Threshold_SpotSelector.openSelector(bf_stem, true);
+            spotanno.toggle_singleSlice = true;
+            spotanno.toggle_allz = false;
+            spotanno = spotanno.refSnapToAutoSpots();
+            spotanno.saveMe();
+        end
+        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, false, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: BF (Non rescaled) Import of %s failed!\n', myname);
         end
@@ -132,7 +160,7 @@ for r = START_INDEX:END_INDEX
                 end
             end
 
-            [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importRSResults(rs_stem);
+            [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importRSResults(rs_stem, RS_TH_IVAL, TS_IDX);
             if ~bool_okay
                 fprintf('WARNING: RS-FISH Import of %s failed!\n', myname);
             end
@@ -171,7 +199,7 @@ for r = START_INDEX:END_INDEX
                 end
             end
 
-            [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importDBResults(db_stem);
+            [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importDBResults(db_stem, TS_IDX);
             if ~bool_okay
                 fprintf('WARNING: DeepBlink Import of %s failed!\n', myname);
             end
@@ -194,7 +222,7 @@ for r = START_INDEX:END_INDEX
             end
         end
         
-        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importHBResults(hb_stem);
+        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importHBResults(hb_stem, HB_FIXED_TH, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: HB Import of %s failed!\n', myname);
         end
@@ -348,7 +376,7 @@ function resetSimRS(image_table, row_index, BaseDir, ImgDir)
     end
     
     %Swap out refset and save
-    selector.ref_coords = import_table;
+    selector.ref_coords = import_table(:,1:3);
     selector.ref_last_modified = datetime;
     selector.f_scores_dirty = true;
     selector.saveMe();

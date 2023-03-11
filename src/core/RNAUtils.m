@@ -108,6 +108,28 @@ classdef RNAUtils
         
         %%
         function auc_value = calculateAUC(x, y)
+            auc_value = NaN;
+            if isempty(x); return; end
+            if isempty(y); return; end
+            
+            dim1 = size(x,1);
+            dim2 = size(x,2);
+            
+            if(dim1 > dim2)
+                x = transpose(x);
+                y = transpose(y);
+            end
+            
+            %Remove any records where EITHER x or y is nan
+            badrec_bool = (isnan(x) | isnan(y));
+            badcount = nnz(badrec_bool);
+            if badcount > 0
+                if badcount >= size(x,2); return; end
+                goodrecs = find(~badrec_bool);
+                x = x(goodrecs);
+                y = y(goodrecs);
+            end
+            
             %Sort by y, then by x
             [~, ysort_idx] = sort(y);
             x_sorted = x(ysort_idx);
@@ -144,6 +166,11 @@ classdef RNAUtils
 
             ply = polyshape(x_sorted, y_sorted);
             auc_value = area(ply);
+            
+            %DEBUG
+%             figure(1);
+%             plot(ply);
+%             
         end
         
     end

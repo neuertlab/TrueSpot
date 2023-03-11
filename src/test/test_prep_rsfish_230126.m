@@ -26,13 +26,13 @@ addpath('./core');
 
 DETECT_THREADS = 8;
 RAM_PER_CORE = 8;
-HRS_PER_IMAGE = 8;
+HRS_PER_IMAGE = 12;
 
 USE_ANISOTROPY = false;
 
 TH_ITR = 250;
 TH_NTR = 0.1/TH_ITR;
-MIN_TH = 0.005;
+MIN_TH = 0.0036;
 %MIN_TH = TH_NTR;
 START_I = 1; %Maybe cutting out the lowest thresholds will help the memory problem?
 while ((START_I * TH_NTR) < MIN_TH)

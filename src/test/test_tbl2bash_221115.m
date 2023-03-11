@@ -16,10 +16,10 @@ ClusterPyenvDir = '/scratch/hospelb/pyvenv';
 
 % ========================== Constants ==========================
 
-DETECT_THREADS = 2;
+DETECT_THREADS = 8;
 RAM_PER_CORE = 8;
 RAM_PER_CORE_BF = 6;
-HB_PARALLEL_HR = 2;
+HB_PARALLEL_HR = 6;
 HB_SERIAL_HR = 8;
 BF_SERIAL_HR = 4;
 
@@ -28,19 +28,19 @@ QUANT_PARALLEL_HR = 4;
 RAM_PER_CORE_QUANT = 12;
 DETECT_THREADS_QUANT = 1;
 QUANT_DO_CLOUDS = false;
-QUANT_FIXED_TH = 111;
+QUANT_FIXED_TH = 0;
 
 TH_MIN = 10;
-TH_MAX = 500;
+TH_MAX = 1000;
 Z_TRIM = 0;
 BF_SOBJSZ = 10;
-BF_NUCSZ = 100; %200 yeast, 256 mesc
+BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = false;
-RUN_BFNR = false;
-RUN_BFRS = false;
-RUN_QUANT = true;
+RUN_HB = true;
+RUN_BFNR = true;
+RUN_BFRS = true;
+RUN_QUANT = false;
 
 MODULE_NAME = 'MATLAB/2018b';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
@@ -50,8 +50,8 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E2R2_';
-GroupSuffix = 'CTT1';
+GroupPrefix = 'simvar_';
+GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');
 
