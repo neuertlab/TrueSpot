@@ -14,14 +14,14 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 948;
+START_INDEX = 947;
 END_INDEX = 989;
 
-DO_HOMEBREW = true;
-DO_BIGFISH = true;
+DO_HOMEBREW = false;
+DO_BIGFISH = false;
 DO_BIGFISHNR = false;
 DO_RSFISH = true;
-DO_DEEPBLINK = true;
+DO_DEEPBLINK = false;
 
 OVERWRITE_SPOTANNO_RS = true;
 OVERWRITE_SPOTANNO_DB = true;

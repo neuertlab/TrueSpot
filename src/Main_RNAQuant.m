@@ -20,6 +20,8 @@ param_struct.dbgcell = 0;
 param_struct.use_nuc_mask = 2;
 param_struct.workers = 1;
 
+param_struct.nocells = false; %If no cell seg data (ie. sim image)
+
 %Specs if don't provide run file
 param_struct.man_thresh = 0;
 param_struct.rna_channel = 0;
@@ -66,6 +68,10 @@ for i = 1:nargin
         elseif strcmp(lastkey, "nm2d")
             param_struct.use_nuc_mask = 0;
             if arg_debug; fprintf("Using 2D nuc mask.\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "nocells")
+            param_struct.nocells = true;
+            if arg_debug; fprintf("Bypassing cell segmentation data.\n"); end
             lastkey = [];
         end
     else

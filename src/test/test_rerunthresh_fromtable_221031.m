@@ -22,8 +22,8 @@ imgtbl = testutil_opentable(InputTablePath);
 SingleImgName = [];
 %SingleImgName = 'mESC4d_Tsix-AF594';
 
-START_IDX = 1018;
-END_IDX = 1024;
+START_IDX = 267;
+END_IDX = 267;
 
 % ========================== Iterate through table entries ==========================
 entry_count = size(imgtbl,1);
@@ -88,13 +88,15 @@ for i = START_IDX:END_IDX
             %false negs!
             T = size(spotcounts,1);
             fscores_vals = RNA_Threshold_SpotSelector.loadFScores(mystem, spotsrun.z_min_apply, spotsrun.z_max_apply);
-            fscores = NaN(T,2);
-            fscores(:,1) = spotcounts(:,1);
-            fscores(:,2) = fscores_vals(:,1);
-            figh = RNAThreshold.plotThreshRanges(spotsrun,fscores,'F-Score',[0 1],1);
-            saveas(figh, [plotdir filesep 'threshold_range_fscore.png']);
-            saveas(figh, [AllFigDir filesep 'fscore' filesep spotsrun.img_name '_fscore.png']);
-            close(figh);
+            if ~isempty(fscores_vals)
+                fscores = NaN(T,2);
+                fscores(:,1) = spotcounts(:,1);
+                fscores(:,2) = fscores_vals(:,1);
+                figh = RNAThreshold.plotThreshRanges(spotsrun,fscores,'F-Score',[0 1],1);
+                saveas(figh, [plotdir filesep 'threshold_range_fscore.png']);
+                saveas(figh, [AllFigDir filesep 'fscore' filesep spotsrun.img_name '_fscore.png']);
+                close(figh);
+            end
         end
         
         %Do BIG-FISH compare, if there is BIG-FISH output...

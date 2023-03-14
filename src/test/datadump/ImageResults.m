@@ -299,12 +299,29 @@ classdef ImageResults
             thresh_idx = RNAUtils.findThresholdIndex(bfthresh, x_tbl);
             if is_rescaled
                 obj.threshold_index_bf = thresh_idx;
+                obj.threshold_value_bf = spot_table(thresh_idx,1);
             else
                 obj.threshold_index_bfnr = thresh_idx;
+                obj.threshold_value_bfnr = spot_table(thresh_idx,1);
             end
             
             %Import callset
             th_coords = coord_table{thresh_idx,1};
+            while isempty(th_coords)
+                if thresh_idx < 2
+                    fprintf('BigFISH callset for %s is empty!\n', bf_dir);
+                    return;
+                end
+                thresh_idx = thresh_idx - 1;
+                th_coords = coord_table{thresh_idx,1};
+                
+                if is_rescaled
+                    obj.threshold_index_bf = thresh_idx;
+                else
+                    obj.threshold_index_bfnr = thresh_idx;
+                end
+            end
+            
             clear coord_table;
             spot_count = size(th_coords,1);
             callset = ImageResults.initializeSpotCallTable(spot_count);
@@ -544,6 +561,16 @@ classdef ImageResults
             %Import callset
             load(coord_table_path, 'coord_table');
             th_coords = coord_table{th_idx,1};
+            %Slide down until there is one that is not empty...
+            while isempty(th_coords)
+                if th_idx < 2
+                    fprintf('Coord table for DeepBlink run %s is empty! Check to see if import is required...\n', save_stem);
+                    return;
+                end
+                th_idx = th_idx - 1;
+                th_coords = coord_table{th_idx,1};
+            end
+            
             spot_count = size(th_coords,1);
             callset = ImageResults.initializeSpotCallTable(spot_count);
             callset(:,1:3) = array2table(th_coords(:,1:3));

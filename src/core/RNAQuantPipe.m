@@ -116,6 +116,21 @@ if isempty(image_raw)
 	return;
 end
 
+if(param_struct.nocells)
+    %Generate a dummy cell and nuc mask that's just the size of the whole
+    %image.
+    idim_x = size(image_raw,2);
+    idim_y = size(image_raw,1);
+    if ndims(image_raw) > 2
+        idim_z = size(image_raw,3);
+    else
+        idim_z = 1;
+    end
+    
+    param_struct.preloaded_cellmask = uint16(ones(idim_y,idim_x));
+    param_struct.preloaded_nucmask = uint16(ones(idim_y,idim_x,idim_z));
+end
+
 %Try to load masks (if not preloaded)
 cellmask = [];
 if isempty(param_struct.preloaded_cellmask)

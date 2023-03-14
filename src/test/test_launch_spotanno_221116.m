@@ -6,7 +6,7 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'mESC4d_Tsix-AF594';
+ImgName = 'mESC_loday_D1I02_Tsix';
 RefMode = true;
 NewAnno = false;
 JustLoad = false;
