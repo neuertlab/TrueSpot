@@ -680,9 +680,9 @@ classdef RNA_Threshold_SpotSelector
             %plot3(tbl(:,1), tbl(:,2), tbl(:,3), 'o', 'MarkerEdgeColor', e_color, 'MarkerFaceColor', f_color);  
             
             img = obj.img_structs(2);
-            X = size(img.image,2);
-            Y = size(img.image,1);
-            Z = obj.max_slice;
+            X = double(size(img.image,2));
+            Y = double(size(img.image,1));
+            Z = double(obj.max_slice);
             max_rad = sqrt(X^2 + Y^2 + Z^2);
             
             count = size(tbl, 1);
@@ -2425,7 +2425,7 @@ classdef RNA_Threshold_SpotSelector
         %%
         function color_tbl = generateColors(levels, base_color)
             
-            levels = levels+1;
+            levels = double(levels+1);
             color_tbl = NaN(levels,3);
             konst = 1/log10(levels);
             

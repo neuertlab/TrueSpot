@@ -14,13 +14,13 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 947;
-END_INDEX = 989;
+START_INDEX = 40;
+END_INDEX = 40;
 
 DO_HOMEBREW = false;
-DO_BIGFISH = false;
-DO_BIGFISHNR = false;
-DO_RSFISH = true;
+DO_BIGFISH = true;
+DO_BIGFISHNR = true;
+DO_RSFISH = false;
 DO_DEEPBLINK = false;
 
 OVERWRITE_SPOTANNO_RS = true;
@@ -360,7 +360,10 @@ function resetSimRS(image_table, row_index, BaseDir, ImgDir)
     end
     
     import_table = table2array(readtable(srcpath,'ReadVariableNames',false));
-    import_table = uint16(round(import_table))+1; %Make it less spicy
+    import_table = uint16(round(import_table)) + 1; %Make it less spicy
+    temp = import_table(:,2);
+    import_table(:,2) = import_table(:,1);
+    import_table(:,1) = temp;
     
     %Look for spotsanno in hb dir
     %If not there, create new one.

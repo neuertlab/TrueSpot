@@ -31,7 +31,8 @@ QUANT_DO_CLOUDS = false;
 QUANT_FIXED_TH = 0;
 
 TH_MIN = 10;
-TH_MAX = 500;
+TH_MAX = 1000;
+TH_MIN_BF = 10;
 Z_TRIM = 0;
 BF_SOBJSZ = 10;
 BF_NUCSZ = 256; %200 yeast, 256 mesc
@@ -50,7 +51,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sim_mESC_histone';
+GroupPrefix = 'rsfish_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');
@@ -177,7 +178,7 @@ for r = 1:rec_count
         fprintf(script_bfnr, ' --ch_dapi %d', getTableValue(image_table, r, 'CH_DAPI'));
         fprintf(script_bfnr, ' --ch_light %d', getTableValue(image_table, r, 'CH_LIGHT'));
         fprintf(script_bfnr, ' --ch_target %d', getTableValue(image_table, r, 'CHANNEL'));
-        fprintf(script_bfnr, ' --minth 10');
+        fprintf(script_bfnr, ' --minth %d', TH_MIN_BF);
         fprintf(script_bfnr, ' --maxth 1000');
         
         vx = getTableValue(image_table, r, 'VOXEL_X');
@@ -199,7 +200,7 @@ for r = 1:rec_count
         fprintf(script_bfnr, ' --sobjsznuc %d', BF_SOBJSZ);
         fprintf(script_bfnr, ' --trgsznuc %d', BF_NUCSZ);
 
-        if startsWith(iname, 'sim_')
+        if startsWith(iname, 'sim_') | (Z_TRIM < 1)
             fprintf(script_bfnr, ' --zkeep 1.0');
         else
             fprintf(script_bfnr, ' --zkeep 0.8');

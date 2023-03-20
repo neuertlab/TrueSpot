@@ -8,8 +8,10 @@ addpath('./core');
 
 ImgName = 'sctc_E1R1_15m_I2_CTT1';
 RefMode = false;
-NewAnno = false;
+NewAnno = true;
 JustLoad = false;
+
+LoadRescaled = true;
 
 % ========================== Read Table ==========================
 
@@ -33,31 +35,45 @@ end
 
 % ========================== Load Spots Anno ==========================
 
-outstem = [DataDir replace(getTableValue(image_table, rec_row, 'OUTSTEM'), '/', filesep)];
+bfstem_raw = getTableValue(image_table, rec_row, 'BIGFISH_OUTSTEM');
 
-spotsrun = RNASpotsRun.loadFrom(outstem);
-if isempty(spotsrun)
-    fprintf('Run with prefix "%s" was not found!\n', outstem);
-    return;
+if LoadRescaled
+    bfstem_raw = replace(bfstem_raw, '/bigfish/', '/bigfish/_rescaled/');
 end
 
-%Update spotsrun paths
-spotsrun.out_stem = outstem;
-spotsrun.saveMe();
+outstem = [DataDir replace(bfstem_raw, '/', filesep)];
+refstem = [DataDir replace(getTableValue(image_table, rec_row, 'OUTSTEM'), '/', filesep)];
+
+%Get initial threshold.
+[bfdir, ~, ~] = fileparts(outstem);
+[zmin, zmax, bfthresh] = BigfishCompare.readSummaryTxt([bfdir filesep 'summary.txt']);
+load([outstem '_spotTable.mat'], 'spot_table');
+th_idx = RNAUtils.findThresholdIndex(bfthresh, transpose(spot_table(:,1)));
 
 if NewAnno | ~RNA_Threshold_SpotSelector.selectorExists(outstem)
     selector = RNA_Threshold_SpotSelector;
-    th_idx = round((spotsrun.t_max - spotsrun.t_min) ./ 2);
-    selector = selector.initializeNew(outstem, th_idx, []);
-    selector.z_min = 1;
-    selector.z_max = spotsrun.idims_sample.z;
+    selector = selector.initializeNew(outstem, th_idx, spot_table(:,1));
+    selector.z_min = zmin;
+    selector.z_max = zmax;
+    %selector.threshold_idx = th_idx;
 else
     selector = RNA_Threshold_SpotSelector.openSelector(outstem, true);
+    selector.threshold_idx = th_idx;
 end
 
 if JustLoad
     return;
 end
+
+%Load in image data from reference...
+refanno = RNA_Threshold_SpotSelector.openSelector(refstem, true);
+selector.img_structs = refanno.img_structs;
+selector.imgdat_path = refanno.imgdat_path;
+if isfile(selector.imgdat_path)
+    load(selector.imgdat_path, 'img_filter');
+    selector.loaded_ch = double(img_filter);
+end
+clear refanno;
 
 selector.crosshair_color = [1.0 1.0 0.0];
 if RefMode

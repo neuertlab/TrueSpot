@@ -66,7 +66,7 @@ classdef BigfishCompare
             end
             
             %Save to mat files
-            save([output_stem '_coordTable'], 'coord_table');
+            save([output_stem '_coordTable'], 'coord_table', '-v7.3');
             save([output_stem '_spotTable'], 'spot_table');
         end
 

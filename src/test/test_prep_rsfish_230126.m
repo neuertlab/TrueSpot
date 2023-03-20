@@ -39,7 +39,7 @@ while ((START_I * TH_NTR) < MIN_TH)
     START_I = START_I + 1;
 end
 
-START_I = 3; %Override
+START_I = 7; %Override
 
 DO_IMG_SPLIT = false;
 
@@ -47,11 +47,11 @@ DO_IMG_SPLIT = false;
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/sim';
+RSDirTail = '/munsky_lab';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sim_yeast_RNA_LE_CY5like';
+GroupPrefix = 'ROI';
 GroupSuffix = [];
 
 % ========================== Do things ==========================
