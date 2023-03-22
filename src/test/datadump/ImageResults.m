@@ -769,6 +769,7 @@ classdef ImageResults
                 if isempty(obj.res_deepblink); return; end
                 res_tbl = obj.res_deepblink{1};
             end
+            if isempty(res_tbl); return; end
 
             color_light = color + ((1.0 - color) .* 0.5);
 
@@ -846,6 +847,8 @@ classdef ImageResults
                 res_tbl = obj.res_deepblink{truthset_index};
             end
 
+            if isempty(res_tbl); return; end
+
             color_light = color + ((1.0 - color) .* 0.5);
 
             if isempty(existing_fig)
@@ -921,6 +924,7 @@ classdef ImageResults
                 if isempty(obj.res_deepblink); return; end
                 res_tbl = obj.res_deepblink{truthset_index};
             end
+            if isempty(res_tbl); return; end
 
             color_dark = max(color - ((1.0 - color) .* 0.5),[0,0,0]);
 
@@ -959,6 +963,54 @@ classdef ImageResults
         
         function [obj, success] = updateCallsetTruthsetCompares(obj)
             %TODO
+        end
+
+        function obj = clearResultsForTool(obj, tool_code)
+            if isempty(tool_code); return; end
+            if strcmp(tool_code, 'homebrew')
+                obj.threshold_value_hb = NaN;
+                obj.threshold_index_hb = NaN;
+                obj.callset_homebrew = [];
+                tscount = size(obj.res_homebrew,2);
+                for i = 1:tscount
+                    obj.res_homebrew{i} = [];
+                end
+                obj.threshold_results = [];
+            elseif strcmp(tool_code, 'bigfish')
+                obj.threshold_value_bf = NaN;
+                obj.threshold_index_bf = NaN;
+                obj.callset_bigfish = [];
+                tscount = size(obj.res_bigfish,2);
+                for i = 1:tscount
+                    obj.res_bigfish{i} = [];
+                end
+                obj.zmin_bf = 1;
+                obj.zmax_bf = 1;
+            elseif strcmp(tool_code, 'bigfish_nor')
+                obj.threshold_value_bfnr = NaN;
+                obj.threshold_index_bfnr = NaN;
+                obj.callset_bigfish_nr = [];
+                tscount = size(obj.res_bigfish_nr,2);
+                for i = 1:tscount
+                    obj.res_bigfish_nr{i} = [];
+                end
+                obj.zmin_bfnr = 1;
+                obj.zmax_bfnr = 1;
+            elseif strcmp(tool_code, 'rsfish')
+                obj.threshold_value_rs = NaN;
+                obj.threshold_index_rs = NaN;
+                obj.callset_rsfish = [];
+                tscount = size(obj.res_rsfish,2);
+                for i = 1:tscount
+                    obj.res_rsfish{i} = [];
+                end
+            elseif strcmp(tool_code, 'deepblink')
+                obj.callset_deepblink = [];
+                tscount = size(obj.res_deepblink,2);
+                for i = 1:tscount
+                    obj.res_deepblink{i} = [];
+                end
+            end
         end
         
     end

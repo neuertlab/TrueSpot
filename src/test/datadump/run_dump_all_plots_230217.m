@@ -14,8 +14,8 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1;
-END_INDEX = 38;
+START_INDEX = 1018;
+END_INDEX = 1024;
 
 DUMP_SPOTCOUNTS = true;
 DUMP_FSCORES = true;
