@@ -207,6 +207,11 @@ for r = 1:rec_count
         end
 
         fprintf(script_bfnr, ' --norescale');
+        
+        if RUN_QUANT
+            fprintf(script_bfnr, ' --gaussfit');
+        end
+
         fprintf(script_bfnr, '\ndeactivate\n\n');
         fprintf(script_bfnr, 'module load %s\n', MODULE_NAME);
         fprintf(script_bfnr, 'cd %s\n', MATLAB_DIR);
@@ -260,6 +265,10 @@ for r = 1:rec_count
             fprintf(script_bfrs, ' --zkeep 0.8');
         end
 
+        if RUN_QUANT
+            fprintf(script_bfnr, ' --gaussfit');
+        end
+
         fprintf(script_bfrs, '\ndeactivate\n\n');
         fprintf(script_bfrs, 'module load %s\n', MODULE_NAME);
         fprintf(script_bfrs, 'cd %s\n', MATLAB_DIR);
@@ -292,9 +301,15 @@ for r = 1:rec_count
         
         csegdir = getTableValue(image_table, r, 'CELLSEG_DIR');
         csegsfx = getTableValue(image_table, r, 'CELLSEG_SFX');
-        printMatArg(script_qt, 'cellsegdir', [ClusterWorkDir csegdir], true);
-        printMatArg(script_qt, 'cellsegname', csegsfx, true);
-        
+
+        %If there is no cellseg data, be sure to use the nocells arg
+        if strcmp(csegdir, '.') | strcmp(csegsfx, '.')
+            printMatFlagArg(script_qt, 'nocells', true);
+        else
+            printMatArg(script_qt, 'cellsegdir', [ClusterWorkDir csegdir], true);
+            printMatArg(script_qt, 'cellsegname', csegsfx, true);
+        end
+
         if QUANT_FIXED_TH > 0
             printMatArg(script_qt, 'mthresh', num2str(QUANT_FIXED_TH), true);
         end
