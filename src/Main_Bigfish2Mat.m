@@ -5,6 +5,9 @@ function Main_Bigfish2Mat(input_dir, output_path)
     addpath('./core');
     addpath('./test');
     
+    versionStr = "2023.03.27.01";
+    fprintf("Main_Bigfish2Mat | Version %s\n", versionStr);
+    
 % ========================== Read Summary File ==========================
     fprintf("Parsing Big-FISH run summary...\n");
     summary_file_path = [input_dir filesep 'summary.txt'];
@@ -16,6 +19,22 @@ function Main_Bigfish2Mat(input_dir, output_path)
 	fprintf("BF Threshold: %d\n", bfthresh);
     
 % ========================== Import CSVs ==========================
+
+    %Check if import needed...
+    filepath = [output_path '_coordTable.mat'];
+    fprintf("Checking for %s ...\n", filepath);
+    if isfile(filepath)
+        finfo = who('-file', filepath);
+        if ~isempty(find(ismember(finfo, 'coord_table'),1))
+            load(filepath, 'coord_table');
+            if ~isempty(coord_table)
+                ct_count = size(coord_table,1);
+                fprintf("Coord table contains entries for %d threshold values. No import needed!\n", ct_count);
+                clear coord_table;
+                return;
+            end
+        end
+    end
 
     fprintf("Importing Big-FISH output...\n");
 	[~, ~] = BigfishCompare.importBigFishCsvs(input_dir, output_path, zmin);

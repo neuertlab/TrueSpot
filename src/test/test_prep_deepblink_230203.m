@@ -32,8 +32,9 @@ HRS_PER_IMAGE = 4;
 MIN_PROB = 0.01;
 
 DO_IMG_SPLIT = false;
+OVERWRITE = false;
 
-OutDirTail = '/simvar';
+OutDirTail = '/mESC4d';
 ModelName = 'smfish';
 
 NewTifDir = ['/img' OutDirTail];
@@ -43,7 +44,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'simvar_';
+GroupPrefix = 'mESC4d_';
 GroupSuffix = [];
 
 % ========================== Do things ==========================
@@ -115,12 +116,13 @@ for r = 1:rec_count
     fprintf(my_script, 'echo $(date +''%%Y/%%m/%%d %%H:%%M:%%S:%%3N'')\n');
     fprintf(my_script, 'deactivate\n\n');
     
+    dboutstem = [dboutdir '/DeepBlink_' iname];
     fprintf(my_script, 'module load %s\n', MODULE_NAME);
     fprintf(my_script, 'cd %s\n', MATLAB_DIR);
 	fprintf(my_script, 'matlab -nodisplay -nosplash -logfile "%s_mat.log" -r "cd %s; ', [dboutdir '/dbimport'], MATLAB_DIR);
 	fprintf(my_script, '%s(', MatlabImportFunc);
     fprintf(my_script, '''%s''', [dboutdir '/' ogtifname '.csv']);
-    fprintf(my_script, ', ''%s''); quit;"\n', [dboutdir '/DeepBlink_' iname]);
+    fprintf(my_script, ', ''%s''); quit;"\n', dboutstem);
     fprintf(my_script, 'module unload\n');
     
     fclose(my_script);
@@ -132,7 +134,13 @@ for r = 1:rec_count
     fprintf(master_script, '\tfi\n');
     fprintf(master_script, '\tchmod 750 ${SCRIPTDIR}/%s\n', [iname '_deepblink.sh']);
     
-    fprintf(master_script, '\tsbatch');
+    if ~OVERWRITE
+        fprintf(master_script, '\tif [ ! -s "%s" ]; then\n', [dboutstem '_coordTable.mat']);
+        fprintf(master_script, '\t\tsbatch');
+    else
+        fprintf(master_script, '\tsbatch');
+    end
+    
     fprintf(master_script, ' --job-name="%s"', ['DeepBlink_' iname]);
     if DETECT_THREADS > 1
         fprintf(master_script, ' --cpus-per-task=%d', DETECT_THREADS);
@@ -146,6 +154,12 @@ for r = 1:rec_count
     fprintf(master_script, ' --error="%s"', [dboutdir '/deepblink_slurm.err']);
     fprintf(master_script, ' --output="%s"', [dboutdir '/deepblink_slurm.out']);
     fprintf(master_script, ' "${SCRIPTDIR}/%s"\n', [iname '_deepblink.sh']);
+    
+    if ~OVERWRITE
+        fprintf(master_script, '\telse\n');
+        fprintf(script_master, '\t\techo -e "DeepBlink run for %s found! Not resubmitting..."\n', iname);
+        fprintf(master_script, '\tfi\n');
+    end
     
     fprintf(master_script, 'fi\n');
 end

@@ -1,23 +1,23 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-BaseDir = 'D:\usr\bghos\labdat\imgproc';
+BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
-ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 addpath('./core');
 addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 39;
-END_INDEX = 68;
+START_INDEX = 65;
+END_INDEX = 66;
 
-TOOL_CODE = 'bigfish_nor';
+TOOL_CODE = 'homebrew';
 
 % ========================== Other paths ==========================
 
@@ -66,9 +66,8 @@ for r = START_INDEX:END_INDEX
     fprintf('> Now processing %s (%d of %d)...\n', myname, r, entry_count);
 
     image_analyses(r).analysis = image_analyses(r).analysis.clearResultsForTool(TOOL_CODE);
-
-    save(DataFilePath, 'image_analyses');
 end
+save(DataFilePath, 'image_analyses');
 
 % ========================== Helper functions ==========================
 

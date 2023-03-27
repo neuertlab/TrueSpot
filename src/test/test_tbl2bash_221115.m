@@ -38,20 +38,21 @@ BF_SOBJSZ = 10;
 BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = false;
-RUN_BFNR = true;
-RUN_BFRS = true;
+RUN_HB = true;
+RUN_BFNR = false;
+RUN_BFRS = false;
 RUN_QUANT = false;
+OVERWRITE = false;
 
 MODULE_NAME = 'MATLAB/2018b';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'rsfish_';
+GroupPrefix = 'simvarmass_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');
@@ -332,9 +333,17 @@ for r = 1:rec_count
     fprintf(script_master, 'if [ -s "%s" ]; then\n', [ClusterWorkDir ipath]);
     
     if RUN_HB
-        fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_hb.sh']);
-        fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir hb_outdir]);
-        fprintf(script_master, '\tsbatch');
+        if ~OVERWRITE
+            fprintf(script_master, '\tif [ ! -s "%s" ]; then\n', [ClusterWorkDir hb_outdir '/' iname '_all_3d_coordTable.mat']);
+            fprintf(script_master, '\t\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_hb.sh']);
+            fprintf(script_master, '\t\tmkdir -p "%s"\n', [ClusterWorkDir hb_outdir]);
+            fprintf(script_master, '\t\tsbatch');
+        else
+            fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_hb.sh']);
+            fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir hb_outdir]);
+            fprintf(script_master, '\tsbatch');
+        end
+        
         fprintf(script_master, ' --job-name="%s"', ['SpotDetect_' iname]);
         if DETECT_THREADS > 1
             fprintf(script_master, ' --cpus-per-task=%d', DETECT_THREADS);
@@ -348,11 +357,25 @@ for r = 1:rec_count
         fprintf(script_master, ' --error="%s"', [ClusterWorkDir hb_outstem '_slurm.err']);
         fprintf(script_master, ' --output="%s"', [ClusterWorkDir hb_outstem '_slurm.out']);
         fprintf(script_master, ' "${SCRIPTDIR}/%s"\n', [iname '_hb.sh']);
+        
+        if ~OVERWRITE
+            fprintf(script_master, '\telse\n');
+            fprintf(script_master, '\t\techo -e "HB run for %s found! Not resubmitting..."\n', iname);
+            fprintf(script_master, '\tfi\n');
+        end
     end
     if RUN_BFNR
-        fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfnr.sh']);
-        fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir bfoutdir]);
-        fprintf(script_master, '\tsbatch');
+        if ~OVERWRITE
+            fprintf(script_master, '\tif [ ! -s "%s" ]; then\n', [ClusterWorkDir bfstem '_coordTable.mat']);
+            fprintf(script_master, '\t\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfnr.sh']);
+            fprintf(script_master, '\t\tmkdir -p "%s"\n', [ClusterWorkDir bfoutdir]);
+            fprintf(script_master, '\t\tsbatch');
+        else
+            fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfnr.sh']);
+            fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir bfoutdir]);
+            fprintf(script_master, '\tsbatch');
+        end
+        
         fprintf(script_master, ' --job-name="%s"', ['Bigfish_' iname]);
         fprintf(script_master, ' --cpus-per-task=4');
         fprintf(script_master, ' --time=%d:00:00', BF_SERIAL_HR);
@@ -360,11 +383,25 @@ for r = 1:rec_count
         fprintf(script_master, ' --error="%s"', [ClusterWorkDir bfstem '_slurm.err']);
         fprintf(script_master, ' --output="%s"', [ClusterWorkDir bfstem '_slurm.out']);
         fprintf(script_master, ' "${SCRIPTDIR}/%s"\n', [iname '_bfnr.sh']);
+        
+        if ~OVERWRITE
+            fprintf(script_master, '\telse\n');
+            fprintf(script_master, '\t\techo -e "BFNR run for %s found! Not resubmitting..."\n', iname);
+            fprintf(script_master, '\tfi\n');
+        end
     end
     if RUN_BFRS
-        fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfrs.sh']);
-        fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir bfrs_outdir]);
-        fprintf(script_master, '\tsbatch');
+        if ~OVERWRITE
+            fprintf(script_master, '\tif [ ! -s "%s" ]; then\n', [ClusterWorkDir bfrs_stem '_coordTable.mat']);
+            fprintf(script_master, '\t\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfrs.sh']);
+            fprintf(script_master, '\t\tmkdir -p "%s"\n', [ClusterWorkDir bfrs_outdir]);
+            fprintf(script_master, '\t\tsbatch');
+        else
+            fprintf(script_master, '\tchmod 770 "${SCRIPTDIR}/%s"\n', [iname '_bfrs.sh']);
+            fprintf(script_master, '\tmkdir -p "%s"\n', [ClusterWorkDir bfrs_outdir]);
+            fprintf(script_master, '\tsbatch');
+        end
+        
         fprintf(script_master, ' --job-name="%s"', ['BigfishRS_' iname]);
         fprintf(script_master, ' --cpus-per-task=4');
         fprintf(script_master, ' --time=%d:00:00', BF_SERIAL_HR);
@@ -372,6 +409,12 @@ for r = 1:rec_count
         fprintf(script_master, ' --error="%s"', [ClusterWorkDir bfrs_stem '_slurm.err']);
         fprintf(script_master, ' --output="%s"', [ClusterWorkDir bfrs_stem '_slurm.out']);
         fprintf(script_master, ' "${SCRIPTDIR}/%s"\n', [iname '_bfrs.sh']);
+        
+        if ~OVERWRITE
+            fprintf(script_master, '\telse\n');
+            fprintf(script_master, '\t\techo -e "BFRS run for %s found! Not resubmitting..."\n', iname);
+            fprintf(script_master, '\tfi\n');
+        end
     end
 
     fprintf(script_master, 'fi\n\n');

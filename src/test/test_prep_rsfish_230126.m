@@ -15,10 +15,12 @@ ClusterWorkDir = '/scratch/hospelb/imgproc';
 ClusterSlurmDir = '/scratch/hospelb/imgproc/slurm/script';
 ClusterScriptsDir = '/scratch/hospelb/scripts';
 ClusterRsFishPath = '/home/hospelb/Git/RS-FISH/rs-fish';
+ScriptAdjJarPath = [ClusterScriptsDir '/rsfish_scriptadj.jar'];
 
 MatlabImportFunc = 'Main_RSFish2Mat';
 
 MODULE_NAME = 'MATLAB/2018b';
+JAVA_MODULE = 'Java/13.0.2';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
 
 % ========================== Constants ==========================
@@ -27,6 +29,8 @@ addpath('./core');
 DETECT_THREADS = 8;
 RAM_PER_CORE = 8;
 HRS_PER_IMAGE = 12;
+
+OVERWRITE = false;
 
 USE_ANISOTROPY = false;
 
@@ -47,11 +51,11 @@ DO_IMG_SPLIT = false;
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/munsky_lab';
+RSDirTail = '/mESC4d';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'ROI';
+GroupPrefix = 'mESC4d_';
 GroupSuffix = [];
 
 % ========================== Do things ==========================
@@ -60,7 +64,9 @@ master_script_path = [ScriptDir filesep 'rs_runall.sh'];
 master_script = fopen(master_script_path, 'w');
 
 fprintf(master_script, '#!/bin/bash\n\n');
+fprintf(master_script, 'module load %s\n', JAVA_MODULE);
 fprintf(master_script, 'SCRIPTDIR=%s\n', ClusterSlurmDir);
+fprintf(master_script, 'ADJJARPATH=%s\n\n', ScriptAdjJarPath);
 
 rec_count = size(image_table,1);
 for r = 1:rec_count
@@ -146,12 +152,13 @@ for r = 1:rec_count
     fprintf(my_script, 'done\n\n');
     
     %Convert to mat
+    rsoutstem = [rsoutdir '/RSFISH_' iname];
     fprintf(my_script, 'module load %s\n', MODULE_NAME);
     fprintf(my_script, 'cd %s\n', MATLAB_DIR);
 	fprintf(my_script, 'matlab -nodisplay -nosplash -logfile "%s_mat.log" -r "cd %s; ', [rsoutdir '/rsfish'], MATLAB_DIR);
 	fprintf(my_script, '%s(', MatlabImportFunc);
     fprintf(my_script, '''%s''', rsoutdir);
-    fprintf(my_script, ', ''%s''); quit;"\n', [rsoutdir '/RSFISH_' iname]);
+    fprintf(my_script, ', ''%s''); quit;"\n', rsoutstem);
     fprintf(my_script, 'module unload\n');
     
     fclose(my_script);
@@ -163,7 +170,16 @@ for r = 1:rec_count
     fprintf(master_script, '\tfi\n');
     fprintf(master_script, '\tchmod 770 ${SCRIPTDIR}/%s\n', [iname '_rsfish.sh']);
     
-    fprintf(master_script, '\tsbatch');
+    if ~OVERWRITE
+        fprintf(master_script, '\tif [ ! -s "%s" ]; then\n', [rsoutstem '_coordTable.mat']);
+        
+        %Check if we need to adjust the start point...
+        fprintf(master_script, '\t\tjava -jar "${ADJJARPATH}" "%s" "%s"\n', rsoutdir, ['${SCRIPTDIR}/' iname '_rsfish.sh']);
+        fprintf(master_script, '\t\tsbatch');
+    else
+        fprintf(master_script, '\tsbatch');
+    end
+    
     fprintf(master_script, ' --job-name="%s"', ['RSFISH_' iname]);
     if DETECT_THREADS > 1
         fprintf(master_script, ' --cpus-per-task=%d', DETECT_THREADS);
@@ -177,6 +193,12 @@ for r = 1:rec_count
     fprintf(master_script, ' --error="%s"', [rsoutdir '/rsfish_slurm.err']);
     fprintf(master_script, ' --output="%s"', [rsoutdir '/rsfish_slurm.out']);
     fprintf(master_script, ' "${SCRIPTDIR}/%s"\n', [iname '_rsfish.sh']);
+    
+    if ~OVERWRITE
+        fprintf(master_script, '\telse\n');
+        fprintf(script_master, '\t\techo -e "RS-FISH run for %s found! Not resubmitting..."\n', iname);
+        fprintf(master_script, '\tfi\n');
+    end
     
     fprintf(master_script, 'fi\n');
 end
