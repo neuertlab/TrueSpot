@@ -34,17 +34,17 @@ MIN_PROB = 0.01;
 DO_IMG_SPLIT = false;
 OVERWRITE = false;
 
-OutDirTail = '/mESC4d';
+OutDirTail = '/simvarmass';
 ModelName = 'smfish';
 
 NewTifDir = ['/img' OutDirTail];
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'mESC4d_';
+GroupPrefix = 'simvarmass_';
 GroupSuffix = [];
 
 % ========================== Do things ==========================
@@ -157,7 +157,7 @@ for r = 1:rec_count
     
     if ~OVERWRITE
         fprintf(master_script, '\telse\n');
-        fprintf(script_master, '\t\techo -e "DeepBlink run for %s found! Not resubmitting..."\n', iname);
+        fprintf(master_script, '\t\techo -e "DeepBlink run for %s found! Not resubmitting..."\n', iname);
         fprintf(master_script, '\tfi\n');
     end
     

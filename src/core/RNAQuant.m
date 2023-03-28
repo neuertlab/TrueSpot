@@ -320,7 +320,7 @@ classdef RNAQuant
                         
             for i = 1:c_height
                 yy = y_mid-i;
-                if (yy > c_height) | ~this_cell.mask_nuc(yy, x_mid, cz)
+                if (yy < 1) | ~this_cell.mask_nuc(yy, x_mid, cz)
                     pyloc = abs(i);
                     break;
                 end

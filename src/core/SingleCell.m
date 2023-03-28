@@ -103,7 +103,7 @@ classdef SingleCell
                 
                 if nucmask_3d
                     cell_cyl = obj.get3DCellMask();
-                    obj.mask_nuc = logical(nuc_mask(Y0:Y1,X0:X1,1:Z) .* cell_cyl);
+                    obj.mask_nuc = logical(nuc_mask(Y0:Y1,X0:X1,1:Z) .* uint16(cell_cyl));
                     obj.mask_cyto = cell_cyl & ~obj.mask_nuc;
                 else
                     if ~isempty(nuc_mask)
