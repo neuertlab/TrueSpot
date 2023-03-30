@@ -14,10 +14,10 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 65;
-END_INDEX = 66;
+START_INDEX = 1017;
+END_INDEX = 1017;
 
-TOOL_CODE = 'homebrew';
+TOOL_CODE = 'all';
 
 % ========================== Other paths ==========================
 

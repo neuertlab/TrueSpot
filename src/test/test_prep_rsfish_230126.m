@@ -43,19 +43,19 @@ while ((START_I * TH_NTR) < MIN_TH)
     START_I = START_I + 1;
 end
 
-START_I = 7; %Override
+START_I = 1; %Override
 
 DO_IMG_SPLIT = false;
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/mESC4d';
+RSDirTail = '/simvarmass';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'mESC4d_';
+GroupPrefix = 'simvarmass_';
 GroupSuffix = [];
 
 % ========================== Do things ==========================
@@ -196,7 +196,7 @@ for r = 1:rec_count
     
     if ~OVERWRITE
         fprintf(master_script, '\telse\n');
-        fprintf(script_master, '\t\techo -e "RS-FISH run for %s found! Not resubmitting..."\n', iname);
+        fprintf(master_script, '\t\techo -e "RS-FISH run for %s found! Not resubmitting..."\n', iname);
         fprintf(master_script, '\tfi\n');
     end
     

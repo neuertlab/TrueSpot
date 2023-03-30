@@ -14,8 +14,8 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 948;
-END_INDEX = 961;
+START_INDEX = 39;
+END_INDEX = 41;
 
 DO_HOMEBREW = false;
 DO_BIGFISH = true;
@@ -101,7 +101,26 @@ for r = START_INDEX:END_INDEX
             spotanno = RNA_Threshold_SpotSelector.openSelector(bf_stem, true);
             spotanno.toggle_singleSlice = true;
             spotanno.toggle_allz = false;
-            spotanno = spotanno.refSnapToAutoSpots();
+            
+            %See if need to adjust the stop point...
+            stopat = 20;
+            [bfdir, ~, ~] = fileparts(bf_stem);
+            [~, ~, bfthresh] = BigfishCompare.readSummaryTxt([bfdir filesep 'summary.txt']);
+            bf_st_path = [bf_stem 'spotTable.mat'];
+            if isfile(bf_st_path)
+                load(bf_st_path, 'spot_table');
+                th_idx = RNAUtils.findThresholdIndex(bfthresh, transpose(spot_table(:,1)));
+                clear spot_table;
+            else
+                %Assume 1 -> 10
+                th_idx = bfthresh - 9;
+            end
+            if th_idx <= 20
+                stopat = th_idx - 1;
+                if stopat < 1; stopat = 1; end
+            end
+            
+            spotanno = spotanno.refSnapToAutoSpots(stopat);
             spotanno.saveMe();
         end
         [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, true, TS_IDX);
@@ -119,7 +138,25 @@ for r = START_INDEX:END_INDEX
             spotanno = RNA_Threshold_SpotSelector.openSelector(bf_stem, true);
             spotanno.toggle_singleSlice = true;
             spotanno.toggle_allz = false;
-            spotanno = spotanno.refSnapToAutoSpots();
+            
+            stopat = 20;
+            [bfdir, ~, ~] = fileparts(bf_stem);
+            [~, ~, bfthresh] = BigfishCompare.readSummaryTxt([bfdir filesep 'summary.txt']);
+            bf_st_path = [bf_stem 'spotTable.mat'];
+            if isfile(bf_st_path)
+                load(bf_st_path, 'spot_table');
+                th_idx = RNAUtils.findThresholdIndex(bfthresh, transpose(spot_table(:,1)));
+                clear spot_table;
+            else
+                %Assume 1 -> 10
+                th_idx = bfthresh - 9;
+            end
+            if th_idx <= 20
+                stopat = th_idx - 1;
+                if stopat < 1; stopat = 1; end
+            end
+            
+            spotanno = spotanno.refSnapToAutoSpots(stopat);
             spotanno.saveMe();
         end
         [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, false, TS_IDX);
@@ -217,7 +254,22 @@ for r = START_INDEX:END_INDEX
                 spotanno = RNA_Threshold_SpotSelector.openSelector(hb_stem, true);
                 spotanno.toggle_singleSlice = true;
                 spotanno.toggle_allz = false;
-                spotanno = spotanno.refSnapToAutoSpots();
+                
+                %See if need to adjust the stop point...
+                stopat = 20;
+                spotsrun = RNASpotsRun.loadFrom(hb_stem);
+                if ~isempty(spotsrun)
+                    if spotsrun.intensity_threshold > 0
+                        th_idx = RNAUtils.findThresholdIndex(spotsrun.intensity_threshold, transpose(spotanno.threshold_table(:,1)));
+                        if th_idx <= 20
+                            stopat = th_idx - 1;
+                            if stopat < 1; stopat = 1; end
+                        end
+                    end
+                    clear spotsrun;
+                end
+                
+                spotanno = spotanno.refSnapToAutoSpots(stopat);
                 spotanno.saveMe();
             end
         end

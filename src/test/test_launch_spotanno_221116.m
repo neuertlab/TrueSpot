@@ -6,8 +6,8 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'histonesc_D2I3C_H3K36me3_Tsix';
-RefMode = true;
+ImgName = 'sctc_E1R1_55m_I4_CTT1';
+RefMode = false;
 NewAnno = false;
 JustLoad = false;
 
@@ -63,6 +63,11 @@ selector.crosshair_color = [1.0 1.0 0.0];
 if RefMode
     selector.launchRefSelectGUI();
 else
+    if spotsrun.intensity_threshold > 0
+        th_idx = RNAUtils.findThresholdIndex(spotsrun.intensity_threshold, transpose(selector.threshold_table(:,1)));
+        selector.threshold_idx = th_idx;
+    end
+    
     selector.launchGUI();
 end
 

@@ -9,8 +9,8 @@ ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
 
 % ========================== Constants ==========================
 
-START_INDEX = 39;
-END_INDEX = 68;
+START_INDEX = 947;
+END_INDEX = 1024;
 
 % ========================== Load csv Table ==========================
 

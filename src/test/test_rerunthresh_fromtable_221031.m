@@ -13,17 +13,20 @@ DETECT_THREADS = 1;
 
 % ========================== Load csv Table ==========================
 
+csv_name = 'test_images.csv';
+%csv_name = 'test_images_simvarmass.csv';
+
 AllFigDir = [ImgProcDir filesep 'figures' filesep 'curves'];
 
-InputTablePath = [ImgDir filesep 'test_images.csv'];
+InputTablePath = [ImgDir filesep csv_name];
 imgtbl = testutil_opentable(InputTablePath);
 
 %For one image
 SingleImgName = [];
 %SingleImgName = 'mESC4d_Tsix-AF594';
 
-START_IDX = 990;
-END_IDX = 1016;
+START_IDX = 54;
+END_IDX = 64;
 
 % ========================== Iterate through table entries ==========================
 entry_count = size(imgtbl,1);

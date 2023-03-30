@@ -71,6 +71,8 @@ classdef BigfishCompare
         end
 
         function annoobj = loadSpotSelector(stem, ref_stem, bf_spot_table, bf_coord_table, overwrite)
+            
+            %TODO UPDATE SNAP STOPAT to make sure it is not above threshold
            
             %Checks if needs to make a new one or load existing one.
             %Needs to be able to check if ref has been updated since last

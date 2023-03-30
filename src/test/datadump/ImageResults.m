@@ -189,6 +189,7 @@ classdef ImageResults
                 end
                 spotanno.f_scores_dirty = true;
                 spotanno = spotanno.updateFTable();
+                spotanno.saveMe();
                 res_tbl(:,5) = spotanno.f_scores(:,1);
                 res_tbl(:,6) = spotanno.f_scores(:,2);
                 res_tbl(:,7) = spotanno.f_scores(:,3);
@@ -967,7 +968,7 @@ classdef ImageResults
 
         function obj = clearResultsForTool(obj, tool_code)
             if isempty(tool_code); return; end
-            if strcmp(tool_code, 'homebrew')
+            if strcmp(tool_code, 'homebrew') | strcmp(tool_code, 'all')
                 obj.threshold_value_hb = NaN;
                 obj.threshold_index_hb = NaN;
                 obj.callset_homebrew = [];
@@ -976,7 +977,8 @@ classdef ImageResults
                     obj.res_homebrew{i} = [];
                 end
                 obj.threshold_results = [];
-            elseif strcmp(tool_code, 'bigfish')
+            end
+            if strcmp(tool_code, 'bigfish') | strcmp(tool_code, 'all')
                 obj.threshold_value_bf = NaN;
                 obj.threshold_index_bf = NaN;
                 obj.callset_bigfish = [];
@@ -986,7 +988,8 @@ classdef ImageResults
                 end
                 obj.zmin_bf = 1;
                 obj.zmax_bf = 1;
-            elseif strcmp(tool_code, 'bigfish_nor')
+            end
+            if strcmp(tool_code, 'bigfish_nor') | strcmp(tool_code, 'all')
                 obj.threshold_value_bfnr = NaN;
                 obj.threshold_index_bfnr = NaN;
                 obj.callset_bigfish_nr = [];
@@ -996,7 +999,8 @@ classdef ImageResults
                 end
                 obj.zmin_bfnr = 1;
                 obj.zmax_bfnr = 1;
-            elseif strcmp(tool_code, 'rsfish')
+            end
+            if strcmp(tool_code, 'rsfish') | strcmp(tool_code, 'all')
                 obj.threshold_value_rs = NaN;
                 obj.threshold_index_rs = NaN;
                 obj.callset_rsfish = [];
@@ -1004,7 +1008,8 @@ classdef ImageResults
                 for i = 1:tscount
                     obj.res_rsfish{i} = [];
                 end
-            elseif strcmp(tool_code, 'deepblink')
+            end
+            if strcmp(tool_code, 'deepblink') | strcmp(tool_code, 'all')
                 obj.callset_deepblink = [];
                 tscount = size(obj.res_deepblink,2);
                 for i = 1:tscount
