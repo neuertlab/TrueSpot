@@ -1,8 +1,8 @@
 %Master functions for running the RNA thresholding spot detection
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler
-%Version 2.2.0
-%Updated January 23, 2023
+%Version 2.3.0
+%Updated March 31, 2023
 
 %Modified from ABs_Threshold3Dim
 
@@ -27,6 +27,9 @@
 %       dynamic range.
 %       Also updated so filtered image remains as double instead of uint16
 %       through filtering, since data were being lost for dim or noisy images.
+%   2.3.0 | 23.03.31
+%       Added auto-rescaling if raw image doesn't have sufficient
+%       dynamic range.
 
 %%
 
@@ -61,6 +64,16 @@ classdef RNA_Threshold_SpotDetector
             IMG3D = uint16(img_channel);
             if (dead_pix_detect)
                 IMG3D = RNA_Threshold_Common.cleanDeadPixels(IMG3D, dead_pix_path, true);
+            end
+            
+            %Actually, let's rescale the *raw* image.
+            irmin = min(IMG3D, [], 'all');
+            irmax = max(IMG3D, [], 'all');
+            irrng = irmax - irmin;
+            if irrng < 256
+                fprintf("WARNING: Raw image has low dynamic range. Rescale triggered!\n");
+                %Linear rescale to 0-511
+                IMG3D = ((IMG3D - irmin) .* 512) ./ irrng;
             end
 
             IMG_filtered = RNA_Threshold_Common.applyGaussianFilter(IMG3D, gaussian_rad, 2);

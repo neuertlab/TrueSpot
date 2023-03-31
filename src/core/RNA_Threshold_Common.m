@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.5.3
-%Updated February 15, 2023
+%Version 2.6.0
+%Updated March 31, 2023
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -67,6 +67,8 @@
 %       threshold values are tested or the curve drops to zero too quickly.
 %       Should auto-reroute to use original spot count and diff curves if
 %       window score curves aren't really appropriate for a case.
+%   2.6.0 | 23.03.31
+%       Added suggestScanThreshold
 
 %%
 %
@@ -2944,42 +2946,49 @@ classdef RNA_Threshold_Common
         end
         
         %%
-        function th_min = suggestMinScanThreshold(img_filter, bkg_mask)
-            if nargin < 2
-                bkg_mask = [];
+        function [th_min, th_max] = suggestScanThreshold(img_filter)
+            th_min = 0;
+            th_max = 0;
+            if isempty(img_filter); return; end
+            
+            th_min = 10;
+            th_max = 500;
+            
+            %Get some basic stats
+            img_filter = double(img_filter);
+            imax = max(img_filter, [], 'all');
+            p99 = prctile(img_filter,99,'all');
+            top1 = find(img_filter >= p99);
+            p99_99 = prctile(img_filter(top1),99,'all');
+            
+            %If image is generally kinda dim, lower the th_min
+            if p99_99 < 150
+                th_min = 1;
             end
             
-            img_noz = double(img_filter);
-            img_noz(img_noz == 0) = NaN;
-            if ~isempty(bkg_mask)
-                Z = size(img_noz, 3);
-                for z = 1:Z
-                    img_noz(:,:,z) = immultiply(img_noz(:,:,z), ~bkg_mask);
+            %Take the ratio of the 99th of 99th to imax
+            iratio = p99_99 / imax;
+            
+            %This is somewhat arbitrary, but it seems to help?
+            %The idea is even though there 999/1000 pixels fall below
+            %   p99_99, if that top 0.1% is spread out over a wide range,
+            %   discerning between the values up here can help either bring
+            %   the plot down or give a longer evened out tail, helping the
+            %   thresholder.
+            if iratio < 0.10
+                %Use 1/10th of the max (or 500)
+                tenthmax = ceil(imax/10) + 10;
+                if tenthmax > 500
+                    th_max = tenthmax;
                 end
-                th_min = floor(mean(img_noz,'all', 'omitnan'));
-                return;
+            else
+                %Use p99_99 (or 500)
+                t99 = p99_99 + 10;
+                if t99 > 500
+                    th_max = t99;
+                end
             end
             
-            img_mean = mean(img_noz,'all', 'omitnan');
-            img_std = std(img_noz,0,'all', 'omitnan');
-            img_noz(img_noz >= (img_mean+img_std)) = NaN;
-            th_min = max(floor(mean(img_noz,'all', 'omitnan')),10);
-        end
-        
-        %%
-        function th_max = suggestMaxScanThreshold(img_filter, bkg_lvl)
-            if nargin < 2
-                bkg_lvl = 20;
-            end
-            
-            img_noz = double(img_filter);
-            img_noz(img_noz < bkg_lvl) = NaN;
-            
-            img_mean = mean(img_noz,'all', 'omitnan');
-            img_std = std(img_noz,0,'all', 'omitnan');
-            img_max = max(img_noz, [], 'all', 'omitnan');
-            
-            th_max = max(round(img_mean + (10*img_std)),round(img_max/20));
         end
         
         %%

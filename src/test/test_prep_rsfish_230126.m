@@ -11,9 +11,9 @@ ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
-ClusterWorkDir = '/scratch/hospelb/imgproc';
-ClusterSlurmDir = '/scratch/hospelb/imgproc/slurm/script';
-ClusterScriptsDir = '/scratch/hospelb/scripts';
+ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
+ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
+ClusterScriptsDir = '/nobackup/p_neuert_lab/hospelb/scripts';
 ClusterRsFishPath = '/home/hospelb/Git/RS-FISH/rs-fish';
 ScriptAdjJarPath = [ClusterScriptsDir '/rsfish_scriptadj.jar'];
 

@@ -7,10 +7,12 @@ ImgDir = 'C:\Users\hospelb\labdata\imgproc';
 
 ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
 
+addpath('./core');
+addpath('./test');
 % ========================== Constants ==========================
 
-START_INDEX = 947;
-END_INDEX = 1024;
+START_INDEX = 73;
+END_INDEX = 122;
 
 % ========================== Load csv Table ==========================
 
@@ -74,7 +76,8 @@ for r = START_INDEX:END_INDEX
     imin = min(IMG3D, [], 'all');
     imax = max(IMG3D, [], 'all');
     [hbins, ~] = imhist(IMG3D, imax+1);
-    hbins_x = [0:1:imax];
+    bins_actual = size(hbins,1);
+    hbins_x = [0:1:bins_actual-1];
     hbins_y = log10(hbins);
     iperctl = prctile(IMG3D,[50 75 80 85 90 95 99],'all');
     top1 = find(IMG3D >= iperctl(7));

@@ -159,6 +159,19 @@ if runme
     end
     clear sample_rna_ch;
     
+    %Suggest scan min or max if not set
+    if spotsrun.t_max < 1 | spotsrun.t_min < 1
+        [th_min, th_max] = RNA_Threshold_Common.suggestScanThreshold(img_f);
+        if spotsrun.t_min < 1
+            spotsrun.t_min = th_min; 
+            RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan min auto-set to: %d", spotsrun.t_min), true);
+        end
+        if spotsrun.t_max < 1
+            spotsrun.t_max = th_max; 
+            RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan max auto-set to: %d", spotsrun.t_max), true);
+        end
+    end
+    
     [auto_zt, new_th_min] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, spotsrun.ztrim, limitSaveSize, (debug_lvl > 0), thread_request);
     spotsrun.ztrim_auto = auto_zt;
     spotsrun.t_min = new_th_min;

@@ -16,6 +16,8 @@ matvar = [];
 thread_request = 1;
 limitSaveSize = true;
 use_max_proj = false;
+automaxth_flag = false;
+autominth_flag = false;
 
 lastkey = [];
 for i = 1:nargin
@@ -83,6 +85,16 @@ for i = 1:nargin
         elseif strcmp(lastkey, "maxzproj")
             use_max_proj = true;
             if arg_debug; fprintf("Use Max Z Projection: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "automaxth")
+            rna_spot_run.t_max = 0;
+            automaxth_flag = true;
+            if arg_debug; fprintf("Automatically Determine Scan Max: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "autominth")
+            rna_spot_run.t_min = 0;
+            autominth_flag = true;
+            if arg_debug; fprintf("Automatically Determine Scan Min: On\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "threepiece")
             if arg_debug; fprintf("Three Piece Fit: On\n"); end
@@ -153,11 +165,15 @@ for i = 1:nargin
             rna_spot_run.ctrl_chcount = round(Force2Num(argval));
             if arg_debug; fprintf("Control Channel Count Set: %d\n", rna_spot_run.ctrl_chcount); end
         elseif strcmp(lastkey, "thmin")
-            rna_spot_run.t_min = round(Force2Num(argval));
-            if arg_debug; fprintf("Min Scan Threshold Set: %d\n", rna_spot_run.t_min); end
+            if ~autominth_flag
+                rna_spot_run.t_min = round(Force2Num(argval));
+                if arg_debug; fprintf("Min Scan Threshold Set: %d\n", rna_spot_run.t_min); end
+            end
         elseif strcmp(lastkey, "thmax")
-            rna_spot_run.t_max = round(Force2Num(argval));
-            if arg_debug; fprintf("Max Scan Threshold Set: %d\n", rna_spot_run.t_max); end
+            if ~automaxth_flag
+                rna_spot_run.t_max = round(Force2Num(argval));
+                if arg_debug; fprintf("Max Scan Threshold Set: %d\n", rna_spot_run.t_max); end
+            end
         elseif strcmp(lastkey, "ztrim")
             rna_spot_run.ztrim = round(Force2Num(argval));
             if arg_debug; fprintf("Z Trim Set: %d\n", rna_spot_run.ztrim); end
