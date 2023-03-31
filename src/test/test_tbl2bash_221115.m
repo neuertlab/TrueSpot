@@ -9,10 +9,10 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
 %ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
-ClusterWorkDir = '/scratch/hospelb/imgproc';
-ClusterSlurmDir = '/scratch/hospelb/imgproc/slurm/script';
-ClusterScriptsDir = '/scratch/hospelb/scripts';
-ClusterPyenvDir = '/scratch/hospelb/pyvenv';
+ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
+ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
+ClusterScriptsDir = '/nobackup/p_neuert_lab/hospelb/scripts';
+ClusterPyenvDir = '/nobackup/p_neuert_lab/hospelb/pyvenv';
 
 % ========================== Constants ==========================
 
@@ -30,15 +30,15 @@ DETECT_THREADS_QUANT = 1;
 QUANT_DO_CLOUDS = false;
 QUANT_FIXED_TH = 0;
 
-TH_MIN = 10;
-TH_MAX = 1000;
+TH_MIN = 0;
+TH_MAX = 0;
 TH_MIN_BF = 10;
 Z_TRIM = 0;
 BF_SOBJSZ = 10;
 BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = false;
+RUN_HB = true;
 RUN_BFNR = false;
 RUN_BFRS = false;
 RUN_QUANT = true;
@@ -48,11 +48,12 @@ MODULE_NAME = 'MATLAB/2018b';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'simvarmass_';
+GroupPrefix = 'rsfish_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');
@@ -131,8 +132,16 @@ for r = 1:rec_count
             printMatArg(script_hb, 'chctrtotal', num2str(getTableValue(image_table, r, 'CH_TOTAL')), true);
         end
 
-        printMatArg(script_hb, 'thmin', num2str(TH_MIN), true);
-        printMatArg(script_hb, 'thmax', num2str(TH_MAX), true);
+        if TH_MIN > 0
+            printMatArg(script_hb, 'thmin', num2str(TH_MIN), true);
+        else
+            printMatFlagArg(script_hb, 'autominth', true);
+        end
+        if TH_MAX > 0
+            printMatArg(script_hb, 'thmax', num2str(TH_MAX), true);
+        else
+            printMatFlagArg(script_hb, 'automaxth', true);
+        end
         printMatArg(script_hb, 'ztrim', num2str(Z_TRIM), true);
         printSpecificityArg(script_hb, getTableValue(image_table, r, 'THRESH_SETTING'));
 

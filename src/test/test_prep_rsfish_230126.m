@@ -43,7 +43,7 @@ while ((START_I * TH_NTR) < MIN_TH)
     START_I = START_I + 1;
 end
 
-START_I = 1; %Override
+START_I = 3; %Override
 
 DO_IMG_SPLIT = false;
 

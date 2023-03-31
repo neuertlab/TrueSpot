@@ -14,12 +14,12 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 19;
-END_INDEX = 37;
+START_INDEX = 74;
+END_INDEX = 121;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
-DO_BIGFISHNR = true;
+DO_BIGFISHNR = false;
 DO_RSFISH = false;
 DO_DEEPBLINK = false;
 

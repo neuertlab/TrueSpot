@@ -1,13 +1,15 @@
 %
 %% BASE DIR
 
-ImgProcBaseDir = 'D:\usr\bghos\labdat\imgproc';
+ImgProcBaseDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgProcBaseDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Constants ==========================
 
 addpath('./core');
 
-UseDir = [ImgProcBaseDir filesep 'img' filesep 'simvarmass'];
+group_name = 'simytc';
+UseDir = [ImgProcBaseDir filesep 'img' filesep group_name];
 
 VOX_XY = 65;
 VOX_Z = 200;
@@ -26,11 +28,11 @@ for i = 1:filecount
 
     imgname = replace(fileinfo.name, '.mat', '');
     fprintf('%s\t', imgname);
-    fprintf('%s\t', ['/img/simvarmass/tif/' imgname '.tif']);
+    fprintf('%s\t', ['/img/' group_name '/tif/' imgname '.tif']);
     fprintf('1\t0\t0\t1\t');
-    fprintf('%s\t', ['/data/preprocess/simvarmass/' imgname '/' imgname '_all_3d']);
+    fprintf('%s\t', ['/data/preprocess/' group_name '/' imgname '/' imgname '_all_3d']);
     fprintf('Sim\tSim\tSim\tSim\tSim\t');
-    fprintf('%s\t', ['/data/bigfish/simvarmass/' imgname '/BIGFISH_' imgname]);
+    fprintf('%s\t', ['/data/bigfish/' group_name '/' imgname '/BIGFISH_' imgname]);
     fprintf('5\t.\t.\t.\t');
     fprintf('512\t512\t16\t');
     fprintf('%d\t%d\t%d\t', VOX_XY, VOX_XY, VOX_Z);
