@@ -14,20 +14,20 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 74;
-END_INDEX = 121;
+START_INDEX = 159;
+END_INDEX = 190;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
-DO_BIGFISHNR = false;
-DO_RSFISH = false;
-DO_DEEPBLINK = false;
+DO_BIGFISHNR = true;
+DO_RSFISH = true;
+DO_DEEPBLINK = true;
 
 OVERWRITE_SPOTANNO_RS = true;
 OVERWRITE_SPOTANNO_DB = true;
 FORCE_HB_BF_RESNAP = true; %TODO
 
-IMPORT_TS = false;
+IMPORT_TS = true;
 TS_IDX = 1;
 
 HB_FIXED_TH = 0; %Maybe have a separate script for this?

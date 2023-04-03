@@ -38,9 +38,9 @@ BF_SOBJSZ = 10;
 BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = true;
-RUN_BFNR = false;
-RUN_BFRS = false;
+RUN_HB = false;
+RUN_BFNR = true;
+RUN_BFRS = true;
 RUN_QUANT = true;
 OVERWRITE = false;
 

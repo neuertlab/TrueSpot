@@ -10,8 +10,8 @@
 
 %%
 classdef ImageResults
-    
-    %TODO Update the other importers to use tables instead of SpotCalls
+
+    %TODO Import BigFISH gauss fits
     
     properties
         image_name = '';
@@ -327,6 +327,18 @@ classdef ImageResults
             spot_count = size(th_coords,1);
             callset = ImageResults.initializeSpotCallTable(spot_count);
             callset(:,1:3) = array2table(th_coords(:,1:3));
+            
+            %Import fit table, if present
+            fit_table_path = [bf_dir filesep 'fitspots.csv'];
+            if isfile(fit_table_path)
+                fit_table = csvread(fit_table_path); %z,y,x, 0 based coords?
+                fit_count = size(fit_table,1);
+                for s = 1:fit_count
+                    callset{s,'fit_x'} = fit_table(s,3) + 1;
+                    callset{s,'fit_y'} = fit_table(s,2) + 1;
+                    callset{s,'fit_z'} = fit_table(s,1) + 1;
+                end
+            end
             
             %Start restbl
             T = size(spot_table,1);
