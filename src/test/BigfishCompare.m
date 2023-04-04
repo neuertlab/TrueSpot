@@ -72,7 +72,15 @@ classdef BigfishCompare
 
         function annoobj = loadSpotSelector(stem, ref_stem, bf_spot_table, bf_coord_table, overwrite)
             
-            %TODO UPDATE SNAP STOPAT to make sure it is not above threshold
+            %UPDATE SNAP STOPAT to make sure it is not above threshold
+            snapstop = 20;
+            [bfdir, ~, ~] = fileparts(stem);
+            sumpath = [bfdir filesep 'summary.txt'];
+            if isfile(sumpath)
+                [~, ~, bfthresh] = BigfishCompare.readSummaryTxt(sumpath);
+                thidx = RNAUtils.findThresholdIndex(bfthresh, transpose(bf_spot_table(:,1)));
+                if thidx < snapstop; snapstop = thidx; end
+            end
            
             %Checks if needs to make a new one or load existing one.
             %Needs to be able to check if ref has been updated since last
@@ -98,7 +106,7 @@ classdef BigfishCompare
                         %NEARBY z options!!)
                         annoobj.toggle_singleSlice = true;
                         annoobj.toggle_allz = ~annoobj.toggle_singleSlice;
-                        annoobj = annoobj.refSnapToAutoSpots();
+                        annoobj = annoobj.refSnapToAutoSpots(snapstop);
                         annoobj = annoobj.updateFTable();
                         annoobj.ref_last_modified = datetime;
                     end
@@ -112,7 +120,7 @@ classdef BigfishCompare
 
                     annoobj.toggle_singleSlice = true;
                     annoobj.toggle_allz = ~annoobj.toggle_singleSlice;
-                    annoobj = annoobj.refSnapToAutoSpots();
+                    annoobj = annoobj.refSnapToAutoSpots(snapstop);
                     annoobj = annoobj.updateFTable();
                     annoobj.ref_last_modified = datetime;
                 end
@@ -133,7 +141,7 @@ classdef BigfishCompare
                 annoobj.toggle_del_unsnapped = false;
                 annoobj.toggle_singleSlice = true;
                 annoobj.toggle_allz = ~annoobj.toggle_singleSlice;
-                annoobj = annoobj.refSnapToAutoSpots();
+                annoobj = annoobj.refSnapToAutoSpots(snapstop);
                 annoobj = annoobj.updateFTable();
                 annoobj.ref_last_modified = datetime;
                 

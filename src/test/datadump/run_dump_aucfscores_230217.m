@@ -5,6 +5,8 @@
 %!! UPDATE TO YOUR BASE DIR
 BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 
+addpath('./core');
+
 % ========================== Other paths ==========================
 
 DataFilePath = [BaseDir filesep 'data' filesep 'DataComposite.mat'];

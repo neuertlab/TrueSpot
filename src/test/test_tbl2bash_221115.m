@@ -38,7 +38,7 @@ BF_SOBJSZ = 10;
 BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = false;
+RUN_HB = true;
 RUN_BFNR = true;
 RUN_BFRS = true;
 RUN_QUANT = true;
@@ -48,12 +48,13 @@ MODULE_NAME = 'MATLAB/2018b';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
 
 % ========================== Load csv Table ==========================
+InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
 %InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-InputTablePath = [DataDir filesep 'test_images.csv'];
+%InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'rsfish_';
+GroupPrefix = 'simvarmass_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');

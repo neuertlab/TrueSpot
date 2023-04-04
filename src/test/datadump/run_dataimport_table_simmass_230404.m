@@ -12,19 +12,14 @@ ImgDir = 'C:\Users\hospelb\labdata\imgproc';
 addpath('./core');
 addpath('./test');
 
-%TODO Make a run_dataimport_table_simmass script
-%   Different save files
-%   Also has a field for the sim generation parameters (ie. name, analysis,
-%   simparam)
-
 % ========================== Constants ==========================
 
-START_INDEX = 207;
-END_INDEX = 230;
+START_INDEX = 1;
+END_INDEX = 1000;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
-DO_BIGFISHNR = true;
+DO_BIGFISHNR = false;
 DO_RSFISH = true;
 DO_DEEPBLINK = true;
 
@@ -35,25 +30,28 @@ FORCE_HB_BF_RESNAP = true; %TODO
 IMPORT_TS = true;
 TS_IDX = 1;
 
-HB_FIXED_TH = 0; %Maybe have a separate script for this?
 RS_TH_IVAL = 0.1/250;
 
 % ========================== Other paths ==========================
 
-DataFilePath = [BaseDir filesep 'data' filesep 'DataComposite.mat'];
+DataFileName = 'DataCompositeSimvarMass';
+DataFilePath = [BaseDir filesep 'data' filesep DataFileName '.mat'];
+
+RSDBOutGroupName = 'simvarmass';
 
 % ========================== Load csv Table ==========================
 
+ImputTableName = 'test_images_simvarmass';
 AllFigDir = [ImgProcDir filesep 'figures' filesep 'curves'];
 
-InputTablePath = [BaseDir filesep 'test_images.csv'];
+InputTablePath = [BaseDir filesep ImputTableName '.csv'];
 imgtbl = testutil_opentable(InputTablePath);
 
 % ========================== Iterate through table entries ==========================
 entry_count = size(imgtbl,1);
 
 if ~isfile(DataFilePath)
-    image_analyses(entry_count) = struct('imgname', '', 'analysis', []);
+    image_analyses(entry_count) = struct('imgname', '', 'analysis', [], 'simparam', struct.empty());
     %image_analyses(entry_count) = ImageResults;
     for r = 1:entry_count
         %Initialize
@@ -67,7 +65,7 @@ else
     save_count = size(image_analyses,2);
     if entry_count > save_count
         %image_analyses(entry_count) = ImageResults; %Expand.
-        image_analyses(entry_count) = struct('imgname', '', 'analysis', []);
+        image_analyses(entry_count) = struct('imgname', '', 'analysis', [], 'simparam', struct.empty());
         for r = save_count+1:entry_count
             %Initialize
             image_analyses(r).imgname = getTableValue(imgtbl, r, 'IMGNAME');
@@ -86,11 +84,17 @@ for r = START_INDEX:END_INDEX
     
     resetSim(imgtbl, r, BaseDir, ImgDir);
     
+    tifpath_base = getTableValue(imgtbl, r, 'IMAGEPATH');
+    tifpath = [ImgDir replace(tifpath_base, '/', filesep)];
+    simparam = loadSimParams(tifpath);
+    image_analyses(r).simparam = simparam;
+    
+    hb_stem_base = getTableValue(imgtbl, r, 'OUTSTEM');
+    hb_stem = [BaseDir replace(hb_stem_base, '/', filesep)];
+    
     %----------------- Truthset
     if IMPORT_TS
         %Check for truthset.
-        hb_stem_base = getTableValue(imgtbl, r, 'OUTSTEM');
-        hb_stem = [BaseDir replace(hb_stem_base, '/', filesep)];
         if RNA_Threshold_SpotSelector.refsetExists(hb_stem)
             %Has a substantial refset. Import.
             image_analyses(r).analysis = image_analyses(r).analysis.setTruthset(hb_stem, TS_IDX);
@@ -128,6 +132,20 @@ for r = START_INDEX:END_INDEX
             spotanno = spotanno.refSnapToAutoSpots(stopat);
             spotanno.saveMe();
         end
+        
+        if ~RNA_Threshold_SpotSelector.selectorExists(bf_stem)
+            %Make one.
+            bf_st_path = [bf_stem '_spotTable.mat'];
+            bf_ct_path = [bf_stem '_coordTable.mat'];
+            load(bf_st_path, 'spot_table');
+            load(bf_ct_path, 'coord_table');
+            spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
+            spotanno.saveMe();
+            clear spot_table;
+            clear coord_table;
+        end
+        clear spotanno;
+        
         [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, true, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: BF (Rescaled) Import of %s failed!\n', myname);
@@ -164,6 +182,20 @@ for r = START_INDEX:END_INDEX
             spotanno = spotanno.refSnapToAutoSpots(stopat);
             spotanno.saveMe();
         end
+        
+        if ~RNA_Threshold_SpotSelector.selectorExists(bf_stem)
+            %Make one.
+            bf_st_path = [bf_stem '_spotTable.mat'];
+            bf_ct_path = [bf_stem '_coordTable.mat'];
+            load(bf_st_path, 'spot_table');
+            load(bf_ct_path, 'coord_table');
+            spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
+            spotanno.saveMe();
+            clear spot_table;
+            clear coord_table;
+        end
+        clear spotanno;
+        
         [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, false, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: BF (Non rescaled) Import of %s failed!\n', myname);
@@ -171,7 +203,7 @@ for r = START_INDEX:END_INDEX
     end
 
     %----------------- RSFISH
-    rsdb_dir_ext = getRSDBGroupOutputDir(myname);
+    rsdb_dir_ext = getRSDBGroupOutputDir(RSDBOutGroupName);
     if DO_RSFISH
         if ~isempty(rsdb_dir_ext)
             rs_stem = [BaseDir filesep 'data' filesep 'rsfish' rsdb_dir_ext myname filesep 'RSFISH_' myname];
@@ -279,7 +311,7 @@ for r = START_INDEX:END_INDEX
             end
         end
         
-        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importHBResults(hb_stem, HB_FIXED_TH, TS_IDX);
+        [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importHBResults(hb_stem, 0, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: HB Import of %s failed!\n', myname);
         end
@@ -293,37 +325,15 @@ save(DataFilePath, 'image_analyses');
 
 % ========================== Helper functions ==========================
 
-function outdir = getRSDBGroupOutputDir(imgname)
-    outdir = [];
-    if isempty(imgname); return; end
+function simparam = loadSimParams(tifpath)
+    matpath = replace(tifpath, [filesep 'tif' filesep], filesep);
+    matpath = replace(matpath, '.tif', '.mat');
+    
+    load(matpath, 'simparam');
+end
 
-    if startsWith(imgname, 'mESC4d_')
-        outdir = [filesep 'mESC4d' filesep];
-    elseif startsWith(imgname, 'scrna_')
-        outdir = [filesep 'scrna' filesep];
-    elseif startsWith(imgname, 'mESC_loday_')
-        outdir = [filesep 'mESC_loday' filesep];
-    elseif startsWith(imgname, 'scprotein_')
-        outdir = [filesep 'scprotein' filesep];
-    elseif startsWith(imgname, 'sim_')
-        outdir = [filesep 'sim' filesep];
-    elseif startsWith(imgname, 'histonesc_')
-        outdir = [filesep 'histonesc' filesep];
-    elseif startsWith(imgname, 'ROI0')
-        outdir = [filesep 'munsky_lab' filesep];
-    elseif startsWith(imgname, 'sctc_')
-        inparts = split(imgname, '_');
-        ch = 'CH1';
-        if endsWith(imgname, 'CTT1')
-            ch = 'CH2';
-        end
-        outdir = [filesep 'yeast_tc' filesep inparts{2,1} filesep ch];
-    elseif startsWith(imgname, 'rsfish_')
-        outdir = [filesep 'rsfish' filesep];
-    elseif startsWith(imgname, 'simvar_')
-        outdir = [filesep 'simvar' filesep];
-    end
-
+function outdir = getRSDBGroupOutputDir(RSDBOutGroupName)
+    outdir = [filesep RSDBOutGroupName filesep];
 end
 
 function val = getTableValue(mytable, row_index, field)
@@ -400,56 +410,7 @@ function resetSimSF(image_table, row_index, BaseDir, ImgDir)
     selector.saveMe();
 end
 
-function resetSimRS(image_table, row_index, BaseDir, ImgDir)
-    %For rsfish sims
-    myname = getTableValue(image_table, row_index, 'IMGNAME');
-    srcpath_raw = getTableValue(image_table, row_index, 'IMAGEPATH');
-    outstem_raw = getTableValue(image_table, row_index, 'OUTSTEM');
-    
-    %I had to convert the locs to csv because MATLAB is a fussbudget
-    srcpath = [ImgDir replace(srcpath_raw, '/', filesep)];
-    srcpath = replace(srcpath, '.tif', '.csv');
-    hb_path = [BaseDir replace(outstem_raw, '/', filesep)];
-    
-    if ~isfile(srcpath)
-        fprintf('ERROR: Could not find sim truthset for %s!\n', myname);
-        return;
-    end
-    
-    import_table = table2array(readtable(srcpath,'ReadVariableNames',false));
-    import_table = uint16(round(import_table)) + 1; %Make it less spicy
-    temp = import_table(:,2);
-    import_table(:,2) = import_table(:,1);
-    import_table(:,1) = temp;
-    
-    %Look for spotsanno in hb dir
-    %If not there, create new one.
-    if ~RNA_Threshold_SpotSelector.selectorExists(hb_path)
-        spotsrun = RNASpotsRun.loadFrom(hb_path);
-        selector = RNA_Threshold_SpotSelector;
-        th_idx = round((spotsrun.t_max - spotsrun.t_min) ./ 2);
-        selector = selector.initializeNew(hb_path, th_idx, []);
-        selector.z_min = 1;
-        selector.z_max = spotsrun.idims_sample.z;
-    else
-        selector = RNA_Threshold_SpotSelector.openSelector(hb_path, true);
-    end
-    
-    %Swap out refset and save
-    selector.ref_coords = import_table(:,1:3);
-    selector.ref_last_modified = datetime;
-    selector.f_scores_dirty = true;
-    selector.saveMe();
-end
-
 function resetSim(image_table, row_index, BaseDir, ImgDir)
     %Checks if sim image, and resets truthset if so
-    myname = getTableValue(image_table, row_index, 'IMGNAME');
-    if startsWith(myname, 'sim_')
-        resetSimSF(image_table, row_index, BaseDir, ImgDir);
-    elseif startsWith(myname, 'simvar_')
-        resetSimSF(image_table, row_index, BaseDir, ImgDir);
-    elseif startsWith(myname, 'rsfish_sim')
-        resetSimRS(image_table, row_index, BaseDir, ImgDir);
-    end
+    resetSimSF(image_table, row_index, BaseDir, ImgDir);
 end
