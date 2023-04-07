@@ -17,8 +17,8 @@ ClusterPyenvDir = '/nobackup/p_neuert_lab/hospelb/pyvenv';
 % ========================== Constants ==========================
 
 DETECT_THREADS = 8;
-RAM_PER_CORE = 8;
-RAM_PER_CORE_BF = 16;
+RAM_PER_CORE = 6;
+RAM_PER_CORE_BF = 12;
 HB_PARALLEL_HR = 6;
 HB_SERIAL_HR = 8;
 BF_SERIAL_HR = 12;
@@ -33,13 +33,13 @@ QUANT_FIXED_TH = 0;
 TH_MIN = 0;
 TH_MAX = 0;
 TH_MIN_BF = 10;
-Z_TRIM = 0;
+Z_TRIM = 1;
 BF_SOBJSZ = 10;
-BF_NUCSZ = 256; %200 yeast, 256 mesc
+BF_NUCSZ = 200; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = true;
-RUN_BFNR = true;
+RUN_HB = false;
+RUN_BFNR = false;
 RUN_BFRS = true;
 RUN_QUANT = true;
 OVERWRITE = false;
@@ -48,13 +48,13 @@ MODULE_NAME = 'MATLAB/2018b';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
 %InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'simvarmass_';
+GroupPrefix = 'scprotein_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');
@@ -257,7 +257,7 @@ for r = 1:rec_count
         vx = getTableValue(image_table, r, 'VOXEL_X');
         vy = getTableValue(image_table, r, 'VOXEL_Y');
         vz = getTableValue(image_table, r, 'VOXEL_Z');
-        fprintf(script_bfnr, ' --voxelsz "(%d,%d,%d)"', vz,vy,vx);
+        fprintf(script_bfrs, ' --voxelsz "(%d,%d,%d)"', vz,vy,vx);
         px = getTableValue(image_table, r, 'POINT_X');
         py = getTableValue(image_table, r, 'POINT_Y');
     	pz = getTableValue(image_table, r, 'POINT_Z');
@@ -265,7 +265,7 @@ for r = 1:rec_count
         px = max(vx,px);
         py = max(vy,py);
         pz = max(vz,pz);
-        fprintf(script_bfnr, ' --pointsz "(%d,%d,%d)"', pz,py,px);
+        fprintf(script_bfrs, ' --pointsz "(%d,%d,%d)"', pz,py,px);
 
         fprintf(script_bfrs, ' --sobjsznuc %d', BF_SOBJSZ);
         fprintf(script_bfrs, ' --trgsznuc %d', BF_NUCSZ);
@@ -277,7 +277,7 @@ for r = 1:rec_count
         end
 
         if RUN_QUANT
-            fprintf(script_bfnr, ' --gaussfit');
+            fprintf(script_bfrs, ' --gaussfit');
         end
 
         fprintf(script_bfrs, '\ndeactivate\n\n');

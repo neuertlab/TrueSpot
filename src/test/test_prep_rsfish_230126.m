@@ -48,10 +48,12 @@ START_I = 3; %Override
 DO_IMG_SPLIT = false;
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+%InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/simvarmass';
+RSDirTail = '/simytc';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';

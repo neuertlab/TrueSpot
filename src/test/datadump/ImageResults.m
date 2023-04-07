@@ -333,10 +333,93 @@ classdef ImageResults
             if isfile(fit_table_path)
                 fit_table = csvread(fit_table_path); %z,y,x, 0 based coords?
                 fit_count = size(fit_table,1);
-                for s = 1:fit_count
-                    callset{s,'fit_x'} = fit_table(s,3) + 1;
-                    callset{s,'fit_y'} = fit_table(s,2) + 1;
-                    callset{s,'fit_z'} = fit_table(s,1) + 1;
+                
+                if fit_count ~= spot_count
+                    %Manually match :)
+                    cs = 1;
+                    crem = spot_count;
+                    frem = fit_count;
+                    for s = 1:fit_count
+                        fprintf('WARNING: Fit table is not the same size as call table! Will attempt to match...\n');
+                        
+                        if cs > spot_count
+                            fprintf('End of call table hit. Stopping fit matching...\n');
+                            break;
+                        end
+                        
+                        fx = fit_table(s,3) + 1;
+                        fy = fit_table(s,2) + 1;
+                        fz = fit_table(s,1) + 1;
+                        
+                        if fit_count > spot_count
+                            if frem <= crem
+                                %Just copy.
+                                callset{cs,'fit_x'} = fx;
+                                callset{cs,'fit_y'} = fy;
+                                callset{cs,'fit_z'} = fz;
+                                frem = frem - 1;
+                                crem = crem - 1;
+                                cs = cs + 1;
+                                continue;
+                            end
+                        else
+                            if frem >= crem
+                                callset{cs,'fit_x'} = fx;
+                                callset{cs,'fit_y'} = fy;
+                                callset{cs,'fit_z'} = fz;
+                                frem = frem - 1;
+                                crem = crem - 1;
+                                cs = cs + 1;
+                                continue;
+                            end
+                        end
+                        
+                        smatch = false;
+                        while ~smatch
+                            cx = callset{cs,'init_x'};
+                            cy = callset{cs,'init_y'};
+                            cz = callset{cs,'init_z'};
+                            
+                            dxq = (fx - cx) ^ 2;
+                            dyq = (fy - cy) ^ 2;
+                            dzq = (fz - cz) ^ 2;
+                            dist3 = sqrt(dxq + dyq + dzq);
+                            
+                            if dist3 <= 4
+                                smatch = true;
+                                callset{cs,'fit_x'} = fx;
+                                callset{cs,'fit_y'} = fy;
+                                callset{cs,'fit_z'} = fz;
+                            else
+                                if fit_count > spot_count
+                                    if frem <= crem
+                                        callset{cs,'fit_x'} = fx;
+                                        callset{cs,'fit_y'} = fy;
+                                        callset{cs,'fit_z'} = fz;
+                                        smatch = true;
+                                    end
+                                else
+                                    if frem >= crem
+                                        callset{cs,'fit_x'} = fx;
+                                        callset{cs,'fit_y'} = fy;
+                                        callset{cs,'fit_z'} = fz;
+                                        smatch = true;
+                                    end
+                                end
+                            end
+                            
+                            crem = crem - 1;
+                            cs = cs + 1;
+                        end
+                        
+                        frem = frem - 1;
+                    end
+                else
+                    for s = 1:fit_count
+                        callset{s,'fit_x'} = fit_table(s,3) + 1;
+                        callset{s,'fit_y'} = fit_table(s,2) + 1;
+                        callset{s,'fit_z'} = fit_table(s,1) + 1;
+                    end
                 end
             end
             
