@@ -14,10 +14,10 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1017;
-END_INDEX = 1017;
+START_INDEX = 1;
+END_INDEX = 1024;
 
-TOOL_CODE = 'all';
+TOOL_CODE = 'bigfish';
 
 % ========================== Other paths ==========================
 

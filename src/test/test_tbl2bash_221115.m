@@ -12,13 +12,13 @@ ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
 ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
 ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
 ClusterScriptsDir = '/nobackup/p_neuert_lab/hospelb/scripts';
-ClusterPyenvDir = '/nobackup/p_neuert_lab/hospelb/pyvenv';
+ClusterPyenvDir = '/home/hospelb/pyvenv';
 
 % ========================== Constants ==========================
 
 DETECT_THREADS = 8;
 RAM_PER_CORE = 6;
-RAM_PER_CORE_BF = 12;
+RAM_PER_CORE_BF = 16;
 HB_PARALLEL_HR = 6;
 HB_SERIAL_HR = 8;
 BF_SERIAL_HR = 12;
@@ -33,9 +33,9 @@ QUANT_FIXED_TH = 0;
 TH_MIN = 0;
 TH_MAX = 0;
 TH_MIN_BF = 10;
-Z_TRIM = 1;
+Z_TRIM = 0;
 BF_SOBJSZ = 10;
-BF_NUCSZ = 200; %200 yeast, 256 mesc
+BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
 RUN_HB = false;
@@ -46,6 +46,7 @@ OVERWRITE = false;
 
 MODULE_NAME = 'MATLAB/2018b';
 MATLAB_DIR = [ClusterWorkDir '/matlab'];
+PYVENV_NAME = 'bigfish';
 
 % ========================== Load csv Table ==========================
 %InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
@@ -54,7 +55,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'scprotein_';
+GroupPrefix = 'simvar_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');
@@ -182,7 +183,10 @@ for r = 1:rec_count
     if RUN_BFNR
         script_bfnr = fopen([ScriptDir filesep iname '_bfnr.sh'], 'w');
         fprintf(script_bfnr, '#!/bin/bash\n\n');
-        fprintf(script_bfnr, 'source %s/bigfish/bin/activate\n', ClusterPyenvDir);
+        fprintf(script_bfnr, 'module load GCC/6.4.0-2.28\n');
+        fprintf(script_bfnr, 'module load Intel/2017.4.196\n');
+        fprintf(script_bfnr, 'module load Python/3.6.3\n');
+        fprintf(script_bfnr, 'source %s/%s/bin/activate\n', ClusterPyenvDir, PYVENV_NAME);
         fprintf(script_bfnr, 'python3 %s/bigfish_wrapper.py "%s" "%s"', ClusterScriptsDir, [ClusterWorkDir ipath], [ClusterWorkDir bfoutdir]);
     
         %- BF Options
@@ -244,7 +248,10 @@ for r = 1:rec_count
     if RUN_BFRS
         script_bfrs = fopen([ScriptDir filesep iname '_bfrs.sh'], 'w');
         fprintf(script_bfrs, '#!/bin/bash\n\n');
-        fprintf(script_bfrs, 'source %s/bigfish/bin/activate\n', ClusterPyenvDir);
+        fprintf(script_bfrs, 'module load GCC/6.4.0-2.28\n');
+        fprintf(script_bfrs, 'module load Intel/2017.4.196\n');
+        fprintf(script_bfrs, 'module load Python/3.6.3\n');
+        fprintf(script_bfrs, 'source %s/%s/bin/activate\n', ClusterPyenvDir, PYVENV_NAME);
         fprintf(script_bfrs, 'python3 %s/bigfish_wrapper.py "%s" "%s"', ClusterScriptsDir, [ClusterWorkDir ipath], [ClusterWorkDir bfrs_outdir]);
     
         %- BF Options

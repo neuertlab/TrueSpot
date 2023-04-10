@@ -160,6 +160,12 @@ classdef ImageResults
                 end
                 obj.threshold_index_hb = spotsrun.intensity_threshold - spotsrun.t_min + 1;
             end
+            
+            if obj.threshold_index_hb < 1
+                fprintf('ERROR: HB run failed to threshold properly! Import failed.\n');
+                success = false;
+                return;
+            end
 
             %Import callset at picked threshold
             [~, coord_table] = spotsrun.loadCoordinateTable();

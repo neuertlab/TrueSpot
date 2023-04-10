@@ -14,7 +14,7 @@ ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
 ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
 ClusterScriptsDir = '/nobackup/p_neuert_lab/hospelb/scripts';
-ClusterPyenvDir = '/nobackup/p_neuert_lab/hospelb/pyvenv';
+ClusterPyenvDir = '/home/hospelb/pyvenv';
 ClusterModelsDir = '/nobackup/p_neuert_lab/hospelb/imgproc/data/deepblink_training/og_models';
 
 PyenvModule = 'deepblink';
@@ -34,20 +34,20 @@ MIN_PROB = 0.01;
 DO_IMG_SPLIT = false;
 OVERWRITE = false;
 
-OutDirTail = '/simytc';
+OutDirTail = '/yeast_tc/E1R1/CH1';
 ModelName = 'smfish';
 
 NewTifDir = ['/img' OutDirTail];
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
 %InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'simvarmass_';
-GroupSuffix = [];
+GroupPrefix = 'sctc_E1R1_';
+GroupSuffix = 'STL1';
 
 % ========================== Do things ==========================
 addpath('./core');

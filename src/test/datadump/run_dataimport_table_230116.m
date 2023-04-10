@@ -12,27 +12,22 @@ ImgDir = 'C:\Users\hospelb\labdata\imgproc';
 addpath('./core');
 addpath('./test');
 
-%TODO Make a run_dataimport_table_simmass script
-%   Different save files
-%   Also has a field for the sim generation parameters (ie. name, analysis,
-%   simparam)
-
 % ========================== Constants ==========================
 
-START_INDEX = 207;
-END_INDEX = 230;
+START_INDEX = 29;
+END_INDEX = 38;
 
-DO_HOMEBREW = true;
+DO_HOMEBREW = false;
 DO_BIGFISH = true;
-DO_BIGFISHNR = true;
-DO_RSFISH = true;
-DO_DEEPBLINK = true;
+DO_BIGFISHNR = false;
+DO_RSFISH = false;
+DO_DEEPBLINK = false;
 
 OVERWRITE_SPOTANNO_RS = true;
 OVERWRITE_SPOTANNO_DB = true;
 FORCE_HB_BF_RESNAP = true; %TODO
 
-IMPORT_TS = true;
+IMPORT_TS = false;
 TS_IDX = 1;
 
 HB_FIXED_TH = 0; %Maybe have a separate script for this?
@@ -86,11 +81,12 @@ for r = START_INDEX:END_INDEX
     
     resetSim(imgtbl, r, BaseDir, ImgDir);
     
+    hb_stem_base = getTableValue(imgtbl, r, 'OUTSTEM');
+    hb_stem = [BaseDir replace(hb_stem_base, '/', filesep)];
+    
     %----------------- Truthset
     if IMPORT_TS
         %Check for truthset.
-        hb_stem_base = getTableValue(imgtbl, r, 'OUTSTEM');
-        hb_stem = [BaseDir replace(hb_stem_base, '/', filesep)];
         if RNA_Threshold_SpotSelector.refsetExists(hb_stem)
             %Has a substantial refset. Import.
             image_analyses(r).analysis = image_analyses(r).analysis.setTruthset(hb_stem, TS_IDX);
@@ -128,6 +124,20 @@ for r = START_INDEX:END_INDEX
             spotanno = spotanno.refSnapToAutoSpots(stopat);
             spotanno.saveMe();
         end
+        
+        if ~RNA_Threshold_SpotSelector.selectorExists(bf_stem)
+            %Make one.
+            bf_st_path = [bf_stem '_spotTable.mat'];
+            bf_ct_path = [bf_stem '_coordTable.mat'];
+            load(bf_st_path, 'spot_table');
+            load(bf_ct_path, 'coord_table');
+            spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
+            spotanno.saveMe();
+            clear spot_table;
+            clear coord_table;
+        end
+        clear spotanno;
+        
         [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, true, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: BF (Rescaled) Import of %s failed!\n', myname);
@@ -164,6 +174,20 @@ for r = START_INDEX:END_INDEX
             spotanno = spotanno.refSnapToAutoSpots(stopat);
             spotanno.saveMe();
         end
+        
+        if ~RNA_Threshold_SpotSelector.selectorExists(bf_stem)
+            %Make one.
+            bf_st_path = [bf_stem '_spotTable.mat'];
+            bf_ct_path = [bf_stem '_coordTable.mat'];
+            load(bf_st_path, 'spot_table');
+            load(bf_ct_path, 'coord_table');
+            spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
+            spotanno.saveMe();
+            clear spot_table;
+            clear coord_table;
+        end
+        clear spotanno;
+        
         [image_analyses(r).analysis, bool_okay] = image_analyses(r).analysis.importBFResults(bf_stem, false, TS_IDX);
         if ~bool_okay
             fprintf('WARNING: BF (Non rescaled) Import of %s failed!\n', myname);

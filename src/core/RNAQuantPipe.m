@@ -128,7 +128,7 @@ if(param_struct.nocells)
     end
     
     param_struct.preloaded_cellmask = uint16(ones(idim_y,idim_x));
-    param_struct.preloaded_nucmask = uint16(ones(idim_y,idim_x,idim_z));
+    param_struct.preloaded_nucmask = true(idim_y,idim_x,idim_z);
 end
 
 %Try to load masks (if not preloaded)
