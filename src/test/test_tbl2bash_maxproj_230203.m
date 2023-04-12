@@ -9,9 +9,9 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
 %ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
-ClusterWorkDir = '/scratch/hospelb/imgproc';
-ClusterSlurmDir = '/scratch/hospelb/imgproc/slurm/script';
-ClusterScriptsDir = '/scratch/hospelb/scripts';
+ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
+ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
+ClusterScriptsDir = '/nobackup/p_neuert_lab/hospelb/scripts';
 
 % ========================== Constants ==========================
 
@@ -25,7 +25,7 @@ QUANT_PARALLEL_HR = 4;
 RAM_PER_CORE_QUANT = 12;
 DETECT_THREADS_QUANT = 1;
 QUANT_DO_CLOUDS = false;
-QUANT_FIXED_TH = 80;
+QUANT_FIXED_TH = 0;
 
 TH_MIN = 10;
 TH_MAX = 500;
@@ -44,7 +44,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 GroupPrefix = 'sctc_E1R1_';
-GroupSuffix = 'STL1';
+GroupSuffix = [];
 
 % ========================== Generate Bash Script & Slurm Command ==========================
 
@@ -140,16 +140,18 @@ for r = 1:rec_count
         printMatFlagArg(script_hb, 'maxzproj', true);
 
         if RUN_QUANT & ~isempty(csegpath)
-            fprintf(script_hb, '); Main_QuickCellQuant(');
-            fprintf(script_hb, '''%s'', ', [ClusterWorkDir mpoutdir '/' iname '_max_proj_coordTable.mat']);
-            fprintf(script_hb, '''%s'', ', csegpath);
-            fprintf(script_hb, '''%s'', ', [mpoutstem '_quickQuant.mat']);
-            useth_idx = QUANT_FIXED_TH - TH_MIN + 1;
-            fprintf(script_hb, '''%d'', ', useth_idx);
-            dim_x = getTableValue(image_table, r, 'IDIM_X');
-            dim_y = getTableValue(image_table, r, 'IDIM_Y');
-            dim_z = getTableValue(image_table, r, 'IDIM_Z');
-            fprintf(script_hb, '''(%d,%d,%d)''', dim_x, dim_y, dim_z);
+            fprintf(script_hb, '); Main_QuickCellQuant_FromRun(');
+            fprintf(script_hb, '''%s'', ', [ClusterWorkDir mpoutdir '/' iname '_max_proj']);
+            fprintf(script_hb, '''%s''', csegpath);
+            %fprintf(script_hb, '''%s'', ', [mpoutstem '_quickQuant.mat']);
+            if QUANT_FIXED_TH > 0
+                useth_idx = QUANT_FIXED_TH - TH_MIN + 1;
+                fprintf(script_hb, ', ''%d''', useth_idx);
+            end
+            %dim_x = getTableValue(image_table, r, 'IDIM_X');
+            %dim_y = getTableValue(image_table, r, 'IDIM_Y');
+            %dim_z = getTableValue(image_table, r, 'IDIM_Z');
+            %fprintf(script_hb, '''(%d,%d,%d)''', dim_x, dim_y, dim_z);
         end
         fprintf(script_hb, '); quit;"\n');
         fprintf(script_hb, 'echo $(date +''%%Y/%%m/%%d %%H:%%M:%%S:%%3N'')\n');

@@ -14,8 +14,8 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-START_INDEX = 29;
-END_INDEX = 38;
+START_INDEX = 947;
+END_INDEX = 1024;
 
 DO_HOMEBREW = false;
 DO_BIGFISH = true;
@@ -127,14 +127,16 @@ for r = START_INDEX:END_INDEX
         
         if ~RNA_Threshold_SpotSelector.selectorExists(bf_stem)
             %Make one.
-            bf_st_path = [bf_stem '_spotTable.mat'];
-            bf_ct_path = [bf_stem '_coordTable.mat'];
-            load(bf_st_path, 'spot_table');
-            load(bf_ct_path, 'coord_table');
-            spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
-            spotanno.saveMe();
-            clear spot_table;
-            clear coord_table;
+            if RNA_Threshold_SpotSelector.selectorExists(hb_stem)
+                bf_st_path = [bf_stem '_spotTable.mat'];
+                bf_ct_path = [bf_stem '_coordTable.mat'];
+                load(bf_st_path, 'spot_table');
+                load(bf_ct_path, 'coord_table');
+                spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
+                spotanno.saveMe();
+                clear spot_table;
+                clear coord_table;
+            end
         end
         clear spotanno;
         
@@ -177,14 +179,16 @@ for r = START_INDEX:END_INDEX
         
         if ~RNA_Threshold_SpotSelector.selectorExists(bf_stem)
             %Make one.
-            bf_st_path = [bf_stem '_spotTable.mat'];
-            bf_ct_path = [bf_stem '_coordTable.mat'];
-            load(bf_st_path, 'spot_table');
-            load(bf_ct_path, 'coord_table');
-            spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
-            spotanno.saveMe();
-            clear spot_table;
-            clear coord_table;
+            if RNA_Threshold_SpotSelector.selectorExists(hb_stem)
+                bf_st_path = [bf_stem '_spotTable.mat'];
+                bf_ct_path = [bf_stem '_coordTable.mat'];
+                load(bf_st_path, 'spot_table');
+                load(bf_ct_path, 'coord_table');
+                spotanno = BigfishCompare.loadSpotSelector(bf_stem, hb_stem, spot_table, coord_table, true);
+                spotanno.saveMe();
+                clear spot_table;
+                clear coord_table;
+            end
         end
         clear spotanno;
         
@@ -341,7 +345,7 @@ function outdir = getRSDBGroupOutputDir(imgname)
         if endsWith(imgname, 'CTT1')
             ch = 'CH2';
         end
-        outdir = [filesep 'yeast_tc' filesep inparts{2,1} filesep ch];
+        outdir = [filesep 'yeast_tc' filesep inparts{2,1} filesep ch filesep];
     elseif startsWith(imgname, 'rsfish_')
         outdir = [filesep 'rsfish' filesep];
     elseif startsWith(imgname, 'simvar_')
