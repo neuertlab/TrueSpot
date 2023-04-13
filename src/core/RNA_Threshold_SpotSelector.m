@@ -2345,6 +2345,48 @@ classdef RNA_Threshold_SpotSelector
             idims.x = size(obj.img_structs(1).image,2);
         end
         
+        %%
+        function scoreTable = genScoreResponseTable(obj)
+            %Return table columns:
+            %   x,y,z,intensity,call(1 or 0)
+
+            %This does not resnap or reclassify spots
+            %For any calls that are false negatives at lowest threshold,
+            %just set the intensity value to something below the lowest
+            %checked.
+            if isempty(obj.ref_coords) 
+                scoreTable = [];
+                return; 
+            end
+
+            %Grab calls at lowest threshold.
+            ptbl = obj.positives{1,1};
+            call_count = size(ptbl,1);
+            ref_count = size(obj.ref_coords,1);
+
+            temp_table = zeros(call_count + ref_count, 5);
+            temp_table(1:call_count,1:3) = ptbl(:,1:3);
+            temp_table((call_count + 1):(call_count + ref_count), 1:3) = obj.ref_coords(:,1:3);
+            
+            all_spots = unique(temp_table, 'rows');
+
+            %Mark true/false
+            inref = ismember(all_spots(:,1:3), obj.ref_coords(:,1:3), 'rows');
+            all_spots(:,5) = inref(:,1);
+
+            %Now go through all thresholds...
+            T = size(obj.threshold_table, 1);
+            for t = 1:T
+                thval = obj.threshold_table(t,1);
+                ptbl = obj.positives{t,1};
+                if isempty(ptbl); break; end
+                inset = ismember(all_spots(:,1:3), ptbl(:,1:3), 'rows');
+                rowidxs = find(inset(:,1));
+                all_spots(rowidxs, 4) = thval;
+            end
+
+            scoreTable = all_spots;
+        end
     end
     
     %%
