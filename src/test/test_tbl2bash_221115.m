@@ -17,8 +17,8 @@ ClusterPyenvDir = '/home/hospelb/pyvenv';
 % ========================== Constants ==========================
 
 DETECT_THREADS = 8;
-RAM_PER_CORE = 6;
-RAM_PER_CORE_BF = 16;
+RAM_PER_CORE = 8;
+RAM_PER_CORE_BF = 64;
 HB_PARALLEL_HR = 6;
 HB_SERIAL_HR = 10;
 BF_SERIAL_HR = 12;
@@ -35,12 +35,12 @@ TH_MAX = 0;
 TH_MIN_BF = 10;
 Z_TRIM = 0;
 BF_SOBJSZ = 10;
-BF_NUCSZ = 200; %200 yeast, 256 mesc
+BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = false;
+RUN_HB = true;
 RUN_BFNR = false;
-RUN_BFRS = false;
+RUN_BFRS = true;
 RUN_QUANT = true;
 OVERWRITE = false;
 
@@ -55,7 +55,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sim_';
+GroupPrefix = 'histonesc_D0';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');

@@ -1,7 +1,7 @@
 %GUI module for interactive manual curation of RNA spot detection results.
 %Blythe Hospelhorn
-%Version 1.9.1
-%Updated March 8, 2023
+%Version 1.10.0
+%Updated April 13, 2023
 
 %Update Log:
 %   1.0.0 | 21.03.12
@@ -42,6 +42,8 @@
 %   1.9.1 | 23.03.08
 %       (Begrudgingly) updated to save ptbl to v7.3 so can store enormous
 %       tables.
+%   1.10.0 | 23.04.13
+%       Added genScoreResponseTable
 
 
 %%
