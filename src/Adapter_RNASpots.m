@@ -87,12 +87,13 @@ rna_spot_run.ztrim_auto = 5;
 %if ttune_wscorethresh < 0
 %    spotsrun.ttune_wscorethresh = 0.9;
 %end
-if rna_spot_run.t_min < 1
-    rna_spot_run.t_min = 1;
-end
-if rna_spot_run.t_max < 1
-    rna_spot_run.t_max = 300;
-end
+%NONONONONONONONONONONONONO
+% if rna_spot_run.t_min < 1
+%     rna_spot_run.t_min = 1;
+% end
+% if rna_spot_run.t_max < 1
+%     rna_spot_run.t_max = 300;
+% end
 if isempty(rna_spot_run.out_dir)
     %Defaults to input directory
     [rna_spot_run.out_dir, ~, ~] = fileparts(rna_spot_run.tif_path);

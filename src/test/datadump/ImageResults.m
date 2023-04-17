@@ -1148,7 +1148,7 @@ classdef ImageResults
         function res_table = initializeResTable(th_count)
             varTypes = {'double' 'uint32' 'double' 'double' 'double', 'uint32', 'uint32', 'uint32'};
             varNames = ImageResults.getResTableVarNames();
-            res_table = table('Size', [th_count, 5], 'VariableTypes',varTypes, 'VariableNames',varNames);
+            res_table = table('Size', [th_count 8], 'VariableTypes',varTypes, 'VariableNames',varNames);
         end
         
         function call_table = initializeTrueCallTable(alloc)

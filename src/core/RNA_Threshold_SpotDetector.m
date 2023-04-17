@@ -51,8 +51,9 @@ classdef RNA_Threshold_SpotDetector
         %   dead_pix_detect (bool) - Whether to rerun the dead pixel detection procedure (if false, looks for file with dead pixel coords)
         %   gaussian_rad (int) - Radius for Gaussian filter (optional, defaults to 7)
         %
-        function [IMG_filtered] = run_spot_detection_pre(img_channel, save_stem, dead_pix_detect, gaussian_rad)
+        function [IMG_filtered] = run_spot_detection_pre(img_channel, save_stem, dead_pix_detect, gaussian_rad, save_img_proj)
             if nargin < 4; gaussian_rad = 7; end
+            if nargin < 5; save_img_proj = true; end
             
             %Detect dead pixels...
             dead_pix_path = [save_stem '_deadpix.mat'];
@@ -64,6 +65,11 @@ classdef RNA_Threshold_SpotDetector
             IMG3D = uint16(img_channel);
             if (dead_pix_detect)
                 IMG3D = RNA_Threshold_Common.cleanDeadPixels(IMG3D, dead_pix_path, true);
+                if ~save_img_proj
+                    if isfile(dead_pix_path)
+                        delete(dead_pix_path);
+                    end
+                end
             end
             
             %Actually, let's rescale the *raw* image.
@@ -110,7 +116,9 @@ classdef RNA_Threshold_SpotDetector
             my_images(2).Lmax = Lmax;
 
             %Save
-            save([save_stem '_imgviewstructs'], 'my_images');
+            if save_img_proj
+                save([save_stem '_imgviewstructs'], 'my_images');
+            end
             
             IMG_filtered = uint16(IMG_filtered); %To reduce memory usage. Note that on dim images this can have a dramatic effect.
         end
