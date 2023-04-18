@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-DataDir = 'D:\usr\bghos\labdat\imgproc';
+DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
@@ -53,12 +53,12 @@ DO_IMG_SPLIT = false;
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/yeast_tc/E1R2/CH2';
+RSDirTail = '/yeast_tc/E2R1/CH1';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E1R2_';
-GroupSuffix = 'CTT1';
+GroupPrefix = 'sctc_E2R1_';
+GroupSuffix = 'STL1';
 
 % ========================== Do things ==========================
 

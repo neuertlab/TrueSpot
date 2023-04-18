@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-BaseDir = 'D:\usr\bghos\labdat\imgproc';
+BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
-ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 addpath('./core');
 addpath('./test');
@@ -15,25 +15,29 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1014;
-END_INDEX = 1014;
+START_INDEX = 1;
+END_INDEX = 1000;
 
-DO_HOMEBREW = true;
+DO_HOMEBREW = false;
 DO_BIGFISH = true;
 DO_RSFISH = true;
+DO_DEEPBLINK = true;
 
 DO_TRUTHSET = true;
 
 OutputDir = [BaseDir filesep 'data' filesep 'results'];
 
 RS_TH_IVAL = 0.1/250;
-SCRIPT_VER = 'v23.04.17.00';
+SCRIPT_VER = 'v23.04.18.00';
+COMPUTER_NAME = 'VU_NEUERTLAB_HOSPELB';
+
+EXPTS_INITIALS = 'BH';
 
 % ========================== Load csv Table ==========================
 
-%InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
-%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-InputTablePath = [BaseDir filesep 'test_images.csv'];
+%InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
+InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
+%InputTablePath = [BaseDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 % ========================== Iterate through table entries ==========================
@@ -47,6 +51,7 @@ if START_INDEX < 1; START_INDEX = 1; end
 if END_INDEX > entry_count; END_INDEX = entry_count; end
 
 for r = START_INDEX:END_INDEX
+    is_sim = false;
     myname = getTableValue(image_table, r, 'IMGNAME');
     fprintf('> Now processing %s (%d of %d)...\n', myname, r, entry_count);
 
@@ -90,6 +95,7 @@ for r = START_INDEX:END_INDEX
                 if endsWith(srcpath, '.mat')
                     %Use this one directly.
                     load(srcpath, 'key');
+                    matpath = srcpath;
                 elseif endsWith(srcpath, '.tif')
                     %Find mat file and load from that.
                     matpath = replace(srcpath, [filesep 'tif' filesep], filesep);
@@ -100,9 +106,19 @@ for r = START_INDEX:END_INDEX
                     analysis.simkey = key;
                 end
                 clear key;
+                is_sim = true;
+
+                %Look for simparam
+                finfo = who('-file', matpath);
+                if ~isempty(find(ismember(finfo, 'simparam'),1))
+                    load(matpath, 'simparam');
+                    analysis.simparam = simparam;
+                    clear simparam;
+                end
+
             elseif startsWith(myname, 'rsfish_sim')
                 rsrefpath = replace(srcpath, '.tif', '.csv');
-
+                is_sim = true;
                 if isfile(srcpath)
                     import_table = table2array(readtable(rsrefpath,'ReadVariableNames',false));
                     import_table = import_table + 1;
@@ -111,6 +127,9 @@ for r = START_INDEX:END_INDEX
                     import_table(:,1) = temp;
                     analysis.simkey = import_table;
                 end
+            else
+                %Experimental
+                analysis.exprefset = ref_coords;
             end
         end
     end
@@ -129,6 +148,42 @@ for r = START_INDEX:END_INDEX
     X = size(my_image,2);
     Y = size(my_image,1);
     Z = size(my_image,3);
+
+    %Some metadata
+    analysis.image_dims = struct('x', X, 'y', Y, 'z', Z);
+    px = getTableValue(image_table, r, 'VOXEL_X');
+    py = getTableValue(image_table, r, 'VOXEL_Y');
+    pz = getTableValue(image_table, r, 'VOXEL_Z');
+    analysis.voxel_dims = struct('x', px, 'y', py, 'z', pz);
+    px = getTableValue(image_table, r, 'POINT_X');
+    py = getTableValue(image_table, r, 'POINT_Y');
+    pz = getTableValue(image_table, r, 'POINT_Z');
+    analysis.point_dims = struct('x', px, 'y', py, 'z', pz);
+    clear px py pz
+
+    if ~is_sim
+        %Some more metadata
+        analysis.cell_type = getTableValue(image_table, r, 'CELLTYPE');
+        analysis.probe_target = getTableValue(image_table, r, 'TARGET');
+        analysis.probe = getTableValue(image_table, r, 'PROBE');
+        analysis.probe_target_type = getTableValue(image_table, r, 'TARGET_TYPE');
+        analysis.species = getTableValue(image_table, r, 'SPECIES');
+    end
+
+    %----------------- Import cellseg mask TODO
+    cellseg_dir = getTableValue(image_table, r, 'CELLSEG_DIR');
+    cellseg_sfx = getTableValue(image_table, r, 'CELLSEG_SFX');
+
+    cellmask = [];
+    if ~strcmp(cellseg_dir, '.')
+        cellseg_dir_actual = [BaseDir replace(cellseg_dir, '/', filesep)];
+        cellseg_path = [cellseg_dir_actual filesep 'Lab_' cellseg_sfx '.mat'];
+        if isfile(cellseg_path)
+            load(cellseg_path, 'cells');
+            cellmask = cells;
+            clear cells;
+        end
+    end
 
     %--------------------------------------- Homebrew
     if DO_HOMEBREW
@@ -160,7 +215,7 @@ for r = START_INDEX:END_INDEX
                         snapminth = spotsrun.intensity_threshold;
                     end
                 end
-                [call_table, ~] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, snapminth);
+                [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, snapminth);
                 full_call_count = size(call_table, 1);
 
                 %if fnegs were added, get the intensity values for those
@@ -217,11 +272,17 @@ for r = START_INDEX:END_INDEX
             %TODO Fit matching, if applicable
 
 
+            %Cell mask
+            if ~isempty(cellmask)
+                call_table = RNACoords.applyCellSegMask(call_table, cellmask);
+            end
 
             %Save updated results
             if ~isfield(analysis, 'results_hb')
                 analysis.results_hb = struct('callset', table.empty());
             end
+            analysis.results_hb.timestamp = datetime;
+            analysis.results_hb.import_computer = COMPUTER_NAME;
             analysis.results_hb.callset = call_table;
             analysis.results_hb.threshold = spotsrun.intensity_threshold;
             analysis.results_hb.threshold_details = spotsrun.threshold_results;
@@ -238,9 +299,13 @@ for r = START_INDEX:END_INDEX
             if ~isempty(ref_coords)
                 %Calculate performance metrics
                 analysis.results_hb = runstats(analysis.results_hb, spot_table, spotsrun.intensity_threshold);
+                analysis.results_hb.ref_call_map = ref_call_map;
             end
 
-            clear call_table coord_table spot_table IMG_filtered gaussrad;
+            if ~is_sim & ~isempty(ref_coords) & ~isempty(EXPTS_INITIALS)
+                analysis.results_hb = markTSStats(analysis.results_hb, EXPTS_INITIALS);
+            end
+            clear call_table coord_table spot_table IMG_filtered gaussrad ref_call_map;
         else
             fprintf('ERROR: Could not find HB run for %s!\n', myname);
         end
@@ -271,7 +336,7 @@ for r = START_INDEX:END_INDEX
                         snapminth = bfthresh;
                     end
                 end
-                [call_table, ~] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, snapminth);
+                [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, snapminth);
                 full_call_count = size(call_table, 1);
 
                 if full_call_count > init_call_count
@@ -316,11 +381,36 @@ for r = START_INDEX:END_INDEX
                 end
             end
 
-            %Fit matching TODO
+            %Fit matching
+            fit_table_path = [bf_dir filesep 'fitspots.csv'];
+            if isfile(fit_table_path)
+                import_table = readtable(fit_table_path,'Delimiter',',',...
+                    'ReadVariableNames',true,'Format','%f%f%f');
+                import_mtx = table2array(import_table);
+
+                %since it is zyx, swap columns 1 and 3
+                temp = import_mtx(:,1);
+                import_mtx(:,1) = import_mtx(:,3);
+                import_mtx(:,3) = temp;
+                clear temp
+
+                call_table = RNACoords.addFitData(call_table, import_mtx, bfthresh);
+                clear import_table import_mtx
+
+                if ~isempty(ref_coords)
+                    call_table = RNACoords.updateRefDistancesToUseFits(call_table, ref_coords, ref_call_map);
+                end
+            end
+
+            if ~isempty(cellmask)
+                call_table = RNACoords.applyCellSegMask(call_table, cellmask);
+            end
             
             if ~isfield(analysis, 'results_bf')
                 analysis.results_bf = struct('callset', table.empty());
             end
+            analysis.results_bf.timestamp = datetime;
+            analysis.results_bf.import_computer = COMPUTER_NAME;
             analysis.results_bf.callset = call_table;
             analysis.results_bf.threshold = bfthresh;
             analysis.results_bf.z_min = zmin;
@@ -329,15 +419,18 @@ for r = START_INDEX:END_INDEX
             if ~isempty(ref_coords)
                 %Calculate performance metrics
                 analysis.results_bf = runstats(analysis.results_bf, spot_table, bfthresh);
+                analysis.results_bf.ref_call_map = ref_call_map;
             end
-
-            clear call_table coord_table spot_table zmin zmax bfthresh;
+            if ~is_sim & ~isempty(ref_coords) & ~isempty(EXPTS_INITIALS)
+                analysis.results_bf = markTSStats(analysis.results_bf, EXPTS_INITIALS);
+            end
+            clear call_table coord_table spot_table zmin zmax bfthresh ref_call_map;
         end
     end
 
     %--------------------------------------- RSFISH
+    rsdb_dir_ext = getRSDBGroupOutputDir(myname);
     if DO_RSFISH
-        rsdb_dir_ext = getRSDBGroupOutputDir(myname);
         if ~isempty(rsdb_dir_ext)
             rs_stem = [BaseDir filesep 'data' filesep 'rsfish' rsdb_dir_ext myname filesep 'RSFISH_' myname];
             [rs_dir, ~, ~] = fileparts(rs_stem);
@@ -353,8 +446,19 @@ for r = START_INDEX:END_INDEX
                 call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
                 init_call_count = size(call_table,1);
 
+                %Fit matching
+                fit_table_path = [rs_stem '_fitTable.mat'];
+                if isfile(fit_table_path)
+                    load(fit_table_path, 'fit_table');
+                    ftbl = fit_table{1,1};
+                    clear fit_table;
+                    
+                    call_table = RNACoords.addFitData(call_table, ftbl);
+                    clear ftbl
+                end
+
                 if ~isempty(ref_coords)
-                    [call_table, ~] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, RS_TH_IVAL);
+                    [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, RS_TH_IVAL);
                     full_call_count = size(call_table, 1);
 
                     if full_call_count > init_call_count
@@ -390,24 +494,166 @@ for r = START_INDEX:END_INDEX
                         %All inside.
                         call_table{:,'in_truth_region'} = true;
                     end
+
+                    if isfile(fit_table_path)
+                        call_table = RNACoords.updateRefDistancesToUseFits(call_table, ref_coords, ref_call_map);
+                    end
                 end
 
-                %Fit matching TODO
+                if ~isempty(cellmask)
+                    call_table = RNACoords.applyCellSegMask(call_table, cellmask);
+                end
             
                 if ~isfield(analysis, 'results_rs')
                     analysis.results_rs = struct('callset', table.empty());
                 end
+                analysis.results_rs.timestamp = datetime;
+                analysis.results_rs.import_computer = COMPUTER_NAME;
                 analysis.results_rs.callset = call_table;
 
                 if ~isempty(ref_coords)
                     %Calculate performance metrics
                     analysis.results_rs = runstats(analysis.results_rs, spot_table, 0);
+                    analysis.results_rs.ref_call_map = ref_call_map;
+                end
+
+                %If experimental TS, mark ts fields
+                if ~is_sim & ~isempty(ref_coords) & ~isempty(EXPTS_INITIALS)
+                    analysis.results_rs = markTSStats(analysis.results_rs, EXPTS_INITIALS);
                 end
 
             else
                 fprintf('ERROR: Could not find RSFISH run for %s!\n', myname);
             end
+            clear coord_table_path spot_table_path coord_table spot_table ref_call_map
+        end
+    end
+
+    %--------------------------------------- DeepBlink
+    if DO_DEEPBLINK
+        if ~isempty(rsdb_dir_ext)
+            db_stem = [BaseDir filesep 'data' filesep 'deepblink' rsdb_dir_ext myname filesep 'DeepBlink_' myname];
+            [db_dir, ~, ~] = fileparts(db_stem);
+            coord_table_path = [db_stem '_coordTable.mat'];
+            spot_table_path = [db_stem '_spotTable.mat'];
+
+            if isfile(coord_table_path)
+                load(coord_table_path, 'coord_table');
+                load(spot_table_path, 'spot_table');
+
+                call_table_raw = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
+                if ~isempty(cellmask)
+                    call_table_raw = RNACoords.applyCellSegMask(call_table_raw, cellmask);
+                end
+
+                %Import Fit (BEFORE merge!)
+                fit_table_path = findDBFitTable(db_dir, myname);
+                if ~isempty(fit_table_path) & isfile(fit_table_path)
+                    import_table = readtable(fit_table_path,'Delimiter',',','ReadVariableNames',true,'Format',...
+                        '%f%f%f%f');
+                    import_mtx = table2array(import_table);
+                    import_count = size(import_mtx,1);
+                    fit_table = NaN(import_count,3);
+                    fit_table(:,1:3) = import_mtx(:,[1 2 4]) + 1;
+                    call_table_raw = RNACoords.addFitData(call_table_raw, fit_table);
+                    
+                    clear import_table import_mtx fit_table import_count
+                end
+
+                %Merge slice calls for better truthset comparison
+                [call_table, callmap] = RNACoords.mergeSlicedSetTo3D(call_table_raw, 4, 0.5);
+                init_call_count = size(call_table,1);
+
+                if ~isempty(ref_coords)
+                    [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, 0.5);
+                    full_call_count = size(call_table, 1);
+
+                    if full_call_count > init_call_count
+                        %Fnegs added.
+                        addst = init_call_count + 1;
+                        added = full_call_count;
+                        x = table2array(call_table(addst:added,'isnap_x'));
+                        y = table2array(call_table(addst:added,'isnap_y'));
+                        z = table2array(call_table(addst:added,'isnap_z'));
+                        c1d = sub2ind([Y X Z], y, x, z);
+                        call_table(addst:added,'coord_1d') = array2table(uint32(c1d));
+                        call_table(addst:added,'intensity') = array2table(single(my_image(c1d)));
+
+                        clear addst added x y z c1d
+                    end
+
+                    %Mask ts region (if applicable)
+                    if ~isempty(ts_region)
+                        inside_ts_mask = true(full_call_count, 1);
+                        x = table2array(call_table(:,'isnap_x'));
+                        y = table2array(call_table(:,'isnap_y'));
+                        z = table2array(call_table(:,'isnap_z'));
+
+                        inside_ts_mask = and(inside_ts_mask, ~(x < ts_region.x0));
+                        inside_ts_mask = and(inside_ts_mask, ~(x > ts_region.x1));
+                        inside_ts_mask = and(inside_ts_mask, ~(y < ts_region.y0));
+                        inside_ts_mask = and(inside_ts_mask, ~(y > ts_region.y1));
+                        inside_ts_mask = and(inside_ts_mask, ~(z < ts_region.z0));
+                        inside_ts_mask = and(inside_ts_mask, ~(z > ts_region.z1));
+                        call_table(:,'in_truth_region') = array2table(inside_ts_mask);
+
+                        clear x y z inside_ts_mask
+                    else
+                        %All inside.
+                        call_table{:,'in_truth_region'} = true;
+                    end
+
+                    if isfile(fit_table_path)
+                        call_table = RNACoords.updateRefDistancesToUseFits(call_table, ref_coords, ref_call_map);
+                    end
+                end
+
+                %Save
+                if ~isfield(analysis, 'results_db')
+                    analysis.results_db = struct('callset', table.empty());
+                end
+                analysis.results_db.timestamp = datetime;
+                analysis.results_db.import_computer = COMPUTER_NAME;
+                analysis.results_db.callset = call_table;
+                analysis.results_db.callset_sliced = call_table_raw;
+                analysis.results_db.callmap_slice_merge = callmap;
+
+                if ~isempty(ref_coords)
+                    %Calculate performance metrics
+                    analysis.results_db = runstats(analysis.results_db, spot_table, 0);
+                    analysis.results_db.ref_call_map = ref_call_map;
+                end
+
+                clear call_table call_table_raw callmap ref_call_map
+
+                %If experimental TS, mark ts fields
+                if ~is_sim & ~isempty(ref_coords) & ~isempty(EXPTS_INITIALS)
+                    analysis.results_db = markTSStats(analysis.results_db, EXPTS_INITIALS);
+                end
+            else
+                fprintf('ERROR: Could not find DeepBlink run for %s!\n', myname);
+            end
             clear coord_table_path spot_table_path coord_table spot_table
+        end
+    end
+
+    %--------------------------------------- Tag exp ts data outside result
+    %structs
+    % (the ts itself and the mask)
+    if ~is_sim & ~isempty(ref_coords) & ~isempty(EXPTS_INITIALS)
+        analysis.last_ts = EXPTS_INITIALS;
+        substruct_name = ['truthset_' EXPTS_INITIALS];
+        if ~isfield(analysis, substruct_name)
+            analysis.(substruct_name) = struct('timestamp', datetime);
+        else
+            analysis.(substruct_name).timestamp = datetime;
+        end
+
+        if isfield(analysis, 'exprefset')
+            analysis.(substruct_name).exprefset = analysis.exprefset;
+        end
+        if isfield(analysis, 'truthset_region')
+            analysis.(substruct_name).truthset_region = analysis.truthset_region;
         end
     end
 
@@ -471,6 +717,22 @@ function val = getTableValue(mytable, row_index, field)
     val = mytable{row_index,field};
     if iscell(val)
         val = val{1,1};
+    end
+end
+
+function fit_table_path = findDBFitTable(db_dir, image_name)
+    fit_table_path = [db_dir filesep image_name];
+    if ~isfile(fit_table_path)
+        %Find another csv in that dir
+        dir_contents = dir(db_dir);
+
+        content_count = size(dir_contents,1);
+        for i = 1:content_count
+            if endsWith(dir_contents(i,1).name, '.csv')
+                fit_table_path = [db_dir filesep dir_contents(i,1).name];
+                break;
+            end
+        end
     end
 end
 
@@ -545,9 +807,81 @@ function ref_coords = loadSimTruthset(image_table, row_index, ImgDir)
 end
 
 function [ref_coords, valid_range] = loadExpTruthset(image_table, row_index, BaseDir)
-%TODO
-ref_coords = [];
-valid_range = struct('x0', 0, 'x1', 0, 'y0', 0, 'y1', 0, 'z0', 0, 'z1', 0);
+    ref_coords = [];
+    valid_range = struct('x0', 0, 'x1', 0, 'y0', 0, 'y1', 0, 'z0', 0, 'z1', 0);
+    
+    hb_stem_base = getTableValue(image_table, row_index, 'OUTSTEM');
+    hb_stem = [BaseDir replace(hb_stem_base, '/', filesep)];
+
+    if RNA_Threshold_SpotSelector.refsetExists(hb_stem)
+        spotanno = RNA_Threshold_SpotSelector.openSelector(hb_stem, true);
+        ref_coords = spotanno.ref_coords;
+        valid_range.z0 = spotanno.z_min;
+        valid_range.z1 = spotanno.z_max;
+        if ~isempty(spotanno.selmcoords)
+            valid_range.x0 = spotanno.selmcoords(1,1);
+            valid_range.x1 = spotanno.selmcoords(2,1);
+            valid_range.y0 = spotanno.selmcoords(3,1);
+            valid_range.y1 = spotanno.selmcoords(4,1);
+        else
+            valid_range.x0 = 1;
+            valid_range.y0 = 1;
+            valid_range.x1 = getTableValue(image_table, row_index, 'IDIM_X');
+            valid_range.y1 = getTableValue(image_table, row_index, 'IDIM_Y');
+        end
+        clear spotanno;
+    end
+
+end
+
+function rstruct = markTSStats(rstruct, tag)
+    if isempty(tag); return; end
+
+    substruct_name = ['truthset_' tag];
+    if ~isfield(rstruct, substruct_name)
+        rstruct.(substruct_name) = struct('timestamp', datetime);
+    else
+        rstruct.(substruct_name).timestamp = datetime;
+    end
+
+    if isfield(rstruct, 'callset')
+        %Need to move over 'is_true' and 'in_truth_region'
+        targcol_name = ['is_true_' tag];
+        newcol_A = renamevars(rstruct.callset(:,'is_true'), 'is_true', targcol_name);
+        targcol_name = ['in_truth_region_' tag];
+        newcol_B = renamevars(rstruct.callset(:,'in_truth_region'), 'in_truth_region', targcol_name);
+        rstruct.callset = [rstruct.callset newcol_A newcol_B];
+        rstruct.callset{:,'is_true'} = false;
+        rstruct.callset{:,'in_truth_region'} = false;
+    end
+    if isfield(rstruct, 'callset_sliced')
+        %DB only
+        targcol_name = ['is_true_' tag];
+        newcol_A = renamevars(rstruct.callset_sliced(:,'is_true'), 'is_true', targcol_name);
+        targcol_name = ['in_truth_region_' tag];
+        newcol_B = renamevars(rstruct.callset_sliced(:,'in_truth_region'), 'in_truth_region', targcol_name);
+        rstruct.callset_sliced = [rstruct.callset_sliced newcol_A newcol_B];
+        rstruct.callset_sliced{:,'is_true'} = false;
+        rstruct.callset_sliced{:,'in_truth_region'} = false;
+    end
+    if isfield(rstruct, 'performance')
+        rstruct.(substruct_name).performance = rstruct.performance;
+        rstruct.(substruct_name).pr_auc = rstruct.pr_auc;
+        rstruct.(substruct_name).fscore_peak = rstruct.fscore_peak;
+        if isfield(rstruct, 'fscore_autoth')
+            rstruct.(substruct_name).fscore_autoth = rstruct.fscore_autoth;
+        end
+    end
+    if isfield(rstruct, 'performance_trimmed')
+        rstruct.(substruct_name).performance_trimmed = rstruct.performance_trimmed;
+        rstruct.(substruct_name).pr_auc_trimmed = rstruct.pr_auc_trimmed;
+        rstruct.(substruct_name).fscore_peak_trimmed = rstruct.fscore_peak_trimmed;
+        if isfield(rstruct, 'fscore_autoth_trimmed')
+            rstruct.(substruct_name).fscore_autoth_trimmed = rstruct.fscore_autoth_trimmed;
+        end
+    end
+    rstruct.last_ts = tag;
+
 end
 
 function rstruct = runstats(rstruct, spot_table, th_val)

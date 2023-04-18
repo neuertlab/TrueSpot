@@ -69,6 +69,8 @@
 %       window score curves aren't really appropriate for a case.
 %   2.6.0 | 23.03.31
 %       Added suggestScanThreshold
+%   2.6.1 | 23.04.18
+%       Scan auto suggestions should be integers
 
 %%
 %
@@ -2979,16 +2981,15 @@ classdef RNA_Threshold_Common
                 %Use 1/10th of the max (or 500)
                 tenthmax = ceil(imax/10) + 10;
                 if tenthmax > 500
-                    th_max = tenthmax;
+                    th_max = ceil(tenthmax);
                 end
             else
                 %Use p99_99 (or 500)
                 t99 = p99_99 + 10;
                 if t99 > 500
-                    th_max = t99;
+                    th_max = ceil(t99);
                 end
             end
-            
         end
         
         %%

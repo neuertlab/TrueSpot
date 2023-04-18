@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-DataDir = 'D:\usr\bghos\labdat\imgproc';
+DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
@@ -34,7 +34,7 @@ MIN_PROB = 0.01;
 DO_IMG_SPLIT = false;
 OVERWRITE = false;
 
-OutDirTail = '/yeast_tc/E1R2/CH2';
+OutDirTail = '/yeast_tc/E2R1/CH1';
 ModelName = 'smfish';
 
 NewTifDir = ['/img' OutDirTail];
@@ -46,8 +46,8 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E1R2_';
-GroupSuffix = 'CTT1';
+GroupPrefix = 'sctc_E2R1_';
+GroupSuffix = 'STL1';
 
 % ========================== Do things ==========================
 addpath('./core');
