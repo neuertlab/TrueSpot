@@ -119,6 +119,55 @@ methods (Static)
         call_table{:,'in_truth_region'} = false;
     end
 
+    function ref_assign = matchALotOfSpots(callmtx, ref_set, snaprad_3, snaprad_z, snap_minth)
+        %TODO
+        %For big tables
+        BLOCK_SIZE = 1024;
+        rcount = size(callmtx, 1);
+        ccount = size(ref_set, 1);
+        R = ceil(rcount/BLOCK_SIZE);
+        C = ceil(ccount/BLOCK_SIZE);
+
+        alloc = ceil(rcount * ccount * 0.001);
+        combo_table = NaN(alloc,3); %dist3 row col
+
+        %Go through blocks to get combo candidates
+        rr = 1;
+        for rb = 1:R
+            cc = 1;
+            r_end = rr + BLOCK_SIZE - 1;
+            if r_end > rcount
+                r_end = rcount;
+            end
+        
+            tempmtx_rx = single(repmat(callmtx(rr:r_end,1), [1 ccount]));
+            tempmtx_ry = single(repmat(callmtx(rr:r_end,2), [1 ccount]));
+            tempmtx_rz = single(repmat(callmtx(rr:r_end,3), [1 ccount]));
+            for cb = 1:C
+                c_end = cc + BLOCK_SIZE - 1;
+                if c_end > ccount
+                    c_end = ccount;
+                end
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,1).', [rcount 1]));
+                xdist = tempmtx_rx - tempmtx_cols;
+
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,2).', [rcount 1]));
+                ydist = tempmtx_ry - tempmtx_cols;
+
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,3).', [rcount 1]));
+                zdist = tempmtx_rz - tempmtx_cols;
+                %TODO
+
+                cc = c_end + 1;
+            end
+            rr = r_end + 1;
+        end
+        clear tempmtx_rx tempmtx_ry tempmtx_rz
+
+        %Go through combos
+
+    end
+
     function ref_assign =  matchSpots(call_table, ref_set, snaprad_3, snaprad_z, snap_minth)
 
         %Convert callxyz to a matrix
@@ -144,6 +193,7 @@ methods (Static)
         tempmtx_r = double(repmat(ref_set(:,3).', [call_spots 1]));
         tempmtx_c = double(repmat(callmtx(:,3), [1 ref_spots]));
         zdist = tempmtx_r - tempmtx_c;
+        clear tempmtx_r tempmtx_c
 
         dist3 = sqrt((xdist.^2) + (ydist.^2) + (zdist.^2));
         clear xdist;
@@ -153,6 +203,7 @@ methods (Static)
         %Eliminate any combos above radius thresholds
         dist3(zdist > snaprad_z) = NaN;
         dist3(dist3 > snaprad_3) = NaN;
+        clear zdist
 
         %Try to make matches
         ref_assign = zeros(1,ref_spots); %Index of call spot assigned to ref spot
