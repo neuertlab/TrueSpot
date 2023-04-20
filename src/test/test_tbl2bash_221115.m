@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%DataDir = 'D:\usr\bghos\labdat\imgproc';
+%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
 ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
@@ -49,13 +49,13 @@ MATLAB_DIR = [ClusterWorkDir '/matlab'];
 PYVENV_NAME = 'bigfish';
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
 %InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'simvarmass_';
+GroupPrefix = 'histonesc_D2';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');

@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%DataDir = 'D:\usr\bghos\labdat\imgproc';
+%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ExtractedImgDir = 'C:\Users\hospelb.VUDS\Desktop\splitimg';
 
@@ -43,7 +43,7 @@ while ((START_I * TH_NTR) < MIN_TH)
     START_I = START_I + 1;
 end
 
-START_I = 3; %Override
+START_I = 1; %Override
 
 DO_IMG_SPLIT = false;
 
@@ -53,12 +53,12 @@ DO_IMG_SPLIT = false;
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/yeast_tc/E2R1/CH1';
+RSDirTail = '/yeast_tc/E2R1/CH2';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
 GroupPrefix = 'sctc_E2R1_';
-GroupSuffix = 'STL1';
+GroupSuffix = 'CTT1';
 
 % ========================== Do things ==========================
 
@@ -125,6 +125,8 @@ for r = 1:rec_count
     sigma = (pnt_x/vox_x)/2.25;
     
     fprintf(my_script, '#!/bin/bash\n\n');
+    %fprintf(my_script, 'module load Java/1.8.0_192\n\n');
+    fprintf(my_script, 'unset _JAVA_OPTIONS\n'); %I don't know who set it to use 256MB, but I will find them.
     fprintf(my_script, 'RSFISH_PATH=%s\n', ClusterRsFishPath);
     fprintf(my_script, 'OUTPUT_DIR=%s\n', rsoutdir);
     fprintf(my_script, 'if [ ! -d ${OUTPUT_DIR} ]; then\n');

@@ -119,8 +119,8 @@ methods (Static)
         call_table{:,'in_truth_region'} = false;
     end
 
-    function ref_assign = matchALotOfSpots(callmtx, ref_set, snaprad_3, snaprad_z, snap_minth)
-        %TODO
+    function ref_assign = matchALotOfSpots(callmtx, ref_set, snaprad_3, snaprad_z)
+
         %For big tables
         BLOCK_SIZE = 1024;
         rcount = size(callmtx, 1);
@@ -130,6 +130,7 @@ methods (Static)
 
         alloc = ceil(rcount * ccount * 0.001);
         combo_table = NaN(alloc,3); %dist3 row col
+        table_pos = 1;
 
         %Go through blocks to get combo candidates
         rr = 1;
@@ -156,16 +157,66 @@ methods (Static)
 
                 tempmtx_cols = single(repmat(ref_set(cc:c_end,3).', [rcount 1]));
                 zdist = tempmtx_rz - tempmtx_cols;
-                %TODO
+
+                dist3 = sqrt((xdist.^2) + (ydist.^2) + (zdist.^2));
+                clear xdist;
+                clear ydist;
+                zdist = abs(zdist);
+
+                %Eliminate any combos above radius thresholds
+                dist3(zdist > snaprad_z) = NaN;
+                dist3(dist3 > snaprad_3) = NaN;
+                clear zdist
+
+                %Save remaining combos to the table.
+                okayidx = find(~isnan(dist3));
+                if ~isempty(okayidx)
+                    matchcount = size(okayidx,1);
+                    tbl_start = table_pos;
+                    tbl_end = table_pos + matchcount - 1;
+                    combo_table(tbl_start:tbl_end, 1) = dist3(okayidx);
+                    [cand_rows, cand_cols] = ind2sub(size(dist3), okayidx);
+                    combo_table(tbl_start:tbl_end, 2) = cand_rows + rr - 1;
+                    combo_table(tbl_start:tbl_end, 3) = cand_cols + cc - 1;
+                    table_pos = tbl_end + 1;
+                end
 
                 cc = c_end + 1;
             end
             rr = r_end + 1;
         end
-        clear tempmtx_rx tempmtx_ry tempmtx_rz
+        clear tempmtx_rx tempmtx_ry tempmtx_rz dist3
 
         %Go through combos
+        ref_assign = zeros(1,ccount);
+        combo_table = combo_table(1:table_pos-1,:);
+        combo_table = sortrows(combo_table);
+        table_end = size(combo_table,1);
+        table_pos = 1;
+        while(table_pos <= table_end)
+            if isnan(combo_table(table_pos,1))
+                table_pos = table_pos + 1;
+                continue;
+            end
 
+            my_row = combo_table(table_pos,2);
+            my_col = combo_table(table_pos,3);
+            ref_assign(my_col) = my_row;
+            table_pos = table_pos + 1;
+
+            %Nan out other candidates from this row and col
+            outidxs = find(combo_table(table_pos:table_end, 2) == my_row) + table_pos - 1; 
+            combo_table(outidxs, :) = NaN;
+
+            outidxs = find(combo_table(table_pos:table_end, 3) == my_col) + table_pos - 1; 
+            combo_table(outidxs, :) = NaN;
+
+            %Cull nans from end
+            table_end = find(combo_table(table_pos:table_end, 1), 1, 'last') + table_pos - 1;
+            if isempty(table_end)
+                break;
+            end
+        end
     end
 
     function ref_assign =  matchSpots(call_table, ref_set, snaprad_3, snaprad_z, snap_minth)
