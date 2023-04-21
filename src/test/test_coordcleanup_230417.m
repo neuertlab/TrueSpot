@@ -15,10 +15,10 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1;
-END_INDEX = 1000;
+START_INDEX = 251;
+END_INDEX = 500;
 
-DO_HOMEBREW = false;
+DO_HOMEBREW = true;
 DO_BIGFISH = true;
 DO_RSFISH = true;
 DO_DEEPBLINK = true;
@@ -28,15 +28,15 @@ DO_TRUTHSET = true;
 OutputDir = [BaseDir filesep 'data' filesep 'results'];
 
 RS_TH_IVAL = 0.1/250;
-SCRIPT_VER = 'v23.04.18.00';
+SCRIPT_VER = 'v23.04.21.00';
 COMPUTER_NAME = 'VU_NEUERTLAB_HOSPELB';
 
 EXPTS_INITIALS = 'BH';
 
 % ========================== Load csv Table ==========================
 
-%InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
-InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
+%InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
 %InputTablePath = [BaseDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
@@ -87,6 +87,7 @@ for r = START_INDEX:END_INDEX
 
     %--------------------------------------- Truthset
     if DO_TRUTHSET
+        fprintf('> Importing truthset...\n');
         if ~isempty(ref_coords)
             %If it's a sim image, go back and find the whole key and load
             %that in.
@@ -187,6 +188,7 @@ for r = START_INDEX:END_INDEX
 
     %--------------------------------------- Homebrew
     if DO_HOMEBREW
+        fprintf('> Importing homebrew results...\n');
         %Look for run and load in coord and spot tables.
         spotsrun = RNASpotsRun.loadFrom(hb_stem);
         if ~isempty(spotsrun)
@@ -314,6 +316,7 @@ for r = START_INDEX:END_INDEX
 
     %--------------------------------------- BigFISH
     if DO_BIGFISH
+        fprintf('> Importing BigFISH results...\n');
         bf_stem_base = replace(getTableValue(image_table, r, 'BIGFISH_OUTSTEM'), '/bigfish/', '/bigfish/_rescaled/');
         bf_stem = [BaseDir replace(bf_stem_base, '/', filesep)];
 
@@ -431,6 +434,7 @@ for r = START_INDEX:END_INDEX
     %--------------------------------------- RSFISH
     rsdb_dir_ext = getRSDBGroupOutputDir(myname);
     if DO_RSFISH
+        fprintf('> Importing RS-FISH results...\n');
         if ~isempty(rsdb_dir_ext)
             rs_stem = [BaseDir filesep 'data' filesep 'rsfish' rsdb_dir_ext myname filesep 'RSFISH_' myname];
             [rs_dir, ~, ~] = fileparts(rs_stem);
@@ -532,6 +536,7 @@ for r = START_INDEX:END_INDEX
     %--------------------------------------- DeepBlink
     if DO_DEEPBLINK
         if ~isempty(rsdb_dir_ext)
+            fprintf('> Importing DeepBlink results...\n');
             db_stem = [BaseDir filesep 'data' filesep 'deepblink' rsdb_dir_ext myname filesep 'DeepBlink_' myname];
             [db_dir, ~, ~] = fileparts(db_stem);
             coord_table_path = [db_stem '_coordTable.mat'];
@@ -658,6 +663,7 @@ for r = START_INDEX:END_INDEX
     end
 
     %--------------------------------------- Save
+    fprintf('> Saving updated analysis...\n');
     save(OutFilePath, 'analysis', '-v7.3');
     clear analysis;
 end
@@ -693,6 +699,12 @@ function outdir = getRSDBGroupOutputDir(imgname)
         outdir = [filesep 'rsfish' filesep];
     elseif startsWith(imgname, 'simvar_')
         outdir = [filesep 'simvar' filesep];
+    elseif startsWith(imgname, 'simvarmass_')
+        if contains(imgname, 'TMRL') | contains(imgname, 'CY5L')
+            outdir = [filesep 'simytc' filesep];
+        else
+            outdir = [filesep 'simvarmass' filesep];
+        end
     end
 
 end

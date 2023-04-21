@@ -26,12 +26,16 @@ methods (Static)
             Z = 1;
         end
         idim = [Y X Z];
-        icoords = sub2ind(idim, tcoords(:,2), tcoords(:,1), tcoords(:,3));
+        xx = min(tcoords(:,1), X);
+        yy = min(tcoords(:,2), Y);
+        zz = min(tcoords(:,3), Z);
+        icoords = sub2ind(idim, yy, xx, zz);
+
 
         call_table(:,'coord_1d') = array2table(uint32(icoords));
-        call_table(:,'isnap_x') = array2table(uint16(tcoords(:,1)));
-        call_table(:,'isnap_y') = array2table(uint16(tcoords(:,2)));
-        call_table(:,'isnap_z') = array2table(uint16(tcoords(:,3)));
+        call_table(:,'isnap_x') = array2table(uint16(xx));
+        call_table(:,'isnap_y') = array2table(uint16(yy));
+        call_table(:,'isnap_z') = array2table(uint16(zz));
         if ~isempty(image_filtered)
             call_table(:,'intensity_f') = array2table(single(image_filtered(icoords)));
         end
@@ -45,9 +49,12 @@ methods (Static)
             if isempty(tcoords)
                 break;
             end
+            xx = min(tcoords(:,1), X);
+            yy = min(tcoords(:,2), Y);
+            zz = min(tcoords(:,3), Z);
 
             %Find in full call table.
-            ticoords = sub2ind(idim, tcoords(:,2), tcoords(:,1), tcoords(:,3));
+            ticoords = sub2ind(idim, yy, xx, zz);
             rowidxs = find(ismember(icoords, ticoords));
 
             call_table(rowidxs,'dropout_thresh') = array2table(single(th));
@@ -119,9 +126,7 @@ methods (Static)
         call_table{:,'in_truth_region'} = false;
     end
 
-    function ref_assign = matchALotOfSpots(callmtx, ref_set, snaprad_3, snaprad_z)
-
-        %For big tables
+    function cand_table = findMatchCandidates(callmtx, ref_set, snaprad_3, snaprad_z)
         BLOCK_SIZE = 1024;
         rcount = size(callmtx, 1);
         ccount = size(ref_set, 1);
@@ -129,7 +134,7 @@ methods (Static)
         C = ceil(ccount/BLOCK_SIZE);
 
         alloc = ceil(rcount * ccount * 0.001);
-        combo_table = NaN(alloc,3); %dist3 row col
+        combo_table = single(NaN(alloc,3)); %dist3 row col
         table_pos = 1;
 
         %Go through blocks to get combo candidates
@@ -141,21 +146,27 @@ methods (Static)
                 r_end = rcount;
             end
         
-            tempmtx_rx = single(repmat(callmtx(rr:r_end,1), [1 ccount]));
-            tempmtx_ry = single(repmat(callmtx(rr:r_end,2), [1 ccount]));
-            tempmtx_rz = single(repmat(callmtx(rr:r_end,3), [1 ccount]));
+            tempmtx_rx = single(repmat(callmtx(rr:r_end,1), [1 BLOCK_SIZE]));
+            tempmtx_ry = single(repmat(callmtx(rr:r_end,2), [1 BLOCK_SIZE]));
+            tempmtx_rz = single(repmat(callmtx(rr:r_end,3), [1 BLOCK_SIZE]));
+            rb_size = r_end - rr + 1;
             for cb = 1:C
                 c_end = cc + BLOCK_SIZE - 1;
+                %cb_size = BLOCK_SIZE;
                 if c_end > ccount
                     c_end = ccount;
+                    cb_size = c_end - cc + 1;
+                    tempmtx_rx = single(repmat(callmtx(rr:r_end,1), [1 cb_size]));
+                    tempmtx_ry = single(repmat(callmtx(rr:r_end,2), [1 cb_size]));
+                    tempmtx_rz = single(repmat(callmtx(rr:r_end,3), [1 cb_size]));
                 end
-                tempmtx_cols = single(repmat(ref_set(cc:c_end,1).', [rcount 1]));
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,1).', [rb_size 1]));
                 xdist = tempmtx_rx - tempmtx_cols;
 
-                tempmtx_cols = single(repmat(ref_set(cc:c_end,2).', [rcount 1]));
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,2).', [rb_size 1]));
                 ydist = tempmtx_ry - tempmtx_cols;
 
-                tempmtx_cols = single(repmat(ref_set(cc:c_end,3).', [rcount 1]));
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,3).', [rb_size 1]));
                 zdist = tempmtx_rz - tempmtx_cols;
 
                 dist3 = sqrt((xdist.^2) + (ydist.^2) + (zdist.^2));
@@ -171,6 +182,10 @@ methods (Static)
                 %Save remaining combos to the table.
                 okayidx = find(~isnan(dist3));
                 if ~isempty(okayidx)
+                    if size(okayidx,2) > size(okayidx,1)
+                        okayidx = transpose(okayidx);
+                    end
+
                     matchcount = size(okayidx,1);
                     tbl_start = table_pos;
                     tbl_end = table_pos + matchcount - 1;
@@ -187,10 +202,17 @@ methods (Static)
         end
         clear tempmtx_rx tempmtx_ry tempmtx_rz dist3
 
+        cand_table = combo_table(1:table_pos-1,:);
+        cand_table = sortrows(cand_table);
+    end
+
+    function ref_assign = matchALotOfSpots(callmtx, ref_set, snaprad_3, snaprad_z)
+
+        ccount = size(ref_set, 1);
+        combo_table = RNACoords.findMatchCandidates(callmtx, ref_set, snaprad_3, snaprad_z);
+
         %Go through combos
-        ref_assign = zeros(1,ccount);
-        combo_table = combo_table(1:table_pos-1,:);
-        combo_table = sortrows(combo_table);
+        ref_assign = uint32(zeros(1,ccount));
         table_end = size(combo_table,1);
         table_pos = 1;
         while(table_pos <= table_end)
@@ -212,7 +234,7 @@ methods (Static)
             combo_table(outidxs, :) = NaN;
 
             %Cull nans from end
-            table_end = find(combo_table(table_pos:table_end, 1), 1, 'last') + table_pos - 1;
+            table_end = find(~isnan(combo_table(table_pos:table_end, 1)), 1, 'last') + table_pos - 1;
             if isempty(table_end)
                 break;
             end
@@ -224,25 +246,32 @@ methods (Static)
         %Convert callxyz to a matrix
         ref_spots = size(ref_set,1);
         call_spots = size(call_table,1);
-        callmtx = zeros(call_spots,3);
-        callmtx(:,1) = double(table2array(call_table(:,'isnap_x')));
-        callmtx(:,2) = double(table2array(call_table(:,'isnap_y')));
-        callmtx(:,3) = double(table2array(call_table(:,'isnap_z')));
+        callmtx = single(zeros(call_spots,3));
+        callmtx(:,1) = single(table2array(call_table(:,'isnap_x')));
+        callmtx(:,2) = single(table2array(call_table(:,'isnap_y')));
+        callmtx(:,3) = single(table2array(call_table(:,'isnap_z')));
 
         %NaN out any rows where dropout th is below minimum
         dropth = table2array(call_table(:,'dropout_thresh'));
         callmtx(dropth < snap_minth, :) = NaN;
 
-        tempmtx_r = double(repmat(ref_set(:,1).', [call_spots 1]));
-        tempmtx_c = double(repmat(callmtx(:,1), [1 ref_spots]));
+        %If the tables are huge, shunt to matchALotOfSpots
+        if (call_spots > 1024) | (ref_spots > 1024)
+            ref_assign = RNACoords.matchALotOfSpots(callmtx, ref_set, snaprad_3, snaprad_z);
+            clear callmtx;
+            return;
+        end
+
+        tempmtx_r = single(repmat(ref_set(:,1).', [call_spots 1]));
+        tempmtx_c = single(repmat(callmtx(:,1), [1 ref_spots]));
         xdist = tempmtx_r - tempmtx_c;
 
-        tempmtx_r = double(repmat(ref_set(:,2).', [call_spots 1]));
-        tempmtx_c = double(repmat(callmtx(:,2), [1 ref_spots]));
+        tempmtx_r = single(repmat(ref_set(:,2).', [call_spots 1]));
+        tempmtx_c = single(repmat(callmtx(:,2), [1 ref_spots]));
         ydist = tempmtx_r - tempmtx_c;
 
-        tempmtx_r = double(repmat(ref_set(:,3).', [call_spots 1]));
-        tempmtx_c = double(repmat(callmtx(:,3), [1 ref_spots]));
+        tempmtx_r = single(repmat(ref_set(:,3).', [call_spots 1]));
+        tempmtx_c = single(repmat(callmtx(:,3), [1 ref_spots]));
         zdist = tempmtx_r - tempmtx_c;
         clear tempmtx_r tempmtx_c
 
@@ -257,7 +286,7 @@ methods (Static)
         clear zdist
 
         %Try to make matches
-        ref_assign = zeros(1,ref_spots); %Index of call spot assigned to ref spot
+        ref_assign = uint32(zeros(1,ref_spots)); %Index of call spot assigned to ref spot
         while nnz(~isnan(dist3)) > 0
             [~, minidx] = min(dist3, [], 'all', 'omitnan');
             [r, c] = ind2sub([call_spots ref_spots], minidx);
@@ -347,10 +376,10 @@ methods (Static)
     function [call_table_merged, callmap] = mergeSlicedSetTo3D(call_table, snaprad_3, snap_minth)
         call_spots = size(call_table,1);
         callmtx = zeros(call_spots,3);
-        callmtx(:,1) = double(table2array(call_table(:,'isnap_x')));
-        callmtx(:,2) = double(table2array(call_table(:,'isnap_y')));
-        callmtx(:,3) = double(table2array(call_table(:,'isnap_z')));
-        callmap = zeros(1,call_spots); %Which index each spot is remapped to
+        callmtx(:,1) = single(table2array(call_table(:,'isnap_x')));
+        callmtx(:,2) = single(table2array(call_table(:,'isnap_y')));
+        callmtx(:,3) = single(table2array(call_table(:,'isnap_z')));
+        callmap = uint32(zeros(1,call_spots)); %Which index each spot is remapped to
 
         above_spots = zeros(1,call_spots);
         below_spots = zeros(1,call_spots);
@@ -359,60 +388,68 @@ methods (Static)
         dropth = table2array(call_table(:,'dropout_thresh'));
         callmtx(dropth < snap_minth, :) = NaN;
 
-        %Make a matrix of the distance of all spots from each other.
-        tempmtx_r = double(repmat(callmtx(:,1).', [call_spots 1])); %Columns repeated to rows
-        tempmtx_c = double(repmat(callmtx(:,1), [1 call_spots])); %Rows repeated to columns
-        xdist = tempmtx_r - tempmtx_c;
+        cand_table = RNACoords.findMatchCandidates(callmtx, callmtx, snaprad_3, 1);
+        if isempty(cand_table); return; end
 
-        tempmtx_r = double(repmat(callmtx(:,2).', [call_spots 1]));
-        tempmtx_c = double(repmat(callmtx(:,2), [1 call_spots]));
-        ydist = tempmtx_r - tempmtx_c;
-
-        tempmtx_r = double(repmat(callmtx(:,3).', [call_spots 1]));
-        tempmtx_c = double(repmat(callmtx(:,3), [1 call_spots]));
-        zdist = tempmtx_r - tempmtx_c;
-
-        dist3 = sqrt((xdist.^2) + (ydist.^2) + (zdist.^2));
-        clear xdist;
-        clear ydist;
-
-        %NaN out the diagonal
-        dist3(find(eye(call_spots))) = NaN;
-
-        %NaN out all but combos that are sufficiently close in 3D AND on
-        %adjacent (not the same) z planes
-        mask = (dist3 <= snaprad_3);
-        mask = and(mask, or((zdist == 1), (zdist == -1)));
-        dist3(~mask) = NaN;
+        %Recalculate zdist for these candidates
+        z_rows = callmtx(cand_table(:,2), 3);
+        z_cols = callmtx(cand_table(:,3), 3);
+        z_dist = z_rows - z_cols;
+        clear z_rows z_cols;
+        z0 = find(z_dist(:,1) == 0);
+        z_dist(z0) = [];
+        cand_table(z0, :) = [];
 
         %Go through remaining combos and mark best candidates above and
         %below
-        while nnz(~isnan(dist3)) > 0
-            [~, minidx] = min(dist3, [], 'all', 'omitnan');
-            [r, c] = ind2sub([call_spots call_spots], minidx);
-            
-            if zdist(r,c) > 0
-                %Col is above row
+        table_pos = 1;
+        table_end = size(cand_table,1);
+        while table_pos <= table_end
+            if isnan(cand_table(table_pos, 1))
+                table_pos = table_pos + 1;
+                continue;
+            end
+
+            zdiff = z_dist(table_pos, 1);
+            if zdiff == 0
+                table_pos = table_pos + 1;
+                continue;
+            end
+
+            r = cand_table(table_pos, 2);
+            c = cand_table(table_pos, 3);
+            if zdiff > 0
+                %Row above col
+                if (below_spots(r) == 0) & (above_spots(c) == 0)
+                    below_spots(r) = c;
+                    above_spots(c) = r;
+                end
+            else
+                %Col above row
                 if (below_spots(c) == 0) & (above_spots(r) == 0)
                     %Neither is already paired elsewhere
                     below_spots(c) = r;
                     above_spots(r) = c;
                 end
-            else
-                %Row is above col
-                if (below_spots(r) == 0) & (above_spots(c) == 0)
-                    below_spots(r) = c;
-                    above_spots(c) = r;
-                end
             end
 
-            %NaN out this combo.
-            dist3(r,c) = NaN;
-            dist3(c,r) = NaN;
+            table_pos = table_pos + 1;
 
+            %NaN out
+%             
+%             outidxs = find(combo_table(table_pos:table_end, 2) == my_row) + table_pos - 1; 
+%             cand_table(outidxs, :) = NaN;
+% 
+%             outidxs = find(combo_table(table_pos:table_end, 3) == my_col) + table_pos - 1; 
+%             cand_table(outidxs, :) = NaN;
+% 
+%             %Cull nans from end
+%             table_end = find(~isnan(cand_table(table_pos:table_end, 1)), 1, 'last') + table_pos - 1;
+%             if isempty(table_end)
+%                 break;
+%             end
         end
-        clear dist3;
-        clear zdist;
+        clear cand_table zdiff z_dist table_pos table_end
 
         %Chain together and make assignments
         realloc = 0;
@@ -574,11 +611,18 @@ methods (Static)
         x = table2array(call_table(:,'isnap_x'));
         y = table2array(call_table(:,'isnap_y'));
 
+        X = size(cell_mask, 2);
+        Y = size(cell_mask, 1);
+
         if ndims(cell_mask) >= 3
             z = table2array(call_table(:,'isnap_z'));
-            cells = cell_mask(x,y,z);
+            Z = size(cell_mask, 3);
+
+            ind = sub2ind([Y X Z], y, x, z);
+            cells = cell_mask(ind);
         else
-            cells = cell_mask(x,y);
+            ind = sub2ind([Y X], y, x);
+            cells = cell_mask(ind);
         end
 
         call_table(:,'cell') = array2table(uint16(cells));
