@@ -43,7 +43,7 @@ while ((START_I * TH_NTR) < MIN_TH)
     START_I = START_I + 1;
 end
 
-START_I = 3; %Override
+START_I = 1; %Override
 
 DO_IMG_SPLIT = false;
 
@@ -53,11 +53,11 @@ DO_IMG_SPLIT = false;
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-RSDirTail = '/yeast_tc/E2R1/CH1';
+RSDirTail = '/yeast_tc/E2R2/CH1';
 NewTifDir = ['/img' RSDirTail];
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E2R1_';
+GroupPrefix = 'sctc_E2R2_';
 GroupSuffix = 'STL1';
 
 % ========================== Do things ==========================

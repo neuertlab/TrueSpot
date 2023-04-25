@@ -40,7 +40,7 @@ BF_NUCSZ = 200; %200 yeast, 256 mesc
 
 RUN_HB = true;
 RUN_BFNR = false;
-RUN_BFRS = true;
+RUN_BFRS = false;
 RUN_QUANT = true;
 OVERWRITE = false;
 
@@ -50,12 +50,12 @@ PYVENV_NAME = 'bigfish';
 
 % ========================== Load csv Table ==========================
 %InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
-%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+%InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E2R1_';
+GroupPrefix = 'simvarmass_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');
@@ -494,15 +494,17 @@ function printMatArg(fhandle, key, value, leading_comma)
 end
 
 function printSpecificityArg(fhandle, t_setting)
-    if t_setting == 1
+    if t_setting == 6
+        printMatArg(fhandle, 'sensitivity', '3', true);
+    elseif t_setting == 5
         printMatArg(fhandle, 'sensitivity', '2', true);
-    elseif t_setting == 2
+    elseif t_setting == 4
         printMatArg(fhandle, 'sensitivity', '1', true);
     elseif t_setting == 3
         printMatArg(fhandle, 'sensitivity', '0', true);
-    elseif t_setting == 4
+    elseif t_setting == 2
         printMatArg(fhandle, 'specificity', '1', true);
-    elseif t_setting == 5
+    elseif t_setting == 1
         printMatArg(fhandle, 'specificity', '2', true);
     end
 end

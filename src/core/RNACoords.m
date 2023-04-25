@@ -374,6 +374,8 @@ methods (Static)
     end
 
     function [call_table_merged, callmap] = mergeSlicedSetTo3D(call_table, snaprad_3, snap_minth)
+        call_table_merged = call_table;
+
         call_spots = size(call_table,1);
         callmtx = zeros(call_spots,3);
         callmtx(:,1) = single(table2array(call_table(:,'isnap_x')));
@@ -389,7 +391,9 @@ methods (Static)
         callmtx(dropth < snap_minth, :) = NaN;
 
         cand_table = RNACoords.findMatchCandidates(callmtx, callmtx, snaprad_3, 1);
-        if isempty(cand_table); return; end
+        if isempty(cand_table)
+            return; 
+        end
 
         %Recalculate zdist for these candidates
         z_rows = callmtx(cand_table(:,2), 3);
@@ -538,8 +542,8 @@ methods (Static)
         %Allow minimum th (for bigfish)
         if nargin < 3; snap_minth = 0; end
 
-        snaprad_3 = 2;
-        snaprad_z = 1;
+        snaprad_3 = 4;
+        snaprad_z = 2;
         ftable_cols = size(fit_table,2);
 
         %TODO if fit table is too big, the memory required is absurd.
@@ -565,8 +569,68 @@ methods (Static)
 
     end
 
-    function call_table = addFitDataFromQuant(call_table, cell_rna_data)
-        %TODO
+    function call_table = addFitDataFromQuant(call_table, cell_rna_data, snap_minth)
+        %Count fits in cell_rna_data
+        if isempty(call_table); return; end
+        if isempty(cell_rna_data); return; end
+
+        snaprad_3 = 4;
+        snaprad_z = 2;
+
+        cell_count = size(cell_rna_data,2);
+        spot_count = 0;
+
+        for c = 1:cell_count
+            my_cell = cell_rna_data(c);
+            if ~isempty(my_cell.spots)
+                spot_count = spot_count + size(my_cell.spots,2);
+            end
+        end
+        if spot_count < 1; return; end
+
+        %x y z intmax inttot xfwhm yfwhm
+        fit_table = NaN(spot_count, 7);
+        table_pos = 1;
+        for c = 1:cell_count
+            my_cell = cell_rna_data(c);
+            if ~isempty(my_cell.spots)
+                cell_spot_count = size(my_cell.spots,2);
+                for s = 1:cell_spot_count
+                    myspot = my_cell.spots(s);
+
+                    spot_fit = myspot.gauss_fit;
+                    if isempty(spot_fit); continue; end
+                    
+                    fit_table(table_pos,1) = spot_fit.xfit + my_cell.cell_loc.left;
+                    fit_table(table_pos,2) = spot_fit.yfit + my_cell.cell_loc.top;
+                    fit_table(table_pos,3) = spot_fit.zabs + my_cell.cell_loc.z_bottom;
+                    fit_table(table_pos,4) = spot_fit.fitMInt;
+                    fit_table(table_pos,5) = spot_fit.TotFitInt;
+                    fit_table(table_pos,6) = spot_fit.xFWHM;
+                    fit_table(table_pos,7) = spot_fit.yFWHM;
+
+                    table_pos = table_pos + 1;
+                end
+            end
+        end
+
+        %Match
+        ref_assign =  RNACoords.matchSpots(call_table, fit_table, snaprad_3, snaprad_z, snap_minth);
+        rcount = size(ref_assign,2);
+
+        %Copy to call table
+        for i = 1:rcount
+            if ref_assign(i) < 1; continue; end
+            cidx = ref_assign(i);
+            call_table{cidx, 'fit_x'} = fit_table(i,1);
+            call_table{cidx, 'fit_y'} = fit_table(i,2);
+            call_table{cidx, 'fit_z'} = fit_table(i,3);
+            call_table{cidx, 'fit_intensity'} = fit_table(i,4);
+            call_table{cidx, 'fit_total_intensity'} = fit_table(i,5);
+            call_table{cidx, 'xFWHM'} = fit_table(i,6);
+            call_table{cidx, 'yFWHM'} = fit_table(i,7);
+        end
+
     end
 
     function call_table = updateRefDistancesToUseFits(call_table, ref_table, ref_call_map)

@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.6.0
-%Updated March 31, 2023
+%Version 2.6.2
+%Updated April 25, 2023
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -71,6 +71,8 @@
 %       Added suggestScanThreshold
 %   2.6.1 | 23.04.18
 %       Scan auto suggestions should be integers
+%   2.6.2 | 23.04.25
+%       Scan auto min suggestion now lowers based on 80th percentile
 
 %%
 %
@@ -2959,13 +2961,18 @@ classdef RNA_Threshold_Common
             %Get some basic stats
             img_filter = double(img_filter);
             imax = max(img_filter, [], 'all');
-            p99 = prctile(img_filter,99,'all');
+            pres = prctile(img_filter,[80 99],'all');
+            p99 = pres(2);
             top1 = find(img_filter >= p99);
             p99_99 = prctile(img_filter(top1),99,'all');
             
             %If image is generally kinda dim, lower the th_min
-            if p99_99 < 150
-                th_min = 1;
+            p80 = pres(1);
+            if p80 <= 10
+                th_min = 5;
+                if p80 <= 5
+                    th_min = 1;
+                end
             end
             
             %Take the ratio of the 99th of 99th to imax

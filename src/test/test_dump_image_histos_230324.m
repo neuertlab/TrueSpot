@@ -11,15 +11,16 @@ addpath('./core');
 addpath('./test');
 % ========================== Constants ==========================
 
-START_INDEX = 73;
-END_INDEX = 122;
+START_INDEX = 1;
+END_INDEX = 500;
 
 % ========================== Load csv Table ==========================
 
 AllFigDir = [ImgProcDir filesep 'figures' filesep 'histos'];
-OutTablePath = [AllFigDir filesep 'image_stats.csv'];
+OutTablePath = [AllFigDir filesep 'image_stats_simytc.csv'];
 
-InputTablePath = [DataDir filesep 'test_images.csv'];
+%InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
 imgtbl = testutil_opentable(InputTablePath);
 
 % ========================== Iterate through entries ==========================

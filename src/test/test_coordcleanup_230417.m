@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 251;
-END_INDEX = 500;
+START_INDEX = 39;
+END_INDEX = 41;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
@@ -28,16 +28,16 @@ DO_TRUTHSET = true;
 OutputDir = [BaseDir filesep 'data' filesep 'results'];
 
 RS_TH_IVAL = 0.1/250;
-SCRIPT_VER = 'v23.04.21.00';
+SCRIPT_VER = 'v23.04.25.00';
 COMPUTER_NAME = 'VU_NEUERTLAB_HOSPELB';
 
 EXPTS_INITIALS = 'BH';
 
 % ========================== Load csv Table ==========================
 
-InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
+%InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
 %InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [BaseDir filesep 'test_images.csv'];
+InputTablePath = [BaseDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 % ========================== Iterate through table entries ==========================
@@ -764,6 +764,7 @@ function ref_coords = loadSimTruthsetRS(image_table, row_index, ImgDir)
     srcpath = [ImgDir replace(srcpath_raw, '/', filesep)];
     srcpath = replace(srcpath, '.tif', '.csv');
     
+    ref_coords = [];
     if ~isfile(srcpath)
         fprintf('ERROR: Could not find sim truthset for %s!\n', myname);
         return;
