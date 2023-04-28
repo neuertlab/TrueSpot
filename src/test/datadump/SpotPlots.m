@@ -31,7 +31,6 @@ classdef SpotPlots
 
             thr_min = 0;
             thr_max = 0;
-            ylim([0.0 y_max]);
             if ~isempty(thresh_res)
                 score_list = double(RNAThreshold.getAllThresholdSuggestions(thresh_res));
                 thr_mean = mean(score_list, 'all', 'omitnan');
@@ -60,6 +59,7 @@ classdef SpotPlots
                 xline(thr_max, ':', 'Maximum', 'Color', color_dark,'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
             end
 
+            ylim([0.0 y_max]);
             set(gca,'XTickLabel',[]);
             xlabel('Threshold (a.u.)');
             ylabel(y_label);

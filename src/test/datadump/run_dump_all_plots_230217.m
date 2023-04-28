@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%BaseDir = 'D:\usr\bghos\labdat\imgproc';
+%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
-%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 addpath('./core');
 addpath('./test');
@@ -18,8 +18,8 @@ START_INDEX = 45;
 END_INDEX = 45;
 
 DUMP_SPOTCOUNTS = true;
-DUMP_FSCORES = false;
-DUMP_PRC = false;
+DUMP_FSCORES = true;
+DUMP_PRC = true;
 
 % ========================== Other Paths ==========================
 
@@ -72,6 +72,7 @@ for i = START_INDEX:END_INDEX
     if DUMP_FSCORES
         figpath = [fsc_figdir filesep 'fsc__' myname '.png'];
         %fig_handle = GenMultiTool_FScorePlot(image_analyses(i).analysis);
+        fig_handle = GenMultiTool_FScorePlot(analysis);
         saveas(fig_handle, figpath);
         close(fig_handle);
     end
@@ -79,6 +80,7 @@ for i = START_INDEX:END_INDEX
     if DUMP_PRC
         figpath = [prc_figdir filesep 'prc__' myname '.png'];
         %fig_handle = GenMultiTool_ROCPlot(image_analyses(i).analysis);
+        fig_handle = GenMultiTool_ROCPlot(analysis);
         saveas(fig_handle, figpath);
         close(fig_handle);
     end
