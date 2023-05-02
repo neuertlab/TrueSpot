@@ -38,7 +38,7 @@ BF_SOBJSZ = 10;
 BF_NUCSZ = 200; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = true;
+RUN_HB = false;
 RUN_BFNR = false;
 RUN_BFRS = false;
 RUN_QUANT = true;
@@ -49,8 +49,8 @@ MATLAB_DIR = [ClusterWorkDir '/matlab'];
 PYVENV_NAME = 'bigfish';
 
 % ========================== Load csv Table ==========================
-%InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
-InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
 %InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
