@@ -43,7 +43,7 @@ addpath('./core');
 InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
-GroupPrefix = 'sctc_E2R1_';
+GroupPrefix = 'sctc_E2R2_';
 GroupSuffix = [];
 
 % ========================== Generate Bash Script & Slurm Command ==========================

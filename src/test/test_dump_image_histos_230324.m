@@ -94,8 +94,12 @@ for r = START_INDEX:END_INDEX
     xline(iperctl(7), ':', '99th Percentile', 'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
     %xline(iperctl2(1), ':', 'Top 50% of 99th Percentile', 'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
     xline(iperctl2(7), ':', 'Top 1% of 99th Percentile', 'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
-    saveas(figh1, [AllFigDir filesep myname '_raw.png']);
+    %saveas(figh1, [AllFigDir filesep myname '_raw.png']);
     close(figh1);
+
+    hbins_raw = hbins;
+    imin_raw = imin;
+    imax_raw = imax;
     
     fprintf(OutTableFile, ',%d,%d', imin, imax);
     fprintf(OutTableFile, ',%.2f', nanmean(double(IMG3D), 'all'));
@@ -124,8 +128,11 @@ for r = START_INDEX:END_INDEX
     xline(iperctl(7), ':', '99th Percentile', 'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
     %xline(iperctl2(1), ':', 'Top 50% of 99th Percentile', 'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
     xline(iperctl2(7), ':', 'Top 1% of 99th Percentile', 'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
-    saveas(figh2, [AllFigDir filesep myname '_filtered.png']);
+    %saveas(figh2, [AllFigDir filesep myname '_filtered.png']);
     close(figh2);
+
+    hbins_filt = hbins;
+    imax_filt = imax;
     
     fprintf(OutTableFile, ',%d,%d', min(IMG_filtered, [], 'all'), imax);
     fprintf(OutTableFile, ',%.2f', nanmean(double(IMG_filtered), 'all'));
@@ -138,6 +145,8 @@ for r = START_INDEX:END_INDEX
     fprintf(OutTableFile, ',%d', iperctl2(7));
     
     fprintf(OutTableFile, '\n');
+
+    save([AllFigDir filesep myname '_histdat.mat'], 'hbins_raw', 'imin_raw', 'imax_raw', 'hbins_filt', 'imax_filt');
 end
 fclose(OutTableFile);
 
