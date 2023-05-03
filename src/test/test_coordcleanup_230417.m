@@ -397,6 +397,9 @@ for r = START_INDEX:END_INDEX
                 import_mtx(:,3) = temp;
                 clear temp
 
+                %Let's also adjust to 1-based coords...
+                import_mtx = import_mtx + 1;
+
                 call_table = RNACoords.addFitData(call_table, import_mtx, bfthresh);
                 clear import_table import_mtx
 

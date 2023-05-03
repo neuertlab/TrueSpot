@@ -50,15 +50,22 @@ classdef SpotPlots
             hold on;
 
             if threshold > 0
-                xline(threshold, '--', 'Selected Threshold', 'Color', color_dark,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+                %xline(threshold, '--', 'Selected Threshold', 'Color', color_dark,'LineWidth',2,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+                xline(threshold, '--', 'Color', color_dark,'LineWidth',2);
             end
 
             if ~isempty(thresh_res)
                 %Min and max
-                xline(thr_min, ':', 'Minimum', 'Color', color_dark,'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
-                xline(thr_max, ':', 'Maximum', 'Color', color_dark,'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','middle');
+                %xline(thr_min, ':', 'Minimum', 'Color', color_dark,'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','bottom');
+                %xline(thr_max, ':', 'Maximum', 'Color', color_dark,'LineWidth',1,'LabelHorizontalAlignment','center','LabelVerticalAlignment','top');
+                xline(thr_min, ':', 'Color', color_dark,'LineWidth',1);
+                xline(thr_max, ':', 'Color', color_dark,'LineWidth',1);
             end
 
+            x_max = max(x, [], 'all', 'omitnan');
+            x_min = min(x, [], 'all', 'omitnan');
+
+            xlim([x_min x_max]);
             ylim([0.0 y_max]);
             set(gca,'XTickLabel',[]);
             xlabel('Threshold (a.u.)');

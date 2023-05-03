@@ -29,7 +29,7 @@ DO_SPOTSVS = true;
 
 % ========================== Read Table ==========================
 
-fmt_string = ['%s' repmat('%f', 1, 5) '%s' repmat('%f', 1, 16) '%s'];
+fmt_string = ['%s' repmat('%f', 1, 5) '%s' repmat('%f', 1, 16) '%s%s'];
 simres_table = readtable(SimResCSVPath,'Delimiter',',','ReadVariableNames',true,'Format',...
     fmt_string);
 
@@ -37,11 +37,12 @@ simres_table = readtable(SimResCSVPath,'Delimiter',',','ReadVariableNames',true,
 
 bkg_lvl = simres_table{:, 'BKG_LVL'};
 amp_lvl = simres_table{:, 'AMP_LVL'};
-snr = amp_lvl ./ bkg_lvl;
+%snr = amp_lvl ./ bkg_lvl;
 
 actual_spots = simres_table{:, 'SPOTS_ACTUAL'};
 bkg_var = simres_table{:, 'BKG_VAR'};
 amp_var = simres_table{:, 'AMP_VAR'};
+snr = amp_lvl ./ (bkg_lvl .* bkg_var);
 
 if DO_HB
     pr_auc = simres_table{:, 'PRAUC_HB'};
@@ -49,21 +50,23 @@ if DO_HB
     spot_det = simres_table{:, 'HB_SPOTS'};
 
     if DO_PRAUC
-        MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 1);
+        %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 1);
+        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 1);
         ylim([0 1]);
         title('Simulated Image PR-AUC (Homebrew)');
         cleanupFormatting();
     end
 
     if DO_FSCORE
-        MakeRedBlueScatterplot(snr, f_scores, amp_var, bkg_var, 'SNR', 'F-Score', 2);
+        %MakeRedBlueScatterplot(snr, f_scores, amp_var, bkg_var, 'SNR', 'F-Score', 2);
+        MakeRedBlueScatterplot(snr, f_scores, actual_spots, amp_var, 'SNR', 'F-Score', 2);
         ylim([0 1]);
         title('Simulated Image F-Score (Homebrew)');
         cleanupFormatting();
     end
 
     if DO_SPOTSVS
-        MakeRedBlueScatterplot(actual_spots, spot_det, f_scores, snr, 'Actual Spots', 'Detected Spots', 3);
+        MakeRedBlueScatterplot(actual_spots, spot_det, snr, amp_var, 'Actual Spots', 'Detected Spots', 3);
         maxval = max(actual_spots, [], 'all', 'omitnan');
         maxval = max(maxval, max(spot_det, [], 'all', 'omitnan'));
         ylim([0 maxval]);
@@ -81,21 +84,23 @@ if DO_BF
     spot_det = simres_table{:, 'BF_SPOTS'};
 
     if DO_PRAUC
-        MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 4);
+        %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 4);
+        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 4);
         ylim([0 1]);
         title('Simulated Image PR-AUC (Big-FISH)');
         cleanupFormatting();
     end
 
     if DO_FSCORE
-        MakeRedBlueScatterplot(snr, f_scores, amp_var, bkg_var, 'SNR', 'F-Score', 5);
+        %MakeRedBlueScatterplot(snr, f_scores, amp_var, bkg_var, 'SNR', 'F-Score', 5);
+        MakeRedBlueScatterplot(snr, f_scores, actual_spots, amp_var, 'SNR', 'F-Score', 5);
         ylim([0 1]);
         title('Simulated Image F-Score (Big-FISH)');
         cleanupFormatting();
     end
 
     if DO_SPOTSVS
-        MakeRedBlueScatterplot(actual_spots, spot_det, f_scores, snr, 'Actual Spots', 'Detected Spots', 6);
+        MakeRedBlueScatterplot(actual_spots, spot_det, snr, amp_var, 'Actual Spots', 'Detected Spots', 6);
         maxval = max(actual_spots, [], 'all', 'omitnan');
         maxval = max(maxval, max(spot_det, [], 'all', 'omitnan'));
         ylim([0 maxval]);
@@ -111,7 +116,8 @@ if DO_RS
     pr_auc = simres_table{:, 'PRAUC_RS'};
 
     if DO_PRAUC
-        MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 7);
+        %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 7);
+        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 7);
         ylim([0 1]);
         title('Simulated Image PR-AUC (RS-FISH)');
         cleanupFormatting();
@@ -122,11 +128,23 @@ if DO_DB
     pr_auc = simres_table{:, 'PRAUC_DB'};
 
     if DO_PRAUC
-        MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 10);
+        %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 10);
+        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 10);
         ylim([0 1]);
         title('Simulated Image PR-AUC (DeepBlink)');
         cleanupFormatting();
     end
+end
+
+if DO_HB & DO_BF & DO_FSCORE
+    fs_hb = simres_table{:, 'HB_FSCORE'};
+    fs_bf = simres_table{:, 'BF_FSCORE'};
+    MakeRedBlueScatterplot(fs_bf, fs_hb, actual_spots, amp_var, 'F-Score (BF)', 'F-Score (HB)', 11);
+    ylim([0 1]);
+    xlim([0 1]);
+    drawXeqYLine();
+    title('F-Scores Homebrew vs. Big-FISH');
+    cleanupFormatting();
 end
 
 % ========================== Helper functions ==========================

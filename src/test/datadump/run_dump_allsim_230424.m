@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%BaseDir = 'D:\usr\bghos\labdat\imgproc';
+%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
-%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 TblOutDir = [BaseDir filesep 'tables'];
 ResultsDir = [BaseDir filesep 'data' filesep 'results'];

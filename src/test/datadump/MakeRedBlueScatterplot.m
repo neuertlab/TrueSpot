@@ -8,7 +8,7 @@ function fhandle = MakeRedBlueScatterplot(x_data, y_data, red_data, blue_data, x
     end
 
     %Remove cases where any values are NaN
-    is_bad = isnan(x_data) | isnan(y_data) | isnan(red_data) | isnan(blue_data);
+    is_bad = ~isfinite(x_data) | ~isfinite(y_data) | ~isfinite(red_data) | ~isfinite(blue_data);
     keepidx = find(~is_bad);
     x_data = x_data(keepidx);
     y_data = y_data(keepidx);

@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%BaseDir = 'D:\usr\bghos\labdat\imgproc';
+%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
-%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 addpath('./core');
 addpath('./test');
@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 45;
-END_INDEX = 45;
+START_INDEX = 1022;
+END_INDEX = 1022;
 
 ResultsDir = [BaseDir filesep 'data' filesep 'results'];
 
@@ -63,9 +63,11 @@ for r = START_INDEX:END_INDEX
     cell_results = quant_results.cell_rna_data;
     clear quant_results;
 
+    image_size = [analysis.image_dims.y analysis.image_dims.x analysis.image_dims.z];
+
     if isfield(analysis, 'results_hb')
         analysis.results_hb.callset = ...
-            RNACoords.addFitDataFromQuant(analysis.results_hb.callset, cell_results, analysis.results_hb.threshold);
+            RNACoords.addFitDataFromQuant(analysis.results_hb.callset, cell_results, analysis.results_hb.threshold, image_size);
 
         %Get ref set
         ref_coords = [];
@@ -91,8 +93,8 @@ for r = START_INDEX:END_INDEX
 
     end
 
-    save(SummaryFilePath, 'analysis');
-    clear analysis cell_results ref_coords;
+    %save(SummaryFilePath, 'analysis');
+    %clear analysis cell_results ref_coords;
 end
 
 % ========================== Helper functions ==========================

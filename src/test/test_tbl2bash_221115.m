@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%DataDir = 'D:\usr\bghos\labdat\imgproc';
+%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
-%ScriptDir = 'C:\Users\bghos\Desktop\slurm';
+%ScriptDir = 'C:\Users\hospelb.VUDS\Desktop\slurm';
+ScriptDir = 'C:\Users\bghos\Desktop\slurm';
 
 ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
 ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
@@ -21,7 +21,7 @@ RAM_PER_CORE = 8;
 RAM_PER_CORE_BF = 64;
 HB_PARALLEL_HR = 6;
 HB_SERIAL_HR = 10;
-BF_SERIAL_HR = 12;
+BF_SERIAL_HR = 14;
 
 QUANT_SERIAL_HR = 6;
 QUANT_PARALLEL_HR = 4;
@@ -35,12 +35,12 @@ TH_MAX = 0;
 TH_MIN_BF = 10;
 Z_TRIM = 0;
 BF_SOBJSZ = 10;
-BF_NUCSZ = 200; %200 yeast, 256 mesc
+BF_NUCSZ = 256; %200 yeast, 256 mesc
 %BF_RESCALE = false;
 
-RUN_HB = true;
+RUN_HB = false;
 RUN_BFNR = false;
-RUN_BFRS = false;
+RUN_BFRS = true;
 RUN_QUANT = true;
 OVERWRITE = false;
 
@@ -50,12 +50,12 @@ PYVENV_NAME = 'bigfish';
 
 % ========================== Load csv Table ==========================
 %InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
-InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [DataDir filesep 'test_images.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'simvarmass_';
+GroupPrefix = 'sctc_E2R2_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');

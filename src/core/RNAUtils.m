@@ -173,10 +173,6 @@ classdef RNAUtils
 %             
         end
         
-        %%
-        function sn_overlap = calculateSimSNOverlap(amp_lvl, bkg_lvl, amp_var, bkg_var, sigma_xy, sigma_z, sigma_var)
-        end
-
     end
     
 end

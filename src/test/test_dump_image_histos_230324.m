@@ -1,11 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%DataDir = 'D:\usr\bghos\labdat\imgproc';
+%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+DataDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
 addpath('./core');
 addpath('./test');

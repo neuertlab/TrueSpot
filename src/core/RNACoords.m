@@ -569,7 +569,7 @@ methods (Static)
 
     end
 
-    function call_table = addFitDataFromQuant(call_table, cell_rna_data, snap_minth)
+    function call_table = addFitDataFromQuant(call_table, cell_rna_data, snap_minth, img_size)
         %Count fits in cell_rna_data
         if isempty(call_table); return; end
         if isempty(cell_rna_data); return; end
@@ -588,8 +588,8 @@ methods (Static)
         end
         if spot_count < 1; return; end
 
-        %x y z intmax inttot xfwhm yfwhm
-        fit_table = NaN(spot_count, 7);
+        %x y z intmax inttot xfwhm yfwhm 1dcoord
+        fit_table = NaN(spot_count, 8);
         table_pos = 1;
         for c = 1:cell_count
             my_cell = cell_rna_data(c);
@@ -601,36 +601,60 @@ methods (Static)
                     spot_fit = myspot.gauss_fit;
                     if isempty(spot_fit); continue; end
                     
-                    fit_table(table_pos,1) = spot_fit.xfit + my_cell.cell_loc.left;
-                    fit_table(table_pos,2) = spot_fit.yfit + my_cell.cell_loc.top;
-                    fit_table(table_pos,3) = spot_fit.zabs + my_cell.cell_loc.z_bottom;
+                    fit_table(table_pos,1) = spot_fit.xfit + my_cell.cell_loc.left - 1;
+                    fit_table(table_pos,2) = spot_fit.yfit + my_cell.cell_loc.top - 1;
+                    fit_table(table_pos,3) = spot_fit.zabs + my_cell.cell_loc.z_bottom - 1;
                     fit_table(table_pos,4) = spot_fit.fitMInt;
                     fit_table(table_pos,5) = spot_fit.TotFitInt;
                     fit_table(table_pos,6) = spot_fit.xFWHM;
                     fit_table(table_pos,7) = spot_fit.yFWHM;
+
+                    xinit = spot_fit.xinit + my_cell.cell_loc.left - 1;
+                    yinit = spot_fit.yinit + my_cell.cell_loc.top - 1;
+                    zinit = spot_fit.zinit + my_cell.cell_loc.z_bottom - 1;
+                    fit_table(table_pos,8) = sub2ind(img_size, yinit, xinit, zinit);
 
                     table_pos = table_pos + 1;
                 end
             end
         end
 
-        %Match
-        ref_assign =  RNACoords.matchSpots(call_table, fit_table, snaprad_3, snaprad_z, snap_minth);
-        rcount = size(ref_assign,2);
-
-        %Copy to call table
-        for i = 1:rcount
-            if ref_assign(i) < 1; continue; end
-            cidx = ref_assign(i);
-            call_table{cidx, 'fit_x'} = fit_table(i,1);
-            call_table{cidx, 'fit_y'} = fit_table(i,2);
-            call_table{cidx, 'fit_z'} = fit_table(i,3);
-            call_table{cidx, 'fit_intensity'} = fit_table(i,4);
-            call_table{cidx, 'fit_total_intensity'} = fit_table(i,5);
-            call_table{cidx, 'xFWHM'} = fit_table(i,6);
-            call_table{cidx, 'yFWHM'} = fit_table(i,7);
+        %Match 1 - Look for exact matches
+        [exact_match, ref_assign] = ismember(fit_table(:,8), call_table{:,'coord_1d'});
+        if nnz(exact_match) > 0
+            rcount = size(ref_assign,1);
+            for i = 1:rcount
+                if ref_assign(i) < 1; continue; end
+                cidx = ref_assign(i);
+                call_table{cidx, 'fit_x'} = fit_table(i,1);
+                call_table{cidx, 'fit_y'} = fit_table(i,2);
+                call_table{cidx, 'fit_z'} = fit_table(i,3);
+                call_table{cidx, 'fit_intensity'} = fit_table(i,4);
+                call_table{cidx, 'fit_total_intensity'} = fit_table(i,5);
+                call_table{cidx, 'xFWHM'} = fit_table(i,6);
+                call_table{cidx, 'yFWHM'} = fit_table(i,7);
+            end
         end
 
+        %Match remaining
+        if nnz(~exact_match) > 0
+            ref_assign =  RNACoords.matchSpots(call_table, fit_table, snaprad_3, snaprad_z, snap_minth);
+            rcount = size(ref_assign,2);
+
+            %Copy to call table
+            for i = 1:rcount
+                if ref_assign(i) < 1; continue; end
+                cidx = ref_assign(i);
+                call_table{cidx, 'fit_x'} = fit_table(i,1);
+                call_table{cidx, 'fit_y'} = fit_table(i,2);
+                call_table{cidx, 'fit_z'} = fit_table(i,3);
+                call_table{cidx, 'fit_intensity'} = fit_table(i,4);
+                call_table{cidx, 'fit_total_intensity'} = fit_table(i,5);
+                call_table{cidx, 'xFWHM'} = fit_table(i,6);
+                call_table{cidx, 'yFWHM'} = fit_table(i,7);
+            end
+        end
+        
     end
 
     function call_table = updateRefDistancesToUseFits(call_table, ref_table, ref_call_map)
