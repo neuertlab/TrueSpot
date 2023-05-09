@@ -15,20 +15,20 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1;
-END_INDEX = 1000;
+START_INDEX = 45;
+END_INDEX = 64;
 
 DO_HOMEBREW = true;
-DO_BIGFISH = true;
-DO_RSFISH = true;
-DO_DEEPBLINK = true;
+DO_BIGFISH = false;
+DO_RSFISH = false;
+DO_DEEPBLINK = false;
 
-DO_TRUTHSET = true;
+DO_TRUTHSET = false;
 
 OutputDir = [BaseDir filesep 'data' filesep 'results'];
 
 RS_TH_IVAL = 0.1/250;
-SCRIPT_VER = 'v23.04.25.00';
+SCRIPT_VER = 'v23.05.09.00';
 COMPUTER_NAME = 'VU_NEUERTLAB_HOSPELB';
 
 EXPTS_INITIALS = 'BH';
@@ -36,8 +36,8 @@ EXPTS_INITIALS = 'BH';
 % ========================== Load csv Table ==========================
 
 %InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
-InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [BaseDir filesep 'test_images.csv'];
+%InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [BaseDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 % ========================== Iterate through table entries ==========================
@@ -162,6 +162,15 @@ for r = START_INDEX:END_INDEX
     analysis.point_dims = struct('x', px, 'y', py, 'z', pz);
     clear px py pz
 
+    %Take some image stats...
+    analysis.imin = min(my_image, [], 'all');
+    analysis.imax = max(my_image, [], 'all');
+    analysis.iprctile = uint16(zeros(7,2));
+    analysis.iprctile(:,1) = [50 75 80 85 90 95 99];
+    analysis.iprctile(:,2) = prctile(my_image,analysis.iprctile(:,1),'all');
+    top1 = find(my_image >= analysis.iprctile(7,2));
+    analysis.i999 = prctile(my_image(top1),99,'all');
+
     if ~is_sim
         %Some more metadata
         analysis.cell_type = getTableValue(image_table, r, 'CELLTYPE');
@@ -196,17 +205,17 @@ for r = START_INDEX:END_INDEX
             [~, spot_table] = spotsrun.loadSpotsTable();
             [~, coord_table] = spotsrun.loadCoordinateTable();
 
-            %Apply filter to image.
-            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, '.', true, 7, false);
-
-            %Do table transfer
-            call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, IMG_filtered, my_image, 2);
-            init_call_count = size(call_table,1);
-
             gaussrad = spotsrun.dtune_gaussrad;
             if gaussrad < 1
                 gaussrad = 7;
             end
+
+            %Apply filter to image.
+            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, '.', true, gaussrad, false);
+
+            %Do table transfer
+            call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, IMG_filtered, my_image, 2);
+            init_call_count = size(call_table,1);
 
             %TF call, if applicable
             if ~isempty(ref_coords)
@@ -270,9 +279,7 @@ for r = START_INDEX:END_INDEX
 
             end
             
-
             %TODO Fit matching, if applicable
-
 
             %Cell mask
             if ~isempty(cellmask)
@@ -297,6 +304,30 @@ for r = START_INDEX:END_INDEX
             analysis.results_hb.z_max = spotsrun.z_max_apply;
             analysis.results_hb.th_scan_min = spotsrun.t_min;
             analysis.results_hb.th_scan_max = spotsrun.t_max;
+
+            if ~isempty(IMG_filtered)
+                %Take some filtered image stats.
+                x0 = analysis.results_hb.x_min; x1 = analysis.results_hb.x_max;
+                y0 = analysis.results_hb.y_min; y1 = analysis.results_hb.y_max;
+                z0 = analysis.results_hb.z_min; z1 = analysis.results_hb.z_max;
+                used_x = x1 - x0 + 1;
+                used_y = y1 - y0 + 1;
+                used_z = z1 - z0 + 1;
+
+                imgf_trimmed = IMG_filtered(y0:y1,x0:x1,z0:z1);
+                analysis.results_hb.fvoxels_incl = used_x * used_y * used_z;
+                analysis.results_hb.fvoxels_nz = nnz(imgf_trimmed);
+                analysis.results_hb.fprop_nz = analysis.results_hb.fvoxels_nz/analysis.results_hb.fvoxels_incl;
+
+                analysis.results_hb.imin_f = min(imgf_trimmed, [], 'all');
+                analysis.results_hb.imax_f = max(imgf_trimmed, [], 'all');
+                analysis.results_hb.iprctile_f = uint16(zeros(7,2));
+                analysis.results_hb.iprctile_f(:,1) = [50 75 80 85 90 95 99];
+                analysis.results_hb.iprctile_f(:,2) = uint16(prctile(imgf_trimmed,analysis.results_hb.iprctile_f(:,1),'all'));
+                top1 = find(imgf_trimmed >= analysis.results_hb.iprctile_f(7,2));
+                analysis.results_hb.i999_f = prctile(imgf_trimmed(top1),99,'all');
+                clear imgf_trimmed x0 x1 y0 y1 z0 z1 used_z used_y used_z
+            end
 
             if ~isempty(ref_coords)
                 %Calculate performance metrics
@@ -334,6 +365,7 @@ for r = START_INDEX:END_INDEX
             init_call_count = size(call_table,1);
 
             if ~isempty(ref_coords)
+                snapminth = 25;
                 if bfthresh > 0
                     if bfthresh < snapminth
                         snapminth = bfthresh;

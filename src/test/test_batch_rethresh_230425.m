@@ -11,13 +11,13 @@ addpath('./core');
 % ========================== Constants ==========================
 
 START_INDEX = 1;
-END_INDEX = 500;
+END_INDEX = 1000;
 
 NEW_TH_SETTING = 5;
 
 % ========================== Load csv Table ==========================
-InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
-%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
+InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
 %InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 

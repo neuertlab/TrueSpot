@@ -1,12 +1,12 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-DataDir = 'D:\usr\bghos\labdat\imgproc';
+DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'histonesc_D0I2D_H3K4me2_Tsix';
+ImgName = 'histonesc_D2I1C_H3K36me3_Histone';
 RefMode = true;
 NewAnno = false;
 JustLoad = false;

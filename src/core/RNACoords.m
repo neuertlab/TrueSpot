@@ -87,8 +87,8 @@ methods (Static)
         end
 
         if fit_incl >= 2
-            varNames = cat(2, varNames, {'xFWHM', 'yFWHM', 'fit_total_intensity'});
-            varTypes = cat(2, varTypes, {'double', 'double', 'double'});
+            varNames = cat(2, varNames, {'xFWHM', 'yFWHM', 'fit_total_intensity', 'zfitq'});
+            varTypes = cat(2, varTypes, {'double', 'double', 'double', 'double'});
         end
 
         table_size = [alloc size(varNames,2)];
@@ -119,6 +119,7 @@ methods (Static)
             call_table{:,'xFWHM'} = NaN;
             call_table{:,'yFWHM'} = NaN;
             call_table{:,'fit_total_intensity'} = NaN;
+            call_table{:,'zfitq'} = NaN;
         end
 
         call_table{:,'is_true'} = false;
@@ -574,6 +575,11 @@ methods (Static)
         if isempty(call_table); return; end
         if isempty(cell_rna_data); return; end
 
+        %Add zfitq column, if not present
+        if ~ismember('zfitq', call_table.Properties.VariableNames)
+            call_table.zfitq = NaN(size(call_table,1), 1);
+        end
+
         snaprad_3 = 4;
         snaprad_z = 2;
 
@@ -588,8 +594,8 @@ methods (Static)
         end
         if spot_count < 1; return; end
 
-        %x y z intmax inttot xfwhm yfwhm 1dcoord
-        fit_table = NaN(spot_count, 8);
+        %x y z intmax inttot xfwhm yfwhm zfitq 1dcoord
+        fit_table = NaN(spot_count, 9);
         table_pos = 1;
         for c = 1:cell_count
             my_cell = cell_rna_data(c);
@@ -608,11 +614,12 @@ methods (Static)
                     fit_table(table_pos,5) = spot_fit.TotFitInt;
                     fit_table(table_pos,6) = spot_fit.xFWHM;
                     fit_table(table_pos,7) = spot_fit.yFWHM;
+                    fit_table(table_pos,8) = spot_fit.zqFit; %Quality of zfit.  If <0 pass if >0 curvature is positive at some point and fit is fail
 
                     xinit = spot_fit.xinit + my_cell.cell_loc.left - 1;
                     yinit = spot_fit.yinit + my_cell.cell_loc.top - 1;
                     zinit = spot_fit.zinit + my_cell.cell_loc.z_bottom - 1;
-                    fit_table(table_pos,8) = sub2ind(img_size, yinit, xinit, zinit);
+                    fit_table(table_pos,9) = sub2ind(img_size, yinit, xinit, zinit);
 
                     table_pos = table_pos + 1;
                 end
@@ -620,7 +627,7 @@ methods (Static)
         end
 
         %Match 1 - Look for exact matches
-        [exact_match, ref_assign] = ismember(fit_table(:,8), call_table{:,'coord_1d'});
+        [exact_match, ref_assign] = ismember(fit_table(:,9), call_table{:,'coord_1d'});
         if nnz(exact_match) > 0
             rcount = size(ref_assign,1);
             for i = 1:rcount
@@ -633,6 +640,7 @@ methods (Static)
                 call_table{cidx, 'fit_total_intensity'} = fit_table(i,5);
                 call_table{cidx, 'xFWHM'} = fit_table(i,6);
                 call_table{cidx, 'yFWHM'} = fit_table(i,7);
+                call_table{cidx, 'zfitq'} = fit_table(i,8);
             end
         end
 
@@ -652,6 +660,7 @@ methods (Static)
                 call_table{cidx, 'fit_total_intensity'} = fit_table(i,5);
                 call_table{cidx, 'xFWHM'} = fit_table(i,6);
                 call_table{cidx, 'yFWHM'} = fit_table(i,7);
+                call_table{cidx, 'zfitq'} = fit_table(i,8);
             end
         end
         

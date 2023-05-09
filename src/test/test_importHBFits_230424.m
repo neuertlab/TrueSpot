@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-BaseDir = 'D:\usr\bghos\labdat\imgproc';
+BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
-ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 addpath('./core');
 addpath('./test');
@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1022;
-END_INDEX = 1022;
+START_INDEX = 39;
+END_INDEX = 41;
 
 ResultsDir = [BaseDir filesep 'data' filesep 'results'];
 
@@ -93,8 +93,8 @@ for r = START_INDEX:END_INDEX
 
     end
 
-    %save(SummaryFilePath, 'analysis');
-    %clear analysis cell_results ref_coords;
+    save(SummaryFilePath, 'analysis');
+    clear analysis cell_results ref_coords;
 end
 
 % ========================== Helper functions ==========================
