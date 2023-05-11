@@ -15,20 +15,21 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 45;
-END_INDEX = 64;
+START_INDEX = 69;
+END_INDEX = 79;
 
 DO_HOMEBREW = true;
-DO_BIGFISH = false;
-DO_RSFISH = false;
-DO_DEEPBLINK = false;
+DO_BIGFISH = true;
+DO_RSFISH = true;
+DO_DEEPBLINK = true;
 
-DO_TRUTHSET = false;
+DO_TRUTHSET = true;
+NEW_TS_ONLY = false;
 
 OutputDir = [BaseDir filesep 'data' filesep 'results'];
 
 RS_TH_IVAL = 0.1/250;
-SCRIPT_VER = 'v23.05.09.00';
+SCRIPT_VER = 'v23.05.11.00';
 COMPUTER_NAME = 'VU_NEUERTLAB_HOSPELB';
 
 EXPTS_INITIALS = 'BH';
@@ -211,10 +212,14 @@ for r = START_INDEX:END_INDEX
             end
 
             %Apply filter to image.
-            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, '.', true, gaussrad, false);
+            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, './core', true, gaussrad, false);
 
             %Do table transfer
-            call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, IMG_filtered, my_image, 2);
+            if NEW_TS_ONLY & isfield(analysis, 'results_hb')
+                call_table = analysis.results_hb.callset;
+            else
+                call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, IMG_filtered, my_image, 2);
+            end
             init_call_count = size(call_table,1);
 
             %TF call, if applicable
@@ -361,7 +366,11 @@ for r = START_INDEX:END_INDEX
             load(bf_st_path, 'spot_table');
             [zmin, zmax, bfthresh] = BigfishCompare.readSummaryTxt(summary_path);
 
-            call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
+            if NEW_TS_ONLY & isfield(analysis, 'results_bf')
+                call_table = analysis.results_bf.callset;
+            else
+                call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
+            end
             init_call_count = size(call_table,1);
 
             if ~isempty(ref_coords)
@@ -418,32 +427,34 @@ for r = START_INDEX:END_INDEX
 
             %Fit matching
             fit_table_path = [bf_dir filesep 'fitspots.csv'];
-            if isfile(fit_table_path)
-                import_table = readtable(fit_table_path,'Delimiter',',',...
-                    'ReadVariableNames',true,'Format','%f%f%f');
-                import_mtx = table2array(import_table);
+            if ~NEW_TS_ONLY
+                if isfile(fit_table_path)
+                    import_table = readtable(fit_table_path,'Delimiter',',',...
+                        'ReadVariableNames',true,'Format','%f%f%f');
+                    import_mtx = table2array(import_table);
 
-                %since it is zyx, swap columns 1 and 3
-                temp = import_mtx(:,1);
-                import_mtx(:,1) = import_mtx(:,3);
-                import_mtx(:,3) = temp;
-                clear temp
+                    %since it is zyx, swap columns 1 and 3
+                    temp = import_mtx(:,1);
+                    import_mtx(:,1) = import_mtx(:,3);
+                    import_mtx(:,3) = temp;
+                    clear temp
 
-                %Let's also adjust to 1-based coords...
-                import_mtx = import_mtx + 1;
+                    %Let's also adjust to 1-based coords...
+                    import_mtx = import_mtx + 1;
 
-                call_table = RNACoords.addFitData(call_table, import_mtx, bfthresh);
-                clear import_table import_mtx
+                    call_table = RNACoords.addFitData(call_table, import_mtx, bfthresh);
+                    clear import_table import_mtx
 
-                if ~isempty(ref_coords)
-                    call_table = RNACoords.updateRefDistancesToUseFits(call_table, ref_coords, ref_call_map);
+                    if ~isempty(ref_coords)
+                        call_table = RNACoords.updateRefDistancesToUseFits(call_table, ref_coords, ref_call_map);
+                    end
+                end
+
+                if ~isempty(cellmask)
+                    call_table = RNACoords.applyCellSegMask(call_table, cellmask);
                 end
             end
 
-            if ~isempty(cellmask)
-                call_table = RNACoords.applyCellSegMask(call_table, cellmask);
-            end
-            
             if ~isfield(analysis, 'results_bf')
                 analysis.results_bf = struct('callset', table.empty());
             end
@@ -482,20 +493,25 @@ for r = START_INDEX:END_INDEX
 
                 spot_table(:,1) = spot_table(:,1) .* RS_TH_IVAL;
 
-                call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
-                init_call_count = size(call_table,1);
-
-                %Fit matching
                 fit_table_path = [rs_stem '_fitTable.mat'];
-                if isfile(fit_table_path)
-                    load(fit_table_path, 'fit_table');
-                    ftbl = fit_table{1,1};
-                    clear fit_table;
-                    
-                    call_table = RNACoords.addFitData(call_table, ftbl);
-                    clear ftbl
-                end
+                if NEW_TS_ONLY & isfield(analysis, 'results_rs')
+                    call_table = analysis.results_rs.callset;
+                    init_call_count = size(call_table,1);
+                else
+                    call_table = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
+                    init_call_count = size(call_table,1);
 
+                    %Fit matching
+                    if isfile(fit_table_path)
+                        load(fit_table_path, 'fit_table');
+                        ftbl = fit_table{1,1};
+                        clear fit_table;
+
+                        call_table = RNACoords.addFitData(call_table, ftbl);
+                        clear ftbl
+                    end
+                end
+                
                 if ~isempty(ref_coords)
                     [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, RS_TH_IVAL);
                     full_call_count = size(call_table, 1);
@@ -580,28 +596,33 @@ for r = START_INDEX:END_INDEX
             if isfile(coord_table_path)
                 load(coord_table_path, 'coord_table');
                 load(spot_table_path, 'spot_table');
+                if NEW_TS_ONLY & isfield(analysis, 'results_db')
+                    call_table = analysis.results_db.callset;
+                    call_table_raw = analysis.results_db.callset_sliced;
+                    callmap = analysis.results_db.callmap_slice_merge;
+                else
+                    call_table_raw = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
+                    if ~isempty(cellmask)
+                        call_table_raw = RNACoords.applyCellSegMask(call_table_raw, cellmask);
+                    end
 
-                call_table_raw = RNACoords.convertOldCoordTable(spot_table, coord_table, [], my_image, 1);
-                if ~isempty(cellmask)
-                    call_table_raw = RNACoords.applyCellSegMask(call_table_raw, cellmask);
+                    %Import Fit (BEFORE merge!)
+                    fit_table_path = findDBFitTable(db_dir, myname);
+                    if ~isempty(fit_table_path) & isfile(fit_table_path)
+                        import_table = readtable(fit_table_path,'Delimiter',',','ReadVariableNames',true,'Format',...
+                            '%f%f%f%f');
+                        import_mtx = table2array(import_table);
+                        import_count = size(import_mtx,1);
+                        fit_table = NaN(import_count,3);
+                        fit_table(:,1:3) = import_mtx(:,[1 2 4]) + 1;
+                        call_table_raw = RNACoords.addFitData(call_table_raw, fit_table);
+
+                        clear import_table import_mtx fit_table import_count
+                    end
+
+                    %Merge slice calls for better truthset comparison
+                    [call_table, callmap] = RNACoords.mergeSlicedSetTo3D(call_table_raw, 4, 0.5);
                 end
-
-                %Import Fit (BEFORE merge!)
-                fit_table_path = findDBFitTable(db_dir, myname);
-                if ~isempty(fit_table_path) & isfile(fit_table_path)
-                    import_table = readtable(fit_table_path,'Delimiter',',','ReadVariableNames',true,'Format',...
-                        '%f%f%f%f');
-                    import_mtx = table2array(import_table);
-                    import_count = size(import_mtx,1);
-                    fit_table = NaN(import_count,3);
-                    fit_table(:,1:3) = import_mtx(:,[1 2 4]) + 1;
-                    call_table_raw = RNACoords.addFitData(call_table_raw, fit_table);
-                    
-                    clear import_table import_mtx fit_table import_count
-                end
-
-                %Merge slice calls for better truthset comparison
-                [call_table, callmap] = RNACoords.mergeSlicedSetTo3D(call_table_raw, 4, 0.5);
                 init_call_count = size(call_table,1);
 
                 if ~isempty(ref_coords)
@@ -911,6 +932,9 @@ function rstruct = markTSStats(rstruct, tag)
         rstruct.callset_sliced = [rstruct.callset_sliced newcol_A newcol_B];
         rstruct.callset_sliced{:,'is_true'} = false;
         rstruct.callset_sliced{:,'in_truth_region'} = false;
+    end
+    if isfield(rstruct, 'ref_call_map')
+        rstruct.(substruct_name).ref_call_map = rstruct.ref_call_map;
     end
     if isfield(rstruct, 'performance')
         rstruct.(substruct_name).performance = rstruct.performance;

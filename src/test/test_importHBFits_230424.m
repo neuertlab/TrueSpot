@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 39;
-END_INDEX = 41;
+START_INDEX = 527;
+END_INDEX = 989;
 
 ResultsDir = [BaseDir filesep 'data' filesep 'results'];
 
@@ -54,8 +54,11 @@ for r = START_INDEX:END_INDEX
     %Check for quant file
     QuantReportPath = [hbq_stem '_quantData.mat'];
     if ~isfile(QuantReportPath)
-        fprintf('Quant data not found for %s! Skipping...\n', myname);
-        continue;
+        QuantReportPath = [hbq_stem '_quantData_varThresh.mat'];
+        if ~isfile(QuantReportPath)
+            fprintf('Quant data not found for %s! Skipping...\n', myname);
+            continue;
+        end
     end
 
     load(SummaryFilePath, 'analysis');

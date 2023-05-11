@@ -62,11 +62,51 @@ methods (Static)
     end
 
     function app_table = genAppendableTable(og_call_table, alloc)
-        fitlvl = 0;
-        colcount = size(og_call_table,2);
-        if colcount > 16; fitlvl = 1; end
-        if colcount > 20; fitlvl = 2; end
-        app_table = RNACoords.genNewCoordTable(alloc, fitlvl);
+        if isempty(og_call_table)
+            app_table = table.empty();
+            return;
+        end
+        varNames = og_call_table.Properties.VariableNames;
+
+        %https://www.mathworks.com/matlabcentral/answers/304728-getting-data-types-of-table
+        varTypes = varfun(@class,og_call_table,'OutputFormat','cell');
+        table_size = [alloc size(varNames,2)];
+        app_table = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+
+        app_table{:,'isnap_x'} = 0;
+        app_table{:,'isnap_y'} = 0;
+        app_table{:,'isnap_z'} = 0;
+        app_table{:,'cell'} = 0;
+        app_table{:,'coord_1d'} = 0;
+
+        app_table{:,'intensity_f'} = NaN;
+        app_table{:,'intensity'} = NaN;
+        app_table{:,'dropout_thresh'} = NaN;
+        app_table{:,'xdist_ref'} = NaN;
+        app_table{:,'ydist_ref'} = NaN;
+        app_table{:,'zdist_ref'} = NaN;
+        app_table{:,'xydist_ref'} = NaN;
+        app_table{:,'xyzdist_ref'} = NaN;
+        app_table{:,'is_true'} = false;
+        app_table{:,'is_trimmed_out'} = false;
+        app_table{:,'in_truth_region'} = false;
+
+        if ismember(varNames, 'fit_x')
+            app_table{:,'fit_x'} = NaN;
+            app_table{:,'fit_y'} = NaN;
+            app_table{:,'fit_z'} = NaN;
+            app_table{:,'fit_intensity'} = NaN;
+        end
+
+        if ismember(varNames, 'xFWHM')
+            app_table{:,'xFWHM'} = NaN;
+            app_table{:,'yFWHM'} = NaN;
+            app_table{:,'fit_total_intensity'} = NaN;
+        end
+
+        if ismember(varNames, 'zfitq')
+            app_table{:,'zfitq'} = NaN;
+        end
     end
 
     function call_table = genNewCoordTable(alloc, fit_incl)
