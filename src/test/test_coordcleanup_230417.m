@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 69;
-END_INDEX = 79;
+START_INDEX = 159;
+END_INDEX = 190;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
@@ -212,7 +212,7 @@ for r = START_INDEX:END_INDEX
             end
 
             %Apply filter to image.
-            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, './core', true, gaussrad, false);
+            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, './test', true, gaussrad, false);
 
             %Do table transfer
             if NEW_TS_ONLY & isfield(analysis, 'results_hb')
@@ -777,7 +777,11 @@ function dirname = getSetOutputDirName(imgname)
             dirname = groupname;
         end
     else
-        dirname = groupname;
+        if startsWith(groupname, 'ROI')
+            dirname = 'munsky_lab';
+        else
+            dirname = groupname;
+        end
     end
 end
 

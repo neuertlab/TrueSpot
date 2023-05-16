@@ -6,10 +6,14 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'histonesc_D0I1C_H3K36me3_Tsix';
+ImgName = 'ROI001_P03_XY1657818950_Z00_T0_CY5';
 RefMode = true;
 NewAnno = false;
 JustLoad = false;
+
+GuessMask = false;
+NewMaskZMin = 10;
+NewMaskZMax = 40;
 
 % ========================== Read Table ==========================
 
@@ -54,6 +58,36 @@ if NewAnno | ~RNA_Threshold_SpotSelector.selectorExists(outstem)
     selector.z_max = spotsrun.idims_sample.z;
 else
     selector = RNA_Threshold_SpotSelector.openSelector(outstem, true);
+end
+
+if GuessMask
+    if NewMaskZMin > 0
+        selector.z_min = NewMaskZMin;
+        if selector.current_slice < NewMaskZMin
+            selector.current_slice = NewMaskZMin;
+        end
+    end
+    if NewMaskZMax > 0
+        selector.z_max = NewMaskZMax;
+        if selector.current_slice > NewMaskZMax
+            selector.current_slice = NewMaskZMax;
+        end
+    end
+  
+
+    if ~isempty(selector.ref_coords)
+        x_good = find(selector.ref_coords(:,1));
+        x_min = min(selector.ref_coords(x_good,1), [], 'all', 'omitnan');
+        x_max = max(selector.ref_coords(x_good,1), [], 'all', 'omitnan');
+        y_good = find(selector.ref_coords(:,2));
+        y_min = min(selector.ref_coords(y_good,2), [], 'all', 'omitnan');
+        y_max = max(selector.ref_coords(y_good,2), [], 'all', 'omitnan');
+        selector.selmcoords = zeros(4,1);
+        selector.selmcoords(1,1) = x_min;
+        selector.selmcoords(2,1) = x_max;
+        selector.selmcoords(3,1) = y_min;
+        selector.selmcoords(4,1) = y_max;
+    end
 end
 
 if JustLoad

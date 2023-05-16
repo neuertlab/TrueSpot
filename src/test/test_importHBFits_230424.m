@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 527;
-END_INDEX = 989;
+START_INDEX = 105;
+END_INDEX = 146;
 
 ResultsDir = [BaseDir filesep 'data' filesep 'results'];
 
