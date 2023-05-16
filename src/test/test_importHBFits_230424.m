@@ -114,7 +114,11 @@ function dirname = getSetOutputDirName(imgname)
             dirname = groupname;
         end
     else
-        dirname = groupname;
+        if startsWith(groupname, 'ROI')
+            dirname = 'munsky_lab';
+        else
+            dirname = groupname;
+        end
     end
 end
 
