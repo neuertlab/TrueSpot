@@ -33,6 +33,7 @@ function fhandle = MakeRedBlueScatterplot(x_data, y_data, red_data, blue_data, x
 
     %For coloring, do points one by one through a for loop for now
     fhandle = figure(figno);
+    clf;
     hold on;
     for i = 1:point_count
         red_lvl = red_data(i)/red_max;

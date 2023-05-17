@@ -14,11 +14,13 @@ addpath('./test');
 
 % ========================== Constants ==========================
 
-ROW_INDEX = 93;
+ROW_INDEX = 65;
 
 DUMP_SPOTCOUNTS = true;
 DUMP_FSCORES = true;
 DUMP_PRC = true;
+
+USE_TRIMMED = true;
 
 COLOR_HB = [0.667 0.220 0.220];
 COLOR_BF = [0.231 0.231 0.702]; %#3b3bb3
@@ -33,8 +35,8 @@ ResultsDir = [BaseDir filesep 'data' filesep 'results'];
 
 % ========================== Read Table ==========================
 
-InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
-%InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
+%InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
+InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
 %InputTablePath = [BaseDir filesep 'test_images.csv'];
 
 image_table = testutil_opentable(InputTablePath);
@@ -54,8 +56,19 @@ end
 if DUMP_SPOTCOUNTS
     if isfield(analysis, 'results_hb')
         if isfield(analysis.results_hb, 'performance')
-            x = analysis.results_hb.performance{:,'thresholdValue'};
-            y = double(analysis.results_hb.performance{:,'spotCount'});
+
+            if USE_TRIMMED
+                if isfield(analysis.results_hb, 'performance_trimmed')
+                    x = analysis.results_hb.performance_trimmed{:,'thresholdValue'};
+                    y = double(analysis.results_hb.performance_trimmed{:,'spotCount'});
+                else
+                    x = analysis.results_hb.performance{:,'thresholdValue'};
+                    y = double(analysis.results_hb.performance{:,'spotCount'});
+                end
+            else
+                x = analysis.results_hb.performance{:,'thresholdValue'};
+                y = double(analysis.results_hb.performance{:,'spotCount'});
+            end
             y = log10(y);
 
             SpotPlots.renderLogSpotCountPlot(x, y,...
@@ -66,8 +79,18 @@ if DUMP_SPOTCOUNTS
 
     if isfield(analysis, 'results_bf')
         if isfield(analysis.results_bf, 'performance')
-            x = analysis.results_bf.performance{:,'thresholdValue'};
-            y = double(analysis.results_bf.performance{:,'spotCount'});
+            if USE_TRIMMED
+                if isfield(analysis.results_bf, 'performance_trimmed')
+                    x = analysis.results_bf.performance_trimmed{:,'thresholdValue'};
+                    y = double(analysis.results_bf.performance_trimmed{:,'spotCount'});
+                else
+                    x = analysis.results_bf.performance{:,'thresholdValue'};
+                    y = double(analysis.results_bf.performance{:,'spotCount'});
+                end
+            else
+                x = analysis.results_bf.performance{:,'thresholdValue'};
+                y = double(analysis.results_bf.performance{:,'spotCount'});
+            end
             y = log10(y);
 
             SpotPlots.renderLogSpotCountPlot(x, y,...
@@ -104,8 +127,18 @@ end
 if DUMP_FSCORES
     if isfield(analysis, 'results_hb')
         if isfield(analysis.results_hb, 'performance')
-            x = analysis.results_hb.performance{:,'thresholdValue'};
-            y = double(analysis.results_hb.performance{:,'fScore'});
+            if USE_TRIMMED
+                if isfield(analysis.results_hb, 'performance_trimmed')
+                    x = analysis.results_hb.performance_trimmed{:,'thresholdValue'};
+                    y = double(analysis.results_hb.performance_trimmed{:,'fScore'});
+                else
+                    x = analysis.results_hb.performance{:,'thresholdValue'};
+                    y = double(analysis.results_hb.performance{:,'fScore'});
+                end
+            else
+                x = analysis.results_hb.performance{:,'thresholdValue'};
+                y = double(analysis.results_hb.performance{:,'fScore'});
+            end
 
             SpotPlots.renderFScorePlot(x, y,...
                 COLOR_HB, analysis.results_hb.threshold,...
@@ -115,8 +148,18 @@ if DUMP_FSCORES
 
     if isfield(analysis, 'results_bf')
         if isfield(analysis.results_bf, 'performance')
-            x = analysis.results_bf.performance{:,'thresholdValue'};
-            y = double(analysis.results_bf.performance{:,'fScore'});
+            if USE_TRIMMED
+                if isfield(analysis.results_bf, 'performance_trimmed')
+                    x = analysis.results_bf.performance_trimmed{:,'thresholdValue'};
+                    y = double(analysis.results_bf.performance_trimmed{:,'fScore'});
+                else
+                    x = analysis.results_bf.performance{:,'thresholdValue'};
+                    y = double(analysis.results_bf.performance{:,'fScore'});
+                end
+            else
+                x = analysis.results_bf.performance{:,'thresholdValue'};
+                y = double(analysis.results_bf.performance{:,'fScore'});
+            end
 
             SpotPlots.renderFScorePlot(x, y,...
                 COLOR_BF, analysis.results_bf.threshold,...
@@ -150,8 +193,18 @@ end
 if DUMP_PRC
     if isfield(analysis, 'results_hb')
         if isfield(analysis.results_hb, 'performance')
-            x = analysis.results_hb.performance{:,'sensitivity'};
-            y = double(analysis.results_hb.performance{:,'precision'});
+            if USE_TRIMMED
+                if isfield(analysis.results_hb, 'performance_trimmed')
+                    x = analysis.results_hb.performance_trimmed{:,'sensitivity'};
+                    y = double(analysis.results_hb.performance_trimmed{:,'precision'});
+                else
+                    x = analysis.results_hb.performance{:,'sensitivity'};
+                    y = double(analysis.results_hb.performance{:,'precision'});
+                end
+            else
+                x = analysis.results_hb.performance{:,'sensitivity'};
+                y = double(analysis.results_hb.performance{:,'precision'});
+            end
 
             SpotPlots.renderPRPlot(x, y, COLOR_HB, 9, []);
         end
@@ -159,8 +212,18 @@ if DUMP_PRC
 
     if isfield(analysis, 'results_bf')
         if isfield(analysis.results_bf, 'performance')
-            x = analysis.results_bf.performance{:,'sensitivity'};
-            y = double(analysis.results_bf.performance{:,'precision'});
+            if USE_TRIMMED
+                if isfield(analysis.results_bf, 'performance_trimmed')
+                    x = analysis.results_bf.performance_trimmed{:,'sensitivity'};
+                    y = double(analysis.results_bf.performance_trimmed{:,'precision'});
+                else
+                    x = analysis.results_bf.performance{:,'sensitivity'};
+                    y = double(analysis.results_bf.performance{:,'precision'});
+                end
+            else
+                x = analysis.results_bf.performance{:,'sensitivity'};
+                y = double(analysis.results_bf.performance{:,'precision'});
+            end
 
             SpotPlots.renderPRPlot(x, y, COLOR_BF, 10, []);
         end
@@ -186,6 +249,10 @@ if DUMP_PRC
 end
 
 % ========================== Helper Functions ==========================
+
+function cleanupFormatting()
+    set(gca,'FontSize',12);
+end
 
 function dirname = getSetOutputDirName(imgname)
     inparts = split(imgname, '_');

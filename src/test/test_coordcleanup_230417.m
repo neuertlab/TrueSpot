@@ -86,6 +86,12 @@ for r = START_INDEX:END_INDEX
         analysis.truthset_region = ts_region;
     end
 
+    if startsWith(myname, 'sim_') | startsWith(myname, 'simvar')
+        is_sim = true;
+    elseif startsWith(myname, 'rsfish_sim')
+        is_sim = true;
+    end
+
     %--------------------------------------- Truthset
     if DO_TRUTHSET
         fprintf('> Importing truthset...\n');
