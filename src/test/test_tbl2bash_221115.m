@@ -40,7 +40,7 @@ BF_NUCSZ = 256; %200 yeast, 256 mesc
 
 RUN_HB = false;
 RUN_BFNR = false;
-RUN_BFRS = true;
+RUN_BFRS = false;
 RUN_QUANT = true;
 OVERWRITE = false;
 
@@ -55,7 +55,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E2R2_';
+GroupPrefix = 'simvar_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');

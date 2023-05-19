@@ -16,8 +16,8 @@ addpath('./test');
 
 SimResCSVPath = [BaseDir filesep 'sim_results.csv'];
 
-DateDir = '20230517';
-DateSuffix = '230517';
+DateDir = '20230518';
+DateSuffix = '230518';
 OutDir = [ImgProcDir filesep 'figures' filesep DateDir];
 
 % ========================== Parameters ==========================
@@ -28,8 +28,9 @@ DO_RS = true;
 DO_DB = true;
 
 HB_TRIMMED = true;
-MAX_ZEROPROP = 0;
+MAX_ZEROPROP = 0.75;
 SNR_MAX = 240;
+NORM_TO = 0;
 
 DO_PRAUC = true;
 DO_FSCORE = true;
@@ -68,6 +69,8 @@ snr = amp_lvl ./ (bkg_lvl .* bkg_var);
 %snr_unit = max(snr, [], 'all', 'omitnan') / 20;
 snr_unit = SNR_MAX / 20;
 
+maxcounts = NaN(1,6);
+
 if DO_HB
     if HB_TRIMMED
         pr_auc = simres_table{:, 'PRAUC_HBTr'};
@@ -80,14 +83,14 @@ if DO_HB
     end
 
     if DO_PRAUC
-        fig = doHeatmap(1, snr, pr_auc, snr_unit, 0.05);
+        [fig, maxcounts(1)] = doHeatmap(1, snr, pr_auc, snr_unit, 0.05, NORM_TO);
         title('Simulated Image PR-AUC (Homebrew)');
         ylabel('PR-AUC');
         saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_hb_heatmap_' DateSuffix '.svg']);
     end
 
     if DO_FSCORE
-        fig = doHeatmap(2, snr, f_scores, snr_unit, 0.05);
+        [fig, maxcounts(2)] = doHeatmap(2, snr, f_scores, snr_unit, 0.05, NORM_TO);
         title('Simulated Image F-Scores (Homebrew)');
         ylabel('F-Score');
         saveas(fig, [OutDir filesep 'zp' zpstr '_fscore_hb_heatmap_' DateSuffix '.svg']);
@@ -101,14 +104,14 @@ if DO_BF
     spot_det = simres_table{:, 'BF_SPOTS'};
 
     if DO_PRAUC
-        fig = doHeatmap(3, snr, pr_auc, snr_unit, 0.05);
+        [fig, maxcounts(3)] = doHeatmap(3, snr, pr_auc, snr_unit, 0.05, NORM_TO);
         title('Simulated Image PR-AUC (BigFISH)');
         ylabel('PR-AUC');
         saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_bf_heatmap_' DateSuffix '.svg']);
     end
 
     if DO_FSCORE
-        fig = doHeatmap(4, snr, f_scores, snr_unit, 0.05);
+        [fig, maxcounts(4)] = doHeatmap(4, snr, f_scores, snr_unit, 0.05, NORM_TO);
         title('Simulated Image F-Scores (BigFISH)');
         ylabel('F-Score');
         saveas(fig, [OutDir filesep 'zp' zpstr '_fscore_bf_heatmap_' DateSuffix '.svg']);
@@ -120,7 +123,7 @@ if DO_RS
     pr_auc = simres_table{:, 'PRAUC_RS'};
 
     if DO_PRAUC
-        fig = doHeatmap(5, snr, pr_auc, snr_unit, 0.05);
+        [fig, maxcounts(5)] = doHeatmap(5, snr, pr_auc, snr_unit, 0.05, NORM_TO);
         title('Simulated Image PR-AUC (RS-FISH)');
         ylabel('PR-AUC');
         saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_rs_heatmap_' DateSuffix '.svg']);
@@ -131,7 +134,7 @@ if DO_DB
     pr_auc = simres_table{:, 'PRAUC_DB'};
 
     if DO_PRAUC
-        fig = doHeatmap(6, snr, pr_auc, snr_unit, 0.05);
+        [fig, maxcounts(6)] = doHeatmap(6, snr, pr_auc, snr_unit, 0.05, NORM_TO);
         title('Simulated Image PR-AUC (DeepBlink)');
         ylabel('PR-AUC');
         saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_db_heatmap_' DateSuffix '.svg']);
@@ -140,10 +143,11 @@ end
 
 % ========================== Helper functions ==========================
 
-function fig_handle = doHeatmap(figno, x, y, x_unit, y_unit, x_boxes, y_boxes)
+function [fig_handle, max_count] = doHeatmap(figno, x, y, x_unit, y_unit, norm, x_boxes, y_boxes)
 
-    if nargin < 6; x_boxes = 20; end
-    if nargin < 6; y_boxes = 20; end
+    if nargin < 6; norm = 0; end
+    if nargin < 7; x_boxes = 20; end
+    if nargin < 8; y_boxes = 20; end
     
     x_max = x_boxes * x_unit;
     y_max = y_boxes * y_unit;
@@ -180,6 +184,13 @@ function fig_handle = doHeatmap(figno, x, y, x_unit, y_unit, x_boxes, y_boxes)
 
     xlbl = x_bounds(1:x_boxes);
     ylbl = y_bounds(1:y_boxes);
+    max_count = max(countmtx, [], 'all', 'omitnan');
+    total = size(x,1);
+    if norm > 0
+        countmtx = countmtx ./ norm;
+    else
+        countmtx = countmtx ./ total;
+    end
 
     %Invert y
     ylbl = flip(ylbl);
@@ -189,6 +200,7 @@ function fig_handle = doHeatmap(figno, x, y, x_unit, y_unit, x_boxes, y_boxes)
     clf;
     hm = heatmap(xlbl, ylbl, countmtx);
     hm.Colormap = turbo;
+    hm.ColorLimits = [0.0 0.5];
     hm.CellLabelColor = 'none';
     xlabel('SNR');
 end

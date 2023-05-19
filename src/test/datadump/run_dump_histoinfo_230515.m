@@ -60,7 +60,6 @@ for t = 1:ImgTableCount
     entry_count = size(image_table, 1);
     for r = 1:entry_count
 
-        %Check if sim
         myname = getTableValue(image_table, r, 'IMGNAME');
         fprintf('> Now processing %s (%d of %d)...\n', myname, r, entry_count);
 

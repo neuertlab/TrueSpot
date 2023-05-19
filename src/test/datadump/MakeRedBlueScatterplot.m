@@ -39,7 +39,7 @@ function fhandle = MakeRedBlueScatterplot(x_data, y_data, red_data, blue_data, x
         red_lvl = red_data(i)/red_max;
         blue_lvl = blue_data(i)/blue_max;
         plot(x_data(i), y_data(i), 'LineStyle', 'none', 'Marker', 'o', 'MarkerEdgeColor', 'none',...
-            'MarkerFaceColor', [red_lvl 0.0 blue_lvl], 'MarkerSize', 5);
+            'MarkerFaceColor', [red_lvl 0.0 blue_lvl], 'MarkerSize', 3);
         hold on;
     end
 

@@ -1,17 +1,17 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-%ImgDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
-ImgProcDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
 addpath('./core');
 % ========================== Constants ==========================
 
-ImageName = 'scrna_E1R2I4_STL1';
+ImageName = 'simvar_intensity_var_500';
 %dbgcell = 19;
-worker_count = 2;
+worker_count = 1;
 
 % ========================== Load csv Table ==========================
 
@@ -38,8 +38,15 @@ end
 
 hb_outstem = [ImgProcDir replace(getTableValue(imgtbl, row_idx, 'OUTSTEM'), '/', filesep)];
 tif_path = [ImgDir replace(getTableValue(imgtbl, row_idx, 'IMAGEPATH'), '/', filesep)];
-cs_dir = [ImgProcDir replace(getTableValue(imgtbl, row_idx, 'CELLSEG_DIR'), '/', filesep)];
-cs_name = getTableValue(imgtbl, row_idx, 'CELLSEG_SFX');
+
+cs_dir_raw = getTableValue(imgtbl, row_idx, 'CELLSEG_DIR');
+if strcmp(cs_dir_raw, '.')
+    cs_dir = [];
+    cs_name = [];
+else
+    cs_dir = [ImgProcDir replace(getTableValue(imgtbl, row_idx, 'CELLSEG_DIR'), '/', filesep)];
+    cs_name = getTableValue(imgtbl, row_idx, 'CELLSEG_SFX');
+end
 
 [run_dir, ~, ~] = fileparts(hb_outstem);
 run_path = [hb_outstem '_rnaspotsrun.mat'];
@@ -57,9 +64,14 @@ run_path = [hb_outstem '_rnaspotsrun.mat'];
 % Main_RNAQuant('-runinfo', run_path, '-tif', tif_path, '-outdir', run_dir, ...
 %     '-cellsegdir', cs_dir, '-cellsegname', cs_name, '-workers', worker_count,...
 %     '-dbgcell', dbgcell);
-Main_RNAQuant('-runinfo', run_path, '-tif', tif_path, '-outdir', run_dir, ...
+if ~isempty(cs_dir)
+    Main_RNAQuant('-runinfo', run_path, '-tif', tif_path, '-outdir', run_dir, ...
     '-cellsegdir', cs_dir, '-cellsegname', cs_name, '-workers', worker_count,...
     '-noclouds');
+else
+    Main_RNAQuant('-runinfo', run_path, '-tif', tif_path, '-outdir', run_dir, ...
+    '-workers', worker_count, '-noclouds', '-nocells');
+end
 
 % ========================== Helper functions ==========================
 

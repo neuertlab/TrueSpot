@@ -740,7 +740,8 @@ classdef RNAQuant
                     p3 = polyfit([1:5], fitted_params(GPARAM_A_2DIM,:), 4);
                     tempvec = 1:0.01:5;
                     [~,maxidx] = max(polyval(p3,tempvec));
-                    spot_params.zqFit = max(diff(diff(polyval(p3,tempvec),2)));
+                    %spot_params.zqFit = max(diff(diff(polyval(p3,tempvec),2)));
+                    spot_params.zqFit = max(diff(polyval(p3,tempvec),2)); %I think this was a typo
                     spot_params.zint = tempvec(maxidx);
                 else
                     spot_params.zint = NaN; %gm3

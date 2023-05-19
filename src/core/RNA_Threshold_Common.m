@@ -1,8 +1,8 @@
 %Common functions for RNA thresholding
 %Blythe Hospelhorn
 %Modified from code written by Ben Kesler & Gregor Neuert
-%Version 2.6.2
-%Updated April 25, 2023
+%Version 2.7.0
+%Updated May 18, 2023
 
 %Modified from ABs_Threshold3Dim
 %Copied from bgh_3DThresh_Common
@@ -73,6 +73,8 @@
 %       Scan auto suggestions should be integers
 %   2.6.2 | 23.04.25
 %       Scan auto min suggestion now lowers based on 80th percentile
+%   2.7.0 | 23.05.18
+%       Added th curve check for filtering out curves without sharp drop.
 
 %%
 %
@@ -545,6 +547,7 @@ classdef RNA_Threshold_Common
             param_struct.madth_weight = 0.0;
             param_struct.fit_weight = 1.0;
             param_struct.std_factor = 0.0;
+            param_struct.min_log_diff = 0.15;
         end
         
         %%
@@ -596,6 +599,7 @@ classdef RNA_Threshold_Common
             res.madth_weight = 0.0;
             res.fit_weight = 1.0;
             res.std_factor = 0.0;
+            res.min_log_diff = 0.5;
             tres_struct = res;
         end
         
@@ -788,6 +792,87 @@ classdef RNA_Threshold_Common
         end
         
         %%
+        function boolres = curveIsTestable(spot_table)
+            %Meant to filter out curves with no dropoff.
+            %Curve must meet the following requirements:
+            % > Maximum has an order of magnitude of at least 3
+            %   ... AND
+            % > Maximum absdiff is no smaller than 1 order of magnitude
+            %       less than max spot count
+            %  ... OR
+            % > The first (abs) 1st deriv local min following the global max
+            %       (ie. first plateau after first drop) has a value of
+            %       >= 10 OR the spot count at that position is at least 3
+            %       orders of magnitude below max
+
+            boolres = false;
+            if isempty(spot_table); return; end
+            
+            global_max = max(spot_table(:,2), [], 'all', 'omitnan');
+            if global_max < 1000; return; end
+
+            log_global_max = log10(double(global_max));
+            adiff = abs(diff(double(spot_table(:,2))));
+            adiffmax = max(adiff, [], 'all', 'omitnan');
+            log_adm = log10(adiffmax);
+            if log_adm >= 2
+                boolres = true;
+                return;
+            end
+            if log_adm >= log_global_max - 1
+                boolres = true;
+                return;
+            end
+            adiffmin = min(adiff, [], 'all', 'omitnan');
+            if adiffmin >= 10
+                boolres = true;
+                return;
+            end
+
+            T = size(spot_table,1);
+            D = T - 1;
+            max_idx = 0;
+            last_val = -1;
+            for i = 1:D
+                if adiff(i,1) < last_val
+                    max_idx = i-1;
+                    break;
+                end
+                last_val = adiff(i,1);
+            end
+            if max_idx < 1; return; end
+
+            %Find the next point where it dips below 10, then find local min.
+            look_for_min = false;
+            check_idx = 0;
+            for i = max_idx+1:D
+                if look_for_min
+                    if adiff(i,1) > adiff(i-1,1)
+                        check_idx = i-1;
+                        break;
+                    end
+                else
+                    if adiff(i,1) < 10
+                        look_for_min = true;
+                    end
+                end
+            end
+            if check_idx < 1; return; end
+
+            scval = spot_table(check_idx,2);
+            if scval < 1
+                boolres = true;
+                return;
+            end
+
+            logscval = log10(double(scval));
+            if log_global_max - logscval >= 2.5
+                boolres = true;
+                return;
+            end
+        end
+
+        %%
         % (Description)
         %
         % ARGS
@@ -871,6 +956,7 @@ classdef RNA_Threshold_Common
             threshold_results.madth_weight = parameter_info.madth_weight;
             threshold_results.fit_weight = parameter_info.fit_weight;
             threshold_results.std_factor = parameter_info.std_factor;
+            threshold_results.min_log_diff = parameter_info.min_log_diff;
             
             mweight = threshold_results.madth_weight;
             fweight = threshold_results.fit_weight;
@@ -1092,7 +1178,28 @@ classdef RNA_Threshold_Common
                 end
                 threshold_results.threshold = threshold_results.control_floor;
             end
-            
+
+            %Check if values meet difference requirement...
+%             if threshold_results.threshold > 0
+%                 spotmax = max(spotcount_table(:,2), [], 'all', 'omitnan');
+%                 thidx = RNAUtils.findThresholdIndex(threshold_results.threshold, spotcount_table(:,1).');
+%                 spotth = spotcount_table(thidx,2);
+% 
+%                 spotmaxl = log10(double(spotmax));
+%                 if spotth > 0
+%                     spotthl = log10(double(spotth));
+%                 else
+%                     spotthl = 0;
+%                 end
+% 
+%                 if (spotmaxl - spotthl) < threshold_results.min_log_diff
+%                     diffmax = max(deriv1);
+%                     if diffmax < 100
+%                         fprintf("Warning: Spot count at selected threshold is too close to max. Setting to max.\n");
+%                         threshold_results.threshold = spotcount_table(1,1);
+%                     end
+%                 end
+%             end
         end
         
         %%

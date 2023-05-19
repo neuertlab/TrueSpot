@@ -16,6 +16,10 @@ addpath('./test');
 
 SimResCSVPath = [BaseDir filesep 'sim_results.csv'];
 
+DateDir = '20230518';
+DateSuffix = '230518';
+OutDir = [ImgProcDir filesep 'figures' filesep DateDir];
+
 % ========================== Parameters ==========================
 
 DO_HB = true;
@@ -24,7 +28,7 @@ DO_RS = true;
 DO_DB = true;
 
 HB_TRIMMED = true;
-MAX_ZEROPROP = 0;
+MAX_ZEROPROP = 0.75;
 
 DO_PRAUC = true;
 DO_FSCORE = true;
@@ -39,11 +43,14 @@ simres_table = readtable(SimResCSVPath,'Delimiter',',','ReadVariableNames',true,
 % ========================== Do plot ==========================
 
 %Filter..
-if MAX_ZEROPROP > 0
+if MAX_ZEROPROP > 0.0
     keeprows = find(~isnan(simres_table{:, 'FILT_PROP_ZERO'}));
     simres_table = simres_table(keeprows,:);
     keeprows = find(simres_table{:, 'FILT_PROP_ZERO'} <= MAX_ZEROPROP);
     simres_table = simres_table(keeprows,:);
+    zpstr = sprintf('%02d', uint16(MAX_ZEROPROP * 100));
+else
+    zpstr = 'n';
 end
 
 bkg_lvl = simres_table{:, 'BKG_LVL'};
@@ -69,23 +76,25 @@ if DO_HB
 
     if DO_PRAUC
         %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 1);
-        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 1);
+        fig = MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 1);
         ylim([0 1]);
         title('Simulated Image PR-AUC (Homebrew)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_hb_scatter_' DateSuffix '.svg']);
     end
 
     if DO_FSCORE
         %MakeRedBlueScatterplot(snr, f_scores, amp_var, bkg_var, 'SNR', 'F-Score', 2);
-        MakeRedBlueScatterplot(snr, f_scores, actual_spots, amp_var, 'SNR', 'F-Score', 2);
+        fig = MakeRedBlueScatterplot(snr, f_scores, actual_spots, amp_var, 'SNR', 'F-Score', 2);
         %MakeRedBlueScatterplot(snr, f_scores, actual_spots, fzprop, 'SNR', 'F-Score', 2);
         ylim([0 1]);
         title('Simulated Image F-Score (Homebrew)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_fscore_hb_scatter_' DateSuffix '.svg']);
     end
 
     if DO_SPOTSVS
-        MakeRedBlueScatterplot(actual_spots, spot_det, snr, amp_var, 'Actual Spots', 'Detected Spots', 3);
+        fig = MakeRedBlueScatterplot(actual_spots, spot_det, snr, amp_var, 'Actual Spots', 'Detected Spots', 3);
         maxval = max(actual_spots, [], 'all', 'omitnan');
         maxval = max(maxval, max(spot_det, [], 'all', 'omitnan'));
         ylim([0 maxval]);
@@ -93,6 +102,7 @@ if DO_HB
         drawXeqYLine();
         title('Detected vs. Simulated Spots (Homebrew)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_spots_hb_scatter_' DateSuffix '.svg']);
     end
 
 end
@@ -104,23 +114,25 @@ if DO_BF
 
     if DO_PRAUC
         %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 4);
-        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 4);
+        fig = MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 4);
         ylim([0 1]);
         title('Simulated Image PR-AUC (Big-FISH)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_bf_scatter_' DateSuffix '.svg']);
     end
 
     if DO_FSCORE
         %MakeRedBlueScatterplot(snr, f_scores, amp_var, bkg_var, 'SNR', 'F-Score', 5);
-        MakeRedBlueScatterplot(snr, f_scores, actual_spots, amp_var, 'SNR', 'F-Score', 5);
+        fig = MakeRedBlueScatterplot(snr, f_scores, actual_spots, amp_var, 'SNR', 'F-Score', 5);
         %MakeRedBlueScatterplot(snr, f_scores, actual_spots, fzprop, 'SNR', 'F-Score', 5);
         ylim([0 1]);
         title('Simulated Image F-Score (Big-FISH)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_fscore_bf_scatter_' DateSuffix '.svg']);
     end
 
     if DO_SPOTSVS
-        MakeRedBlueScatterplot(actual_spots, spot_det, snr, amp_var, 'Actual Spots', 'Detected Spots', 6);
+        fig = MakeRedBlueScatterplot(actual_spots, spot_det, snr, amp_var, 'Actual Spots', 'Detected Spots', 6);
         maxval = max(actual_spots, [], 'all', 'omitnan');
         maxval = max(maxval, max(spot_det, [], 'all', 'omitnan'));
         ylim([0 maxval]);
@@ -128,6 +140,7 @@ if DO_BF
         drawXeqYLine();
         title('Detected vs. Simulated Spots (Big-FISH)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_spots_bf_scatter_' DateSuffix '.svg']);
     end
 
 end
@@ -137,10 +150,11 @@ if DO_RS
 
     if DO_PRAUC
         %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 7);
-        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 7);
+        fig = MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 7);
         ylim([0 1]);
         title('Simulated Image PR-AUC (RS-FISH)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_rs_scatter_' DateSuffix '.svg']);
     end
 end
 
@@ -149,22 +163,24 @@ if DO_DB
 
     if DO_PRAUC
         %MakeRedBlueScatterplot(snr, pr_auc, amp_var, bkg_var, 'SNR', 'PR-AUC', 10);
-        MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 10);
+        fig = MakeRedBlueScatterplot(snr, pr_auc, actual_spots, amp_var, 'SNR', 'PR-AUC', 10);
         ylim([0 1]);
         title('Simulated Image PR-AUC (DeepBlink)');
         cleanupFormatting();
+        saveas(fig, [OutDir filesep 'zp' zpstr '_prauc_db_scatter_' DateSuffix '.svg']);
     end
 end
 
 if DO_HB & DO_BF & DO_FSCORE
     fs_hb = simres_table{:, 'HB_FSCORE'};
     fs_bf = simres_table{:, 'BF_FSCORE'};
-    MakeRedBlueScatterplot(fs_bf, fs_hb, actual_spots, amp_var, 'F-Score (BF)', 'F-Score (HB)', 11);
+    fig = MakeRedBlueScatterplot(fs_bf, fs_hb, actual_spots, amp_var, 'F-Score (BF)', 'F-Score (HB)', 11);
     ylim([0 1]);
     xlim([0 1]);
     drawXeqYLine();
     title('F-Scores Homebrew vs. Big-FISH');
     cleanupFormatting();
+    saveas(fig, [OutDir filesep 'zp' zpstr '_fscore_hbvbf_scatter_' DateSuffix '.svg']);
 end
 
 % ========================== Helper functions ==========================

@@ -6,8 +6,8 @@ DataDir = 'D:\usr\bghos\labdat\imgproc';
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'histonesc_D2I1E_H3K4me2_Tsix';
-RefMode = true;
+ImgName = 'simvarmass_a41fe574';
+RefMode = false;
 NewAnno = false;
 JustLoad = false;
 
@@ -18,7 +18,8 @@ NewMaskZMax = 40;
 % ========================== Read Table ==========================
 
 %InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
-InputTablePath = [DataDir filesep 'test_images.csv'];
+InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+%InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 rec_row = 0;
