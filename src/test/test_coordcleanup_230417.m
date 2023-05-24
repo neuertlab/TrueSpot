@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 159;
-END_INDEX = 190;
+START_INDEX = 104;
+END_INDEX = 104;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;

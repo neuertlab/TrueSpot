@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-BaseDir = 'D:\usr\bghos\labdat\imgproc';
+BaseDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%BaseDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
-ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
+ImgProcDir = 'D:\Users\hospelb\labdata\imgproc';
+%ImgProcDir = 'D:\usr\bghos\labdat\imgproc';
 
-%ImgDir = 'C:\Users\hospelb\labdata\imgproc';
-ImgDir = 'D:\usr\bghos\labdat\imgproc';
+ImgDir = 'C:\Users\hospelb\labdata\imgproc';
+%ImgDir = 'D:\usr\bghos\labdat\imgproc';
 
 TblOutDir = [BaseDir filesep 'tables'];
 ResultsDir = [BaseDir filesep 'data' filesep 'results'];
@@ -76,12 +76,12 @@ for r = 1:entry_count
     if isfile(ResFilePath)
         load(ResFilePath, 'analysis');
         if isfield(analysis, 'truthset_BH')
-            loaded_channel = loadTIFChannel(image_table, r);
+            loaded_channel = loadTIFChannel(ImgDir, image_table, r);
             if ~isempty(loaded_channel)
                 has_amp_data = true;
                 ref_coords = analysis.truthset_BH.exprefset;
                 coords_1D = sub2ind(size(loaded_channel),...
-                    ref_coords(:,1).', ref_coords(:,2).', ref_coords(:,3).');
+                    ref_coords(:,2).', ref_coords(:,1).', ref_coords(:,3).');
 
                 intensities = double(loaded_channel(coords_1D));
                 a_min = min(intensities, [], 'all', 'omitnan');
@@ -102,7 +102,7 @@ for r = 1:entry_count
     has_bkg_data = false;
     if isfile(bkg_path)
         if isempty(loaded_channel)
-            loaded_channel = loadTIFChannel(image_table, r);
+            loaded_channel = loadTIFChannel(ImgDir, image_table, r);
         end
         if ~isempty(loaded_channel)
             load(bkg_path, 'background_mask');
@@ -138,7 +138,7 @@ fclose(OutTableFile);
 
 % ========================== Helper Functions ==========================
 
-function channel = loadTIFChannel(mytable, row_index)
+function channel = loadTIFChannel(ImgDir, mytable, row_index)
     tif_path_raw = getTableValue(mytable, row_index, 'IMAGEPATH');
     tif_path = [ImgDir replace(tif_path_raw, '/', filesep)];
 

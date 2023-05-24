@@ -1,13 +1,13 @@
 %
 %%  !! UPDATE TO YOUR BASE DIR
-%DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
-DataDir = 'D:\usr\bghos\labdat\imgproc';
+DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
+%DataDir = 'D:\usr\bghos\labdat\imgproc';
 
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'simvarmass_a41fe574';
-RefMode = false;
+ImgName = 'histonesc_D2I1C_H3K36me3_Histone';
+RefMode = true;
 NewAnno = false;
 JustLoad = false;
 
@@ -18,8 +18,8 @@ NewMaskZMax = 40;
 % ========================== Read Table ==========================
 
 %InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
-InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [DataDir filesep 'test_images.csv'];
+%InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 rec_row = 0;
