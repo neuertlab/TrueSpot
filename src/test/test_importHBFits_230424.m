@@ -15,16 +15,16 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 1;
-END_INDEX = 1000;
+START_INDEX = 948;
+END_INDEX = 1024;
 
 ResultsDir = [BaseDir filesep 'data' filesep 'results'];
 
 % ========================== Load csv Table ==========================
 
 %InputTablePath = [BaseDir filesep 'test_images_simytc.csv'];
-InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
-%InputTablePath = [BaseDir filesep 'test_images.csv'];
+%InputTablePath = [BaseDir filesep 'test_images_simvarmass.csv'];
+InputTablePath = [BaseDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 % ========================== Iterate through table entries ==========================

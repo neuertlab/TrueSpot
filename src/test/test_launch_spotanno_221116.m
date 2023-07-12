@@ -6,12 +6,12 @@ DataDir = 'D:\Users\hospelb\labdata\imgproc\imgproc';
 % ========================== Settings ==========================
 addpath('./core');
 
-ImgName = 'histonesc_D2I1C_H3K36me3_Histone';
+ImgName = 'histonesc_D0I1E_H3K4me2_Histone';
 RefMode = true;
 NewAnno = false;
 JustLoad = false;
 
-GuessMask = false;
+GuessMask = true;
 NewMaskZMin = 10;
 NewMaskZMax = 40;
 

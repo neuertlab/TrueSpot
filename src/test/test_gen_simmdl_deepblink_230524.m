@@ -72,7 +72,7 @@ for r = 1:entry_count
         %decide if train or predict...
         astrain = false;
         if contains(myname, '_CY5L_')
-            if train_count_cy5l < 100
+            if train_count_cy5l < 25
                 if train_count_cy5l < pred_count_cy5l
                     astrain = true;
                 end
@@ -84,7 +84,7 @@ for r = 1:entry_count
                 pred_count_cy5l = pred_count_cy5l + 1;
             end
         else
-            if train_count_tmrl < 100
+            if train_count_tmrl < 25
                 if train_count_tmrl < pred_count_tmrl
                     astrain = true;
                 end
@@ -195,7 +195,7 @@ for r = 1:entry_count
     if pass_zeroprop
         %decide if train or predict...
         astrain = false;
-        if train_count_mass < 100
+        if train_count_mass < 50
             if train_count_mass < pred_count_mass
                 astrain = true;
             end

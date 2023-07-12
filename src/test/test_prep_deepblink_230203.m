@@ -15,7 +15,8 @@ ClusterWorkDir = '/nobackup/p_neuert_lab/hospelb/imgproc';
 ClusterSlurmDir = '/nobackup/p_neuert_lab/hospelb/imgproc/slurm/script';
 ClusterScriptsDir = '/nobackup/p_neuert_lab/hospelb/scripts';
 ClusterPyenvDir = '/home/hospelb/pyvenv';
-ClusterModelsDir = '/nobackup/p_neuert_lab/hospelb/imgproc/data/deepblink_training/og_models';
+%ClusterModelsDir = '/nobackup/p_neuert_lab/hospelb/imgproc/data/deepblink_training/og_models';
+ClusterModelsDir = '/nobackup/p_neuert_lab/hospelb/imgproc/data/deepblink_training';
 
 PyenvModule = 'deepblink';
 MatlabImportFunc = 'Main_DeepBlink2Mat';
@@ -34,20 +35,20 @@ MIN_PROB = 0.01;
 DO_IMG_SPLIT = false;
 OVERWRITE = false;
 
-OutDirTail = '/yeast_tc/E2R1/CH1';
-ModelName = 'smfish';
+OutDirTail = '/simytc';
+ModelName = 'SimRandoModel';
 
 NewTifDir = ['/img' OutDirTail];
 
 % ========================== Load csv Table ==========================
-%InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
+InputTablePath = [DataDir filesep 'test_images_simytc.csv'];
 %InputTablePath = [DataDir filesep 'test_images_simvarmass.csv'];
-InputTablePath = [DataDir filesep 'test_images.csv'];
+%InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E2R1_';
-GroupSuffix = 'STL1';
+GroupPrefix = 'simvarmass_';
+GroupSuffix = [];
 
 % ========================== Do things ==========================
 addpath('./core');
@@ -113,8 +114,10 @@ for r = 1:rec_count
     fprintf(my_script, 'source ${PYVENV_DIR}/%s/bin/activate\n', PyenvModule);
     fprintf(my_script, 'deepblink check "%s"\n', cluster_tif_path);
     fprintf(my_script, 'echo $(date +''%%Y/%%m/%%d %%H:%%M:%%S:%%3N'')\n');
+    %fprintf(my_script, 'deepblink predict -i "%s" -o "${OUTPUT_DIR}" -m "%s" -p %.2f -ps 1\n', ...
+    %    cluster_tif_path, [ClusterModelsDir '/deepblink_' ModelName '.h5'], MIN_PROB);
     fprintf(my_script, 'deepblink predict -i "%s" -o "${OUTPUT_DIR}" -m "%s" -p %.2f -ps 1\n', ...
-        cluster_tif_path, [ClusterModelsDir '/deepblink_' ModelName '.h5'], MIN_PROB);
+        cluster_tif_path, [ClusterModelsDir '/' ModelName '.h5'], MIN_PROB);
     fprintf(my_script, 'echo $(date +''%%Y/%%m/%%d %%H:%%M:%%S:%%3N'')\n');
     fprintf(my_script, 'deactivate\n\n');
     

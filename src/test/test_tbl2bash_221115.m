@@ -55,7 +55,7 @@ InputTablePath = [DataDir filesep 'test_images.csv'];
 image_table = testutil_opentable(InputTablePath);
 
 %ImageName='scrna_E2R2I5_CTT1';
-GroupPrefix = 'sctc_E1R2_';
+GroupPrefix = 'sctc_E2R1_';
 GroupSuffix = [];
 % ========================== Find Record ==========================
 addpath('./core');

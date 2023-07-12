@@ -15,8 +15,8 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 104;
-END_INDEX = 104;
+START_INDEX = 3;
+END_INDEX = 38;
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
@@ -29,7 +29,7 @@ NEW_TS_ONLY = false;
 OutputDir = [BaseDir filesep 'data' filesep 'results'];
 
 RS_TH_IVAL = 0.1/250;
-SCRIPT_VER = 'v23.05.11.00';
+SCRIPT_VER = 'v23.07.12.01';
 COMPUTER_NAME = 'VU_NEUERTLAB_HOSPELB';
 
 EXPTS_INITIALS = 'BH';
@@ -237,7 +237,7 @@ for r = START_INDEX:END_INDEX
                         snapminth = spotsrun.intensity_threshold;
                     end
                 end
-                [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, snapminth);
+                [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, 1);
                 full_call_count = size(call_table, 1);
 
                 %if fnegs were added, get the intensity values for those
@@ -311,6 +311,10 @@ for r = START_INDEX:END_INDEX
             analysis.results_hb.x_max = X - gaussrad;
             analysis.results_hb.y_min = gaussrad;
             analysis.results_hb.y_max = Y - gaussrad;
+
+            if (spotsrun.z_min_apply < 0)
+                spotsrun = spotsrun.updateZTrimParams();
+            end
             analysis.results_hb.z_min = spotsrun.z_min_apply;
             analysis.results_hb.z_max = spotsrun.z_max_apply;
             analysis.results_hb.th_scan_min = spotsrun.t_min;
@@ -386,7 +390,7 @@ for r = START_INDEX:END_INDEX
                         snapminth = bfthresh;
                     end
                 end
-                [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, snapminth);
+                [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, 1);
                 full_call_count = size(call_table, 1);
 
                 if full_call_count > init_call_count
@@ -632,7 +636,7 @@ for r = START_INDEX:END_INDEX
                 init_call_count = size(call_table,1);
 
                 if ~isempty(ref_coords)
-                    [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, 0.5);
+                    [call_table, ref_call_map] = RNACoords.updateTFCalls(call_table, ref_coords, 4, 2, 0.001);
                     full_call_count = size(call_table, 1);
 
                     if full_call_count > init_call_count
@@ -837,7 +841,7 @@ function ref_coords = loadSimTruthsetRS(image_table, row_index, ImgDir)
     end
     
     import_table = table2array(readtable(srcpath,'ReadVariableNames',false));
-    import_table = import_table + 1;
+    %import_table = import_table + 1; %Not needed.
     temp = import_table(:,2);
     import_table(:,2) = import_table(:,1);
     import_table(:,1) = temp;
