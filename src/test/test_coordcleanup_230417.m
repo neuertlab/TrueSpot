@@ -15,8 +15,13 @@ addpath('./test/datadump');
 
 % ========================== Constants ==========================
 
-START_INDEX = 3;
-END_INDEX = 38;
+START_INDEX = 75;
+END_INDEX = 272;
+
+%INCL_LIST = [];
+INCL_LIST = [76 80 88 90 93 98 104 105 108 112 121 ...
+    124 128 129 135 178 179 187 188 209 210 211 230 ...
+    246 247 248 250 251 252 256 259 261 263 267 272];
 
 DO_HOMEBREW = true;
 DO_BIGFISH = true;
@@ -27,6 +32,8 @@ DO_TRUTHSET = true;
 NEW_TS_ONLY = false;
 
 OutputDir = [BaseDir filesep 'data' filesep 'results'];
+
+DEADPIX_WORKDIR = './bgh_old';
 
 RS_TH_IVAL = 0.1/250;
 SCRIPT_VER = 'v23.07.12.01';
@@ -52,6 +59,13 @@ if START_INDEX < 1; START_INDEX = 1; end
 if END_INDEX > entry_count; END_INDEX = entry_count; end
 
 for r = START_INDEX:END_INDEX
+
+    if ~isempty(INCL_LIST)
+        if ~ismember(r, INCL_LIST)
+            continue;
+        end
+    end
+
     is_sim = false;
     myname = getTableValue(image_table, r, 'IMGNAME');
     fprintf('> Now processing %s (%d of %d)...\n', myname, r, entry_count);
@@ -218,7 +232,7 @@ for r = START_INDEX:END_INDEX
             end
 
             %Apply filter to image.
-            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, './test', true, gaussrad, false);
+            [IMG_filtered] = RNA_Threshold_SpotDetector.run_spot_detection_pre(my_image, DEADPIX_WORKDIR, true, gaussrad, false);
 
             %Do table transfer
             if NEW_TS_ONLY & isfield(analysis, 'results_hb')
