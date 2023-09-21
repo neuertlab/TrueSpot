@@ -361,12 +361,6 @@ classdef RNADetection
                 %Skip threshes with no spots at that intensity.
                 common_ctx.fimg_max_val = max(common_ctx.img_filter, [], 'all', 'omitnan');
                 common_ctx.valbin = histcounts(common_ctx.img_filter, common_ctx.fimg_max_val+1);
-                %                 ptotal = 0;
-                %                 bincount = size(common_ctx.valbin, 2);
-                %                 for i = 1:bincount
-                %                     ptotal = ptotal + common_ctx.valbin(1, i);
-                %                     common_ctx.valbin(1,i) = ptotal;
-                %                 end
 
                 %fprintf("breakpoint\n");
                 for c = 2:T
@@ -401,9 +395,7 @@ classdef RNADetection
             common_ctx.spot_table = NaN(T,2); %Columns are threshold, spot count. Rows are entries.
 
             %Move this list population up here
-            for c = 1:T
-                common_ctx.spot_table(c,1) = common_ctx.th_list(1,c);
-            end
+            common_ctx.spot_table(:,1) = common_ctx.th_list(:);
 
             %Generate coord & spot tables (do spot detection)
             if strcmp(common_ctx.th_strategy, 'max_proj')
