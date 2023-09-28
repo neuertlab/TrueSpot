@@ -4,6 +4,8 @@
 function rna_spot_run = Main_RNASpots(varargin)
 addpath('./core');
 
+%TODO Add option to output 0 based coordinates
+
 % ========================== Process args ==========================
 rna_spot_run = RNASpotsRun.initDefault();
 rna_spot_run = setDefaultParams(rna_spot_run);

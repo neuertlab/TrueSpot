@@ -101,6 +101,24 @@ classdef RNASpotsRun
             end
         end
         
+        function [obj, call_table] = loadCallTable(obj)
+            tbl_path_RNA = [obj.out_stem '_callTable.mat'];
+            if isfile(tbl_path_RNA)
+                load(tbl_path_RNA, 'call_table');
+            else
+                call_table = [];
+            end
+        end
+
+        function [obj, call_table] = loadControlCallTable(obj)
+            tbl_path_RNA = [obj.ctrl_stem '_callTable.mat'];
+            if isfile(tbl_path_RNA)
+                load(tbl_path_RNA, 'call_table');
+            else
+                call_table = [];
+            end
+        end
+
         function [obj, coord_table] = loadCoordinateTable(obj)
             coord_table = [];
             tbl_path_RNA = [obj.out_stem '_coordTable.mat'];
@@ -141,6 +159,46 @@ classdef RNASpotsRun
         end
         
         function obj = updateBackgroundFilteredCoords(obj)
+            [~, background_mask] = obj.loadBackgroundMask();
+            [~, call_table] = obj.loadCallTable();
+            [~, th_list] = obj.loadThresholdTable();
+
+            if isempty(background_mask)
+                return;
+            end
+
+            if ndims(background_mask) < 3
+                keep_me = background_mask(call_table{:,'isnap_y'}, call_table{:,'isnap_x'});
+            else
+                keep_me = background_mask(call_table{:,'isnap_y'}, call_table{:,'isnap_x'}, call_table{:,'isnap_z'});
+            end
+
+            T = size(th_list,2);
+            spot_table = NaN(T,2);
+            spot_table(:,1) = th_list(:);
+
+            if nnz(keep_me) > 0
+                keep_idx = find(keep_me);
+                call_table = call_table(keep_idx, :);
+                for t = 1:T
+                    spot_table(t,2) = nnz(call_table{:,'dropout_thresh'} >= spot_table(t,1));
+                end
+            else
+                spot_table(:,2) = 0;
+                call_table = table.empty();
+            end
+
+            save([obj.bkg_filter_stem '_callTable'], 'call_table');
+            save([obj.bkg_filter_stem '_spotTable'], 'spot_table');
+
+            %Image structs
+            [~, my_images] = obj.loadImageViewStructs();
+            my_images(1).image = immultiply(my_images(1).image, background_mask);
+            my_images(2).image = immultiply(my_images(2).image, background_mask);
+            save([obj.bkg_filter_stem '_imgviewstructs'], 'my_images');
+        end
+
+        function obj = updateBackgroundFilteredCoords_dbg(obj)
             [~, background_mask] = obj.loadBackgroundMask();
             [~, coord_table] = obj.loadCoordinateTable();
             [~, th_list] = obj.loadThresholdTable();
@@ -264,15 +322,54 @@ classdef RNASpotsRun
             end
         end
         
-        function [obj, spots_table, coord_table] = loadZTrimmedTables_Sample(obj)
-            [obj, spots_table, coord_table] = obj.loadZTrimmedTables('_spotTablesZTrimmed.mat', false);
+        function [obj, spots_table, call_table] = loadZTrimmedTables_Sample(obj)
+            [obj, spots_table, call_table] = obj.loadZTrimmedTables(false);
         end
         
-        function [obj, spots_table, coord_table] = loadZTrimmedTables_Control(obj)
-            [obj, spots_table, coord_table] = obj.loadZTrimmedTables('_ctrlTablesZTrimmed.mat', true);
+        function [obj, spots_table, call_table] = loadZTrimmedTables_Control(obj)
+            [obj, spots_table, call_table] = obj.loadZTrimmedTables(true);
         end
         
-        function [obj, spots_table, coord_table] = loadZTrimmedTables(obj, pathsfx, isctrl)
+        function [obj, spots_table, call_table] = loadZTrimmedTables(obj, isctrl)
+            obj = obj.updateZTrimParams();
+
+            if isctrl
+                if isempty(obj.ctrl_path)
+                    spots_table = [];
+                    call_table = [];
+                    return;
+                end
+                [obj, spots_table] = obj.loadControlSpotsTable();
+                [obj, call_table] = obj.loadControlCallTable();
+            else
+                [obj, spots_table] = obj.loadSpotsTable();
+                [obj, call_table] = obj.loadCallTable();
+            end
+
+            zgood = call_table{:, 'isnap_z'} >= obj.z_min_apply;
+            zgood = and(zgood, call_table{:, 'isnap_z'} <= obj.z_max_apply);
+            if nnz(zgood) > 0
+                call_table = call_table{find(zgood), :};
+                T = size(spots_table,1);
+                for t = 1:T
+                    spots_table(t,2) = nnz(call_table{:, 'dropout_thresh'} >= spots_table(t,1));
+                end
+            else
+                spots_table(:,2) = 0;
+                call_table = table.empty();
+            end
+
+        end
+
+        function [obj, spots_table, coord_table] = loadZTrimmedTables_Sample_dbg(obj)
+            [obj, spots_table, coord_table] = obj.loadZTrimmedTables_dbg('_spotTablesZTrimmed.mat', false);
+        end
+        
+        function [obj, spots_table, coord_table] = loadZTrimmedTables_Control_dbg(obj)
+            [obj, spots_table, coord_table] = obj.loadZTrimmedTables_dbg('_ctrlTablesZTrimmed.mat', true);
+        end
+        
+        function [obj, spots_table, coord_table] = loadZTrimmedTables_dbg(obj, pathsfx, isctrl)
             %Look to see if it's been pre-saved...
             obj = obj.updateZTrimParams();
             tbl_path = [obj.out_stem pathsfx];
@@ -433,7 +530,29 @@ classdef RNASpotsRun
             end
         end
         
-        function [spot_table, coord_table] = saveTables(spot_table, coord_table, save_stem, limitSize)
+        function call_table = saveCallTable(call_table, save_stem, zero_based_coords)
+            if nargin < 3
+                zero_based_coords = false;
+            end
+
+            %Spot coords
+            save([save_stem '_callTable.mat'], 'call_table', 'zero_based_coords', '-v7.3');
+        end
+
+        function [spot_table, call_table] = saveTables(spot_table, call_table, save_stem, zero_based_coords)
+            if nargin < 4
+                zero_based_coords = false;
+            end
+
+            spot_table = double(spot_table);
+
+            %Spot count table
+            save([save_stem '_spotTable.mat'], 'spot_table', '-v7.3');
+            %Spot coords
+            save([save_stem '_callTable.mat'], 'call_table', 'zero_based_coords', '-v7.3');
+        end
+
+        function [spot_table, coord_table] = saveTables_dbg(spot_table, coord_table, save_stem, limitSize)
             spot_table = double(spot_table); %NO NOT UINT16 FOR SPOT COUNTS FOOL
             cell_count = size(coord_table,1);
             for c = 1:cell_count

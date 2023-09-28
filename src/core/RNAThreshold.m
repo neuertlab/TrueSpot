@@ -579,14 +579,14 @@ classdef RNAThreshold
         %------------ Thresholder Run Wrappers ------------
         
         function threshold_results = runDefaultParameters(spot_count_table, ctrl_count_table)
-            param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            param_struct = RNAThreshold.genEmptyThresholdParamStruct();
             param_struct.sample_spot_table = spot_count_table;
             
             if nargin > 1
                 param_struct.control_spot_table = ctrl_count_table;
             end
             
-            threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
+            threshold_results = RNAThreshold.estimateThreshold(param_struct);
         end
         
         function threshold_results = runDefaultParametersSpotsRun(rnaspots_run, verbosity)
@@ -594,11 +594,11 @@ classdef RNAThreshold
                 verbosity = 0;
             end
             
-            param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            param_struct = RNAThreshold.genEmptyThresholdParamStruct();
             [rnaspots_run, param_struct.sample_spot_table, ~] = rnaspots_run.loadZTrimmedTables_Sample();
             [~, param_struct.control_spot_table, ~] = rnaspots_run.loadZTrimmedTables_Control();
             param_struct.verbosity = verbosity;
-            threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
+            threshold_results = RNAThreshold.estimateThreshold(param_struct);
         end
         
         function threshold_results = runSavedParameters(rnaspots_run, verbosity, spot_table, ctrl_table)
@@ -606,7 +606,7 @@ classdef RNAThreshold
                 verbosity = 0;
             end
             
-            param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            param_struct = RNAThreshold.genEmptyThresholdParamStruct();
             
             if nargin >= 3 & ~isempty(spot_table)
                 param_struct.sample_spot_table = double(spot_table);
@@ -669,7 +669,7 @@ classdef RNAThreshold
                 param_struct.fit_strat = 'default';
             end
             
-            threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
+            threshold_results = RNAThreshold.estimateThreshold(param_struct);
         end
         
         function threshold_results = runWithPreset(spot_count_table, ctrl_count_table, preset_index)
@@ -679,7 +679,7 @@ classdef RNAThreshold
             if preset_index > size(presets,2); return; end
             preset_struct = presets(preset_index);
             
-            param_struct = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            param_struct = RNAThreshold.genEmptyThresholdParamStruct();
             param_struct.sample_spot_table = spot_count_table;
             param_struct.control_spot_table = ctrl_count_table;
             
@@ -712,13 +712,13 @@ classdef RNAThreshold
                 param_struct.fit_strat = 'default';
             end
             
-            threshold_results = RNA_Threshold_Common.estimateThreshold(param_struct);
+            threshold_results = RNAThreshold.estimateThreshold(param_struct);
         end
         
         %------------ Parameters ------------
 
         function param_info = paramsFromSpotsrun(rnaspots_run)
-            param_info = RNA_Threshold_Common.genEmptyThresholdParamStruct();
+            param_info = RNAThreshold.genEmptyThresholdParamStruct();
             
             winmin = rnaspots_run.ttune_winsz_min;
             winmax = rnaspots_run.ttune_winsz_max;

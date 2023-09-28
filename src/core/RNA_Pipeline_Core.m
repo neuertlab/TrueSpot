@@ -113,7 +113,7 @@ mkdir(spotsrun.out_dir);
 spotsrun.out_stem = [spotsrun.out_dir filesep spotsrun.img_name '_' strat];
 runme = true;
 if ~spotsrun.overwrite_output
-    if isfile([spotsrun.out_stem '_coordTable.mat'])
+    if isfile([spotsrun.out_stem '_callTable.mat'])
         fprintf("Spot detection output at %s already exists! Skipping spot detection...\n", spotsrun.out_stem);
         runme = false;
     end
@@ -151,13 +151,17 @@ if runme
     [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, spotsrun.out_stem, spotsrun.deadpix_detect, spotsrun.dtune_gaussrad);
     
     %Clear original image to free (a ton of) memory
-    if ~isempty(sample_tif)
+    if ~bPreloaded & ~isempty(sample_tif)
         clear sample_tif;
     end
-    if ~isempty(sample_light_ch)
+    if ~bPreloaded & ~isempty(sample_light_ch)
         clear sample_light_ch;
     end
-    clear sample_rna_ch;
+    if ~bPreloaded
+        chdat_path = [spotsrun.out_stem filesep 'samplech.mat'];
+        save(chdat_path, 'sample_rna_ch', '-v7.3');
+        clear sample_rna_ch; 
+    end
     
     %Suggest scan min or max if not set
     if spotsrun.t_max < 1 | spotsrun.t_min < 1
@@ -172,9 +176,23 @@ if runme
         end
     end
     
-    [auto_zt, new_th_min] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, spotsrun.ztrim, limitSaveSize, (debug_lvl > 0), thread_request);
+    [auto_zt, call_table] = spotdec.run_spot_detection_main(img_f, spotsrun.out_stem, strat, spotsrun.t_min, spotsrun.t_max, spotsrun.ztrim, (debug_lvl > 0), thread_request);
     spotsrun.ztrim_auto = auto_zt;
-    spotsrun.t_min = new_th_min;
+    %spotsrun.t_min = new_th_min;
+    if ~isempty(call_table)
+        if ~bPreloaded
+            load(chdat_path, 'sample_rna_ch', '-v7.3');
+            delete(chdat_path);
+        end
+
+        call_table{:, 'intensity'} = sample_rna_ch(call_table{:, 'coord_1d'});
+        RNASpotsRun.saveCallTable(call_table, spotsrun.out_stem);
+
+        if ~bPreloaded
+            clear sample_rna_ch; 
+        end
+    end
+
     clear img_f;
 end
 
@@ -196,7 +214,7 @@ if ~isempty(spotsrun.ctrl_path)
         if ~spotsrun.overwrite_output
             %TODO check this run params against saved - if not match, throw
             %an error and return!!
-            if isfile([outstem '_coordTable.mat'])
+            if isfile([outstem '_callTable.mat'])
                 fprintf("Spot detection output at %s already exists! Skipping spot detection...\n", outstem);
                 runme = false;
             end
@@ -224,8 +242,13 @@ if ~isempty(spotsrun.ctrl_path)
             
             spotdec = RNA_Threshold_SpotDetector;
             [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, outstem, spotsrun.deadpix_detect, spotsrun.dtune_gaussrad);
-            clear ctrl_image_channel;
-            spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max, spotsrun.ztrim, limitSaveSize, (debug_lvl > 0), thread_request);
+            [~, call_table] = spotdec.run_spot_detection_main(ctrl_f, outstem, strat, spotsrun.t_min, spotsrun.t_max, spotsrun.ztrim, (debug_lvl > 0), thread_request);
+            if ~isempty(call_table)
+                call_table{:, 'intensity'} = ctrl_image_channel(call_table{:, 'coord_1d'});
+                RNASpotsRun.saveCallTable(call_table, outstem);
+            end
+            if ~bPreloaded; clear ctrl_image_channel; end
+            clear call_table;
             clear ctrl_f;
         end
         spotsrun.ctrl_stem = outstem;

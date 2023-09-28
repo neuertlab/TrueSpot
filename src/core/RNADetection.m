@@ -5,6 +5,27 @@ classdef RNADetection
     methods (Static)
 
         %%
+        function call_table = tempCalls2Table(temp_calls, img_filtered)
+            %Cols: 1Dcoord, highest thresh passed
+
+            varNames = {'coord_1d' 'isnap_x' 'isnap_y' 'isnap_z' 'intensity_f' 'intensity'...
+                'dropout_thresh'};
+            varTypes = {'uint32' 'uint16' 'uint16' 'uint16' 'single' 'single'...
+                'single'};
+
+            table_size = [alloc size(varNames,2)];
+            call_table = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+            call_table{:,'coord_1d'} = uint32(temp_calls(:,1));
+            call_table{:,'dropout_thresh'} = single(temp_calls(:,2));
+            call_table{:,'intensity'} = NaN;
+            call_table{:,'intensity_f'} = single(img_filtered(temp_calls(:,1)));
+
+            [call_table{:,'isnap_y'}, call_table{:,'isnap_x'}, call_table{:,'isnap_z'}]...
+                = ind2sub(size(img_filtered), call_table{:,'coord_1d'});
+
+        end
+
+        %%
         function callSet = condense3DCallResults(input_cell_vec, spot_count)
             Z = size(input_cell_vec,2);
             callSet = NaN(1, spot_count);
@@ -199,7 +220,7 @@ classdef RNADetection
             common_ctx.fimg_max_val = 0;
             common_ctx.valbin = [];
             common_ctx.img_size = [0 0 0]; %For quick usage
-            common_ctx.temp_calls = []; %Cols: 1Dcoord, intensity_f, intensity, highest thresh passed
+            common_ctx.temp_calls = []; %Cols: 1Dcoord, highest thresh passed
         end
 
         %%
@@ -234,7 +255,7 @@ classdef RNADetection
                     if spot_count > 1 %check again in case of collapse
                         match_mtx = ismember(common_ctx.temp_calls(:,1), call_table);
                         match_idx = find(match_mtx);
-                        common_ctx.temp_calls(match_idx,4) = th;
+                        common_ctx.temp_calls(match_idx,2) = th;
                     end
 
                     if(common_ctx.save_filtered); save([common_ctx.save_stem '_sfimg_t' num2str(th)], 'f_img'); end
@@ -244,9 +265,9 @@ classdef RNADetection
                 spot_count = common_ctx.spot_table(th_idx-1,2);
                 common_ctx.spot_table(th_idx,2) = spot_count;
                 if spot_count > 0
-                    match_mtx = (common_ctx.temp_calls(:,4) == (th - 1));
+                    match_mtx = (common_ctx.temp_calls(:,2) == (th - 1));
                     match_idx = find(match_mtx);
-                    common_ctx.temp_calls(match_idx,4) = th;
+                    common_ctx.temp_calls(match_idx,2) = th;
                 end
             end
             if common_ctx.verbose; toc; end
@@ -334,10 +355,9 @@ classdef RNADetection
                 if common_ctx.verbose; toc; end
 
                 %Rejoin into tables...
-                common_ctx.temp_calls = NaN(spot_count, 4);
+                common_ctx.temp_calls = NaN(spot_count, 2);
                 common_ctx.temp_calls(:,1) = base_coords(:);
-                common_ctx.temp_calls(:,2) = common_ctx.img_filter(base_coords);
-                common_ctx.temp_calls(:,4) = common_ctx.th_list(1,1);
+                common_ctx.temp_calls(:,2) = common_ctx.th_list(1,1);
 
                 for c = 2:T
                     th_val = tlist(1,c);
@@ -346,17 +366,16 @@ classdef RNADetection
                         load(partemp_path, 't_coords');
                         match_mtx = ismember(common_ctx.temp_calls(:,1), t_coords);
                         match_idx = find(match_mtx);
-                        common_ctx.temp_calls(match_idx,4) = th_val;
+                        common_ctx.temp_calls(match_idx,2) = th_val;
                         common_ctx.spot_table(c,2) = size(t_coords,2);
                     else
                         common_ctx.spot_table(c,2) = 0;
                     end
                 end
             else
-                common_ctx.temp_calls = NaN(spot_count, 4);
+                common_ctx.temp_calls = NaN(spot_count, 2);
                 common_ctx.temp_calls(:,1) = base_coords(:);
-                common_ctx.temp_calls(:,2) = common_ctx.img_filter(base_coords);
-                common_ctx.temp_calls(:,4) = common_ctx.th_list(1,1);
+                common_ctx.temp_calls(:,2) = common_ctx.th_list(1,1);
 
                 %Skip threshes with no spots at that intensity.
                 common_ctx.fimg_max_val = max(common_ctx.img_filter, [], 'all', 'omitnan');
@@ -419,13 +438,12 @@ classdef RNADetection
                         %Save coordinates
                         if isempty(common_ctx.temp_calls)
                             %Alloc and copy
-                            common_ctx.temp_calls = zeros(spot_count, 4);
+                            common_ctx.temp_calls = zeros(spot_count, 2);
                             common_ctx.temp_calls(:,1) = calls(:);
-                            common_ctx.temp_calls(:,2) = f_img(calls);
                         end
                         %Update max ths
                         matches = ismember(common_ctx.temp_calls(:,1), calls);
-                        common_ctx.temp_calls(matches,4) = th;
+                        common_ctx.temp_calls(matches,2) = th;
                     else
                         common_ctx.spot_table(c,2) = 0;
                     end
@@ -453,22 +471,26 @@ classdef RNADetection
                             %Save coordinates
                             if isempty(common_ctx.temp_calls)
                                 %Alloc and copy
-                                common_ctx.temp_calls = zeros(spot_count, 4);
+                                common_ctx.temp_calls = zeros(spot_count, 2);
                                 common_ctx.temp_calls(:,1) = calls(:);
-                                common_ctx.temp_calls(:,2) = f_img(calls);
                             end
                             %Update max ths
                             matches = ismember(common_ctx.temp_calls(:,1), calls);
-                            common_ctx.temp_calls(matches,4) = th;
+                            common_ctx.temp_calls(matches,2) = th;
                         else
                             common_ctx.spot_table(c,2) = 0;
                         end
                     end
                 else
                     %All 3D! The slow one!
-                    common_ctx = RNA_Threshold_Common.runThresholdList3D(common_ctx);
+                    common_ctx = RNADetection.runThresholdList3D(common_ctx);
                 end
             end
+
+            %Convert temp table.
+            common_ctx.call_table = RNADetection.tempCalls2Table(common_ctx.temp_calls, common_ctx.img_filter);
+            common_ctx.temp_calls = [];
+
         end
     end
 end
