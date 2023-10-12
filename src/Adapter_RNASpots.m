@@ -23,7 +23,7 @@
 
 %%
 
-function rna_spot_run = Adapter_RNASpots(rna_spot_run, guimode, preloaded_images, debug_lvl, limitSaveSize, thread_request, max_proj)
+function rna_spot_run = Adapter_RNASpots(rna_spot_run, guimode, preloaded_images, debug_lvl, thread_request)
 
 addpath('./core');
 RNA_Fisher_State.setGUIMode(guimode);
@@ -34,19 +34,12 @@ if nargin < 4
 end
 
 if nargin < 5
-    limitSaveSize = true;
-end
-
-if nargin < 6
     thread_request = 1;
 end
 
-if nargin < 7
-    max_proj = false;
-end
 
 %Check required arguments
-if (isempty(rna_spot_run.tif_path)) || (~ischar(rna_spot_run.tif_path))
+if (isempty(rna_spot_run.paths.img_path)) || (~ischar(rna_spot_run.paths.img_path))
     if ~bPreloaded
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Input image path is required."), true);
         return;
@@ -58,29 +51,29 @@ if (isempty(rna_spot_run.tif_path)) || (~ischar(rna_spot_run.tif_path))
         end
     end
 end
-if (~isempty(rna_spot_run.out_dir)) && (~ischar(rna_spot_run.out_dir))
+if (~isempty(rna_spot_run.paths.out_dir)) && (~ischar(rna_spot_run.paths.out_dir))
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Output directory argument is invalid."), true);
     return;
 end
-if (~isempty(rna_spot_run.cellseg_path)) && (~ischar(rna_spot_run.cellseg_path))
+if (~isempty(rna_spot_run.paths.cellseg_path)) && (~ischar(rna_spot_run.paths.cellseg_path))
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Cellseg data path argument is invalid."), true);
     return;
 end
-if rna_spot_run.total_ch < 1
+if rna_spot_run.channels.total_ch < 1
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Input image must have at least one channel."), true);
     return;
 end
-if rna_spot_run.light_ch > rna_spot_run.total_ch
+if rna_spot_run.channels.light_ch > rna_spot_run.channels.total_ch
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Light (TRANS) channel index is invalid."), true);
     return;
 end
-if rna_spot_run.rna_ch > rna_spot_run.total_ch
+if rna_spot_run.channels.rna_ch > rna_spot_run.channels.total_ch
     RNA_Fisher_State.outputMessageLineStatic(sprintf("RNA/Signal channel index is invalid."), true);
     return;
 end
 
 %Set defaults
-rna_spot_run.ztrim_auto = 5;
+rna_spot_run.dims.ztrim_auto = 3;
 % if ttune_winsize < 1
 %     spotsrun.ttune_winsize = 10;
 % end
@@ -94,32 +87,32 @@ rna_spot_run.ztrim_auto = 5;
 % if rna_spot_run.t_max < 1
 %     rna_spot_run.t_max = 300;
 % end
-if isempty(rna_spot_run.out_dir)
+if isempty(rna_spot_run.paths.out_dir)
     %Defaults to input directory
-    [rna_spot_run.out_dir, ~, ~] = fileparts(rna_spot_run.tif_path);
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("Output path not provided. Set to %s", rna_spot_run.out_dir), true);
+    [rna_spot_run.paths.out_dir, ~, ~] = fileparts(rna_spot_run.paths.img_path);
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Output path not provided. Set to %s", rna_spot_run.paths.out_dir), true);
 end
 if isempty(rna_spot_run.img_name)
     %Defaults to input file name
-    [~, rna_spot_run.img_name, ~] = fileparts(rna_spot_run.tif_path);
+    [~, rna_spot_run.img_name, ~] = fileparts(rna_spot_run.paths.img_path);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Image name not provided. Set to %s", rna_spot_run.img_name), true);
 end
-if ~isempty(rna_spot_run.ctrl_path)
-    if ~ischar(rna_spot_run.ctrl_path)
+if ~isempty(rna_spot_run.paths.ctrl_img_path)
+    if ~ischar(rna_spot_run.paths.ctrl_img_path)
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Control path is not valid. Setting to empty."), true);
-        rna_spot_run.ctrl_path = [];
+        rna_spot_run.paths.ctrl_img_path = [];
     end
 end
-if rna_spot_run.ctrl_ch > rna_spot_run.ctrl_chcount
+if rna_spot_run.channels.ctrl_ch > rna_spot_run.channels.ctrl_chcount
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Control RNA/signal channel index is invalid. Control will not be used."), true);
-    rna_spot_run.ctrl_path = [];
+    rna_spot_run.paths.ctrl_img_path = [];
 end
 
 %Call core
 if bPreloaded
-    RNA_Pipeline_Core(rna_spot_run, debug_lvl, preloaded_images, limitSaveSize, thread_request, max_proj);
+    RNA_Pipeline_Core(rna_spot_run, debug_lvl, preloaded_images, thread_request);
 else
-    RNA_Pipeline_Core(rna_spot_run, debug_lvl, [], limitSaveSize, thread_request, max_proj);
+    RNA_Pipeline_Core(rna_spot_run, debug_lvl, [], thread_request);
 end
 
 RNA_Fisher_State.clearStaticState();

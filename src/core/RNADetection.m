@@ -34,7 +34,7 @@ classdef RNADetection
                 ztbl = input_cell_vec{z};
                 if isempty(ztbl); continue; end
                 zcount = size(ztbl,1);
-                endi = tblpos + zcount;
+                endi = tblpos + zcount - 1;
                 callSet(tblpos:endi) = ztbl(:,1);
                 tblpos = endi + 1;
             end
@@ -143,13 +143,14 @@ classdef RNADetection
                 %fprintf("Finding points...\t")
                 %tic
                 img_filtered = uint16(zeros(Y,X,Z));
+                plane_size = X * Y;
                 for z = minZ:maxZ
                     %IM3 = immultiply(in_img(:,:,z), IM2);
                     %idx = z - minZ + 1;
                     minVal(z) = min(IM3(:,:,z), [], [1, 2]);
                     maxVal(z) = max(IM3(:,:,z), [], [1, 2])./2;
                     call_coords = find(IM3(:,:,z) > round(th2(z)));
-                    calls{z} = call_coords;
+                    calls{z} = call_coords + ((z-1) * plane_size);
                     img_filtered(:,:,z) = IM3(:,:,z);
                     spotsFound = spotsFound + size(call_coords,1);
                 end
@@ -316,6 +317,10 @@ classdef RNADetection
             T = size(common_ctx.th_list,2);
 
             %Do lowest threshold to establish base table.
+            if common_ctx.verbose
+                fprintf("Processing lowest threshold...\n");
+            end
+
             th_val = common_ctx.th_list(1,1);
             [~, calls, ~, ~, spot_count] = RNADetection.testThreshold_3D(common_ctx.img_filter,...
                 th_val, common_ctx.plane_avgs, common_ctx.zBorder, true);
@@ -324,6 +329,7 @@ classdef RNADetection
             else
                 base_coords = RNADetection.condense3DCallResults(calls, spot_count);
             end
+            common_ctx.spot_table(1,2) = spot_count;
             clear calls;
 
             if common_ctx.threads > 1
@@ -348,7 +354,7 @@ classdef RNADetection
                 pardir = [outdir filesep 'parallel'];
                 RNADetection.initParallel(1, common_ctx.threads, pardir);
                 parfor c = 1:T
-                    RNA_Threshold_Common.do3DThresholdLoop_parallel(ctx_clean, tlist(1,c));
+                    RNADetection.do3DThresholdLoop_parallel(ctx_clean, tlist(1,c));
                 end
                 delete(gcp('nocreate'));
                 rmres = rmdir(pardir, 's');
@@ -383,7 +389,7 @@ classdef RNADetection
 
                 %fprintf("breakpoint\n");
                 for c = 2:T
-                    [common_ctx, ~] = RNA_Threshold_Common.do3DThresholdLoop_serial(common_ctx, c);
+                    common_ctx = RNADetection.do3DThresholdLoop_serial(common_ctx, c);
                 end
             end
         end

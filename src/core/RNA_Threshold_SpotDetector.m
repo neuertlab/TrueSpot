@@ -117,7 +117,7 @@ classdef RNA_Threshold_SpotDetector
 
             %Save
             if save_img_proj
-                save([save_stem '_imgviewstructs'], 'my_images');
+                save([save_stem '_imgviewstructs.mat'], 'my_images');
             end
             
             IMG_filtered = uint16(IMG_filtered); %To reduce memory usage. Note that on dim images this can have a dramatic effect.

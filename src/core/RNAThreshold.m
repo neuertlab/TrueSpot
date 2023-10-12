@@ -606,7 +606,7 @@ classdef RNAThreshold
                 verbosity = 0;
             end
             
-            param_struct = RNAThreshold.genEmptyThresholdParamStruct();
+            param_struct = rnaspots_run.th_params;
             
             if nargin >= 3 & ~isempty(spot_table)
                 param_struct.sample_spot_table = double(spot_table);
@@ -624,51 +624,18 @@ classdef RNAThreshold
             
             param_struct.verbosity = verbosity;
             
-            winmin = rnaspots_run.ttune_winsz_min;
-            winmax = rnaspots_run.ttune_winsz_max;
+            winmin = rnaspots_run.options.winsize_min;
+            winmax = rnaspots_run.options.winsize_max;
             if winmin == 0 & winmax == 0
                 param_struct.window_sizes = [];
             else
                 if winmin < 2; winmin = 2; end
-                winincr = rnaspots_run.ttune_winsz_incr;
+                winincr = rnaspots_run.options.winsize_incr;
                 if winincr < 1; winincr = 1; end
                 if winmax < winmin; winmax = winmin+winincr; end
                 param_struct.window_sizes = [winmin:winincr:winmax];
             end
 
-            madmin = rnaspots_run.ttune_madf_min;
-            if isnan(madmin); madmin = -1.0; end
-            madmax = rnaspots_run.ttune_madf_max;
-            if isnan(madmax); madmax = madmin+0.5; end
-            param_struct.mad_factor_min = madmin;
-            param_struct.mad_factor_max = madmax;
-            
-            param_struct.test_data = rnaspots_run.ttune_use_rawcurve;
-            param_struct.test_diff = rnaspots_run.ttune_use_diffcurve;
-            
-            spline_itr = rnaspots_run.ttune_spline_itr;
-            if spline_itr < 0; spline_itr = 0; end
-            param_struct.spline_iterations = spline_itr;
-            
-            param_struct.reweight_fit = rnaspots_run.ttune_reweight_fit;
-            param_struct.fit_to_log = rnaspots_run.ttune_fit_to_log;
-            param_struct.fit_ri_weight = rnaspots_run.ttune_thweight_fisect;
-            param_struct.madth_weight = rnaspots_run.ttune_thweight_med;
-            param_struct.fit_weight = rnaspots_run.ttune_thweight_fit;
-            param_struct.std_factor = rnaspots_run.ttune_std_factor;
-            
-            if isempty(rnaspots_run.ttune_fit_strat) | (rnaspots_run.ttune_fit_strat == 0)
-                param_struct.fit_strat = 'default';
-            elseif rnaspots_run.ttune_fit_strat == 1
-                param_struct.fit_strat = 'slow';
-            elseif rnaspots_run.ttune_fit_strat == 2
-                param_struct.fit_strat = 'section_fit';
-            elseif rnaspots_run.ttune_fit_strat == 3
-                param_struct.fit_strat = 'three_piece';
-            else
-                param_struct.fit_strat = 'default';
-            end
-            
             threshold_results = RNAThreshold.estimateThreshold(param_struct);
         end
         
@@ -717,7 +684,22 @@ classdef RNAThreshold
         
         %------------ Parameters ------------
 
+        function fit_strat_str = fitStratInt2Str(fit_strat_int)
+            if isempty(fit_strat_int) | (fit_strat_int == 0)
+                fit_strat_str = 'default';
+            elseif fit_strat_int == 1
+                fit_strat_str = 'slow';
+            elseif fit_strat_int == 2
+                fit_strat_str = 'section_fit';
+            elseif fit_strat_int == 3
+                fit_strat_str = 'three_piece';
+            else
+                fit_strat_str = 'default';
+            end
+        end
+
         function param_info = paramsFromSpotsrun(rnaspots_run)
+            %DEPRECATED
             param_info = RNAThreshold.genEmptyThresholdParamStruct();
             
             winmin = rnaspots_run.ttune_winsz_min;
@@ -809,21 +791,27 @@ classdef RNAThreshold
             if preset_index > size(presets,2); return; end
             preset_struct = presets(preset_index);
             
-            spotsrun.ttune_fit_strat = preset_struct.ttune_fit_strat;
-            spotsrun.ttune_winsz_min = preset_struct.ttune_winsz_min;
-            spotsrun.ttune_winsz_max = preset_struct.ttune_winsz_max;
-            spotsrun.ttune_winsz_incr = preset_struct.ttune_winsz_incr;
-            spotsrun.ttune_reweight_fit = preset_struct.ttune_reweight_fit;
-            spotsrun.ttune_fit_to_log = preset_struct.ttune_fit_to_log;
-            spotsrun.ttune_thweight_med = preset_struct.ttune_thweight_med;
-            spotsrun.ttune_thweight_fit = preset_struct.ttune_thweight_fit;
-            spotsrun.ttune_thweight_fisect = preset_struct.ttune_thweight_fisect;
-            spotsrun.ttune_std_factor = preset_struct.ttune_std_factor;
-            spotsrun.ttune_spline_itr = preset_struct.ttune_spline_itr;
-            spotsrun.ttune_use_rawcurve = preset_struct.ttune_use_rawcurve;
-            spotsrun.ttune_use_diffcurve = preset_struct.ttune_use_diffcurve;
-            spotsrun.ttune_madf_min = preset_struct.ttune_madf_min;
-            spotsrun.ttune_madf_max = preset_struct.ttune_madf_max;
+            spotsrun.th_params.fit_strat = RNAThreshold.fitStratInt2Str(preset_struct.ttune_fit_strat);
+
+            wmin = preset_struct.ttune_winsz_min;
+            wmax = preset_struct.ttune_winsz_max;
+            wincr = preset_struct.ttune_winsz_incr;
+            spotsrun.options.winsize_min = wmin;
+            spotsrun.options.winsize_max = wmax;
+            spotsrun.options.winsize_incr = wincr;
+            spotsrun.th_params.window_sizes = [wmin:wincr:wmax];
+
+            spotsrun.th_params.reweight_fit = preset_struct.ttune_reweight_fit;
+            spotsrun.th_params.fit_to_log = preset_struct.ttune_fit_to_log;
+            spotsrun.th_params.madth_weight = preset_struct.ttune_thweight_med;
+            spotsrun.th_params.fit_weight = preset_struct.ttune_thweight_fit;
+            spotsrun.th_params.fit_ri_weight = preset_struct.ttune_thweight_fisect;
+            spotsrun.th_params.std_factor = preset_struct.ttune_std_factor;
+            spotsrun.th_params.spline_iterations = preset_struct.ttune_spline_itr;
+            spotsrun.th_params.test_data = preset_struct.ttune_use_rawcurve;
+            spotsrun.th_params.test_diff = preset_struct.ttune_use_diffcurve;
+            spotsrun.th_params.mad_factor_min = preset_struct.ttune_madf_min;
+            spotsrun.th_params.mad_factor_max = preset_struct.ttune_madf_max;
         end
         
         %------------ Special Case ------------
