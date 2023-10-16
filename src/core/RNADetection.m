@@ -13,6 +13,7 @@ classdef RNADetection
             varTypes = {'uint32' 'uint16' 'uint16' 'uint16' 'single' 'single'...
                 'single'};
 
+            alloc = size(temp_calls, 1);
             table_size = [alloc size(varNames,2)];
             call_table = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
             call_table{:,'coord_1d'} = uint32(temp_calls(:,1));
@@ -23,6 +24,25 @@ classdef RNADetection
             [call_table{:,'isnap_y'}, call_table{:,'isnap_x'}, call_table{:,'isnap_z'}]...
                 = ind2sub(size(img_filtered), call_table{:,'coord_1d'});
 
+        end
+        
+        %%
+        function callTable2csv(csv_path, call_table, th_min, zero_coords)
+            %First, filter table to desired fields
+            call_table = removevars(call_table, {'coord_1d'});
+            call_table = renamevars(call_table,{'isnap_x' 'isnap_y' 'isnap_z'},{'x' 'y' 'z'});
+
+            keep_idx = find(call_table{:,'dropout_thresh'} >= th_min);
+            if isempty(keep_idx); return; end
+            call_table = call_table(keep_idx,:);
+
+            if zero_coords
+                call_table{:,'x'} = call_table{:,'x'} - 1;
+                call_table{:,'y'} = call_table{:,'y'} - 1;
+                call_table{:,'z'} = call_table{:,'z'} - 1;
+            end
+
+            writetable(call_table, csv_path);
         end
 
         %%

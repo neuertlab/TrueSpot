@@ -67,7 +67,7 @@ bkg_mask_dir = [spotsrun.paths.out_dir filesep 'bkgmask'];
 spotsrun.paths.bkg_mask_path = [bkg_mask_dir filesep spotsrun.img_name '_bkg'];
 if (~bPreloaded & isempty(spotsrun.paths.ctrl_img_path)) | (bPreloaded & isempty(preloaded_imgs.dat_rna_control))
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Control not provided. Will attempt to use background."), true);
-    if ~spotsrun.overwrite_output && isfile([spotsrun.paths.bkg_mask_path '.mat'])
+    if ~spotsrun.options.overwrite_output && isfile([spotsrun.paths.bkg_mask_path '.mat'])
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Background mask already exists at %s! Skipping extraction...", spotsrun.paths.bkg_mask_path), true);
     else
         if (~isempty(spotsrun.paths.cellseg_path)) & (spotsrun.channels.light_ch > 0)
@@ -188,12 +188,13 @@ if runme
     %spotsrun.t_min = new_th_min;
     if ~isempty(call_table)
         if ~bPreloaded
-            load(chdat_path, 'sample_rna_ch', '-v7.3');
+            load(chdat_path, 'sample_rna_ch');
             delete(chdat_path);
         end
 
         call_table{:, 'intensity'} = sample_rna_ch(call_table{:, 'coord_1d'});
         RNASpotsRun.saveCallTable(call_table, sample_outstem);
+        clear call_table;
 
         if ~bPreloaded
             clear sample_rna_ch; 
@@ -349,5 +350,34 @@ end
     %Save ztrimmed coords/spotcounts here too. Remove coord tables below
     %   threshold 10 to save space.
 spotsrun.saveMe();
+
+%Dump tables, if applicable.
+if ~isempty(spotsrun.paths.params_out_path)
+    if debug_lvl > 0
+        RNA_Fisher_State.outputMessageLineStatic("Dumping run parameters to text...", true);
+    end
+    spotsrun.toTextFile(spotsrun.paths.params_out_path);
+end
+
+if ~isempty(spotsrun.paths.csv_out_path)
+    if debug_lvl > 0
+        RNA_Fisher_State.outputMessageLineStatic("Dumping results to csv...", true);
+    end
+    [spotsrun, ~, call_table] = spotsrun.loadZTrimmedTables_Sample();
+
+    th_min = spotsrun.options.t_min;
+
+    if spotsrun.options.csv_output_level == 2
+        th_min = min(RNAThreshold.getAllThresholdSuggestions(spotsrun.threshold_results), []);
+    elseif spotsrun.options.csv_output_level == 3
+        th_min = spotsrun.intensity_threshold;
+    end
+
+    RNADetection.callTable2csv(spotsrun.paths.csv_out_path, call_table, th_min, spotsrun.options.csv_zero_based_coords);
+end
+
+if debug_lvl > 0
+    RNA_Fisher_State.outputMessageLineStatic("Core pipeline done!", true);
+end
 
 end

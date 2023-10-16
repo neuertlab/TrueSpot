@@ -173,6 +173,22 @@ classdef RNAUtils
 %             
         end
         
+        %%
+        function printVectorToTextFile(fhandle, vec, fmtstr, newline)
+            vsize = size(vec, 2);
+            fprintf(fhandle, '{');
+            for i = 1:vsize
+                if i ~= 1; fprintf(fhandle, ','); end
+                fprintf(fhandle, fmtstr, vec(i));
+            end
+            
+            if newline
+                fprintf(fhandle, '}\n');
+            else 
+                fprintf(fhandle, '}');
+            end
+        end
+
     end
     
 end

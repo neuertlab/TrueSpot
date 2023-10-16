@@ -294,6 +294,121 @@ classdef RNASpotsRun
 
         end
 
+        function obj = toTextFile(obj, path)
+            fhandle = fopen(path, 'w');
+
+            fprintf(fhandle, 'img_name=%s\n', obj.img_name);
+            fprintf(fhandle, 'intensity_threshold=%d\n', obj.intensity_threshold);
+            if ~isempty(obj.threshold_results)
+                fprintf(fhandle, 'threshold_results.window_pos=%f\n', obj.threshold_results.window_pos);
+                fprintf(fhandle, 'threshold_results.window_sizes=');
+                RNAUtils.printVectorToTextFile(fhandle, obj.threshold_results.window_sizes, '%d', true);
+                fprintf(fhandle, 'threshold_results.mad_factor_min=%f\n', obj.threshold_results.mad_factor_min);
+                fprintf(fhandle, 'threshold_results.mad_factor_max=%f\n', obj.threshold_results.mad_factor_max);
+                fprintf(fhandle, 'threshold_results.control_floor=%d\n', obj.threshold_results.control_floor);
+                fprintf(fhandle, 'threshold_results.struct_ver=%d\n', obj.threshold_results.struct_ver);
+                fprintf(fhandle, 'threshold_results.reweight_fit=%d\n', obj.threshold_results.reweight_fit);
+                fprintf(fhandle, 'threshold_results.fit_to_log=%d\n', obj.threshold_results.fit_to_log);
+                fprintf(fhandle, 'threshold_results.fit_strat=%s\n', obj.threshold_results.fit_strat);
+                fprintf(fhandle, 'threshold_results.madth_weight=%f\n', obj.threshold_results.madth_weight);
+                fprintf(fhandle, 'threshold_results.fit_weight=%f\n', obj.threshold_results.fit_to_log);
+                fprintf(fhandle, 'threshold_results.fit_ri_weight=%f\n', obj.threshold_results.fit_ri_weight);
+                fprintf(fhandle, 'threshold_results.std_factor=%f\n', obj.threshold_results.std_factor);
+                sugg = RNAThreshold.getAllMedThresholds(obj.threshold_results);
+                if ~isempty(sugg)
+                    fprintf(fhandle, 'MED_SUGG=');
+                    RNAUtils.printVectorToTextFile(fhandle, sugg, '%d', true);
+                end
+                sugg = RNAThreshold.getAllFitThresholds(obj.threshold_results);
+                if ~isempty(sugg)
+                    fprintf(fhandle, 'FIT_SUGG=');
+                    RNAUtils.printVectorToTextFile(fhandle, sugg, '%d', true);
+                end
+                sugg = RNAThreshold.getAllRightISectThresholds(obj.threshold_results);
+                if ~isempty(sugg)
+                    fprintf(fhandle, 'FITISECT_SUGG=');
+                    RNAUtils.printVectorToTextFile(fhandle, sugg, '%d', true);
+                end
+            else
+                %Pull from thparams
+                fprintf(fhandle, 'th_params.window_pos=%f\n', obj.th_params.window_pos);
+                fprintf(fhandle, 'th_params.window_sizes=');
+                RNAUtils.printVectorToTextFile(fhandle, obj.th_params.window_sizes, '%d', true);
+                fprintf(fhandle, 'th_params.mad_factor_min=%f\n', obj.th_params.mad_factor_min);
+                fprintf(fhandle, 'th_params.mad_factor_max=%f\n', obj.th_params.mad_factor_max);
+                fprintf(fhandle, 'th_params.control_floor=%d\n', obj.th_params.control_floor);
+                fprintf(fhandle, 'th_params.reweight_fit=%d\n', obj.th_params.reweight_fit);
+                fprintf(fhandle, 'th_params.fit_to_log=%d\n', obj.th_params.fit_to_log);
+                fprintf(fhandle, 'th_params.fit_strat=%s\n', obj.th_params.fit_strat);
+                fprintf(fhandle, 'th_params.madth_weight=%f\n', obj.th_params.madth_weight);
+                fprintf(fhandle, 'th_params.fit_weight=%f\n', obj.th_params.fit_to_log);
+                fprintf(fhandle, 'th_params.fit_ri_weight=%f\n', obj.th_params.fit_ri_weight);
+                fprintf(fhandle, 'th_params.std_factor=%f\n', obj.th_params.std_factor);
+                fprintf(fhandle, 'th_params.test_data=%d\n', obj.th_params.test_data);
+                fprintf(fhandle, 'th_params.test_diff=%d\n', obj.th_params.test_diff);
+            end
+
+            %Paths
+            fprintf(fhandle, 'paths.img_path=%s\n', obj.paths.img_path);
+            fprintf(fhandle, 'paths.out_dir=%s\n', obj.paths.out_dir);
+            fprintf(fhandle, 'paths.out_namestem=%s\n', obj.paths.out_namestem);
+            fprintf(fhandle, 'paths.ctrl_img_path=%s\n', obj.paths.ctrl_img_path);
+            fprintf(fhandle, 'paths.ctrl_out_namestem=%s\n', obj.paths.ctrl_out_namestem);
+            fprintf(fhandle, 'paths.bkg_mask_path=%s\n', obj.paths.bkg_mask_path);
+            fprintf(fhandle, 'paths.bkg_filter_stem=%s\n', obj.paths.bkg_filter_stem);
+            fprintf(fhandle, 'paths.cellseg_path=%s\n', obj.paths.cellseg_path);
+            fprintf(fhandle, 'paths.csv_out_path=%s\n', obj.paths.csv_out_path);
+            fprintf(fhandle, 'paths.params_out_path=%s\n', obj.paths.params_out_path);
+
+            %Channels
+            fprintf(fhandle, 'channels.rna_ch=%d\n', obj.channels.rna_ch);
+            fprintf(fhandle, 'channels.light_ch=%d\n', obj.channels.light_ch);
+            fprintf(fhandle, 'channels.total_ch=%d\n', obj.channels.total_ch);
+            fprintf(fhandle, 'channels.ctrl_ch=%d\n', obj.channels.ctrl_ch);
+            fprintf(fhandle, 'channels.ctrl_chcount=%d\n', obj.channels.ctrl_chcount);
+
+            %Dims
+            fprintf(fhandle, 'dims.ztrim=%d\n', obj.dims.ztrim);
+            fprintf(fhandle, 'dims.ztrim_auto=%d\n', obj.dims.ztrim_auto);
+            fprintf(fhandle, 'dims.z_min=%d\n', obj.dims.z_min);
+            fprintf(fhandle, 'dims.z_max=%d\n', obj.dims.z_max);
+            fprintf(fhandle, 'dims.z_min_apply=%d\n', obj.dims.z_min_apply);
+            fprintf(fhandle, 'dims.z_max_apply=%d\n', obj.dims.z_max_apply);
+
+            fprintf(fhandle, 'dims.idims_sample=(%d,%d,%d)\n', ...
+                obj.dims.idims_sample.x, obj.dims.idims_sample.y, obj.dims.idims_sample.z);
+            fprintf(fhandle, 'dims.idims_ctrl=(%d,%d,%d)\n',...
+                obj.dims.idims_ctrl.x, obj.dims.idims_ctrl.y, obj.dims.idims_ctrl.z);
+
+            %Options
+            fprintf(fhandle, 'options.dtune_gaussrad=%d\n', obj.options.dtune_gaussrad);
+            fprintf(fhandle, 'options.overwrite_output=%d\n', obj.options.overwrite_output);
+            fprintf(fhandle, 'options.deadpix_detect=%d\n', obj.options.deadpix_detect);
+            fprintf(fhandle, 'options.csv_zero_based_coords=%d\n', obj.options.csv_zero_based_coords);
+            fprintf(fhandle, 'options.csv_output_level=%d\n', obj.options.csv_output_level);
+            fprintf(fhandle, 'options.debug_level=%d\n', obj.options.debug_level);
+            fprintf(fhandle, 'options.use_max_proj=%d\n', obj.options.use_max_proj);
+            fprintf(fhandle, 'options.threads=%d\n', obj.options.threads);
+            fprintf(fhandle, 'options.winsize_min=%d\n', obj.options.winsize_min);
+            fprintf(fhandle, 'options.winsize_max=%d\n', obj.options.winsize_max);
+            fprintf(fhandle, 'options.winsize_incr=%d\n', obj.options.winsize_incr);
+            fprintf(fhandle, 'options.t_min=%d\n', obj.options.t_min);
+            fprintf(fhandle, 'options.t_max=%d\n', obj.options.t_max);
+
+            %Meta
+            fprintf(fhandle, 'meta.type_probe=%s\n', obj.meta.type_probe);
+            fprintf(fhandle, 'meta.type_species=%s\n', obj.meta.type_species);
+            fprintf(fhandle, 'meta.type_cell=%s\n', obj.meta.type_cell);
+            fprintf(fhandle, 'meta.type_target=%s\n', obj.meta.type_target);
+            fprintf(fhandle, 'meta.type_targetmol=%s\n', obj.meta.type_targetmol);
+            fprintf(fhandle, 'meta.idims_voxel=(%d,%d,%d)\n', ...
+                obj.meta.idims_voxel.x, obj.meta.idims_voxel.y, obj.meta.idims_voxel.z);
+            fprintf(fhandle, 'meta.idims_expspot=(%d,%d,%d)\n', ...
+                obj.meta.idims_expspot.x, obj.meta.idims_expspot.y, obj.meta.idims_expspot.z);
+
+            fclose(fhandle);
+        end
+
     end
     
     methods(Static)
@@ -304,16 +419,16 @@ classdef RNASpotsRun
             rnaspots_run.intensity_threshold = 0;
             rnaspots_run.threshold_results = struct.empty();
 
-            rnaspots_run.paths = struct('img_path', '');
-            rnaspots_run.paths.out_dir = '';
-            rnaspots_run.paths.out_namestem = '';
-            rnaspots_run.paths.ctrl_img_path = '';
-            rnaspots_run.paths.ctrl_out_namestem = '';
-            rnaspots_run.paths.bkg_mask_path = '';
-            rnaspots_run.paths.bkg_filter_stem = '';
-            rnaspots_run.paths.cellseg_path = '';
-            rnaspots_run.paths.csv_out_path = '';
-            rnaspots_run.paths.params_out_path = '';
+            rnaspots_run.paths = struct('img_path', []);
+            rnaspots_run.paths.out_dir = [];
+            rnaspots_run.paths.out_namestem = [];
+            rnaspots_run.paths.ctrl_img_path = [];
+            rnaspots_run.paths.ctrl_out_namestem = [];
+            rnaspots_run.paths.bkg_mask_path = [];
+            rnaspots_run.paths.bkg_filter_stem = [];
+            rnaspots_run.paths.cellseg_path = [];
+            rnaspots_run.paths.csv_out_path = [];
+            rnaspots_run.paths.params_out_path = [];
 
             rnaspots_run.channels = struct('rna_ch', 0);
             rnaspots_run.channels.light_ch = 0;
@@ -330,6 +445,7 @@ classdef RNASpotsRun
             rnaspots_run.options.overwrite_output = false;
             rnaspots_run.options.deadpix_detect = true;
             rnaspots_run.options.csv_zero_based_coords = false;
+            rnaspots_run.options.csv_output_level = 1; %1 is full table, 2 is after auto range min, 3 is at selected only
             rnaspots_run.options.debug_level = 0;
             rnaspots_run.options.use_max_proj = false;
             rnaspots_run.options.threads = 1;
