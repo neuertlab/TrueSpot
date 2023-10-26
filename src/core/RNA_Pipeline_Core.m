@@ -287,7 +287,7 @@ spotsrun.saveMe();
 
 %Get image dimensions (for ztrim)
 idims = spotsrun.dims.idims_sample;
-if isempty(idims)
+if isempty(idims) | idims.x < 1
     [spotsrun,~] = spotsrun.loadSampleTif(tif_v);
     idims = spotsrun.dims.idims_sample;
 end

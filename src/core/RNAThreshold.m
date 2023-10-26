@@ -250,12 +250,12 @@ classdef RNAThreshold
             
             %If user specified (spline itr > 0), fit spline
             if params.spline_iterations > 0
-                thresh_info = RNA_Threshold_Common.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
+                thresh_info = RNAThreshold.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
                 
                 if params.fit_to_log
                     if ~thresh_info.spline_okay
                         thresh_info.log_used_spline = false;
-                        thresh_info = RNA_Threshold_Common.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
+                        thresh_info = RNAThreshold.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
                     end
                 end
                 
@@ -335,7 +335,7 @@ classdef RNAThreshold
         %
         function threshold_results = estimateThreshold(parameter_info)
             %Generate return struct
-            threshold_results = RNA_Threshold_Common.genEmptyThresholdResultStruct();
+            threshold_results = RNAThreshold.genEmptyThresholdResultStruct();
             %threshold_results.window_size = parameter_info.window_size;
             threshold_results.window_sizes = parameter_info.window_sizes;
             threshold_results.window_pos = parameter_info.window_pos;
@@ -428,19 +428,19 @@ classdef RNAThreshold
                 if ~isempty(ctrlderiv)
                     threshold_results.window_scores_ctrl = NaN(P_control,wincount);
                 end
-                threshold_results.test_winsc(1,wincount) = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
+                threshold_results.test_winsc(1,wincount) = RNAThreshold.genEmptyThresholdInfoStruct();
             end
            
             %For each window size...
             for i = 1:wincount
                 wsz = parameter_info.window_sizes(1,i);
                 [threshold_results.window_scores(:,i), threshold_results.window_sizes(1,i), threshold_results.window_pos] =...
-                    RNA_Threshold_Common.calculateWindowScores(deriv1, wsz, threshold_results.window_pos);
+                    RNAThreshold.calculateWindowScores(deriv1, wsz, threshold_results.window_pos);
                 
                 %Repeat for control
                 if ~isempty(ctrlderiv)
                     [threshold_results.window_scores_ctrl(:,i), ~, ~] =...
-                        RNA_Threshold_Common.calculateWindowScores(ctrlderiv, wsz, threshold_results.window_pos);
+                        RNAThreshold.calculateWindowScores(ctrlderiv, wsz, threshold_results.window_pos);
                 end
             end
            
@@ -455,7 +455,7 @@ classdef RNAThreshold
                     fprintf("Testing winscore curve...\n");
                 end
                 for i = 1:wincount
-                    thresh_info = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
+                    thresh_info = RNAThreshold.genEmptyThresholdInfoStruct();
                     threshold_results.test_winsc(1,i) = thresh_info;
                     %threshold_results.test_winsc(1,i) = thresh_info;
                     winscores_test = NaN(P_sample,2);
@@ -463,7 +463,7 @@ classdef RNAThreshold
                     winscores_test(:,2) = threshold_results.window_scores(:,i);
                     
                     ws_results = ...
-                        RNA_Threshold_Common.thresholdTestCurve(winscores_test, thresh_info, parameter_info);
+                        RNAThreshold.thresholdTestCurve(winscores_test, thresh_info, parameter_info);
                     threshold_results.test_winsc(1,i) = ws_results;
                     
                     if ~isempty(ws_results)
@@ -496,7 +496,7 @@ classdef RNAThreshold
                     fprintf("Testing sample spot curve...\n");
                 end
                 threshold_results.test_data = ...
-                    RNA_Threshold_Common.thresholdTestCurve(spotcount_table, RNA_Threshold_Common.genEmptyThresholdInfoStruct(), parameter_info);
+                    RNAThreshold.thresholdTestCurve(spotcount_table, RNAThreshold.genEmptyThresholdInfoStruct(), parameter_info);
             end
             
             if parameter_info.test_diff
@@ -507,7 +507,7 @@ classdef RNAThreshold
                 diff_curve(:,1) = spotcount_table(1:P_sample,1);
                 diff_curve(:,2) = deriv1(:,1);
                 threshold_results.test_diff = ...
-                    RNA_Threshold_Common.thresholdTestCurve(diff_curve, RNA_Threshold_Common.genEmptyThresholdInfoStruct(), parameter_info);
+                    RNAThreshold.thresholdTestCurve(diff_curve, RNAThreshold.genEmptyThresholdInfoStruct(), parameter_info);
             end
             
             
@@ -966,7 +966,7 @@ classdef RNAThreshold
                 curve_count = curve_count + wincount;
             end
             
-            curve_info_list(curve_count) = RNA_Threshold_Common.genEmptyThresholdInfoStruct();
+            curve_info_list(curve_count) = RNAThreshold.genEmptyThresholdInfoStruct();
             i = 1;
             if ~isempty(threshold_results.test_data)
                 curve_info_list(i) = threshold_results.test_data;

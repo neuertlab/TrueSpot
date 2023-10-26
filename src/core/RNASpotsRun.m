@@ -20,7 +20,7 @@ classdef RNASpotsRun
     methods
         
         function obj = saveMe(obj)
-            outpath = [obj.paths.out_namestem '_rnaspotsrun.mat'];
+            outpath = [obj.getFullOutStem() '_rnaspotsrun.mat'];
            
             run_info = struct('RNASpotsRunVersion', 2);
 
@@ -120,10 +120,12 @@ classdef RNASpotsRun
             end
 
             if ndims(background_mask) < 3
-                keep_me = background_mask(call_table{:,'isnap_y'}, call_table{:,'isnap_x'});
+                mcoords = sub2ind(size(background_mask), call_table{:,'isnap_y'}, call_table{:,'isnap_x'});
+                
             else
-                keep_me = background_mask(call_table{:,'isnap_y'}, call_table{:,'isnap_x'}, call_table{:,'isnap_z'});
+                mcoords = sub2ind(size(background_mask), call_table{:,'isnap_y'}, call_table{:,'isnap_x'}, call_table{:,'isnap_z'});
             end
+            keep_me = background_mask(mcoords);
 
             T = size(th_list,2);
             spot_table = NaN(T,2);
@@ -282,7 +284,7 @@ classdef RNASpotsRun
             zgood = call_table{:, 'isnap_z'} >= obj.dims.z_min_apply;
             zgood = and(zgood, call_table{:, 'isnap_z'} <= obj.dims.z_max_apply);
             if nnz(zgood) > 0
-                call_table = call_table{find(zgood), :};
+                call_table = call_table(find(zgood), :);
                 T = size(spots_table,1);
                 for t = 1:T
                     spots_table(t,2) = nnz(call_table{:, 'dropout_thresh'} >= spots_table(t,1));
@@ -430,11 +432,11 @@ classdef RNASpotsRun
             rnaspots_run.paths.csv_out_path = [];
             rnaspots_run.paths.params_out_path = [];
 
-            rnaspots_run.channels = struct('rna_ch', 0);
+            rnaspots_run.channels = struct('rna_ch', 1);
             rnaspots_run.channels.light_ch = 0;
-            rnaspots_run.channels.total_ch = 0;
-            rnaspots_run.channels.ctrl_ch = 0;
-            rnaspots_run.channels.ctrl_chcount = 0;
+            rnaspots_run.channels.total_ch = 1;
+            rnaspots_run.channels.ctrl_ch = 1;
+            rnaspots_run.channels.ctrl_chcount = 1;
             
             rnaspots_run.th_params = RNAThreshold.genEmptyThresholdParamStruct();
 

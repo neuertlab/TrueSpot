@@ -3,6 +3,8 @@
 
 function rna_spot_run = Main_RNASpots(varargin)
 addpath('./core');
+addpath('./thirdparty');
+addpath('./celldissect');
 
 % ========================== Process args ==========================
 rna_spot_run = RNASpotsRun.initDefault();
@@ -122,11 +124,11 @@ for i = 1:nargin
                 rna_spot_run = setSensitive1(rna_spot_run);
                 lastkey = [];
             end
-        elseif strcmp(lastkey, "specific")
+        elseif strcmp(lastkey, "precise")
             if ~senspe_set
-                if arg_debug; fprintf("Tuning Preset: Specificity\n"); end
+                if arg_debug; fprintf("Tuning Preset: Precise\n"); end
                 senspe_set = true;
-                rna_spot_run = setSpecific1(rna_spot_run);
+                rna_spot_run = setPrecise1(rna_spot_run);
                 lastkey = [];
             end
         end
@@ -150,9 +152,16 @@ for i = 1:nargin
         elseif strcmp(lastkey, "matvar")
             matvar = argval;
             if arg_debug; fprintf("MAT Variable Name: %s\n", matvar); end
+        elseif strcmp(lastkey, "input")
+            rna_spot_run.paths.img_path = argval;
+            if arg_debug; fprintf("Input Path Set: %s\n", rna_spot_run.paths.img_path); end
         elseif strcmp(lastkey, "outdir")
             rna_spot_run.paths.out_dir = argval;
             if arg_debug; fprintf("Output Directory Set: %s\n", rna_spot_run.paths.out_dir); end
+        elseif strcmp(lastkey, "outstem")
+            [rna_spot_run.paths.out_dir, rna_spot_run.paths.out_namestem, ~] = fileparts(argval);
+            if arg_debug; fprintf("Output Directory Set: %s\n", rna_spot_run.paths.out_dir); end
+            if arg_debug; fprintf("Output Filename Stem Set: %s\n", rna_spot_run.paths.out_namestem); end
         elseif strcmp(lastkey, "cellseg")
             rna_spot_run.paths.cellseg_path = argval;
             if arg_debug; fprintf("CellSeg Data Path Set: %s\n", rna_spot_run.paths.cellseg_path); end
@@ -174,6 +183,9 @@ for i = 1:nargin
         elseif strcmp(lastkey, "ctrltif")
             rna_spot_run.paths.ctrl_img_path = argval;
             if arg_debug; fprintf("Control TIF Path Set: %s\n", rna_spot_run.paths.ctrl_img_path); end
+        elseif strcmp(lastkey, "ctrlimg")
+            rna_spot_run.paths.ctrl_img_path = argval;
+            if arg_debug; fprintf("Control Image Path Set: %s\n", rna_spot_run.paths.ctrl_img_path); end
         elseif strcmp(lastkey, "chctrsamp")
             rna_spot_run.channels.ctrl_ch = round(Force2Num(argval));
             if arg_debug; fprintf("Control Channel Set: %d\n", rna_spot_run.channels.ctrl_ch); end
@@ -249,20 +261,20 @@ for i = 1:nargin
                 rna_spot_run = setDefaultParams(rna_spot_run);
             end
             if arg_debug; fprintf("Sensitivity Preset Level Set: %d\n", specval); end
-        elseif strcmp(lastkey, "specificity")
+        elseif strcmp(lastkey, "precision")
             specval = Force2Num(argval);
             if specval == 0
                 rna_spot_run = setDefaultParams(rna_spot_run);
             elseif specval == 1
-                rna_spot_run = setSpecific1(rna_spot_run);
+                rna_spot_run = setPrecise1(rna_spot_run);
             elseif specval >= 2
-                rna_spot_run = setSpecific2(rna_spot_run);
+                rna_spot_run = setPrecise2(rna_spot_run);
             else
                 %Treated as 0
                 specval = 0;
                 rna_spot_run = setDefaultParams(rna_spot_run);
             end
-            if arg_debug; fprintf("Specificity Preset Level Set: %d\n", specval); end
+            if arg_debug; fprintf("Precision Preset Level Set: %d\n", specval); end
         elseif strcmp(lastkey, "voxelsize") | strcmp(lastkey, "pixelsize")
             rna_spot_run.meta.idims_voxel = parseDimsTo(argval, rna_spot_run.meta.idims_voxel);
             if rna_spot_run.meta.idims_voxel.z > 0
@@ -368,10 +380,10 @@ function spotsrun = setSensitive2(spotsrun)
     spotsrun = RNAThreshold.applyPreset(spotsrun, 5);
 end
 
-function spotsrun = setSpecific1(spotsrun)
+function spotsrun = setPrecise1(spotsrun)
     spotsrun = RNAThreshold.applyPreset(spotsrun, 2);
 end
 
-function spotsrun = setSpecific2(spotsrun)
+function spotsrun = setPrecise2(spotsrun)
     spotsrun = RNAThreshold.applyPreset(spotsrun, 1);
 end

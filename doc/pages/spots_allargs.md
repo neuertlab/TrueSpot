@@ -1,4 +1,4 @@
-#Spot Detection Module - Full Argument List
+# Spot Detection Module - Full Argument List
 This page lists all arguments recognized by `Main_RNASpots.m`. Some additional arguments may be found directly in the script as well, but those have been deprecated and are nonfunctional.
 
 ## Required
@@ -64,6 +64,7 @@ This page lists all arguments recognized by `Main_RNASpots.m`. Some additional a
 | `-automaxth` | - | **Flag** - Determine threshold scan maximum automatically from image properties. |
 
 ## Thresholding Tuning
+
 ### Presets
 | Name | Parameter | Description |
 | ----- | ----- | ----- |
@@ -80,9 +81,9 @@ This page lists all arguments recognized by `Main_RNASpots.m`. Some additional a
 | `-wszmin` | *Integer* - Window size | Minimum Fano factor window size to scan for threshold range determination (Default: 3) |
 | `-wszmax` | *Integer* - Window size | Maximum Fano factor window size to scan for threshold range determination (Default: 21) |
 | `-wszincr` | *Integer* - Window size | Increment between window sizes to try (Default: 3) |
-| `-thmw` | *Float* - Weight | Weight factor for inclusion of median/MAD derived threshold candidates in final call (Default: ) |
-| `-thfw` | *Float* - Weight | Weight factor for inclusion of two-piece fit knot threshold candidates in final call (Default: ) |
-| `-thiw` | *Float* - Weight | Weight factor for inclusion of two-piece fit right intercept threshold candidates in final call (Default: ) |
+| `-thmw` | *Float* - Weight | Weight factor for inclusion of median/MAD derived threshold candidates in final call (Default: 0.25) |
+| `-thfw` | *Float* - Weight | Weight factor for inclusion of two-piece fit knot threshold candidates in final call (Default: 0.0) |
+| `-thiw` | *Float* - Weight | Weight factor for inclusion of two-piece fit right intercept threshold candidates in final call (Default: 0.75) |
 | `-fitlog` | *Boolean* - True/False | Whether to use log10 transformations of spot count derived curves for threshold determination (Default: true) |
 | `-stdfac` | *Float* - Standard deviations | Brute-force shift threshold selection by this many standard deviations of the threshold candidate pool (Default: 0.0) |
 | `-usespc` | - | **Flag** - Include spot count curve directly in threshold seletion |
@@ -96,3 +97,8 @@ This page lists all arguments recognized by `Main_RNASpots.m`. Some additional a
 | `-quiet` | - | **Flag** - Minimize log output messages. |
 | `-debug` | - | **Flag** - Run with basic debug logging/output. |
 | `-debugv` | - | **Flag** - Run with extra verbose debug logging/output. |
+
+## Performance
+| Name | Parameter | Description |
+| ----- | ----- | ----- |
+| `-threads` | *Integer* - Thread number | Number of threads to request from MATLAB. As many threads may run in parallel as there are available cores. Parallelizing detection speeds it up considerably. (Default: 1) |

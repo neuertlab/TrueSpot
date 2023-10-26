@@ -306,6 +306,14 @@ classdef RNADetection
 
         %%
         function do3DThresholdLoop_parallel(common_ctx, th_val)
+            my_temp_file = [common_ctx.save_stem '_coords_' sprintf('%04d', th_val) '.mat'];
+            if isfile(my_temp_file)
+                if common_ctx.verbose
+                    fprintf("Calls for threshold %d already found! Skipping...\n", th_val);
+                end
+                return;
+            end
+
             %Spot detect
             [f_img, calls, ~, ~, spot_count] = RNADetection.testThreshold_3D(common_ctx.img_filter,...
                 th_val, common_ctx.plane_avgs, common_ctx.zBorder, true);
@@ -325,7 +333,7 @@ classdef RNADetection
                 clear calls;
 
                 if spot_count > 0
-                    save([common_ctx.save_stem '_coords_' sprintf('%04d', th_val)], 't_coords', '-v7.3');
+                    save(my_temp_file, 't_coords', '-v7.3');
                 end
 
             end
@@ -362,6 +370,7 @@ classdef RNADetection
                 ctx_clean.collapse3D = common_ctx.collapse3D;
                 ctx_clean.save_filtered = common_ctx.save_filtered;
                 ctx_clean.img_size = common_ctx.img_size;
+                ctx_clean.verbose = common_ctx.verbose;
                 tlist = common_ctx.th_list;
 
                 if common_ctx.verbose
@@ -373,7 +382,7 @@ classdef RNADetection
                 [outdir, ~, ~] = fileparts(common_ctx.save_stem);
                 pardir = [outdir filesep 'parallel'];
                 RNADetection.initParallel(1, common_ctx.threads, pardir);
-                parfor c = 1:T
+                parfor c = 2:T
                     RNADetection.do3DThresholdLoop_parallel(ctx_clean, tlist(1,c));
                 end
                 delete(gcp('nocreate'));
@@ -387,7 +396,7 @@ classdef RNADetection
 
                 for c = 2:T
                     th_val = tlist(1,c);
-                    partemp_path = [common_ctx.save_stem '_coords_' sprintf('%04d', th_val)];
+                    partemp_path = [common_ctx.save_stem '_coords_' sprintf('%04d', th_val) '.mat'];
                     if isfile(partemp_path)
                         load(partemp_path, 't_coords');
                         match_mtx = ismember(common_ctx.temp_calls(:,1), t_coords);

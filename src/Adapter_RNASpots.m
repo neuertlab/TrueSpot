@@ -73,7 +73,6 @@ if rna_spot_run.channels.rna_ch > rna_spot_run.channels.total_ch
 end
 
 %Set defaults
-rna_spot_run.dims.ztrim_auto = 3;
 % if ttune_winsize < 1
 %     spotsrun.ttune_winsize = 10;
 % end
@@ -95,6 +94,8 @@ end
 if isempty(rna_spot_run.img_name)
     %Defaults to input file name
     [~, rna_spot_run.img_name, ~] = fileparts(rna_spot_run.paths.img_path);
+    %Remove any extraneous dots to not confuse downstream fileparts calls
+    rna_spot_run.img_name = replace(rna_spot_run.img_name, '.', '_');
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Image name not provided. Set to %s", rna_spot_run.img_name), true);
 end
 if ~isempty(rna_spot_run.paths.ctrl_img_path)

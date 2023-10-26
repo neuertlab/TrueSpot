@@ -1,0 +1,80 @@
+TrueSpot Spot Detection Bash Wrapper
+Usage Manual
+
+--- Required Arguments ---
+-input [Path]			The input image or image stack. This parameter may be substituted with -tif for TIFF images, or -matimg and -matvar for MATLAB save files.
+
+--- Input Options ---
+-tif [Path]				The input image or image stack TIFF file. This argument is equivalent to -input, but is included for convenience and compatibility with previous versions.
+-matimg [Path]			A MATLAB save file containing the image/image stack to process. This argument is equivalent to -input, but is included for convenience and compatibility with previous versions.
+-matvar [String]		The name of the MATLAB variable in the input MATLAB save file containing the image/image stack data to process. Defaults to "imgdat".
+-cellseg [Path]			A MATLAB save file containing a cell segmentation mask output by the cell segementation module. File name will usually start with "Lab_".
+-ctrlimg [Path]			A control image or image stack file. Only TIFF or MAT files are recognized at this time.
+-ctrltif [Path]			A control image or image stack file in TIFF format. This argument is equivalent to -ctrlimg, but is included for convenience and compatibility with previous versions.
+-chtotal [Int]			The total number of channels in the input image stack. (Default: 1)
+-chsamp [Int]			The channel in the input image stack to process as sample as a 1-based coordinate index. (Default: 1)
+-chtrans [Int]			The TRANS or passthrough light channel in the input image stack as a 1-based coordinate index. Only used for background extraction along with cell segmentation mask.
+-chctrtotal [Int]		The total number of channels in the control image stack. (Default: 1)
+-chctrsamp [Int]		The channel in the control image stack to process as sample control as a 1-based coordinate index. (Default: 1)
+
+--- Output Options ---
+-outdir [Path]			Path to directory to place output files. File names will be automatically generated from image name. (Default: Directory of input image.)
+-outstem [Path Stem]	Filename stem for output files including output directory. (Default: (Directory of input image)/(input image name)_(detection strategy)
+-csvout [Path]			Path to output callset as a csv file.
+-runparamout [Path]		Path dump run parameters to a plain text file.
+-ovrw					(Flag) Overwrite any existing output.
+-csvzero				(Flag) Output csv table uses 0-based coordinates instead of MATLAB default 1-based coordinates.
+-csvfull				(Flag) Output csv table contains all calls at all thresholds.
+-csvrange				(Flag) Output csv table contains only calls at or above the bottom of the auto-threshold range.
+-csvthonly				(Flag) Output csv table contains only calls at or above the automatically called threshold.
+
+--- Metadata Options ---
+-imgname [String]		Name to assign to image and output files. Useful for images with long unwieldy file names. (Default: Input file name.)
+-voxelsize (x,y,z)		Voxel dimensions in nanometers. This is only recorded as metadata and is not used or required for tool function. Functions the same as -pixelsize.
+-pixelsize (x,y)		Pixel dimensions in nanometers. This is only recorded as metadata and is not used or required for tool function. Functions the same as -voxelsize.
+-expspotsize (x,y,z)	Expected size of box dimensions enveloping a single spot in nanometers. This is only recorded as metadata and is not used or required for tool function.
+-probetype [String]		Name of fluorescent or other probe used to illuminate sample in target channel.
+-target [String]		Name of target biomolecule.
+-targettype [String]	The type of biomolecule target is (eg. "lncRNA" or "Protein")
+-species [String]		The species the sample was sourced from.
+-celltype [String]		The cell type of the sample.
+
+--- Detection Tuning ---
+-thmin [Int]			Minimum filtered intensity threshold value to scan, inclusive (Default: 10)
+-thmax [Int]			Maximum filtered intensity threshold value to scan, inclusive (Default: 500)
+-ztrim [Int]			Number of Z slices to trim out from top and bottom of stack (Default: 0)
+-zmin [Int]				Bottom Z slice (in 1-based coordinates) to include in processing.
+-zmax [Int]				Top Z slice (in 1-based coordinates) to include in processing.
+-gaussrad [Int]			Radius of Gaussian filter (Default: 7)
+-nodpc					(Flag) Skip dead pixel cleaning step.
+-maxzproj				(Flag) Use maximum Z projection for maxima detection instead of the full 3D stack.
+-autominth				(Flag) Determine threshold scan minimum automatically from image properties.
+-automaxth				(Flag) Determine threshold scan maximum automatically from image properties.
+
+--- Thresholding Tuning (Presets) ---
+-sensitivity [Int]		Set thresholding parameters to preset reflecting desired level of sensitivity (0-2) (Default: 0)
+-precision [Int]		Set thresholding parameters to preset reflecting desired level of precision (0-2) (Default: 0)
+-sensitive				(Flag) Set thresholding parameters to a preset with higher sensitivity.
+-precise				(Flag) Set thresholding parameters to a preset with higher precision.
+
+--- Thresholding Tuning (Detailed) ---
+-mfmin [Float]			Minimum MAD factor to use for threshold range determination (Default: -1.0)
+-mfmax [Float]			Maximum MAD factor to use for threshold range determination (Default: 1.0)
+-wszmin [Int]			Minimum Fano factor window size to scan for threshold range determination (Default: 3)
+-wszmax [Int]			Maximum Fano factor window size to scan for threshold range determination (Default: 21)
+-wszincr [Int]			Increment between window sizes to try (Default: 3)
+-thmw [Float]			Weight factor for inclusion of median/MAD derived threshold candidates in final call (Default: 0.25)
+-thfw [Float]			Weight factor for inclusion of two-piece fit knot threshold candidates in final call (Default: 0.0)
+-thiw [Float]			Weight factor for inclusion of two-piece fit right intercept threshold candidates in final call (Default: 0.75)
+-fitlog [Boolean]		Whether to use log10 transformations of spot count derived curves for threshold determination (Default: true)
+-stdfac [Float]			Brute-force shift threshold selection by this many standard deviations of the threshold candidate pool (Default: 0.0)
+-usespc					(Flag) Include spot count curve directly in threshold seletion
+-usedfc					(Flag) Include absolute value of first deriv. approximate transformation directly in threshold seletion.
+-fitwavg				(Flag) Use a different weighting algorithm to determine two-piece fits
+
+--- Miscellaneous ---
+-threads [Int]			Number of threads to request from MATLAB. As many threads may run in parallel as there are available cores. Parallelizing detection speeds it up considerably. (Default: 1)
+-verbose				(Flag) Turn on default log verbosity.
+-quiet					(Flag) Minimize log output messages.
+-debug					(Flag) Run with basic debug logging/output.
+-debugv					(Flag) Run with extra verbose debug logging/output.
