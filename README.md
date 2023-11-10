@@ -1,7 +1,7 @@
 # TrueSpot
 A MATLAB pipeline for automatically processing TIFF image stacks. Functions include cell segmentation, RNA/marker spot detection (with automatic thresholding), and RNA/marker quantification.
 
-[Detailed Documentation](https://github.com/neuertlab/RNA-FISH-Auto/blob/main/doc/dochome.md) | [Benchmarking Data] (https://github.com/neuertlab/RNA-FISH-Auto-Data)
+[Detailed Documentation](https://github.com/neuertlab/RNA-FISH-Auto/blob/main/doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/RNA-FISH-Auto-Data)
 
 ## Citations
 Cell Segmentation: [View Paper](https://doi.org/10.1038/s41598-019-46689-5) | [Standalone](https://www.dropbox.com/sh/egb27tsgk6fpixf/AADaJ8DSjab_c0gU7N7ZF0Zba?dl=0)
