@@ -190,6 +190,80 @@ classdef CellSeg
             end
         end
 
+        %Derived from B1_autosegment_nuclei8_thres
+        function [dapi_threshold,dapi_label] = B1_autosegment_nuclei8_thres(DAPI_ims, Yim, ManTh, min_nucleus_size, max_nucleus_size)
+            a = size(DAPI_ims,1);                                                       % image size in number of pixels
+            z = size(DAPI_ims,3);                                                       % stack size in number of images
+
+            for i = 1:z;                                                                % Find the Image with the strongest DAPI signal (largest STD)
+                STD2D(i) = std2(DAPI_ims(:,:,i));
+            end;
+            [p,ip] = max(STD2D);
+            range = 3                                                                   %use the 3 images around the max image
+            while ip + range > size(DAPI_ims,3) | ip - range < 1                        %reduce the range if this z stack is near the edges
+                range = range - 1
+            end
+            dapi_max = max(DAPI_ims(:,:,ip-range:ip+range),[],3);                               % maximum intensity projection in z-direction
+            Dapi_Mean = mean(dapi_max(:))
+            Dapi_Min = min(dapi_max(:))
+            Dapi_Max = max(dapi_max(:))
+            Dapi_Median = median(dapi_max(:))
+            if ManTh
+                threshold_sampling = 100
+            else
+                threshold_sampling = 200
+            end
+            %% find the nuclei-maximizing dapi threshold
+            if 10*Dapi_Median < Dapi_Max
+                dd = round((10*Dapi_Median-Dapi_Min)/threshold_sampling)
+                dapi_threshold2 = Dapi_Min:dd:10*Dapi_Median;
+            else
+                dd = round((Dapi_Max-Dapi_Min)/threshold_sampling)
+                dapi_threshold2 = Dapi_Min:dd:Dapi_Max;
+            end
+            for j = 1:size(dapi_threshold2,2)
+                dapi_bw = DAPI_ims > dapi_threshold2(j);                                        % only take DAPI intensities above the identified threshold for 3D stack
+                dapi_bw_max2(:,:,j) = max(dapi_bw,[],3);                                            % maxium z-direction
+            end
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % % Ben Kesler 2/10/15 This goes through thresholds and determines how many
+            % % nuclei would result from each. The threshold at which the max number of
+            % % nuclei is obtained will be used
+            % Check subsets of the image and
+            for i = threshold_sampling/10:size(dapi_threshold2,2);                          %see how many nuclei for every threshold
+                i
+                dapi_threshold = dapi_threshold2(i);
+                dapi_bw = DAPI_ims > dapi_threshold;                                        % only take DAPI intensities above the identified threshold for 3D stack
+                dapi_bw_max = max(dapi_bw,[],3);                                           % Maximum projection for the binary pixels above the threshold
+                % remove nuclei > than max_nucleus and < than min_nucleus
+                dapi_normal = bwareaopen(dapi_bw_max, min_nucleus_size);                        % remove DAPI signal that are too small
+                dapi_huge = bwareaopen(dapi_bw_max, max_nucleus_size);                          % remove DAPI signal that are too large
+                dapi_bw2 = dapi_normal - dapi_huge;                                         % DAPI signal of the right size
+                dapi_bw_max = max(dapi_bw2,[],3);                                           % Maximum projection for the binary pixels above the threshold
+                dapi_OK = bwareaopen(dapi_bw_max,4);                                       % segment all DAPI spots
+                dapi_label = bwlabeln(dapi_OK,8);                                          % label all segmented DAPI spots
+                nuclei_num(i) = max(dapi_label(:));
+            end
+
+            ik = find(nuclei_num == max(nuclei_num),1,'last');                              %set the threshold to the largest threshold that results in the maximum cells
+            dapi_threshold = dapi_threshold2(ik)
+
+            dapi_bw = DAPI_ims > dapi_threshold;                                        % only take DAPI intensities above the identified threshold for 3D stack
+            dapi_bw_max = max(dapi_bw,[],3);                                           % Maximum projection for the binary pixels above the threshold
+
+            %% remove nuclei > than max_nucleus and < than min_nucleus
+            dapi_normal = bwareaopen(dapi_bw_max, min_nucleus_size);                        % remove DAPI signal that are too small
+            dapi_huge = bwareaopen(dapi_bw_max, max_nucleus_size);                          % remove DAPI signal that are too large
+            dapi_bw2 = dapi_normal - dapi_huge;                                         % DAPI signal of the right size
+            dapi_bw_max = max(dapi_bw2,[],3);                                           % Maximum projection for the binary pixels above the threshold
+
+            %% Determine DAPI threshold for each individual cell
+            % segment the DAPI signals in the image
+            dapi_OK = bwareaopen(dapi_bw_max,4);                                       % segment all DAPI spots
+            dapi_label = bwlabeln(dapi_OK,8);                                          % label all segmented DAPI spots
+            m22 = max(dapi_label(:));                                                   % determine maximum nuber of DAPI stained nuclei
+        end
+
         %Derived from B2_autosegment_cells_new &
         %B2_autosegment_cells_new_yeast
         function [Lab, cell_info, trans_plane, params] = AutosegmentCells(light_ch_data, nuc_label, params)
