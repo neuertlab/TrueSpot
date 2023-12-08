@@ -17,6 +17,9 @@ classdef RNAUtils
             end
             
             thresh_idx = find(isge,1);
+            if (thresh_x_tbl(thresh_idx) > thresh_value)
+                if thresh_idx > 1; thresh_idx = thresh_idx - 1; end
+            end
         end
         
         %%

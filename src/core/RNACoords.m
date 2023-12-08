@@ -706,6 +706,26 @@ methods (Static)
         
     end
 
+    function call_table = updateRefDistances(call_table, ref_table, ref_call_map)
+        x_true = double(call_table{ref_call_map, 'isnap_x'});
+        y_true = double(call_table{ref_call_map, 'isnap_y'});
+        z_true = double(call_table{ref_call_map, 'isnap_z'});
+
+        x_dist = abs(x_true - ref_table(:,1));
+        y_dist = abs(y_true - ref_table(:,2));
+        z_dist = abs(z_true - ref_table(:,3));
+
+        call_table{ref_call_map, 'xdist_ref'} = x_dist;
+        call_table{ref_call_map, 'ydist_ref'} = y_dist;
+        call_table{ref_call_map, 'zdist_ref'} = z_dist;
+
+        xsq = x_dist .^ 2;
+        ysq = y_dist .^ 2;
+        zsq = z_dist .^ 2;
+        call_table{ref_call_map, 'xydist_ref'} = sqrt(xsq + ysq);
+        call_table{ref_call_map, 'xyzdist_ref'} = sqrt(xsq + ysq + zsq);
+    end
+
     function call_table = updateRefDistancesToUseFits(call_table, ref_table, ref_call_map)
         if nnz(ref_call_map) < 1; return; end
         fidxs = find(ref_call_map > 0);
