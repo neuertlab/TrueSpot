@@ -4,10 +4,9 @@ classdef CellSeg
 
     methods(Static)
 
+        %%
         function param_struct = genCellSegParameterStruct()
             param_struct = struct('focus_plane_strat', 'specify');
-            param_struct.min_nuc_size = 40;
-            param_struct.max_nuc_size = 200;
             param_struct.min_cell_size = 600;
             param_struct.max_cell_size = 1200;
             param_struct.min_plane = 1;
@@ -20,6 +19,37 @@ classdef CellSeg
             param_struct.y_trim = 4;
         end
 
+        %%
+        function param_struct = genNucSegStruct()
+            param_struct = struct();
+
+            %Params
+            param_struct.range = 3;
+            param_struct.threshold_sampling = 200;
+            param_struct.min_nucleus_size = 40;
+            param_struct.max_nucleus_size = 200;
+            param_struct.cutoff = 0.05;
+            param_struct.dxy = NaN;
+            param_struct.use_adding = true;
+
+            %Results
+            param_struct.counter = 0;
+            param_struct.nuc_threshold = NaN;
+            param_struct.nuc_label = [];
+            param_struct.nuc_label_lo = [];
+            param_struct.lbl_lo = [];
+            param_struct.lbl_mid = [];
+            param_struct.lbl_hi = [];
+            param_struct.nuclei = [];
+            param_struct.nuc_int = [];
+            param_struct.nuc_vol = [];
+            param_struct.nuc_axis_major = [];
+            param_struct.nuc_axis_minor = [];
+            param_struct.nuclei_num = [];
+            param_struct.test_sum = [];
+        end
+
+        %%
         %Derived from C1_find_dapi_threshold
         function best_threshold = FindDAPIThreshold(dapi_max, strict_min_size, strict_max_size, step_size, step_count, min_dapi)
             %I had to dig back to 2014 to find these functions, so I will
@@ -65,6 +95,7 @@ classdef CellSeg
             end
         end
 
+        %%
         %Derived from C2_find_trans_bestplane
         function best_plane = PickFocusPlane_MostCells(light_ch_data, nuclei_max, strict_min_size, strict_max_size)
             %{
@@ -100,6 +131,7 @@ classdef CellSeg
             end
         end
 
+        %%
         %Derived from C3_find_trans_midplane
         function mid_plane = PickFocusPlane_MidPlane(light_ch_data)
             %{
@@ -128,6 +160,7 @@ classdef CellSeg
             end
         end
 
+        %%
         %Derived from C4_find_trans_plane
         function mid_plane = PickFocusPlane_LowStdev(light_ch_data)
             Z = 1;
@@ -144,6 +177,7 @@ classdef CellSeg
             %too.
         end
 
+        %%
         function [trans_plane, param_struct] = GenBaseTransPlane(light_ch_data, nuc_label, param_struct)
 
             if ndims(light_ch_data) < 3
@@ -174,13 +208,13 @@ classdef CellSeg
                 start_plane = Z-4;
                 end_plane = Z;
             else
-                start_plane = param_struct.focus_offset_min;
-                end_plane = param_struct.focus_offset_max;
+                start_plane = param_struct.min_plane;
+                end_plane = param_struct.max_plane;
             end
 
             if use_range
-                if start_plane < param_struct.focus_offset_min; start_plane = param_struct.focus_offset_min; end
-                if end_plane > param_struct.focus_offset_max; end_plane = param_struct.focus_offset_max; end
+                if start_plane < param_struct.min_plane; start_plane = param_struct.min_plane; end
+                if end_plane > param_struct.max_plane; end_plane = param_struct.max_plane; end
                 if start_plane > end_plane; start_plane = end_plane; end
                 trans_ring_planes = light_ch_data(:,:,start_plane:end_plane);
                 trans_plane = max(trans_ring_planes,[],3);            % Maximum intensity z-projection
@@ -190,80 +224,411 @@ classdef CellSeg
             end
         end
 
+        %%
         %Derived from B1_autosegment_nuclei8_thres
-        function [dapi_threshold,dapi_label] = B1_autosegment_nuclei8_thres(DAPI_ims, Yim, ManTh, min_nucleus_size, max_nucleus_size)
-            a = size(DAPI_ims,1);                                                       % image size in number of pixels
-            z = size(DAPI_ims,3);                                                       % stack size in number of images
+        function nucSegSpecs = InitSegNucleiThres(nuc_ch_data, nucSegSpecs)
+%             if ManTh
+%                 threshold_sampling = 100
+%             else
+%                 threshold_sampling = 200
+%             end
+            
+            Z = size(nuc_ch_data, 3);
+            
+            STD2D = NaN(1,Z);
+            for z = 1:Z                                                               % Find the Image with the strongest DAPI signal (largest STD)
+                STD2D(z) = std2(nuc_ch_data(:,:,z));
+            end
 
-            for i = 1:z;                                                                % Find the Image with the strongest DAPI signal (largest STD)
-                STD2D(i) = std2(DAPI_ims(:,:,i));
-            end;
-            [p,ip] = max(STD2D);
-            range = 3                                                                   %use the 3 images around the max image
-            while ip + range > size(DAPI_ims,3) | ip - range < 1                        %reduce the range if this z stack is near the edges
-                range = range - 1
+            [~, ip] = max(STD2D);                                                            %use the 3 images around the max image
+            range = nucSegSpecs.range;
+            while (ip + range > Z) | (ip - range < 1)                        %reduce the range if this z stack is near the edges
+                range = range - 1;
             end
-            dapi_max = max(DAPI_ims(:,:,ip-range:ip+range),[],3);                               % maximum intensity projection in z-direction
-            Dapi_Mean = mean(dapi_max(:))
-            Dapi_Min = min(dapi_max(:))
-            Dapi_Max = max(dapi_max(:))
-            Dapi_Median = median(dapi_max(:))
-            if ManTh
-                threshold_sampling = 100
+
+            nuc_max_proj = max(nuc_ch_data(:,:,ip-range:ip+range),[],3);                               % maximum intensity projection in z-direction
+            nuc_min = min(nuc_max_proj(:));
+            nuc_max = max(nuc_max_proj(:));
+            nuc_median = median(nuc_max_proj(:));
+
+            % find the nuclei-maximizing dapi threshold
+            threshold_sampling = nucSegSpecs.threshold_sampling;
+            if (10 * nuc_median) < nuc_max
+                dd = round((10 * nuc_median - nuc_min) / threshold_sampling);
+                test_thresh = nuc_min:dd:(10 * nuc_median);
             else
-                threshold_sampling = 200
+                dd = round((nuc_max - nuc_min) / threshold_sampling);
+                test_thresh = nuc_min:dd:nuc_max;
             end
-            %% find the nuclei-maximizing dapi threshold
-            if 10*Dapi_Median < Dapi_Max
-                dd = round((10*Dapi_Median-Dapi_Min)/threshold_sampling)
-                dapi_threshold2 = Dapi_Min:dd:10*Dapi_Median;
-            else
-                dd = round((Dapi_Max-Dapi_Min)/threshold_sampling)
-                dapi_threshold2 = Dapi_Min:dd:Dapi_Max;
-            end
-            for j = 1:size(dapi_threshold2,2)
-                dapi_bw = DAPI_ims > dapi_threshold2(j);                                        % only take DAPI intensities above the identified threshold for 3D stack
-                dapi_bw_max2(:,:,j) = max(dapi_bw,[],3);                                            % maxium z-direction
-            end
+
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % % Ben Kesler 2/10/15 This goes through thresholds and determines how many
             % % nuclei would result from each. The threshold at which the max number of
             % % nuclei is obtained will be used
             % Check subsets of the image and
-            for i = threshold_sampling/10:size(dapi_threshold2,2);                          %see how many nuclei for every threshold
-                i
-                dapi_threshold = dapi_threshold2(i);
-                dapi_bw = DAPI_ims > dapi_threshold;                                        % only take DAPI intensities above the identified threshold for 3D stack
+            T = size(test_thresh, 2);
+            nucSegSpecs.nuclei_num = zeros(1,T);
+            min_nucleus_size = nucSegSpecs.min_nucleus_size;
+            max_nucleus_size = nucSegSpecs.max_nucleus_size;
+            for i = (threshold_sampling / 10):T                    %see how many nuclei for every threshold
+                nucSegSpecs.nuc_threshold = test_thresh(i);
+                dapi_bw = DAPI_ims > nucSegSpecs.nuc_threshold;                                        % only take DAPI intensities above the identified threshold for 3D stack
                 dapi_bw_max = max(dapi_bw,[],3);                                           % Maximum projection for the binary pixels above the threshold
-                % remove nuclei > than max_nucleus and < than min_nucleus
                 dapi_normal = bwareaopen(dapi_bw_max, min_nucleus_size);                        % remove DAPI signal that are too small
                 dapi_huge = bwareaopen(dapi_bw_max, max_nucleus_size);                          % remove DAPI signal that are too large
                 dapi_bw2 = dapi_normal - dapi_huge;                                         % DAPI signal of the right size
                 dapi_bw_max = max(dapi_bw2,[],3);                                           % Maximum projection for the binary pixels above the threshold
                 dapi_OK = bwareaopen(dapi_bw_max,4);                                       % segment all DAPI spots
-                dapi_label = bwlabeln(dapi_OK,8);                                          % label all segmented DAPI spots
-                nuclei_num(i) = max(dapi_label(:));
+                nucSegSpecs.nuc_label = bwlabeln(dapi_OK,8);                                          % label all segmented DAPI spots
+                nucSegSpecs.nuclei_num(i) = max(nucSegSpecs.nuc_label(:));
             end
+            clear test_thresh
 
-            ik = find(nuclei_num == max(nuclei_num),1,'last');                              %set the threshold to the largest threshold that results in the maximum cells
-            dapi_threshold = dapi_threshold2(ik)
+            ik = find(nucSegSpecs.nuclei_num == max(nucSegSpecs.nuclei_num), 1, 'last');                              %set the threshold to the largest threshold that results in the maximum cells
+            nucSegSpecs.nuc_threshold = dapi_threshold2(ik);
 
-            dapi_bw = DAPI_ims > dapi_threshold;                                        % only take DAPI intensities above the identified threshold for 3D stack
-            dapi_bw_max = max(dapi_bw,[],3);                                           % Maximum projection for the binary pixels above the threshold
+            dapi_bw = DAPI_ims > nucSegSpecs.nuc_threshold;                                        % only take DAPI intensities above the identified threshold for 3D stack
+            dapi_bw_max = max(dapi_bw, [], 3);                % Maximum projection for the binary pixels above the threshold
 
-            %% remove nuclei > than max_nucleus and < than min_nucleus
+            % remove nuclei > than max_nucleus and < than min_nucleus
             dapi_normal = bwareaopen(dapi_bw_max, min_nucleus_size);                        % remove DAPI signal that are too small
             dapi_huge = bwareaopen(dapi_bw_max, max_nucleus_size);                          % remove DAPI signal that are too large
             dapi_bw2 = dapi_normal - dapi_huge;                                         % DAPI signal of the right size
             dapi_bw_max = max(dapi_bw2,[],3);                                           % Maximum projection for the binary pixels above the threshold
 
-            %% Determine DAPI threshold for each individual cell
+            % Determine DAPI threshold for each individual cell
             % segment the DAPI signals in the image
             dapi_OK = bwareaopen(dapi_bw_max,4);                                       % segment all DAPI spots
-            dapi_label = bwlabeln(dapi_OK,8);                                          % label all segmented DAPI spots
-            m22 = max(dapi_label(:));                                                   % determine maximum nuber of DAPI stained nuclei
+            nucSegSpecs.nuc_label = bwlabeln(dapi_OK,8);                                          % label all segmented DAPI spots                                                % determine maximum nuber of DAPI stained nuclei
         end
 
+        %%
+        %Derived from B1_autosegment_nuclei8_adding
+        function nucSegSpecs = InitSegNucleiAdd(nuc_ch_data, nucSegSpecs)
+            % This segments the cells by adding together binary images at every threshold, then removing pixels that are not present in most, and then going to each cell to segment it further.
+            X = size(nuc_ch_data,2);                                                       % image size in number of pixels
+            Y = size(nuc_ch_data,1);
+            Z = size(nuc_ch_data,3);                                                       % stack size in number of images
+
+            STD2D = NaN(1,Z);                                                           %BK 5/16, needed this so timepoints with more stacks wouldn't be left over
+            for z = 1:Z                                                                % Find the Image with the strongest DAPI signal (largest STD)
+                STD2D(z) = std2(nuc_ch_data(:,:,z));
+            end
+            clear z
+
+            [~,ip] = max(STD2D);
+
+            range = nucSegSpecs.range;
+            while (ip + range > Z) | (ip - range < 1)                        %reduce the range if this z stack is near the edges
+                range = range - 1;
+            end
+            z_min = ip - range;
+            z_max = ip + range;
+            nuc_max_proj = max(nuc_ch_data(:,:,z_min:z_max), [], 3);                            % maximum intensity projection in z-direction
+
+            nuc_min = min(nuc_max_proj(:));
+            nuc_max = max(nuc_max_proj(:));
+            nuc_median = median(nuc_max_proj(:));
+            clear nuc_max_proj ip
+
+%             if false;%Ywin
+%                 threshold_sampling = 100
+%             else
+%                 threshold_sampling =200
+%             end
+
+            % find the nuclei-maximizing dapi threshold
+            threshold_sampling = nucSegSpecs.threshold_sampling;
+            med10 = 10 * nuc_median;
+            if med10 < nuc_max                                         %BK 4/27/2016
+                dd = round((med10 - nuc_min) / threshold_sampling);
+                test_thresh = nuc_min:dd:med10;
+            else
+                dd = round((nuc_max - nuc_min) / threshold_sampling);
+                test_thresh = nuc_min:dd:nuc_max;
+            end
+            clear nuc_min nuc_max nuc_median med10
+
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % % Ben Kesler 2/10/15 This goes through thresholds and determines how many
+            % % nuclei would result from each. The threshold at which the max number of
+            % % nuclei is obtained will be used
+            T = size(test_thresh, 2);
+            nucSegSpecs.nuclei_num = zeros(1,T);  %added 9/7 BK
+            nucSegSpecs.test_sum = zeros(Y,X); %added 4/29 BK
+            min_nucleus_size = nucSegSpecs.min_nucleus_size;
+            max_nucleus_size = nucSegSpecs.max_nucleus_size;
+            for i = (threshold_sampling/10):T                        %see how many nuclei for every threshold
+                nucSegSpecs.nuc_threshold = test_thresh(i);
+                dapi_bw = (nuc_ch_data > nucSegSpecs.nuc_threshold); % only take DAPI intensities above the identified threshold for 3D stack
+                
+                min_slice = round(0.2 * Z);
+                if min_slice < 1; min_slice = 1; end
+                dapi_bw_max = max(dapi_bw(:,:,min_slice:Z), [], 3);                                           % Maximum projection for the binary pixels above the threshold
+                %[BH] Where does this 13:end come from? Is this something
+                %that should not be hardcoded?
+                %I'll just remove lowest 20% instead?
+
+                % remove nuclei > than max_nucleus and < than min_nucleus
+                dapi_normal = bwareaopen(dapi_bw_max, min_nucleus_size);                        % remove DAPI signal that are too small
+                dapi_huge = bwareaopen(dapi_bw_max, max_nucleus_size);                          % remove DAPI signal that are too large
+                dapi_bw2 = dapi_normal - dapi_huge;                                         % DAPI signal of the right size
+                dapi_bw_max = max(dapi_bw2, [], 3);                                           % Maximum projection for the binary pixels above the threshold
+                dapi_OK = bwareaopen(dapi_bw_max, 4);                                       % segment all DAPI spots
+                nucSegSpecs.nuc_label = bwlabeln(dapi_OK, 8);                                          % label all segmented DAPI spots
+                nucSegSpecs.nuclei_num(i) = max(nucSegSpecs.nuc_label(:));
+
+                %added 4-29 BK
+                nucSegSpecs.test_sum = nucSegSpecs.test_sum + dapi_OK;
+            end
+            clear test_thresh dapi_bw min_slice dapi_OK...
+                dapi_bw_max dapi_bw_max
+
+            % Apply cutoff for added image
+            cutoff = nucSegSpecs.cutoff;    %This is a kind of cutoff. It's a proportion of the maximum number of times a pixel is present
+            DAPI_ims_final = nucSegSpecs.test_sum;
+            if cutoff > 0
+                DAPI_ims_final(find(DAPI_ims_final < max(DAPI_ims_final(:)) * cutoff)) = 0;
+                dapi_normal = bwareaopen(DAPI_ims_final, min_nucleus_size);                        % remove DAPI signal that are too small
+                dapi_huge = bwareaopen(DAPI_ims_final, max_nucleus_size);                          % remove DAPI signal that are too large
+                DAPI_ims_cut = dapi_normal - dapi_huge;
+                DAPI_ims_final = immultiply(DAPI_ims_cut, DAPI_ims_final);
+                clear DAPI_ims_cut
+            end
+
+            nucSegSpecs.nuc_label = bwlabeln(DAPI_ims_final, 8);
+            max_label = max(nucSegSpecs.nuc_label, [], 'all', 'omitnan');
+            xs = zeros(size(nucSegSpecs.nuc_label(:)));
+            ys = zeros(size(nucSegSpecs.nuc_label(:)));
+            for j = 1:max_label
+                %collect data about each spot. Find the center (not adjusted by intensity right now)
+                [y_es, x_es] = find(nucSegSpecs.nuc_label == j);
+                xs(j,1) = mean(x_es);
+                ys(j,1) = mean(y_es);
+            end
+            clear x_es y_es
+
+            % Separate individual DAPI spots
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            dxy2 = nucSegSpecs.dxy * 2.5;                                               % determine maximum number of DAPI stained nuclei                                                              %counter for how many times the box had more than one nucleus
+            nucSegSpecs.nuc_label_lo = DAPI_ims_final;
+            for i = 1:max_label
+                k1 = (nucSegSpecs.nuc_label == i);                                                  % Single cell per image
+                k2a = immultiply(k1, DAPI_ims_final);
+
+                xA = round(xs(i));                                                      %use the center found earlier as the starting point for drawing the box
+                yA = round(ys(i));
+                x0 = xA - dxy2;                                                            % generate corner points with are dxy1 pixels away from the nuclear center
+                x1 = xA + dxy2;
+                y0 = yA - dxy2;
+                y1 = yA + dxy2;
+
+                if x0 < 1; x0 = 1; end                                                           % if corner A is below 1 pixel or negative set equals 1
+                if x1 > X; x1 = X; end                                                               % if corner B is above a pixels (1024 or 2048) set equals a
+                if y0 < 1; y0 = 1; end                                                           % if corner C is below 1 pixel or negative set equals 1
+                if y1 > Y; y1 = Y; end                                                             % if corner D is above a pixels (1024 or 2048) set equals a
+
+                sqim = k2a(y0:y1,x0:x1);                                         % makes an image that consists only of the box around the nucleus                                          %label the image
+                thresmat = 1:max(k2a(:));                                                % The array that will have the cell numb for diff thresholds
+                %if there is more or less than one cell in the box, don't do the next steps
+                for y = 1:max(k2a(:))
+                    sqim_temp = sqim > 0;
+                    sqim_temp(find(sqim < y)) = 0;
+                    dapi_normal = bwareaopen(sqim_temp, min_nucleus_size);                        % remove DAPI signal that are too small
+                    dapi_huge = bwareaopen(sqim_temp, max_nucleus_size);                          % remove DAPI signal that are too large
+                    sqim_temp = dapi_normal - dapi_huge;
+                    sqim_lbl1 = bwlabeln(sqim_temp, 8);
+                    thresmat(2, y) = max(sqim_lbl1(:));
+                end
+
+                thres = thresmat(1, find(thresmat(2,:) == max(thresmat(2,:)), 1, 'last'));  %find the threshold that results in the most number of nuclei (maximum threhsold)
+                thres2 = thresmat(1, find(thresmat(2,:) == max(thresmat(2,:)), 1, 'first'));  %find the threshold that results in the most number of nuclei (minimum threshold)
+                k2a(k2a < thres) = 0;                                        %Change the scaled image so it is at the new threshold
+                k2a_bin = k2a > 0;                                                   %Make binary of new scaled image
+                subtr_im = k1 - k2a_bin;                                            %Determine pixels that need to be subtracted from scaled image
+                DAPI_ims_final(find(subtr_im > 0)) = 0;                                     %Change final image to subtract other pixels
+                k2a = immultiply(k1, nucSegSpecs.nuc_label_lo);                                %Reset the image
+                k2a(k2a < thres2) = 0;                                        %Change the scaled image so it is at the new threshold (for minimum stacks removed)
+
+                k2a_bin = k2a > 0;                                                   %Make binary of new scaled image
+                subtr_im = k1 - k2a_bin;                                            %Determine pixels that need to be subtracted from scaled image
+                nucSegSpecs.nuc_label_lo(find(subtr_im > 0)) = 0;                                     %Change final image to subtract other pixels
+            end
+
+            dapi_normal = bwareaopen(DAPI_ims_final, min_nucleus_size);                        % remove DAPI signal that are too small
+            dapi_huge = bwareaopen(DAPI_ims_final, max_nucleus_size);                          % remove DAPI signal that are too large
+            DAPI_ims_final = dapi_normal - dapi_huge;
+            dapi_normal = bwareaopen(nucSegSpecs.nuc_label_lo, min_nucleus_size);                        % remove DAPI signal that are too small
+            dapi_huge = bwareaopen(nucSegSpecs.nuc_label_lo, max_nucleus_size);                          % remove DAPI signal that are too large
+            nucSegSpecs.nuc_label_lo = dapi_normal - dapi_huge;
+
+            nucSegSpecs.nuc_label = bwlabeln(DAPI_ims_final, 8);
+            nucSegSpecs.nuc_label_lo = bwlabeln(nucSegSpecs.nuc_label_lo, 8);
+            xs = zeros(size(nucSegSpecs.nuc_label(:)));
+            ys = zeros(size(nucSegSpecs.nuc_label(:)));
+            for j = 1:max(nucSegSpecs.nuc_label(:))
+                [y_es, x_es] = find(nucSegSpecs.nuc_label == j);
+                xs(j,1) = mean(x_es);
+                ys(j,1) = mean(y_es);
+            end
+
+            nucSegSpecs.counter = nucSegSpecs.counter + 1;
+        end
+
+        %%
+        %Derived from B1_autosegment_nuclei5
+        function nucSegSpecs = SegmentThreshedNuclei(nuc_ch_data, nucSegSpecs)
+            X = size(nuc_ch_data,2);                                       % image size in number of pixels
+            Y = size(nuc_ch_data,1);
+            Z = size(nuc_ch_data,3);                                       % stack size in number of images
+
+            dapi_label_low1 = nucSegSpecs.nuc_label_lo;
+            
+            dxy2 = round(nucSegSpecs.dxy * 1.3);
+            Label_low = zeros(Y,X,Z);                                      % generate zero 3D matrix of the size of the image stack
+            Label_mid = zeros(Y,X,Z);
+            Label_hi = zeros(Y,X,Z);
+            Label_index = zeros(Y,X);
+            nuc_max_proj = max(nuc_ch_data(:,:,13:end),[],3);
+            nuc_count = max(dapi_label_low1(:));                                 % determine maximum number of DAPI stained nuclei
+            Nuc_int = zeros(3,1);                                                     %Will store the integrated intensity of each nucleus
+            Maj_axis = zeros(3,1);                                                     %Will store the length of the major axis of each nucleus
+            Min_axis = zeros(3,1);                                                     %Will store the length of the minor axis of each nucleus
+            Nuc_vol = zeros(3,1);                                                     %Will store the volume of each nucleus
+            
+            % go through all the DAPI nucleus labels one by one
+            % Thresholding by individual cells
+            for i = 1:nuc_count
+                k1 = (dapi_label_low1 == i);                                                  % Single cell per image
+
+                [ys, xs] = ind2sub(size(k1), find(k1));
+                sumposx = sum(xs(:)); sumposy = sum(ys(:));
+                sumfluor = sum(k1(:));
+                xA = round(sumposx/sumfluor);
+                yA = round(sumposy/sumfluor);
+
+                clear k1 k2 sumposx sumfluor xs ys
+                Imzero = uint16(zeros(Y,X));
+                Imzero(yA, xA) = 1;
+
+                xx0 = xA - dxy2;                                                            % generate corner points with are dxy2 pixels away from the nuclear center
+                xx1 = xA + dxy2;
+                yy0 = yA - dxy2;
+                yy1 = yA + dxy2;
+
+                xx0 = max(xx0, 1);      % if corner A is below 1 pixel or negative set equals 1
+                xx1 = min(xx1, X);      % if corner B is above a pixels (1024 or 2048) set equals a
+                yy0 = max(yy0, 1);      % if corner C is below 1 pixel or negative set equals 1
+                yy1 = min(yy1, Y);      % if corner D is above a pixels (1024 or 2048) set equals a
+
+                %Fast way of generating circle
+                area1 = zeros(Y,X,1);
+                for j = 1:X                                                                 %This sets the area by making a circle around the center
+                    for k = 1:Y
+                        if sqrt((j-xA)^2+(k-yA)^2) <= dxy2
+                            area1(j,k,1) = 1;
+                        end
+                    end
+                end
+
+                % Determine how much area inside circle (area1) is taken up by the dapi_label_low1 image
+                total_area = sum(area1(:)) / size(area1,3);       %Total area inside area1
+                nuc_area = immultiply(area1(:,:,1), (dapi_label_low1 == i));
+                nuc_area = sum(nuc_area(:));
+                cumul_cutoff = 1 - (nuc_area/total_area); %Tentative cutoff for the cumulative distribution
+                
+                dapi_cell = immultiply(uint16(nuc_ch_data), uint16(repmat(area1,[1,1,Z])));                         % generate dapi image stack inside area1 and set the rest of the image to zero
+                other_nuc =  immultiply((dapi_label_low1 ~= i), (dapi_label_low1 > 0));     %  Find where other nuclei are
+                other_nuc =  immultiply(other_nuc, area1(:,:,1));        %find where other nuclei are in area
+                dapi_cell_max = immultiply(nuc_max_proj, area1(:,:,1));                                    % determine maximum projection
+                temp1 = dapi_cell_max(dapi_cell_max > 0);
+                dapi_cell(repmat(other_nuc,[1,1,Z]) == 1) = min(temp1(:));
+                temp1 = dapi_cell_max(dapi_cell_max > 0);
+                dapi_cell_max(other_nuc == 1) = min(temp1(:));                                   %Set the intensity of the other nuclei to the min
+
+                %TODO [BH] If corners (xx and yy) are vectors, will this be a
+                %problem?
+                dapi_cell2 = dapi_cell(yy0:yy1,xx0:xx1,:);
+                dapi_cell2max = double(dapi_cell_max(yy0:yy1,xx0:xx1));                                 % cut out the maxiumum projection                                % cut out the maxiumum projection (smaller for max)
+                dapi_cell2max(dapi_cell2max == 0) = NaN;  %This makes all zero elements NaN instead
+                
+                % Determine thresholds based on cutoffs in cdf
+                [ysss, xsss] = ecdf(dapi_cell2max(:));                                       %determine cumulative distribution                                                  %Find values closest to certain threshold in cumulative distribution function
+                z2sss = abs(ysss - cumul_cutoff);                        %threshold at cutoff for cumulative distribution function
+                mm5 = xsss(find((z2sss == min(z2sss)), 1, 'first'));                          %threshold at cutoff for cumulative distribution function                      %threshold at cutoff for cumulative distribution function
+                mm4 = mm5*.9;
+                mm6 = mm5*1.1;
+
+                m1 = mm4;                                                       % set "LOW" threshold to first cumulative distribution cutoff
+                m2 = mm5;                                                       % set "MID" threshold to second of cumulative distribution cutoff
+                m3 = mm6;                                                       % set "HI" threshold to third of cumulative distribution cutoff
+                dapi_label3A = dapi_cell2 > (m1);                                        % "LOW" generate 3D binary image above the thresholds
+                dapi_label3B = dapi_cell2 > (m2);                                        % "MID" generate 3D binary image above the thresholds
+                dapi_label3C = dapi_cell2 > (m3);                                        % "HI" generate 3D binary image above the thresholds
+
+                % This fills holes in the image in 3D, but it is very computationally intensive
+                %%% Below fills in holes and takes the most connected area in 2D
+                for k = 1:Z
+                    dapi_label3A(:,:,k) = imfill(dapi_label3A(:,:,k),'holes');                                        % "LOW" fill holes in image
+                    dapi_label3B(:,:,k) = imfill(dapi_label3B(:,:,k),'holes');                                        % "MID" fill holes in image
+                    dapi_label3C(:,:,k) = imfill(dapi_label3C(:,:,k),'holes');                                        % "HI" fill holes in image                                 % "HI" fill holes in image
+                end
+
+                %Find 3D connected area in 3D
+                dapi_label_low = bwlabeln(dapi_label3A, 6);                                          % "LOW" label different connected neighborhoods
+                dapi_label_mid = bwlabeln(dapi_label3B, 6);                                          % "MID" label different connected neighborhoods
+                dapi_label_hi = bwlabeln(dapi_label3C, 6);                                          % "HI" label different connected neighborhoods
+                dapi_label3A = (dapi_label_low == mode(dapi_label_low(dapi_label_low > 0)));                                        % "LOW" fill holes in image
+                dapi_label3B = (dapi_label_mid == mode(dapi_label_mid(dapi_label_mid > 0)));                                        % "MID" fill holes in image
+                dapi_label3C = (dapi_label_hi == mode(dapi_label_hi(dapi_label_hi > 0)));
+
+                % Eliminate Cells at the border
+                temp_props = regionprops3(dapi_label3A,'BoundingBox') ;              %Obtain axis lengths for nucleus with low threshold
+                k4 = temp_props.BoundingBox;                                                    %create the rectangular box around the cell
+                stop1 = 0;
+                for shapes1 = 1:size(k4,1)  %Go through each shape
+                    X0=round(k4(shapes1,2));
+                    Y0=round(k4(shapes1,1));
+                    X1=round(k4(shapes1,2)+ k4(shapes1,5))-1;
+                    Y1=round(k4(shapes1,1)+ k4(shapes1,4))-1;
+                    if (X0+xx0 < 4) | (X1+xx0 > X-4) | (Y0+yy0 < 4) | (Y1+yy0 > Y-4)
+                        stop1 = 1;
+                    end
+                end
+                if stop1 == 1
+                    nucSegSpecs.nuc_label(dapi_label_low1 == i) = 0;
+                    continue;
+                end
+
+                % Store aspects of nucleus
+                Nuc_int(1,i) = sum(sum(sum(immultiply(dapi_label3A,dapi_cell2))));          %Store integrated intensity of nucleus with lower threshold
+                Nuc_int(2,i) = sum(sum(sum(immultiply(dapi_label3B,dapi_cell2))));          %Store integrated intensity of nucleus with middle threshold
+                Nuc_int(3,i) = sum(sum(sum(immultiply(dapi_label3C,dapi_cell2))));          %Store integrated intensity of nucleus with lower threshold
+                Nuc_vol(1,i) = sum(dapi_label3A(:));                                        %Store volume of nucleus with low threshold
+                Nuc_vol(2,i) = sum(dapi_label3B(:));                                        %Store volume of nucleus with medium threshold
+                Nuc_vol(3,i) = sum(dapi_label3C(:));                                        %Store volume of nucleus with high threshold
+
+                Label_low(yy0:yy1,xx0:xx1,:) = Label_low(yy0:yy1,xx0:xx1,:) + dapi_label3A;                                   % Add to label matrix 'LOW'
+                Label_mid(yy0:yy1,xx0:xx1,:) = Label_mid(yy0:yy1,xx0:xx1,:) + dapi_label3B;                                   % Add to label matrix 'MID'
+                Label_hi(yy0:yy1,xx0:xx1,:) = Label_hi(yy0:yy1,xx0:xx1,:) + dapi_label3C;                                     % Add to label matrix 'HI'
+
+                Label_index = uint16(Label_index) + Imzero;
+            end
+
+            nucSegSpecs.lbl_lo = Label_low > 0;                                   % Make sure it is binary image
+            nucSegSpecs.lbl_mid = Label_mid > 0;                                   % Make sure it is binary image
+            nucSegSpecs.lbl_hi = Label_hi > 0;                                     % Make sure it is binary image
+
+            nucSegSpecs.nuclei = Label_index;                                                       % max projection of the segmented dapi signals using the 50% threshold
+        
+            %Save everything else to output struct
+            nucSegSpecs.nuc_int = Nuc_int;
+            nucSegSpecs.nuc_vol = Nuc_vol;
+            nucSegSpecs.nuc_axis_major = Maj_axis;
+            nucSegSpecs.nuc_axis_minor = Min_axis;
+        end
+
+        %%
         %Derived from B2_autosegment_cells_new &
         %B2_autosegment_cells_new_yeast
         function [Lab, cell_info, trans_plane, params] = AutosegmentCells(light_ch_data, nuc_label, params)
@@ -343,6 +708,18 @@ classdef CellSeg
 
         end
 
+        %%
+        function nucSegSpecs = AutosegmentNuclei(nuc_ch_data, nucSegSpecs)
+            if isempty(nuc_ch_data); return; end
+
+            if nucSegSpecs.use_adding
+                nucSegSpecs = CellSeg.InitSegNucleiAdd(nuc_ch_data, nucSegSpecs);
+            else
+                nucSegSpecs = CellSeg.InitSegNucleiThres(nuc_ch_data, nucSegSpecs);
+            end
+
+            nucSegSpecs = CellSeg.SegmentThreshedNuclei(nuc_ch_data, nucSegSpecs);
+        end
 
     end
 
