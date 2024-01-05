@@ -23,10 +23,11 @@ classdef AnalysisFiles
             min_val = min(th_vals, [], 'all', 'omitnan');
             max_val = max(th_vals, [], 'all', 'omitnan');
 
-            T = max_val - min_val + 1;
+            vals = min_val:mingap:max_val;
+            T = size(vals, 2);
             spot_table = NaN(T,2);
 
-            spot_table(:,1) = min_val:mingap:max_val;
+            spot_table(:,1) = vals;
             for t = 1:T
                 spot_table(t,2) = nnz(call_table{:, 'dropout_thresh'} >= spot_table(t,1));
             end
@@ -70,7 +71,7 @@ classdef AnalysisFiles
                 if startsWith(myfield, 'results_')
                     rstruct = analysis.(myfield);
                     if ~isfield(rstruct, 'callset'); continue; end
-                    [~, ref_call_map] = updateTFCalls(...
+                    [~, ref_call_map] = RNACoords.updateTFCalls(...
                         rstruct.callset, ref_coords, snaprad_3, snaprad_z, snap_minth);
 
                     if ~isfield(rstruct, 'benchmarks')
@@ -228,7 +229,7 @@ classdef AnalysisFiles
             if isempty(analysis); return; end
             if ~isfield(rstruct, 'callset'); return; end
 
-            [rstruct, okay] = updateCallsetTrimRes(rstruct, analysis.image_dims);
+            [rstruct, okay] = AnalysisFiles.updateCallsetTrimRes(rstruct, analysis.image_dims);
             if ~okay; return; end
             
             callset = rstruct.callset;
@@ -259,25 +260,47 @@ classdef AnalysisFiles
                 pstruct.ref_call_map = ref_call_map;
 
                 %Update callset table.
-                callset{ref_call_map, 'is_true'} = 1;
+                ref_matched_rows = find(ref_call_map > 0);
+                ref_call_map_i = ref_call_map(ref_matched_rows);
+                refset_matched = refset.exprefset(ref_matched_rows, :);
+                callset{ref_call_map_i, 'is_true'} = 1;
+
+                %False negatives
+                ref_rows_fn = find(ref_call_map == 0);
+                if ~isempty(ref_rows_fn)
+                    idims = analysis.image_dims;
+                    sz = [idims.y idims.x idims.z];
+                    xx = refset.exprefset(ref_rows_fn,1);
+                    yy = refset.exprefset(ref_rows_fn,2);
+                    zz = refset.exprefset(ref_rows_fn,3);
+                    fn_1d = sub2ind(sz, yy, xx, zz);
+
+                    fn_match = ismember(callset{:, 'coord_1d'}, fn_1d);
+                    if ~isempty(fn_match)
+                        callset{fn_match, 'is_true'} = 1;
+                    end
+
+                    clear idims sz xx yy zz fn_match fn_1d
+                end
+
                 if isfield(refset, 'truthset_region')
-                    rows = find(callset{ref_call_map, 'isnap_x'} < refset.truthset_region.x0);
+                    rows = find(callset{:, 'isnap_x'} < refset.truthset_region.x0);
                     if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
-                    rows = find(callset{ref_call_map, 'isnap_x'} > refset.truthset_region.x1);
-                    if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
-
-                    rows = find(callset{ref_call_map, 'isnap_y'} < refset.truthset_region.y0);
-                    if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
-                    rows = find(callset{ref_call_map, 'isnap_y'} > refset.truthset_region.y1);
+                    rows = find(callset{:, 'isnap_x'} > refset.truthset_region.x1);
                     if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
 
-                    rows = find(callset{ref_call_map, 'isnap_z'} < refset.truthset_region.z0);
+                    rows = find(callset{:, 'isnap_y'} < refset.truthset_region.y0);
                     if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
-                    rows = find(callset{ref_call_map, 'isnap_z'} > refset.truthset_region.z1);
+                    rows = find(callset{:, 'isnap_y'} > refset.truthset_region.y1);
+                    if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
+
+                    rows = find(callset{:, 'isnap_z'} < refset.truthset_region.z0);
+                    if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
+                    rows = find(callset{:, 'isnap_z'} > refset.truthset_region.z1);
                     if ~isempty(rows); callset{rows, 'in_truth_region'} = 0; end
                 end
 
-                callset = RNACoords.updateRefDistances(callset, refset.exprefset, ref_call_map);
+                callset = RNACoords.updateRefDistances(callset, refset_matched, ref_call_map_i);
 
                 thval = 0;
                 if isfield(rstruct, 'threshold'); thval = rstruct.threshold; end
@@ -302,7 +325,7 @@ classdef AnalysisFiles
 
             %Check to make sure requested refset exists... (If not, then do nothing)
             if ~isempty(name)
-                if ~isfield(analysis.refsets.(name)); return; end
+                if ~isfield(analysis.refsets, name); return; end
                 myref = analysis.refsets.(name);
             else
                 myref = [];
@@ -332,7 +355,7 @@ classdef AnalysisFiles
         function analysis = fixExpRefsetOrganization(analysis)
             if ~isfield(analysis, 'exprefset'); return; end
 
-            aremove = {'exprefset' 'truthset_region'};
+            aremove = {'exprefset' 'truthset_region' 'last_ts'};
             rremove = {'performance' 'pr_auc' 'fscore_peak' 'fscore_autoth'...
                 'ref_call_map' 'performance_trimmed' 'pr_auc_trimmed'...
                 'fscore_peak_trimmed' 'fscore_autoth_trimmed' 'last_ts'};
@@ -345,11 +368,13 @@ classdef AnalysisFiles
             for i = 1:fieldcount
                 myfield = allfields{i,1};
                 if startsWith(myfield, 'truthset_')
-                    %Move.
-                    rsname = replace(myfield, 'truthset_', '');
-                    analysis.refsets.(rsname) = analysis.(myfield);
-                    analysis.refsets.(rsname).name = rsname;
-                    analysis = rmfield(analysis, myfield);
+                    if ~strcmp(myfield, 'truthset_region')
+                        %Move.
+                        rsname = replace(myfield, 'truthset_', '');
+                        analysis.refsets.(rsname) = analysis.(myfield);
+                        analysis.refsets.(rsname).name = rsname;
+                        analysis = rmfield(analysis, myfield);
+                    end
                 elseif startsWith(myfield, 'results_') 
                     %toolid = replace(myfield, 'results_', '');
                     rstruct = analysis.(myfield);
