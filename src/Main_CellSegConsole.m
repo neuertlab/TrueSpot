@@ -8,6 +8,7 @@ addpath('./celldissect');
 
 arg_debug = true; %CONSTANT used for debugging arg parser.
 cellseg_options = genOptionsStruct();
+cellop_override = struct('cell', struct(), 'nuc', struct());
 
 lastkey = [];
 for i = 1:nargin
@@ -78,48 +79,65 @@ for i = 1:nargin
             if arg_debug; fprintf("Nuc Channel Index Set: %d\n", cellseg_options.ch_nuc); end
         elseif strcmp(lastkey, "cszmin")
             cellseg_options.cell_params.min_cell_size = Force2Num(argval);
+            cellop_override.cell.min_cell_size = cellseg_options.cell_params.min_cell_size;
             if arg_debug; fprintf("Min Cell Size Set: %d\n", cellseg_options.cell_params.min_cell_size); end
         elseif strcmp(lastkey, "cszmax")
             cellseg_options.cell_params.max_cell_size = Force2Num(argval);
+            cellop_override.cell.max_cell_size = cellseg_options.cell_params.max_cell_size;
             if arg_debug; fprintf("Max Cell Size Set: %d\n", cellseg_options.cell_params.max_cell_size); end
         elseif strcmp(lastkey, "fplstrat")
             cellseg_options.cell_params.focus_plane_strat = argval;
+            cellop_override.cell.focus_plane_strat = cellseg_options.cell_params.focus_plane_strat;
             if arg_debug; fprintf("Focus Plane Strategy Set: %s\n", cellseg_options.cell_params.focus_plane_strat); end
         elseif strcmp(lastkey, "fzmin")
             cellseg_options.cell_params.min_plane = Force2Num(argval);
+            cellop_override.cell.min_plane = cellseg_options.cell_params.min_plane;
             if arg_debug; fprintf("Focus Z Min Set: %d\n", cellseg_options.cell_params.min_plane); end
         elseif strcmp(lastkey, "fzmax")
             cellseg_options.cell_params.max_plane = Force2Num(argval);
+            cellop_override.cell.max_plane = cellseg_options.cell_params.max_plane;
             if arg_debug; fprintf("Focus Z Max Set: %d\n", cellseg_options.cell_params.max_plane); end
         elseif strcmp(lastkey, "foffmin")
             cellseg_options.cell_params.focus_offset_min = Force2Num(argval);
+            cellop_override.cell.focus_offset_min = cellseg_options.cell_params.focus_offset_min;
             if arg_debug; fprintf("Focus Offset Min Set: %d\n", cellseg_options.cell_params.focus_offset_min); end
         elseif strcmp(lastkey, "foffmax")
             cellseg_options.cell_params.focus_offset_max = Force2Num(argval);
+            cellop_override.cell.focus_offset_max = cellseg_options.cell_params.focus_offset_max;
             if arg_debug; fprintf("Focus Offset Max Set: %d\n", cellseg_options.cell_params.focus_offset_max); end
         elseif strcmp(lastkey, "xtrim")
             cellseg_options.cell_params.x_trim = Force2Num(argval);
+            cellseg_options.nuc_params.x_trim = Force2Num(argval);
+            cellop_override.x_trim = cellseg_options.cell_params.x_trim;
             if arg_debug; fprintf("X Trim Set: %d\n", cellseg_options.cell_params.x_trim); end
         elseif strcmp(lastkey, "ytrim")
             cellseg_options.cell_params.y_trim = Force2Num(argval);
+            cellseg_options.nuc_params.y_trim = Force2Num(argval);
+            cellop_override.y_trim = cellseg_options.cell_params.y_trim;
             if arg_debug; fprintf("Y Trim Set: %d\n", cellseg_options.cell_params.y_trim); end
         elseif strcmp(lastkey, "nzrange")
             cellseg_options.nuc_params.range = Force2Num(argval);
+            cellop_override.nuc.range = cellseg_options.nuc_params.range;
             if arg_debug; fprintf("NucSeg Z Range Set: %d\n", cellseg_options.nuc_params.range); end
         elseif strcmp(lastkey, "nthsmpl")
             cellseg_options.nuc_params.threshold_sampling = Force2Num(argval);
+            cellop_override.nuc.threshold_sampling = cellseg_options.nuc_params.threshold_sampling;
             if arg_debug; fprintf("NucSeg Threshold Sampler Set: %d\n", cellseg_options.nuc_params.threshold_sampling); end
         elseif strcmp(lastkey, "nszmin")
             cellseg_options.nuc_params.min_nucleus_size = Force2Num(argval);
+            cellop_override.nuc.min_nucleus_size = cellseg_options.nuc_params.min_nucleus_size;
             if arg_debug; fprintf("Min Nucleus Size Set: %d\n", cellseg_options.nuc_params.min_nucleus_size); end
         elseif strcmp(lastkey, "nszmax")
             cellseg_options.nuc_params.max_nucleus_size = Force2Num(argval);
+            cellop_override.nuc.max_nucleus_size = cellseg_options.nuc_params.max_nucleus_size;
             if arg_debug; fprintf("Max Nucleus Size Set: %d\n", cellseg_options.nuc_params.max_nucleus_size); end
         elseif strcmp(lastkey, "ncutoff")
             cellseg_options.nuc_params.cutoff = Force2Num(argval);
+            cellop_override.nuc.cutoff = cellseg_options.nuc_params.cutoff;
             if arg_debug; fprintf("NucSeg Cutoff Factor: %f\n", cellseg_options.nuc_params.cutoff); end
         elseif strcmp(lastkey, "ndxy")
             cellseg_options.nuc_params.dxy = Force2Num(argval);
+            cellop_override.nuc.dxy = cellseg_options.nuc_params.dxy;
             if arg_debug; fprintf("NucSeg Radius Factor: %f\n", cellseg_options.nuc_params.dxy); end
         elseif strcmp(lastkey, "template")
             cellseg_options.use_template = argval;
@@ -160,14 +178,14 @@ end
 
 if ~isempty(cellseg_options.use_template)
     %Try to find and load template
-    [cellseg_options, okay] = loadParamTemplate(cellseg_options, cellseg_options.use_template);
+    [cellseg_options, okay] = loadParamTemplate(cellseg_options, cellseg_options.use_template, cellop_override);
     if ~okay
         fprintf('Template with name "%s" could not be found! Exiting...\n', cellseg_options.use_template);
         return;
     end
 end
 
-okay = runCellseg(cellseg_options);
+[okay, cellseg_options] = runCellseg(cellseg_options);
 if ~okay
     fprintf('ERROR: Cell segmentation run failed! Exiting...\n');
     return;
@@ -184,7 +202,7 @@ end
 
 % ========================== Helper Functions ==========================
 
-function okay = runCellseg(options)
+function [okay, options] = runCellseg(options)
     okay = false;
 
     %Load image channels
@@ -210,8 +228,9 @@ function okay = runCellseg(options)
     end
 
     %Attempt nuclear segmentation
-    nucseg = CellSeg.AutosegmentNuclei(nuc_ch_data, options.nuc_params);
-    if isempty(nucseg.nuc_label)
+    [nuc_params, nuc_res] = CellSeg.AutosegmentNuclei(nuc_ch_data, options.nuc_params);
+    options.nuc_params = nuc_params;
+    if isempty(nuc_res.nuc_label)
         fprintf('Nuclei segmentation failed!\n');
         return;
     end
@@ -228,7 +247,7 @@ function okay = runCellseg(options)
 
     %Attempt cell segmentation
     [cell_mask, cell_info, trans_plane, cellseg_info] = ...
-        CellSeg.AutosegmentCells(light_ch_data, nucseg.nuc_label, options.cell_params);
+        CellSeg.AutosegmentCells(light_ch_data, nuc_res.nuc_label, options.cell_params);
     clear light_ch_data
     if isempty(cell_mask)
         fprintf('Cell segmentation failed!\n');
@@ -245,7 +264,7 @@ function okay = runCellseg(options)
     if ~isempty(options.outpath_nuc_mask)
         %Save nuc mask TIF
         tiffops = struct('overwrite', true);
-        saveastiff(nucseg.nuc_label, options.outpath_nuc_mask, tiffops);
+        saveastiff(nuc_res.nuclei, options.outpath_nuc_mask, tiffops);
         clear tiffops
     end
 
@@ -271,14 +290,14 @@ function okay = runCellseg(options)
 
         fprintf('Saving nucleus mask...\n');
         if options.overwrite_output | ~isfile(nuc_path)
-            Label_hi = nucseg.lbl_hi;
-            Label_low = nucseg.lbl_lo;
-            Label_mid = nucseg.lbl_mid;
-            Maj_axis = nucseg.nuc_axis_major;
-            Min_axis = nucseg.nuc_axis_minor;
-            Nuc_int = nucseg.nuc_int;
-            Nuc_vol = nucseg.nuc_vol;
-            nuclei = nucseg.nuclei;
+            Label_hi = nuc_res.lbl_hi;
+            Label_low = nuc_res.lbl_lo;
+            Label_mid = nuc_res.lbl_mid;
+            Maj_axis = nuc_res.nuc_axis_major;
+            Min_axis = nuc_res.nuc_axis_minor;
+            Nuc_int = nuc_res.nuc_int;
+            Nuc_vol = nuc_res.nuc_vol;
+            nuclei = nuc_res.nuclei;
 
             save(nuc_path, 'Label_hi', 'Label_low', 'Label_mid',...
                 'Maj_axis', 'Min_axis', 'Nuc_int', 'Nuc_vol', 'nuclei', '-v7.3');
@@ -288,10 +307,10 @@ function okay = runCellseg(options)
 
         fprintf('Saving nucleus threshold data...\n');
         if options.overwrite_output | ~isfile(nucth_path)
-            DAPI_ims_added = nucseg.test_sum;
-            dapi_label = nucseg.nuc_label;
-            dapi_label_low_1 = nucseg.nuc_label_lo;
-            dapi_threshold = nucseg.nuc_threshold;
+            DAPI_ims_added = nuc_res.test_sum;
+            dapi_label = nuc_res.nuc_label;
+            dapi_label_low_1 = nuc_res.nuc_label_lo;
+            dapi_threshold = nuc_res.nuc_threshold;
 
             save(nucth_path, 'DAPI_ims_added', 'dapi_label', 'dapi_label_low_1',...
                 'dapi_threshold', '-v7.3');
@@ -314,7 +333,8 @@ function okay = runCellseg(options)
         cellSeg.cell_mask = cell_mask;
         cellSeg.cell_info = cell_info;
         cellSeg.trans_plane = trans_plane;
-        nucleiSeg = nucseg;
+        nucleiSeg = struct('params', nuc_params);
+        nucleiSeg.results = nuc_res;
         save(outpath, 'cellSeg', 'nucleiSeg', '-v7.3');
 
         clear cellSeg nucleiSeg
@@ -338,41 +358,41 @@ function printSummary(options)
     end
 
     fileHandle = fopen(options.outpath_settings, 'w');
-    fprintf('input_path=%s\n', options.input_path);
-    fprintf('input_nuc=%s\n', options.input_nuc);
-    fprintf('output_path=%s\n', options.output_path);
-    fprintf('outpath_cell_mask=%s\n', options.outpath_cell_mask);
-    fprintf('outpath_nuc_mask=%s\n', options.outpath_nuc_mask);
-    fprintf('outpath_settings=%s\n', options.outpath_settings);
-    fprintf('imgname=%s\n', options.imgname);
-    fprintf('total_ch=%d\n', options.total_ch);
-    fprintf('total_ch_nuc=%d\n', options.total_ch_nuc);
-    fprintf('ch_nuc=%d\n', options.ch_nuc);
-    fprintf('ch_light=%d\n', options.ch_light);
-    fprintf('overwrite_output=%d\n', options.overwrite_output);
-    fprintf('dump_summary=%d\n', options.dump_summary);
-    fprintf('save_fmt_BK=%d\n', options.save_fmt_BK);
-    fprintf('save_template_as=%s\n', options.save_template_as);
-    fprintf('use_template=%s\n', options.use_template);
-    fprintf('cell_params.focus_plane_strat=%s\n', options.cell_params.focus_plane_strat);
-    fprintf('cell_params.min_cell_size=%d\n', options.cell_params.min_cell_size);
-    fprintf('cell_params.max_cell_size=%d\n', options.cell_params.max_cell_size);
-    fprintf('cell_params.min_plane=%d\n', options.cell_params.min_plane);
-    fprintf('cell_params.max_plane=%d\n', options.cell_params.max_plane);
-    fprintf('cell_params.focus_offset_min=%d\n', options.cell_params.focus_offset_min);
-    fprintf('cell_params.focus_offset_max=%d\n', options.cell_params.focus_offset_max);
-    fprintf('cell_params.x_trim=%d\n', options.cell_params.x_trim);
-    fprintf('cell_params.y_trim=%d\n', options.cell_params.y_trim);
-    fprintf('nuc_params.range=%d\n', options.nuc_params.range);
-    fprintf('nuc_params.threshold_sampling=%d\n', options.nuc_params.threshold_sampling);
-    fprintf('nuc_params.min_nucleus_size=%d\n', options.nuc_params.min_nucleus_size);
-    fprintf('nuc_params.max_nucleus_size=%d\n', options.nuc_params.max_nucleus_size);
-    fprintf('nuc_params.cutoff=%f\n', options.nuc_params.cutoff);
-    fprintf('nuc_params.dxy=%d\n', options.nuc_params.dxy);
+    fprintf(fileHandle, 'input_path=%s\n', options.input_path);
+    fprintf(fileHandle, 'input_nuc=%s\n', options.input_nuc);
+    fprintf(fileHandle, 'output_path=%s\n', options.output_path);
+    fprintf(fileHandle, 'outpath_cell_mask=%s\n', options.outpath_cell_mask);
+    fprintf(fileHandle, 'outpath_nuc_mask=%s\n', options.outpath_nuc_mask);
+    fprintf(fileHandle, 'outpath_settings=%s\n', options.outpath_settings);
+    fprintf(fileHandle, 'imgname=%s\n', options.imgname);
+    fprintf(fileHandle, 'total_ch=%d\n', options.total_ch);
+    fprintf(fileHandle, 'total_ch_nuc=%d\n', options.total_ch_nuc);
+    fprintf(fileHandle, 'ch_nuc=%d\n', options.ch_nuc);
+    fprintf(fileHandle, 'ch_light=%d\n', options.ch_light);
+    fprintf(fileHandle, 'overwrite_output=%d\n', options.overwrite_output);
+    fprintf(fileHandle, 'dump_summary=%d\n', options.dump_summary);
+    fprintf(fileHandle, 'save_fmt_BK=%d\n', options.save_fmt_BK);
+    fprintf(fileHandle, 'save_template_as=%s\n', options.save_template_as);
+    fprintf(fileHandle, 'use_template=%s\n', options.use_template);
+    fprintf(fileHandle, 'cell_params.focus_plane_strat=%s\n', options.cell_params.focus_plane_strat);
+    fprintf(fileHandle, 'cell_params.min_cell_size=%d\n', options.cell_params.min_cell_size);
+    fprintf(fileHandle, 'cell_params.max_cell_size=%d\n', options.cell_params.max_cell_size);
+    fprintf(fileHandle, 'cell_params.min_plane=%d\n', options.cell_params.min_plane);
+    fprintf(fileHandle, 'cell_params.max_plane=%d\n', options.cell_params.max_plane);
+    fprintf(fileHandle, 'cell_params.focus_offset_min=%d\n', options.cell_params.focus_offset_min);
+    fprintf(fileHandle, 'cell_params.focus_offset_max=%d\n', options.cell_params.focus_offset_max);
+    fprintf(fileHandle, 'cell_params.x_trim=%d\n', options.cell_params.x_trim);
+    fprintf(fileHandle, 'cell_params.y_trim=%d\n', options.cell_params.y_trim);
+    fprintf(fileHandle, 'nuc_params.range=%d\n', options.nuc_params.range);
+    fprintf(fileHandle, 'nuc_params.threshold_sampling=%d\n', options.nuc_params.threshold_sampling);
+    fprintf(fileHandle, 'nuc_params.min_nucleus_size=%d\n', options.nuc_params.min_nucleus_size);
+    fprintf(fileHandle, 'nuc_params.max_nucleus_size=%d\n', options.nuc_params.max_nucleus_size);
+    fprintf(fileHandle, 'nuc_params.cutoff=%f\n', options.nuc_params.cutoff);
+    fprintf(fileHandle, 'nuc_params.dxy=%d\n', options.nuc_params.dxy);
     fclose(fileHandle);
 end
 
-function [options, okay] = loadParamTemplate(options, templateId)
+function [options, okay] = loadParamTemplate(options, templateId, cellop_override)
     okay = false;
     templateDir = './cellsegTemplates';
     if ~isfolder(templateDir)
@@ -390,6 +410,33 @@ function [options, okay] = loadParamTemplate(options, templateId)
 
     options.cell_params = cell_params;
     options.nuc_params = nuc_params;
+
+    if ~isempty(cellop_override)
+        if isfield(cellop_override, 'cell')
+            allfields = fieldnames(cellop_override.cell);
+            fcount = size(allfields, 1);
+            for f = 1:fcount
+                fname = allfields{f,1};
+                options.cell_params.(fname) = cellop_override.cell.(fname);
+            end
+        end
+        if isfield(cellop_override, 'nuc')
+            allfields = fieldnames(cellop_override.nuc);
+            fcount = size(allfields, 1);
+            for f = 1:fcount
+                fname = allfields{f,1};
+                options.nuc_params.(fname) = cellop_override.nuc.(fname);
+            end
+        end
+        if isfield(cellop_override, 'x_trim')
+            options.cell_params.x_trim = cellop_override.x_trim;
+            options.nuc_params.x_trim = cellop_override.x_trim;
+        end
+        if isfield(cellop_override, 'y_trim')
+            options.cell_params.y_trim = cellop_override.y_trim;
+            options.nuc_params.y_trim = cellop_override.y_trim;
+        end
+    end
 
     okay = true;
 end
