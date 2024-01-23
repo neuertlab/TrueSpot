@@ -54,7 +54,7 @@ consolidateStrips = 1;
 
 %if there is no argument, we ask the user to choose a file:
 if (nargin == 0)
-    [filename, pathname] = uigetfile('*.tif;*.stk;*.lsm', 'select image file');
+    [filename, pathname] = uigetfile('*.tif;*.tiff;*.stk;*.lsm', 'select image file');
     filename = [ pathname, filename ];
 end
 
