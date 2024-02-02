@@ -28,7 +28,7 @@ methods (Static)
         idim = [Y X Z];
         xx = min(tcoords(:,1), X);
         yy = min(tcoords(:,2), Y);
-        zz = min(tcoords(:,3), Z);
+        zz = max(min(tcoords(:,3), Z),1);
         icoords = sub2ind(idim, yy, xx, zz);
 
 
@@ -51,7 +51,7 @@ methods (Static)
             end
             xx = min(tcoords(:,1), X);
             yy = min(tcoords(:,2), Y);
-            zz = min(tcoords(:,3), Z);
+            zz = max(min(tcoords(:,3), Z),1);
 
             %Find in full call table.
             ticoords = sub2ind(idim, yy, xx, zz);
@@ -165,6 +165,24 @@ methods (Static)
         call_table{:,'is_true'} = false;
         call_table{:,'is_trimmed_out'} = false;
         call_table{:,'in_truth_region'} = false;
+    end
+
+    function call_table = extendHBOutputCallTable(og_call_table)
+        if isempty(og_call_table)
+            call_table = table.empty();
+            return;
+        end
+
+        rowcount = size(og_call_table, 1);
+        call_table = RNACoords.genNewCoordTable(rowcount, false);
+        
+        call_table{:,'coord_1d'} = og_call_table{:,'coord_1d'};
+        call_table{:,'isnap_x'} = og_call_table{:,'isnap_x'};
+        call_table{:,'isnap_y'} = og_call_table{:,'isnap_y'};
+        call_table{:,'isnap_z'} = og_call_table{:,'isnap_z'};
+        call_table{:,'intensity_f'} = og_call_table{:,'intensity_f'};
+        call_table{:,'intensity'} = og_call_table{:,'intensity'};
+        call_table{:,'dropout_thresh'} = og_call_table{:,'dropout_thresh'};
     end
 
     function cand_table = findMatchCandidates(callmtx, ref_set, snaprad_3, snaprad_z)
