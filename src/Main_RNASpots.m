@@ -311,7 +311,7 @@ for i = 1:nargin
             if thread_request < 1; thread_request = 1; end
             if arg_debug; fprintf("Requested Threads: %d\n", thread_request); end
         elseif strcmp(lastkey, "gaussrad")
-            rna_spot_run.options.dtune_gaussrad = argval;
+            rna_spot_run.options.dtune_gaussrad = Force2Num(argval);
             if arg_debug; fprintf("XY Gaussian Radius Set: %s\n", rna_spot_run.options.dtune_gaussrad); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
