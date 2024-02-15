@@ -316,20 +316,20 @@ spotsrun.intensity_threshold = spotsrun.threshold_results.threshold;
     %Max projection of sample and control w circled spots (also max proj)
    
 if debug_lvl > 1
-    plots_dir = [spotsrun.out_dir filesep 'plots'];
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
-
-    %These are all very broken at the moment. I wouldn't use them.
-    if ~isempty(ctrl_stem)
-        probeNames = [{spotsrun.img_name};
-                    {'Control'}];
-        RNA_Threshold_Plotter.plotPreprocessedData(sample_outstem, [{ctrl_stem}], probeNames,...
-                spotsrun.intensity_threshold, plots_dir, true, spotsrun.dims.z_min_apply, spotsrun.dims.z_max_apply, false);
-    else
-        probeNames = [{spotsrun.img_name}];
-        RNA_Threshold_Plotter.plotPreprocessedData(sample_outstem, [], probeNames,...
-                spotsrun.intensity_threshold, plots_dir, true, spotsrun.dims.z_min_apply, spotsrun.dims.z_max_apply, false);
-    end
+%     plots_dir = [spotsrun.out_dir filesep 'plots'];
+%     RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
+% 
+%     %These are all very broken at the moment. I wouldn't use them.
+%     if ~isempty(ctrl_stem)
+%         probeNames = [{spotsrun.img_name};
+%                     {'Control'}];
+%         RNA_Threshold_Plotter.plotPreprocessedData(sample_outstem, [{ctrl_stem}], probeNames,...
+%                 spotsrun.intensity_threshold, plots_dir, true, spotsrun.dims.z_min_apply, spotsrun.dims.z_max_apply, false);
+%     else
+%         probeNames = [{spotsrun.img_name}];
+%         RNA_Threshold_Plotter.plotPreprocessedData(sample_outstem, [], probeNames,...
+%                 spotsrun.intensity_threshold, plots_dir, true, spotsrun.dims.z_min_apply, spotsrun.dims.z_max_apply, false);
+%     end
 
     %Window score plots and thresholding results.
     figh = RNAThreshold.resultPlotCombine(spotsrun, 615);
