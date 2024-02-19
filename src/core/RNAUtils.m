@@ -23,6 +23,48 @@ classdef RNAUtils
         end
         
         %%
+        function [xx, yy] = spotCountFromCallTable(call_table, include_trimmed)
+            if nargin < 2; include_trimmed = false; end
+
+            xx = [];
+            yy = [];
+            if isempty(call_table); return; end
+
+            %Get th range.
+            allth = call_table{:, 'dropout_thresh'};
+            allth = allth(allth ~= 0);
+            allth = unique(allth);
+            allth = sort(allth);
+            
+            tmin = allth(1);
+            tmax = allth(size(allth, 1));
+            allth_d = diff(allth);
+            allth_d = allth_d(allth_d ~= 0);
+            tintr = min(allth_d, [], 'all', 'omitnan');
+
+            xx = [tmin:tintr:tmax];
+
+            if include_trimmed
+                yy = sum(call_table{:, 'dropout_thresh'} >= xx, 1);
+            else
+                yy = sum(call_table{~call_table{:,'is_trimmed_out'}, 'dropout_thresh'} >= xx, 1);
+            end
+
+        end
+
+        %%
+        function spot_table = spotTableFromCallTable(call_table, include_trimmed)
+            spot_table = [];
+            [xx, yy] = RNAUtils.spotCountFromCallTable(call_table, include_trimmed);
+            
+            if isempty(xx); return; end
+            T = size(xx, 2);
+            spot_table = NaN(T, 2);
+            spot_table(:,1) = double(xx);
+            spot_table(:,2) = double(yy);
+        end
+
+        %%
         function border_mask = genBorderMask(dims, rads)
             dimcount = size(dims,2);
             
