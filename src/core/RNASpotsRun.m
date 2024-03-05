@@ -446,6 +446,7 @@ classdef RNASpotsRun
             rnaspots_run.options = struct('dtune_gaussrad', 7);
             rnaspots_run.options.overwrite_output = false;
             rnaspots_run.options.deadpix_detect = true;
+            rnaspots_run.options.save_maxproj = false;
             rnaspots_run.options.csv_zero_based_coords = false;
             rnaspots_run.options.csv_output_level = 1; %1 is full table, 2 is after auto range min, 3 is at selected only
             rnaspots_run.options.debug_level = 0;

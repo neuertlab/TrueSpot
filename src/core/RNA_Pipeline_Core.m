@@ -57,6 +57,10 @@ else
 	tif_v = 1;
 end
 
+if debug_lvl > 1
+    spotsrun.options.save_maxproj = true;
+end
+
 %Declare some vars so it doesn't complain later...
 sample_tif = [];
 sample_light_ch = [];
@@ -151,7 +155,7 @@ if runme
     end
     
     spotdec = RNA_Threshold_SpotDetector;
-    [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, sample_outstem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad);
+    [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, sample_outstem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad, spotsrun.options.save_maxproj);
     
     %Clear original image to free (a ton of) memory
     if ~bPreloaded & ~isempty(sample_tif)
@@ -252,7 +256,7 @@ if ~isempty(spotsrun.paths.ctrl_img_path)
             end
             
             spotdec = RNA_Threshold_SpotDetector;
-            [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, ctrl_stem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad);
+            [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, ctrl_stem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad, spotsrun.options.save_maxproj);
             [~, call_table] = spotdec.run_spot_detection_main(ctrl_f, ctrl_stem, strat, spotsrun.options.t_min, spotsrun.options.t_max, spotsrun.dims.ztrim, (debug_lvl > 0), thread_request);
             if ~isempty(call_table)
                 call_table{:, 'intensity'} = ctrl_image_channel(call_table{:, 'coord_1d'});
