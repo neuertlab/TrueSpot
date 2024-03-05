@@ -170,6 +170,22 @@ classdef Seglr2
             %Valid breakpick strategies: segrsq, weighted_avg (0,1)
             %three_piece just uses MATLAB fit, so doesn't work with
             %       weighted_avg atm
+            if nargin < 4
+                verbosity = 1;
+            end
+            if nargin < 5
+                fit_strategy = 'default';
+            end
+            if nargin < 6
+                breakpick_strategy = 'segrsq';
+            end
+            if nargin < 7
+                slow_iterations = 3;
+            end
+
+            if isempty(fit_strategy)
+                fit_strategy = 'default';
+            end
             
             if strcmp(fit_strategy, 'three_piece')
                 linfit = Seglr2.fitThreePiece(data,xmin,xmax);
@@ -185,18 +201,7 @@ classdef Seglr2
                 return;
             end
             
-            if nargin < 4
-                verbosity = 1;
-            end
-            if nargin < 5
-                fit_strategy = 'default';
-            end
-            if nargin < 6
-                breakpick_strategy = 'segrsq';
-            end
-            if nargin < 7
-                slow_iterations = 3;
-            end
+            
             scanmin = min_points;
             scanmax = data_points - min_points;
             if nargin > 1
@@ -223,7 +228,7 @@ classdef Seglr2
                 fits(j) = Seglr2.genEmptySegfitStruct();
             end
             
-            if strcmp(fit_strategy, 'slow')
+            if strcmp(fit_strategy, 'slow') & (slow_iterations > 0)
                 j = 1;
                 for i = scanmin:scanmax
                     if verbosity > 0

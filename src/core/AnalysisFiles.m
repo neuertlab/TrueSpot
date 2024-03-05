@@ -478,5 +478,88 @@ classdef AnalysisFiles
             analysis.(resfieldname) = rstruct;
         end
         
+        %%
+        function analysis = rethresholdExp(analysis, preset, verbose)
+            if ~isfield(analysis, 'results_hb'); return; end
+            rstruct = analysis.results_hb;
+
+            %Regen spot table.
+            if verbose; fprintf('>> Extracting spot count table...\n'); end
+            spot_table = RNAUtils.spotTableFromCallTable(rstruct.callset, false);
+
+            if verbose; fprintf('>> Rethresholding with preset %d...\n', preset); end
+            th_res = RNAThreshold.runWithPreset(spot_table, [], preset);
+            rstruct.threshold_details = th_res;
+            rstruct.threshold = th_res.threshold;
+
+            thidx = 0;
+            if th_res.threshold > 0
+                thidx = RNAUtils.findThresholdIndex(th_res.threshold, spot_table(:,1)');
+            end
+
+            if isfield(rstruct, 'benchmarks')
+                refsetnames = fieldnames(rstruct.benchmarks);
+                setcount = size(refsetnames, 1);
+                for i = 1:setcount
+                    setname = refsetnames{i};
+                    if verbose; fprintf('>> Updating threshold FScores for refset %s...\n', setname); end
+                    bstruct = rstruct.benchmarks.(setname);
+                    if isfield(bstruct, 'performance_trimmed')
+                        if thidx > 0
+                            bstruct.fscore_autoth_trimmed = bstruct.performance_trimmed{thidx, 'fScore'};
+                        else
+                            bstruct.fscore_autoth_trimmed = NaN;
+                        end
+                    end
+                    if isfield(bstruct, 'performance')
+                        if thidx > 0
+                            bstruct.fscore_autoth = bstruct.performance{thidx, 'fScore'};
+                        else
+                            bstruct.fscore_autoth = NaN;
+                        end
+                    end
+                    rstruct.benchmarks.(setname) = bstruct;
+                end
+            end
+
+            analysis.results_hb = rstruct; 
+        end
+
+        %%
+        function analysis = rethresholdSim(analysis, preset, verbose)
+            if ~isfield(analysis, 'results_hb'); return; end
+            rstruct = analysis.results_hb;
+
+            %Regen spot table.
+            if verbose; fprintf('>> Extracting spot count table...\n'); end
+            spot_table = RNAUtils.spotTableFromCallTable(rstruct.callset, false);
+
+            if verbose; fprintf('>> Rethresholding with preset %d...\n', preset); end
+            th_res = RNAThreshold.runWithPreset(spot_table, [], preset);
+            rstruct.threshold_details = th_res;
+            rstruct.threshold = th_res.threshold;
+
+            thidx = 0;
+            if th_res.threshold > 0
+                thidx = RNAUtils.findThresholdIndex(th_res.threshold, spot_table(:,1)');
+            end
+
+            if isfield(rstruct, 'performance_trimmed')
+                if thidx > 0
+                    rstruct.fscore_autoth_trimmed = rstruct.performance_trimmed{thidx, 'fScore'};
+                else
+                    rstruct.fscore_autoth_trimmed = NaN;
+                end
+            end
+            if isfield(rstruct, 'performance')
+                if thidx > 0
+                    rstruct.fscore_autoth = rstruct.performance{thidx, 'fScore'};
+                else
+                    rstruct.fscore_autoth = NaN;
+                end
+            end
+
+            analysis.results_hb = rstruct; 
+        end
     end
 end

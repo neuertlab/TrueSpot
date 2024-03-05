@@ -96,6 +96,18 @@ classdef RNAThreshold
         function [xx, yy] = cleanLogPlot(in_xx, in_yy)
             ysz = size(in_yy, 2);
             xsz = size(in_xx, 2);
+            ysz_inv = size(in_yy, 1);
+            xsz_inv = size(in_xx, 1);
+
+            if ysz_inv > ysz
+                in_yy = in_yy';
+                ysz = ysz_inv;
+            end
+
+            if xsz_inv > xsz
+                in_xx = in_xx';
+                xsz = xsz_inv;
+            end
             
             xx = in_xx;
             if xsz > ysz
@@ -132,7 +144,11 @@ classdef RNAThreshold
             
             if (params.log_proj_mode == 2) & (thresh_info.spline_on_log)
                  fitdata(:,2) = log10(fitdata(:,2));
-                 [fitdata(:,1), fitdata(:,2)] = RNAThreshold.cleanLogPlot(fitdata(:,1), fitdata(:,2));
+                 [xx, yy] = RNAThreshold.cleanLogPlot(fitdata(:,1), fitdata(:,2));
+                 newsize = size(yy,2);
+                 fitdata = NaN(newsize, 2);
+                 fitdata(:,1) = xx;
+                 fitdata(:,2) = yy;
             else
                 fitdata = data_trimmed;
                 [okay_rows,~] = find(isfinite(fitdata(:,2)));
@@ -157,7 +173,7 @@ classdef RNAThreshold
             
             %Trycatch, try again as non log if tried log
             try
-                thresh_info.spline_fit = Seglr2.fitToSpotCurve(fitdata, thresh_info.medth_min, thresh_info.medth_max, params.verbosity, params.fit_strat, bpstrat, params.spline_iterations);
+                thresh_info.spline_fit = Seglr2.fitToSpotCurve(fitdata, thresh_info.medth_min, thresh_info.medth_max, params.verbosity, 'default', bpstrat, -1);
                 if ~isempty(thresh_info.spline_fit)
                     thresh_info.spline_knot_x = fitdata(thresh_info.spline_fit.break_index,1);
                     
@@ -271,7 +287,8 @@ classdef RNAThreshold
             winshift = 0;
             if window_size < 1
                 %Proportion of total points
-                window_size = floor(P_count * window_size);
+                window_size = round(P_count * window_size);
+                if window_size < 3; window_size = 3; end
             elseif window_size > (P_count - 2)
                 window_size = (P_count - 2);
             end
@@ -379,8 +396,8 @@ classdef RNAThreshold
             if parameter_info.log_proj_mode == 1
                 threshold_results.x_raw = xx;
                 yy = log10(yy);
-                [xx, yy] = cleanLogPlot(xx, yy);
-                threshold_results.x = xx;
+                [xx, yy] = RNAThreshold.cleanLogPlot(xx, yy);
+                threshold_results.x = xx';
             end
 
             deriv1 = diff(yy);
