@@ -6,7 +6,7 @@ The module for detection and filtering of local intensity maxima. Wrapped by `Ma
 
 * [Full Option List](./pages/spots_allargs.md)
 * [Internal Flow](./pages/spots_flow.md)
-* Output Details
+* [Output Details](./pages/spots_output.md)
 
 ## Cell Segmentation
 The module for detecting single cell boundaries. Wrapped by `Main_CellSegConsole.m`.

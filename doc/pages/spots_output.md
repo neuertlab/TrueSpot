@@ -7,7 +7,7 @@ Files with the `.mat` extension are MATLAB data files. They are generally used t
 TrueSpot outputs MAT files by default simply because they are smaller than text files with the same data and it makes parsing much easier for downstream modules. However, there are options for dumping output information to standard text tables as well.
 
 ## Standard Outputs
-The standard output files contain the basic run information and results. Without any extra specified arguments, four files will be output for the sample. If a control is provided, these same four files will be output for the control. If background extraction is successful for control usage, these four files will be generated from the sample files with background mask applied and the mask itself along with some informational figures will be saved in the output directory.
+The standard output files contain the basic run information and results. Without any extra specified arguments, three files will be output for the sample. If a control is provided, these same three files will be output for the control. If background extraction is successful for control usage, these three files will be generated from the sample files with background mask applied and the mask itself along with some informational figures will be saved in the output directory.
 
 ### SpotsRun File
 The run parameters and threshold selection details are saved to `${OUTSTEM}_rnaspotsrun.mat`. The value of the automatic threshold selection can be found here. The contents of this file are the structs that serve as the instance variables for an instance of `RNASpotsRun`. By grouping all of the parameters into larger structs and saving the structs instead of the object instance itself, the MAT file can be read properly even without `RNASpotsRun.m`.
@@ -26,7 +26,7 @@ Contents (as of version 1.0.0)
 	* `options`: A struct containing miscellaneous run parameters.
 
 ### Call Table
-The full table of spot calls is saved to `${OUTSTEM}_callTable.mat`. This file contains a single MATLAB variable: a table called `call_table`. 
+The full table of spot calls is saved to `${OUTSTEM}_callTable.mat`. This file contains a single MATLAB variable: a table called `call_table`. Spot count tables can be easily derived from these call tables.
 
 The table should have at least 7 columns:
 * **coord_1d**: MATLAB 1D coordinate of voxel marking local maximum.
@@ -40,15 +40,32 @@ The table should have at least 7 columns:
 All coordinates are 1-based for MATLAB use. If dumping from this binary file for use in other programming interfaces like Python, it is good to remember that you will need to subtract 1 from all x,y, and z coordinates for 0-based indexing.
 
 ### Spot Table
+A quick version of the spot count table is saved to `${OUTSTEM}_spotTable.mat` in a variable called `spot_table`. `spot_table` is a two column matrix with each row being a tested threshold. The first column contains the tested threhsold value and the second column contains the number of spots detected at that threshold.
 
-### Dead Pixels File
+As mentioned above, spot count tables can be easily re-derived from call tables by using the `dropout_thresh` field. This is useful for applying additional filters such as limiting to a certain spatial region.
 
-### Background Extraction files
+### Background Extraction
+If a cell segmentation mask is provided as input (at this time, pipeline will accept any MAT file that contains an x-by-y matrix called 'cells') and a control image is not explicitly specified, TrueSpot will try to generate a mask of the image background (everything outside the cells) and use this background as a control instead. In this event, a subdirectory called `bkgmask` is created in the output directory and a MAT file ending in `_bkg.mat` is saved inside. In this file is a variable called `background_mask`, which is simply an x-by-y boolean mask marking which pixel positions are background (1) and which are in-cell (0).
 
 ## Optional Outputs
+Because MATLAB outputs may be difficult to interface with other software, for the purpose of flexibility in pipeline building and making downstream analysis easier, we have provided options for outputs in alternative, text-based formats. Debug mode also outputs various plots and saves additional intermediate data to disk.
 
 ### CSV Tables
+The call table can be output to csv as well as to MAT by specifying a target path with the `csvout` parameter. Additionally, while the MAT will always store the full call table (ie. all calls made at all tested thresholds), the user may specify that the csv output only contain calls at the selected threshold or within the thresholding range (see the `csvfull`, `csvrange`, and `csvthonly` options). The `csvzero` option can be used to get the csv output in 0-based coordinates instead of MATLAB's preferred 1-based coordinates.
 
 ### Parameter/Threshold Dump
+The contents of `${OUTSTEM}_rnaspotsrun.mat` can be dumped to a text file (in a `key=value` format) by specifying a path using the `runparamout` option. This is useful for checking both parameter values and results like the automatically selected threshold value without needing MATLAB again.
 
 ### Debug Outputs
+When in debug mode, TrueSpot will retain certain intermediate files and output some additional plots as pngs to make inspecting its behavior or diagnosing issues with specific images easier. 
+
+As of version 1.0.0, the debug plots include:
+* (If background extract runs) A render of the light channel's max projection with background mask applied.
+* (If background extract runs) A histogram of the cross-z standard deviations of all xy pixel positions in the light channel.
+* Plots of "window score" versus threshold with fit lines and threshold candidates mapped. One plot for each window size and one plot for all tried sizes combined.
+
+### Dead Pixels File
+If dead pixel detection is run (which it is by default), a file called `${OUTSTEM}_deadpix.mat` will be saved in the output directory. This file contains 2 variables: `recurring_pixels` and `recurring_pixels_all`. Both of these are just n by 1 matrices containing the MATLAB 1D coordinates of pixels (xy position) flagged as dead. The difference between the variables is that `recurring_pixels` omits all border pixel positions. If not in debug mode, this file is usually deleted after the run.
+
+### Max Projections
+The `${OUTSTEM}_imgviewstructs.mat` file contains maximum projections of the raw sample channel and its LoG filtered counterpart. It also records some scaling values to aid with rendering in MATLAB via `imshow()`. The purpose of this file was to speed up image-specific troubleshooting as well as aid in manual reference set creation. However, these files can grow quite large and are not necessary for regular use.
