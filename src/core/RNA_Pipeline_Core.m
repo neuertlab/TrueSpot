@@ -320,8 +320,9 @@ spotsrun.intensity_threshold = spotsrun.threshold_results.threshold;
     %Max projection of sample and control w circled spots (also max proj)
    
 if debug_lvl > 1
-%     plots_dir = [spotsrun.out_dir filesep 'plots'];
-%     RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
+     plots_dir = [spotsrun.paths.out_dir filesep 'plots'];
+     RNA_Fisher_State.outputMessageLineStatic(sprintf("Now generating plots..."), true);
+     if ~isfolder(plots_dir); mkdir(plots_dir); end
 % 
 %     %These are all very broken at the moment. I wouldn't use them.
 %     if ~isempty(ctrl_stem)
