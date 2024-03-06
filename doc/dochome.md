@@ -11,8 +11,8 @@ The module for detection and filtering of local intensity maxima. Wrapped by `Ma
 ## Cell Segmentation
 The module for detecting single cell boundaries. Wrapped by `Main_CellSegConsole.m`.
 
-* Full Option List
-* Output Details
+* [Full Option List](./pages/cellseg_allargs.md)
+* [Output Details](./pages/cellseg_output.md)
 
 ## Signal Quantification
 The module for quantifying signal, including background subtraction, gaussian fitting, and cloud detection. Wrapped by `Main_RNAQuant.m`.

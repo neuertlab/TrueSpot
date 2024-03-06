@@ -147,9 +147,11 @@ classdef RNASpotsRun
 
             %Image structs
             [~, my_images] = obj.loadImageViewStructs();
-            my_images(1).image = immultiply(my_images(1).image, background_mask);
-            my_images(2).image = immultiply(my_images(2).image, background_mask);
-            save([obj.paths.bkg_filter_stem '_imgviewstructs'], 'my_images');
+            if ~isempty(my_images)
+                my_images(1).image = immultiply(my_images(1).image, background_mask);
+                my_images(2).image = immultiply(my_images(2).image, background_mask);
+                save([obj.paths.bkg_filter_stem '_imgviewstructs'], 'my_images');
+            end
         end
 
         function obj = updateImageDimensions(obj)
