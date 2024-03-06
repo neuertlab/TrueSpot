@@ -1052,8 +1052,8 @@ classdef RNAThreshold
             end
             
             curve_count = 0;
-            if rnaspots_run.ttune_use_rawcurve; curve_count = curve_count+1; end
-            if rnaspots_run.ttune_use_diffcurve; curve_count = curve_count+1; end
+            if rnaspots_run.th_params.test_data; curve_count = curve_count+1; end
+            if rnaspots_run.th_params.test_diff; curve_count = curve_count+1; end
             
             thres = rnaspots_run.threshold_results;
             if ~isempty(thres.window_sizes)
@@ -1116,7 +1116,7 @@ classdef RNAThreshold
             
             %Raw curve (if applicable)
             spots_table = [];
-            if rnaspots_run.ttune_use_rawcurve
+            if rnaspots_run.th_params.test_data
                 legend_names{1,c_idx} = 'Spot Count';
                 
                 %Plot curve
@@ -1130,7 +1130,7 @@ classdef RNAThreshold
                 c_idx = c_idx + 1;
             end
             
-            if rnaspots_run.ttune_use_diffcurve
+            if rnaspots_run.th_params.test_diff
                 legend_names{1,c_idx} = 'Smoothed Diff';
                 
                 %Plot curve
@@ -1199,8 +1199,8 @@ classdef RNAThreshold
             end
             
             curve_count = 0;
-            if rnaspots_run.ttune_use_rawcurve; curve_count = curve_count+1; end
-            if rnaspots_run.ttune_use_diffcurve; curve_count = curve_count+1; end
+            if rnaspots_run.th_params.test_data; curve_count = curve_count+1; end
+            if rnaspots_run.th_params.test_diff; curve_count = curve_count+1; end
             
             thres = rnaspots_run.threshold_results;
             if ~isempty(thres.window_sizes)
@@ -1219,7 +1219,7 @@ classdef RNAThreshold
             color_light = [0.500, 0.500, 0.500];
             
             spots_table = [];
-            if rnaspots_run.ttune_use_rawcurve
+            if rnaspots_run.th_params.test_data
                 fig_handles(1,c_idx) = figure(figno);
                 clf;
                 ax = axes;  
@@ -1239,7 +1239,7 @@ classdef RNAThreshold
                 figno = figno+1;
             end
             
-            if rnaspots_run.ttune_use_diffcurve
+            if rnaspots_run.th_params.test_diff
                 fig_handles(1,c_idx) = figure(figno);
                 clf;
                 ax = axes;
