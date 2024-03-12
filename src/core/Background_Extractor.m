@@ -1,8 +1,8 @@
 %%
 %Image background extraction methods & GUI
 %Blythe Hospelhorn
-%Version 2.0.0
-%Modified December 13, 2021
+%Version 2.0.1
+%Modified March 12, 2024
 
 %Update Log:
 %   1.0.0 | 21.03.11
@@ -10,6 +10,9 @@
 %   2.0.0 | 21.12.13
 %       Changed initialize() to take the channel directly instead -
 %       converted old initialize() to read_and_initialize()
+%   2.0.1 | 24.03.12
+%       Now calls CellSeg.openCellMask to open cell mask file. That way,
+%       can take more formats.
 %
 
 %%
@@ -91,7 +94,8 @@ classdef Background_Extractor
             obj.img_ch = light_ch;
             
             %Read in previous segmentation data
-            load(seg_file_path, 'cells');
+            %load(seg_file_path, 'cells');
+            cells = CellSeg.openCellMask(seg_file_path); %More formats.
             obj.cell_mask = (cells == 0);
             
             %Generate stdev projection

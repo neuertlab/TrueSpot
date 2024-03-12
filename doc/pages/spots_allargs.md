@@ -14,7 +14,7 @@ This page lists all arguments recognized by `Main_RNASpots.m`. Some additional a
 | `-tif` | *Path* - Path to TIFF input image file.  | The input image or image stack TIFF file. This argument is equivalent to `-input`, but is included for convenience and compatibility with previous versions. |
 | `-matimg` | *Path* - Path to MATLAB input image file.  | A MATLAB save file containing the image/image stack to process. This argument is equivalent to `-input`, but is included for convenience and compatibility with previous versions. |
 | `-matvar` | *String* - Name of variable containing image in MATLAB input file.  | The name of the MATLAB variable in the input MATLAB save file containing the image/image stack data to process. Defaults to "imgdat". |
-| `-cellseg` | *Path* - Path to MATLAB file containing cell segmentation mask.  | A MATLAB save file containing a cell segmentation mask output by the cell segementation module. File name will usually start with "Lab_". |
+| `-cellseg` | *Path* - Path to file containing cell segmentation mask.  | A file containing a cell segmentation mask. Accepts CellSeg module MAT outputs as well as single channel TIFFs, and numeric tsvs and csvs. |
 | `-ctrlimg` | *Path* - Path to control image file.  | A control image or image stack file. Only TIFF or MAT files are recognized at this time. |
 | `-ctrltif` | *Path* - Path to control TIFF file.  | A control image or image stack file in TIFF format. This argument is equivalent to `-ctrlimg`, but is included for convenience and compatibility with previous versions. |
 | `-chtotal` | *Integer* - Channel Count  | The total number of channels in the input image stack. (Default: 1) |

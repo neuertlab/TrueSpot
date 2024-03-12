@@ -1,0 +1,55 @@
+TrueSpot Cell Segmentation Bash Wrapper
+Usage Manual
+
+--- Required Arguments ---
+-input [Path]			The input image or image stack containing light/TRANS channel.
+
+--- Input Options ---
+-innuc [Path]			The input image stack containing the nuclear marker channel, if different from the main input stack.
+-chtotal [Int]			The total number of channels in the input image stack. (Default: 1)
+-chtotnuc [Int]			The total number of channels in the `innuc` image stack, if provided. (Default: 1)
+-chlight [Int]			The TRANS or passthrough light channel in the input image stack. Only used for background extraction along with cell segmentation mask.
+-chnuc [Int]			The nuclear stain (eg. DAPI) channel in the input image stack, or the `innuc` image stack if one is provided. (Default: 1)
+
+--- Output Options ---
+-outpath [Path]			Path to directory to place output files. File names will be automatically generated from image name. (Default: Directory of input image.)
+-ocellmask [Path]		Path to write rendered TIF of cell mask. (Default: None)
+-onucmask [Path]		Path to write rendered TIF of nuclear mask. (Default: None)
+-osettings [Path]		Path to write text file with run settings information. (Default: None.)
+-ovrw					(Flag) Overwrite any existing output.
+-dumpsummary			(Flag) Dump text file containing input parameter summary.
+-savebk					(Flag) Use previous version file naming conventions for output.
+
+--- Metadata Options ---
+-imgname [String]		Name to assign to image and output files. Useful for images with long unwieldy file names. (Default: Input file name.)
+
+--- Preset Options ---
+-template [String]		Name of preset template to use.
+-savetmpl [String]		Save settings for this run as a preset template with the specified name.
+
+--- Fine Tuning ---
+-cszmin [Int]			Minimum expected area of cell, in pixels (Default: 600)
+-cszmax [Int]			Maximum expected area of cell, in pixels (Default: 1200)
+-fplstrat [String]		Strategy for selecting focus plane. (Default: 'specify')
+-fzmin [Int]			Minimum z plane of focus region. Ignored if fplstrat is not 'specify'. (Default: 1)
+-fzmax [Int]			Maximum z plane of focus region. Ignored if fplstrat is not 'specify'. (Default: Z)
+-foffmin [Int]			Offset from focus plane to start bottom of focus region. Ignored if fplstrat is not 'midplane' or 'midplane2'. (Default: 3)
+-foffmax [Int]			Offset from focus plane to start top of focus region. Ignored if fplstrat is not 'midplane' or 'midplane2'. (Default: 7)
+-xtrim [Int]			Number of pixels to trim off each edge in the x direction (Default: 4)
+-ytrim [Int]			Number of pixels to trim off each edge in the y direction (Default: 4)
+-nzrange [Int]			Number of z slices around plane with highest standard deviation to use for nucleus segmentation (Default: 3)
+-nthsmpl [Int]			Number of DAPI/nuclear stain thresholds to sample (Default: 200)
+-nszmin [Int]			Minimum expected area of nucleus, in pixels (Default: 40)
+-nszmax [Int]			Maximum expected area of nucleus, in pixels (Default: 200)
+-ncutoff [Float]		Proportion of tested thresholds a pixel must be present in nuclear mask of to not be filtered out. (Default: 0.05)
+-ndxy [Float]			Radius of pixels to look around a putative nucleus center. (Default: round(sqrt(nszmax/pi)))
+
+--- fplstrat Valid Values ---
+
+> specify
+> max_cells
+> midplane
+> midplane2
+> first5
+> last5
+

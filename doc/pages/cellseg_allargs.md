@@ -38,8 +38,8 @@ This page lists all arguments recognized by `Main_CellSegConsole.m`. Some additi
 ### Presets
 | Name | Parameter | Description |
 | ----- | ----- | ----- |
-| `-template` | *String* - (TYPE HERE) | (DESC HERE)|
-| `-savetmpl` | *String* - (TYPE HERE) | (DESC HERE)|
+| `-template` | *String* - Template name | Name of preset template to use. |
+| `-savetmpl` | *String* - Template name | Save settings for this run as a preset template with the specified name. |
 
 ### Fine Tune
 | Name | Parameter | Description |
@@ -53,12 +53,12 @@ This page lists all arguments recognized by `Main_CellSegConsole.m`. Some additi
 | `-foffmax` | *Integer* - Number of Z slices | Offset from focus plane to start top of focus region. Ignored if fplstrat is not 'midplane' or 'midplane2'. (Default: 7) |
 | `-xtrim` | *Integer* - Pixel count | Number of pixels to trim off each edge in the x direction (Default: 4) |
 | `-ytrim` | *Integer* - Pixel count | Number of pixels to trim off each edge in the y direction (Default: 4) |
-| `-nzrange` | *Integer* - (TYPE HERE) | (DESC HERE) (Default: 3) |
-| `-nthsmpl` | *Integer* - (TYPE HERE) | (DESC HERE) (Default: 200) |
-| `-nszmin` | *Integer* - (TYPE HERE) | (DESC HERE) (Default: 40) |
-| `-nszmax` | *Integer* - (TYPE HERE) | (DESC HERE) (Default: 200) |
-| `-ncutoff` | *Float* - (TYPE HERE) | (DESC HERE) (Default: 0.05) |
-| `-ndxy` | *Float* - (TYPE HERE) | (DESC HERE) (Default: round(sqrt(nszmax/pi))) |
+| `-nzrange` | *Integer* - Number of Z slices | Number of z slices around plane with highest standard deviation to use for nucleus segmentation (Default: 3) |
+| `-nthsmpl` | *Integer* - Test count | Number of DAPI/nuclear stain thresholds to sample (Default: 200) |
+| `-nszmin` | *Integer* - Size in pixels | Minimum expected area of nucleus, in pixels (Default: 40) |
+| `-nszmax` | *Integer* - Size in pixels | Maximum expected area of nucleus, in pixels (Default: 200) |
+| `-ncutoff` | *Float* - Proportion | Proportion of tested thresholds a pixel must be present in nuclear mask of to not be filtered out. (Default: 0.05) |
+| `-ndxy` | *Float* - Pixel count | Radius of pixels to look around a putative nucleus center. (Default: round(sqrt(nszmax/pi))) |
 
 ### fplstrat Valid Values
 * `specify`

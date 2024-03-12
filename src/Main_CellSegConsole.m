@@ -54,6 +54,12 @@ for i = 1:nargin
             if arg_debug; fprintf("Image Name Set: %s\n", cellseg_options.imgname); end
         elseif strcmp(lastkey, "outpath")
             cellseg_options.output_path = argval;
+            [outdir, ~, outext] = fileparts(cellseg_options.output_path);
+            if isempty(outext)
+                cellseg_options.output_dir = cellseg_options.output_path;
+            else
+                cellseg_options.output_dir = outdir;
+            end
             if arg_debug; fprintf("Output Path Set: %s\n", cellseg_options.output_path); end
         elseif strcmp(lastkey, "ocellmask")
             cellseg_options.outpath_cell_mask = argval;
@@ -168,11 +174,16 @@ end
 if isempty(cellseg_options.output_path)
     %Use input
     [cellseg_options.output_path, ~, ~] = fileparts(cellseg_options.input_path);
+    cellseg_options.output_dir = cellseg_options.output_path;
     fprintf("Output directory path was not provided. Using input dir: %s...\n", cellseg_options.output_path);
 end
 
+if ~isfolder(cellseg_options.output_dir)
+    mkdir(cellseg_options.output_dir);
+end
+
 if and(cellseg_options.dump_summary, isempty(cellseg_options.outpath_settings))
-    cellseg_options.outpath_settings = [cellseg_options.output_dir filesep 'CSegSettings_' cellseg_options.imgname '.mat'];
+    cellseg_options.outpath_settings = [cellseg_options.output_dir filesep 'CSegSettings_' cellseg_options.imgname '.txt'];
     fprintf("Output settings summary path was not provided. Using: %s...\n", cellseg_options.outpath_settings);
 end
 
@@ -264,7 +275,7 @@ function [okay, options] = runCellseg(options)
     if ~isempty(options.outpath_nuc_mask)
         %Save nuc mask TIF
         tiffops = struct('overwrite', true);
-        saveastiff(nuc_res.nuclei, options.outpath_nuc_mask, tiffops);
+        saveastiff(nuc_res.nuc_label, options.outpath_nuc_mask, tiffops);
         clear tiffops
     end
 
@@ -350,7 +361,7 @@ end
 
 function printSummary(options)
     if isempty(options.outpath_settings)
-        return;
+        options.outpath_settings = [options.output_path filesep 'cellseg_settings.txt'];
     end
 
     if ~options.overwrite_output & isfile(options.outpath_settings)
@@ -464,6 +475,7 @@ function cellseg_options = genOptionsStruct()
     cellseg_options = struct('input_path', []);
     cellseg_options.input_nuc = [];
     cellseg_options.output_path = []; %If savebk, this is a dir. Otherwise, mat file.
+    cellseg_options.output_dir = [];
     cellseg_options.outpath_cell_mask = []; %As TIF
     cellseg_options.outpath_nuc_mask = []; %As TIF
     cellseg_options.outpath_settings = [];

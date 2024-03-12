@@ -398,7 +398,7 @@ classdef CellSeg
             cutoff = nucSegSpecs.cutoff;    %This is a kind of cutoff. It's a proportion of the maximum number of times a pixel is present
             DAPI_ims_final = nucSegRes.test_sum;
             if cutoff > 0
-                DAPI_ims_final(find(DAPI_ims_final < max(DAPI_ims_final(:)) * cutoff)) = 0;
+                DAPI_ims_final(find(DAPI_ims_final < (max(DAPI_ims_final(:)) * cutoff))) = 0;
                 dapi_normal = bwareaopen(DAPI_ims_final, min_nucleus_size);                        % remove DAPI signal that are too small
                 dapi_huge = bwareaopen(DAPI_ims_final, max_nucleus_size);                          % remove DAPI signal that are too large
                 DAPI_ims_cut = dapi_normal - dapi_huge;
@@ -771,6 +771,33 @@ classdef CellSeg
             end
 
             [nucSegSpecs, nucSegRes] = CellSeg.SegmentThreshedNuclei(nuc_ch_data, nucSegSpecs, nucSegRes);
+        end
+
+        %%
+        function cell_mask = openCellMask(path)
+            %For checking input format. Can open the CellSeg outputs, tsv, csv, or tif.
+            cell_mask = [];
+            if endsWith(path, '.mat')
+                finfo = who('-file', path);
+                if ~isempty(find(ismember(finfo, 'cellSeg'),1))
+                    load(path, 'cellSeg');
+                    if isfield(cellSeg, 'cell_mask')
+                        cell_mask = cellSeg.cell_mask;
+                    end
+                    clear cellSeg;
+                elseif ~isempty(find(ismember(finfo, 'cells'),1))
+                    load(path, 'cells');
+                    cell_mask = cells;
+                    clear cells;
+                end
+            elseif endsWith(path, '.tif') | endsWith(path, '.tiff')
+                %Assumes one channel, one plane.
+                [channels, ~] = LoadTif(path, 1, [1], 0);
+                cell_mask = channels{1,1};
+                clear channels;
+            elseif endsWith(path, '.tsv') | endsWith(path, '.csv')
+                cell_mask = readmatrix(path);
+            end
         end
 
     end

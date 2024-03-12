@@ -8,7 +8,7 @@ Usage Manual
 -tif [Path]				The input image or image stack TIFF file. This argument is equivalent to -input, but is included for convenience and compatibility with previous versions.
 -matimg [Path]			A MATLAB save file containing the image/image stack to process. This argument is equivalent to -input, but is included for convenience and compatibility with previous versions.
 -matvar [String]		The name of the MATLAB variable in the input MATLAB save file containing the image/image stack data to process. Defaults to "imgdat".
--cellseg [Path]			A MATLAB save file containing a cell segmentation mask output by the cell segementation module. File name will usually start with "Lab_".
+-cellseg [Path]			A file containing a cell segmentation mask. Accepts CellSeg module MAT outputs as well as single channel TIFFs, and numeric tsvs and csvs.
 -ctrlimg [Path]			A control image or image stack file. Only TIFF or MAT files are recognized at this time.
 -ctrltif [Path]			A control image or image stack file in TIFF format. This argument is equivalent to -ctrlimg, but is included for convenience and compatibility with previous versions.
 -chtotal [Int]			The total number of channels in the input image stack. (Default: 1)

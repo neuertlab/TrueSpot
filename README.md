@@ -1,7 +1,7 @@
 # TrueSpot
 A MATLAB pipeline for automatically processing TIFF image stacks. Functions include cell segmentation, RNA/marker spot detection (with automatic thresholding), and RNA/marker quantification.
 
-[Detailed Documentation](https://github.com/neuertlab/RNA-FISH-Auto/blob/main/doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/RNA-FISH-Auto-Data)
+[Detailed Documentation](./doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/RNA-FISH-Auto-Data)
 
 ## Citations
 Cell Segmentation: [View Paper](https://doi.org/10.1038/s41598-019-46689-5) | [Standalone](https://www.dropbox.com/sh/egb27tsgk6fpixf/AADaJ8DSjab_c0gU7N7ZF0Zba?dl=0)
@@ -23,7 +23,7 @@ Spot & Cloud Quantification:
 Scripts should run on any system with compatible versions of MATLAB and Java.
 
 ## Usage
-This section covers basic usage commands for each module. Additional usage options are detailed in the documentation [here](https://github.com/neuertlab/RNA-FISH-Auto/blob/main/doc/dochome.md). We recommend using the wrapper bash scripts for Linux command line usage just to keep things clean, but direct usage for the MATLAB scripts will be outlined here as well.
+This section covers basic usage commands for each module. Additional usage options are detailed in the documentation [here](./doc/dochome.md). We recommend using the wrapper bash scripts for Linux command line usage just to keep things clean, but direct usage for the MATLAB scripts will be outlined here as well.
 
 You do not need to build anything - MATLAB is an interpreter/JIT compiling virtual environment. All you need to use these scripts is MATLAB.
 
@@ -39,18 +39,37 @@ We recommend surrounding all arguments, even numerical arguments, with single qu
 Our bash wrapper scripts do not include any module loading due to the fact that module names and loading frameworks can vary between systems. Do not forget to module load MATLAB and all dependencies if running on such a system.
 
 ### Cell Segmentation
-MATLAB GUI Interface Script: `Main_CellSegGUI.m`
-
 MATLAB Command Line Interface Script: `Main_CellSegConsole.m`
 
 Bash Wrapper Script (Command Line): `TrueSpot_CellSeg.sh`
+
+The only required argument is `-input`. See [documentation](./doc/pages/cellseg_allargs.md) for full argument list.
+
+**Common Arguments** (Options are the same for both interfaces)
+| Name | Parameter | Description |
+| ----- | ----- | ----- |
+| `-input` | *Path* - Path to input image file.  | The input image or image stack containing light/TRANS channel. |
+| `-innuc` | *Path* - Path to image file.  | The input image stack containing the nuclear marker channel, if different from the main input stack. |
+| `-chtotal` | *Integer* - Channel Count  | The total number of channels in the input image stack. (Default: 1) |
+| `-chtotnuc` | *Integer* - Channel Count  | The total number of channels in the `innuc` image stack, if provided. (Default: 1) |
+| `-chlight` | *Integer* - Channel Index (1-based) | The TRANS or passthrough light channel in the input image stack. Only used for background extraction along with cell segmentation mask. |
+| `-chnuc` | *Integer* - Channel Index (1-based) | The nuclear stain (eg. DAPI) channel in the input image stack, or the `innuc` image stack if one is provided. (Default: 1) |
+| `-outpath` | *Path* - Directory path | Path to directory to place output files. File names will be automatically generated from image name. (Default: Directory of input image.) |
+| `-ocellmask` | *Path* - Path to image (tif) file output | Path to write rendered TIF of cell mask. (Default: None) |
+| `-onucmask` | *Path* - Path to image (tif) file output | Path to write rendered TIF of nuclear mask. (Default: None) |
+| `-osettings` | *Path* - Path to text file output | Path to write text file with run settings information. (Default: None.) |
+| `-ovrw` | - | **Flag** - Overwrite any existing output. |
+| `-dumpsummary` | - | **Flag** - Dump text file containing input parameter summary. |
+| `-imgname` | *String* - Name | Name to assign to image and output files. Useful for images with long unwieldy file names. (Default: Input file name.) |
+| `-template` | *String* - Template name | Name of preset template to use. |
+| `-savetmpl` | *String* - Template name | Save settings for this run as a preset template with the specified name. |
 
 ### Local Maxima Detection
 MATLAB Interface Script: `Main_RNASpots.m`
 
 Bash Wrapper Script: `TrueSpot_RNASpots.sh`
 
-The only required argument is `-input`. See [documentation](https://github.com/neuertlab/RNA-FISH-Auto/blob/main/doc/pages/spots_allargs.md) for full argument list.
+The only required argument is `-input`. See [documentation](./doc/pages/spots_allargs.md) for full argument list.
 
 **Common Arguments - Input/Output** (Options are the same for both interfaces)
 | Argument | Parameter | Description |
