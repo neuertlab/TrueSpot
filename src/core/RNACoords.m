@@ -594,6 +594,20 @@ methods (Static)
 
     end
 
+    function xyz_table = getThresholdCalls(call_table, thval)
+        xyz_table = [];
+        if isempty(call_table); return; end
+
+        tokay = find(call_table{:, 'dropout_thresh'} >= thval);
+        if ~isempty(tokay)
+            count = size(tokay, 1);
+            xyz_table = uint32(NaN(count, 3));
+            xyz_table(:,1) = call_table{tokay, 'isnap_x'};
+            xyz_table(:,2) = call_table{tokay, 'isnap_y'};
+            xyz_table(:,3) = call_table{tokay, 'isnap_z'};
+        end
+    end
+
     function call_table = addFitData(call_table, fit_table, snap_minth)
         %Fit table should be formatted with cols:
         %   x,y,z,int(optional)

@@ -12,21 +12,28 @@ param_struct.tifpath = [];
 param_struct.outdir = [];
 param_struct.cellsegdir = [];
 param_struct.cellsegname = [];
+param_struct.cellsegpath = [];
+param_struct.nucsegpath = [];
 param_struct.coord_tbl_path = [];
 param_struct.rethresh = false;
 param_struct.noclouds = false;
 param_struct.no_refilter = false;
 param_struct.dbgcell = 0;
-param_struct.use_nuc_mask = 2;
+param_struct.use_nuc_mask = 2; %lbl_mid
 param_struct.workers = 1;
 
 param_struct.nocells = false; %If no cell seg data (ie. sim image)
 
 %Specs if don't provide run file
 param_struct.man_thresh = 0;
-param_struct.rna_channel = 0;
-param_struct.channel_count = 0;
+param_struct.rna_channel = 1;
+param_struct.channel_count = 1;
 param_struct.z_adj = 1.0;
+
+param_struct.small_obj_size = 3;
+param_struct.gaussian_radius = 0; %Defaults to 7 or spotsrun val if no override.
+param_struct.spotzoom_r_xy = 4;
+param_struct.spotzoom_r_z = 2;
 
 param_struct.preloaded_image = [];
 param_struct.preloaded_cellmask = [];
@@ -96,6 +103,12 @@ for i = 1:nargin
         elseif strcmp(lastkey, "cellsegname")
             param_struct.cellsegname = argval;
             if arg_debug; fprintf("CellSeg Name Set: %s\n", param_struct.cellsegname); end
+        elseif strcmp(lastkey, "cellsegpath")
+            param_struct.cellsegpath = argval;
+            if arg_debug; fprintf("CellSeg Path Set: %s\n", param_struct.cellsegpath); end
+        elseif strcmp(lastkey, "nucsegpath")
+            param_struct.nucsegpath = argval;
+            if arg_debug; fprintf("NucSeg Path Set: %s\n", param_struct.nucsegpath); end
         elseif strcmp(lastkey, "mthresh")
             param_struct.man_thresh = Force2Num(argval);
             if arg_debug; fprintf("Manual threshold set: %d\n", param_struct.man_thresh); end
@@ -111,6 +124,18 @@ for i = 1:nargin
         elseif strcmp(lastkey, "zadj")
             param_struct.z_adj = Force2Num(argval);
             if arg_debug; fprintf("Z to XY voxel dim ratio set: %f\n", param_struct.z_adj); end
+        elseif strcmp(lastkey, "smobjsz")
+            param_struct.small_obj_size = Force2Num(argval);
+            if arg_debug; fprintf("Small object size set: %d\n", param_struct.small_obj_size); end
+        elseif strcmp(lastkey, "gaussrad")
+            param_struct.gaussian_radius = Force2Num(argval);
+            if arg_debug; fprintf("Gaussian radius set: %d\n", param_struct.gaussian_radius); end
+        elseif strcmp(lastkey, "radxy")
+            param_struct.spotzoom_r_xy = Force2Num(argval);
+            if arg_debug; fprintf("Sampling xy radius set: %d\n", param_struct.spotzoom_r_xy); end
+        elseif strcmp(lastkey, "radz")
+            param_struct.spotzoom_r_z = Force2Num(argval);
+            if arg_debug; fprintf("Sampling z radius set: %d\n", param_struct.spotzoom_r_z); end
         elseif strcmp(lastkey, "workers")
             param_struct.workers = Force2Num(argval);
             if arg_debug; fprintf("Worker threads/processes requested: %d\n", param_struct.workers); end
@@ -124,8 +149,18 @@ end %End of argin for loop
 % ========================== Run ==========================
 
 if isempty(param_struct.outdir)
-    fprintf("Output directory is required for command line interface! Exiting... \n");
-    return;
+%     fprintf("Output directory is required for command line interface! Exiting... \n");
+%     return;
+%Set to run dir, or tif dir if run dir is not provided.
+    if ~isempty(param_struct.runpath)
+        [param_struct.outdir, ~, ~] = fileparts(param_struct.runpath);
+    elseif ~isempty(param_struct.tifpath)
+        [param_struct.outdir, ~, ~] = fileparts(param_struct.tifpath);
+    else
+        fprintf("Output directory is required for command line interface! Exiting... \n");
+        return;
+    end
+    fprintf("WARNING: Output directory was not provided. Set to %s \n", param_struct.outdir);
 end
 
 quant_results = RNAQuantPipe(param_struct, false);
@@ -153,22 +188,22 @@ writetable(quant_table, outpath);
 end %end of Main function
 
 function iname = guessImageName(param_struct)
-%Do we have a valid run?
-if ~isempty(param_struct.runpath)
-    rnaspots_run = RNASpotsRun.loadFrom(param_struct.runpath);
-    if ~isempty(rnaspots_run)
-        if ~isempty(rnaspots_run.img_name)
-            iname = rnaspots_run.img_name;
-            return;
+    %Do we have a valid run?
+    if ~isempty(param_struct.runpath)
+        rnaspots_run = RNASpotsRun.loadFrom(param_struct.runpath);
+        if ~isempty(rnaspots_run)
+            if ~isempty(rnaspots_run.img_name)
+                iname = rnaspots_run.img_name;
+                return;
+            end
         end
     end
-end
-
-%Just use tif name.
-if ~isempty(param_struct.tifpath)
-    [~, iname, ~] = fileparts(param_struct.tifpath);
-    return;
-end
-
-iname = 'my_image';
+    
+    %Just use tif name.
+    if ~isempty(param_struct.tifpath)
+        [~, iname, ~] = fileparts(param_struct.tifpath);
+        return;
+    end
+    
+    iname = 'my_image';
 end

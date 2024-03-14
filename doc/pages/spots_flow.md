@@ -1,6 +1,8 @@
 # Spot Detection Module - Internal Flow
 This page provides a brief overview of the modules within the spot calling module. This is to make it slightly easier for anyone looking into the code to find functions of interest.
 
+[Back](../dochome.md)
+
 ![General diagram of spot detection module flow](./main_rnaspots_modules_240305.png)
 
 ## Node Summaries

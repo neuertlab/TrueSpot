@@ -389,6 +389,20 @@ classdef RNAQuant
             
             imrprop = regionprops3(box_mask, 'BoundingBox');
             cloud_boxes = imrprop.BoundingBox;
+            
+            for i = 1:3
+                d0 = cloud_boxes(:,i);
+                dd = cloud_boxes(:,i+3);
+                d1 = d0 + dd;
+                d0 = floor(d0);
+                d1 = ceil(d1);
+                dd = d1 - d0;
+                cloud_boxes(:,i) = d0;
+                cloud_boxes(:,i+3) = dd;
+
+                clear d0 d1 dd
+            end
+
         end
         
         %%
@@ -805,18 +819,19 @@ classdef RNAQuant
         %%
         function my_cell = FinishRNACloudsCell(my_cell, cell_img_nobkg, cell_cloud_mask, cloud_boxes, min_cloud_vol)
             if isempty(cloud_boxes); return; end %Nothing there...
-            cloud_boxes = RNAQuant.mergeOverlappingClouds(cloud_boxes);
-            cloud_count = size(cloud_boxes,1);
-            temp_mem(cloud_count) = RNACloud;
-            temp_pos = 1;
             
             cw = my_cell.cell_loc.width_i;
             ch = my_cell.cell_loc.height_i;
             Z = my_cell.dim_z;
-            
+
+            cloud_boxes = RNAQuant.mergeOverlappingClouds(cloud_boxes, cw, ch, Z);
+            cloud_count = size(cloud_boxes,1);
+            temp_mem(cloud_count) = RNACloud;
+            temp_pos = 1;
+
             %cell_cloud_mask = RNAQuant.fillClouds(cell_cloud_mask);
             kept_cloud_mask = false(ch,cw,Z);
-            for i = 0:cloud_count
+            for i = 1:cloud_count
                 x0 = max(cloud_boxes(i,1) - 4, 1);
                 y0 = max(cloud_boxes(i,2) - 4, 1);
                 z0 = max(cloud_boxes(i,3) - 4, 1);
@@ -837,10 +852,12 @@ classdef RNAQuant
                 cloud_img = immultiply(cloud_img, my_cloud.cloud_mask);
                 my_cloud.total_intensity = sum(cloud_img, 'all');
                 my_cloud.cloud_data = cloud_img;
-                kept_cloud_mask = or(kept_cloud_mask(y0:y1,x0:x1,z0:z1),my_cloud.cloud_mask);
+                ccmask = false(ch,cw,Z);
+                ccmask(y0:y1,x0:x1,z0:z1) = my_cloud.cloud_mask;
+                kept_cloud_mask = or(kept_cloud_mask, ccmask);
                 
                 %Determine if in nucleus
-                cnuc = immultiply(ccmask, this_cell.nuc_mask);
+                cnuc = immultiply(ccmask, my_cell.mask_nuc);
                 nuc_pix = sum(cnuc, 'all');
                 if nuc_pix > (my_cloud.cloud_volume / 2)
                     my_cloud.is_nuc = true;
@@ -855,7 +872,7 @@ classdef RNAQuant
             
             %Move passed clouds from temp to cell obj
             if temp_pos > 1
-                my_cell.clouds(:) = temp_mem(1:temp_pos-1);
+                my_cell.clouds = temp_mem(1:temp_pos-1);
             end
             clear temp_mem;
             
@@ -868,7 +885,8 @@ classdef RNAQuant
                     my_spot = my_cell.spots(s); %READ ONLY
                     x = my_spot.gauss_fit.xfit;
                     y = my_spot.gauss_fit.yfit;
-                    z = my_spot.gauss_fit.zabs;
+                    z = max(my_spot.gauss_fit.zabs, 1); %TODO This is sometimes 0. That needs to be fixed in the fitter.
+                    z = min(z, Z); %Also going outside max...
                     if kept_cloud_mask(y,x,z)
                         my_cell.spots(s).in_cloud = true;
                     end

@@ -800,6 +800,68 @@ classdef CellSeg
             end
         end
 
+        %%
+        function nuc_mask = openNucMask(path, maskno)
+            if nargin < 2
+                maskno = 2; %lblmid
+            end
+
+            nuc_mask = [];
+            if endsWith(path, '.mat')
+                finfo = who('-file', path);
+                if ~isempty(find(ismember(finfo, 'nucSeg'),1))
+                    load(path, 'nucleiSeg');
+                    if isfield(nucleiSeg, 'results')
+                        switch(maskno)
+                            case 0
+                                if isfield(nucleiSeg.results, 'nuc_label')
+                                    nuc_mask = nucleiSeg.results.nuc_label;
+                                end
+                            case 1
+                                if isfield(nucleiSeg.results, 'lbl_lo')
+                                    nuc_mask = nucleiSeg.results.nuc_label;
+                                end
+                            case 2
+                                if isfield(nucleiSeg.results, 'lbl_mid')
+                                    nuc_mask = nucleiSeg.results.nuc_label;
+                                end
+                            case 3
+                                if isfield(nucleiSeg.results, 'lbl_hi')
+                                    nuc_mask = nucleiSeg.results.nuc_label;
+                                end
+                        end
+                    end
+                    clear nucleiSeg;
+                elseif ~isempty(find(ismember(finfo, 'nuclei'),1))
+                    switch(maskno)
+                        case 0
+                            load(path, 'nuclei');
+                            nuc_mask = nuclei;
+                            clear nuclei;
+                        case 1
+                            load(path, 'Label_low');
+                            nuc_mask = Label_low;
+                            clear Label_low;
+                        case 2
+                            load(path, 'Label_mid');
+                            nuc_mask = Label_mid;
+                            clear Label_mid;
+                        case 3
+                            load(path, 'Label_hi');
+                            nuc_mask = Label_hi;
+                            clear Label_hi;
+                    end
+                end
+            elseif endsWith(path, '.tif') | endsWith(path, '.tiff')
+                %Assumes one channel, one plane.
+                [channels, ~] = LoadTif(path, 1, [1], 0);
+                nuc_mask = channels{1,1};
+                clear channels;
+            elseif endsWith(path, '.tsv') | endsWith(path, '.csv')
+                nuc_mask = readmatrix(path);
+            end
+        end
+
     end
 
 end

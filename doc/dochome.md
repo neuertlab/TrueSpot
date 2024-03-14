@@ -17,5 +17,5 @@ The module for detecting single cell boundaries. Wrapped by `Main_CellSegConsole
 ## Signal Quantification
 The module for quantifying signal, including background subtraction, gaussian fitting, and cloud detection. Wrapped by `Main_RNAQuant.m`.
 
-* Full Option List
+* [Full Option List](./pages/quant_allargs.md)
 * Output Details

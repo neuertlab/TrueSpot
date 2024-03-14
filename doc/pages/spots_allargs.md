@@ -1,6 +1,8 @@
 # Spot Detection Module - Full Argument List
 This page lists all arguments recognized by `Main_RNASpots.m`. Some additional arguments may be found directly in the script as well, but those have been deprecated and are nonfunctional.
 
+[Back](../dochome.md)
+
 ## Required
 
 | Name | Parameter | Description |
