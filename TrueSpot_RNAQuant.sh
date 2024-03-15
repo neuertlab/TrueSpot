@@ -16,7 +16,7 @@ get_script_dir(){
 usage(){
 	get_script_dir
 	if [ -n "${MY_DIR}" ]; then
-		cat ${MY_DIR}/doc/bash/bash_man_cellseg.txt
+		cat ${MY_DIR}/doc/bash/bash_man_rnaquant.txt
 	else
 		echo "ERROR - Manual file could not be found!"
 	fi
@@ -72,14 +72,14 @@ if [ -z "$LOG_PATH" ]; then
 	if [ -n "$OUT_STEM" ]; then
 		LOG_PATH="${OUT_STEM}_matlog.log"
 	elif [ -n "$OUT_DIR" ]; then
-		LOG_PATH="${OUT_DIR}/MAT_Main_CellSegConsole.log"
+		LOG_PATH="${OUT_DIR}/MAT_Main_RNAQuant.log"
 	else
-		LOG_PATH="${IN_PATH}_MAT_cellseg.log"
+		LOG_PATH="${IN_PATH}_MAT_rnaquant.log"
 	fi
 	echo "Log path has been set to: ${LOG_PATH}"
 fi
 
 #Call MATLAB
 get_script_dir
-SCRIPT_NAME="Main_CellSegConsole.m"
+SCRIPT_NAME="Main_RNAQuant.m"
 matlab -nodisplay -nosplash -logfile "${LOG_PATH}" -r "cd '${MY_DIR}/src'; ${SCRIPT_NAME}(${MAT_ARG_STR}); quit;"
