@@ -311,13 +311,15 @@ classdef RNASpotsRun
                 fprintf(fhandle, 'threshold_results.mad_factor_max=%f\n', obj.threshold_results.mad_factor_max);
                 fprintf(fhandle, 'threshold_results.control_floor=%d\n', obj.threshold_results.control_floor);
                 fprintf(fhandle, 'threshold_results.struct_ver=%d\n', obj.threshold_results.struct_ver);
-                fprintf(fhandle, 'threshold_results.reweight_fit=%d\n', obj.threshold_results.reweight_fit);
-                fprintf(fhandle, 'threshold_results.fit_to_log=%d\n', obj.threshold_results.fit_to_log);
-                fprintf(fhandle, 'threshold_results.fit_strat=%s\n', obj.threshold_results.fit_strat);
+                %fprintf(fhandle, 'threshold_results.reweight_fit=%d\n', obj.threshold_results.reweight_fit);
+                %fprintf(fhandle, 'threshold_results.fit_to_log=%d\n', obj.threshold_results.fit_to_log);
+                %fprintf(fhandle, 'threshold_results.fit_strat=%s\n', obj.threshold_results.fit_strat);
+                fprintf(fhandle, 'threshold_results.log_proj_mode=%d\n', obj.threshold_results.log_proj_mode);
                 fprintf(fhandle, 'threshold_results.madth_weight=%f\n', obj.threshold_results.madth_weight);
-                fprintf(fhandle, 'threshold_results.fit_weight=%f\n', obj.threshold_results.fit_to_log);
+                fprintf(fhandle, 'threshold_results.fit_weight=%f\n', obj.threshold_results.fit_weight);
                 fprintf(fhandle, 'threshold_results.fit_ri_weight=%f\n', obj.threshold_results.fit_ri_weight);
                 fprintf(fhandle, 'threshold_results.std_factor=%f\n', obj.threshold_results.std_factor);
+                fprintf(fhandle, 'threshold_results.lowNoiseFlag=%d\n', obj.threshold_results.lowNoiseFlag);
                 sugg = RNAThreshold.getAllMedThresholds(obj.threshold_results);
                 if ~isempty(sugg)
                     fprintf(fhandle, 'MED_SUGG=');
@@ -341,11 +343,12 @@ classdef RNASpotsRun
                 fprintf(fhandle, 'th_params.mad_factor_min=%f\n', obj.th_params.mad_factor_min);
                 fprintf(fhandle, 'th_params.mad_factor_max=%f\n', obj.th_params.mad_factor_max);
                 fprintf(fhandle, 'th_params.control_floor=%d\n', obj.th_params.control_floor);
-                fprintf(fhandle, 'th_params.reweight_fit=%d\n', obj.th_params.reweight_fit);
-                fprintf(fhandle, 'th_params.fit_to_log=%d\n', obj.th_params.fit_to_log);
-                fprintf(fhandle, 'th_params.fit_strat=%s\n', obj.th_params.fit_strat);
+                %fprintf(fhandle, 'th_params.reweight_fit=%d\n', obj.th_params.reweight_fit);
+                %fprintf(fhandle, 'th_params.fit_to_log=%d\n', obj.th_params.fit_to_log);
+                %fprintf(fhandle, 'th_params.fit_strat=%s\n', obj.th_params.fit_strat);
+                fprintf(fhandle, 'th_params.log_proj_mode=%d\n', obj.threshold_results.log_proj_mode);
                 fprintf(fhandle, 'th_params.madth_weight=%f\n', obj.th_params.madth_weight);
-                fprintf(fhandle, 'th_params.fit_weight=%f\n', obj.th_params.fit_to_log);
+                fprintf(fhandle, 'th_params.fit_weight=%f\n', obj.th_params.fit_weight);
                 fprintf(fhandle, 'th_params.fit_ri_weight=%f\n', obj.th_params.fit_ri_weight);
                 fprintf(fhandle, 'th_params.std_factor=%f\n', obj.th_params.std_factor);
                 fprintf(fhandle, 'th_params.test_data=%d\n', obj.th_params.test_data);

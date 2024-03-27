@@ -313,6 +313,9 @@ end
 %Updated interface:
 RNA_Fisher_State.outputMessageLineStatic(sprintf("Finding a good threshold..."), true);
 spotsrun.threshold_results = RNAThreshold.runSavedParameters(spotsrun, tif_v);
+if spotsrun.threshold_results.lowNoiseFlag
+    spotsrun.threshold_results.threshold = 1;
+end
 spotsrun.intensity_threshold = spotsrun.threshold_results.threshold;
 
 %Print plots & image representation

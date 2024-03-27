@@ -121,14 +121,14 @@ for i = 1:nargin
             if ~senspe_set
                 if arg_debug; fprintf("Tuning Preset: Sensitivity\n"); end
                 senspe_set = true;
-                rna_spot_run = setSensitive1(rna_spot_run);
+                rna_spot_run = setSensitive2(rna_spot_run);
                 lastkey = [];
             end
         elseif strcmp(lastkey, "precise")
             if ~senspe_set
                 if arg_debug; fprintf("Tuning Preset: Precise\n"); end
                 senspe_set = true;
-                rna_spot_run = setPrecise1(rna_spot_run);
+                rna_spot_run = setPrecise2(rna_spot_run);
                 lastkey = [];
             end
         end
@@ -253,8 +253,10 @@ for i = 1:nargin
                 rna_spot_run = setDefaultParams(rna_spot_run);
             elseif specval == 1
                 rna_spot_run = setSensitive1(rna_spot_run);
-            elseif specval >= 2
+            elseif specval == 2
                 rna_spot_run = setSensitive2(rna_spot_run);
+            elseif specval >= 3
+                rna_spot_run = setSensitive3(rna_spot_run);
             else
                 %Treated as 0
                 specval = 0;
@@ -267,8 +269,10 @@ for i = 1:nargin
                 rna_spot_run = setDefaultParams(rna_spot_run);
             elseif specval == 1
                 rna_spot_run = setPrecise1(rna_spot_run);
-            elseif specval >= 2
+            elseif specval == 2
                 rna_spot_run = setPrecise2(rna_spot_run);
+            elseif specval >= 3
+                rna_spot_run = setPrecise3(rna_spot_run);
             else
                 %Treated as 0
                 specval = 0;
@@ -369,21 +373,29 @@ function idims = parseDimsTo(dims_arg, trg_struct)
 end
 
 function spotsrun = setDefaultParams(spotsrun)
-    spotsrun = RNAThreshold.applyPreset(spotsrun, 3);
-end
-
-function spotsrun = setSensitive1(spotsrun)
     spotsrun = RNAThreshold.applyPreset(spotsrun, 4);
 end
 
-function spotsrun = setSensitive2(spotsrun)
+function spotsrun = setSensitive1(spotsrun)
     spotsrun = RNAThreshold.applyPreset(spotsrun, 5);
 end
 
+function spotsrun = setSensitive2(spotsrun)
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 6);
+end
+
+function spotsrun = setSensitive3(spotsrun)
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 7);
+end
+
 function spotsrun = setPrecise1(spotsrun)
-    spotsrun = RNAThreshold.applyPreset(spotsrun, 2);
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 3);
 end
 
 function spotsrun = setPrecise2(spotsrun)
+    spotsrun = RNAThreshold.applyPreset(spotsrun, 2);
+end
+
+function spotsrun = setPrecise3(spotsrun)
     spotsrun = RNAThreshold.applyPreset(spotsrun, 1);
 end

@@ -489,8 +489,13 @@ classdef AnalysisFiles
 
             if verbose; fprintf('>> Rethresholding with preset %d...\n', preset); end
             th_res = RNAThreshold.runWithPreset(spot_table, [], preset);
+            th_res.lowNoiseFlag = RNAThreshold.checkLowNoise(analysis.image_dims,spot_table);
             rstruct.threshold_details = th_res;
-            rstruct.threshold = th_res.threshold;
+            if th_res.lowNoiseFlag
+                rstruct.threshold = 1;
+            else
+                rstruct.threshold = th_res.threshold;
+            end
 
             thidx = 0;
             if th_res.threshold > 0
@@ -536,12 +541,17 @@ classdef AnalysisFiles
 
             if verbose; fprintf('>> Rethresholding with preset %d...\n', preset); end
             th_res = RNAThreshold.runWithPreset(spot_table, [], preset);
+            th_res.lowNoiseFlag = RNAThreshold.checkLowNoise(analysis.image_dims,spot_table);
             rstruct.threshold_details = th_res;
-            rstruct.threshold = th_res.threshold;
+            if th_res.lowNoiseFlag
+                rstruct.threshold = 1;
+            else
+                rstruct.threshold = th_res.threshold;
+            end
 
             thidx = 0;
             if th_res.threshold > 0
-                thidx = RNAUtils.findThresholdIndex(th_res.threshold, spot_table(:,1)');
+                thidx = RNAUtils.findThresholdIndex(rstruct.threshold, spot_table(:,1)');
             end
 
             if isfield(rstruct, 'performance_trimmed')

@@ -1,6 +1,11 @@
 %
 %%
 
+%Log Proj Modes:
+%   0 - No log projection
+%   1 - Apply log proj immediately
+%   2 - Apply log proj only for fitting
+
 classdef RNAThreshold
     
     methods (Static)
@@ -15,21 +20,23 @@ classdef RNAThreshold
             param_struct.suggestion = [0 0]; %Suggested thresh range from outside data
             param_struct.mad_factor_min = -1.0;
             param_struct.mad_factor_max = 1.0;
-            param_struct.spline_iterations = 3;
+            %param_struct.spline_iterations = 3;
             param_struct.verbosity = 0;
             param_struct.sample_spot_table = [];
             param_struct.control_spot_table = [];
             param_struct.test_data = false;
             param_struct.test_diff = false;
             param_struct.test_winsc = true;
-            param_struct.reweight_fit = true;
-            param_struct.fit_to_log = true;
-            param_struct.fit_strat = 'default';
+            %param_struct.reweight_fit = true;
+            %param_struct.fit_to_log = true;
+            %param_struct.fit_strat = 'default';
             param_struct.fit_ri_weight = 0.0;
             param_struct.madth_weight = 0.0;
             param_struct.fit_weight = 1.0;
             param_struct.std_factor = 0.0;
-            param_struct.min_log_diff = 0.15;
+            param_struct.log_proj_mode = 2;
+            %param_struct.min_log_diff = 0.15;
+            param_struct.struct_ver = 3;
         end
         
         %%
@@ -49,7 +56,9 @@ classdef RNAThreshold
             sub_struct.medth_std = 0;
             sub_struct.spline_okay = false;
             sub_struct.med_okay = false;
-            sub_struct.log_used_spline = false;
+            %sub_struct.log_used_spline = false;
+            sub_struct.med_on_log = false;
+            sub_struct.spline_on_log = false;
         end
         
         %%
@@ -60,27 +69,91 @@ classdef RNAThreshold
             res.suggestion = [0 0];
             res.mad_factor_min = -1.0;
             res.mad_factor_max = 1.5;
-            res.spline_iterations = 0;
+            %res.spline_iterations = 0;
             res.verbosity = 0;
             res.control_floor = 0;
             res.x = []; %x values (thresholds) n x 1 mtx
+            res.spot_counts = []; %Original y values for reference
             res.window_scores = []; %Win score plots. Rows are values, columns are window sizes
             res.window_scores_ctrl = [];
             res.threshold = 0; %Overall suggestion
             res.test_data = [];
             res.test_diff = [];
-            res.struct_ver = 3;
-            res.reweight_fit = true;
-            res.fit_to_log = true;
-            res.fit_strat = 'default';
+            res.struct_ver = 4;
+            %res.reweight_fit = true;
+            %res.fit_to_log = true;
+            %res.fit_strat = 'default';
             res.fit_ri_weight = 0.0;
             res.madth_weight = 0.0;
             res.fit_weight = 1.0;
             res.std_factor = 0.0;
-            res.min_log_diff = 0.5;
+            res.log_proj_mode = 2;
+            %res.min_log_diff = 0.5;
+            res.lowNoiseFlag = false;
             tres_struct = res;
         end
         
+        %%
+        function bool = checkLowNoise(idims, spot_table)
+            bool = false;
+            if isempty(idims); return; end
+            if isempty(spot_table); return; end
+
+            minth = spot_table(1,1);
+            if minth ~= 1; return; end
+            mincount = spot_table(1,2);
+            logcount = log10(mincount);
+
+            voxcount = idims.x;
+            voxcount = voxcount .* idims.y;
+            if isfield(idims, 'z')
+                voxcount = voxcount .* idims.z;
+            end
+            logvox = log10(voxcount);
+
+            difflog = logvox - logcount;
+            bool = difflog >= (logvox .* 0.5);
+        end
+
+        %%
+        function [xx, yy] = cleanLogPlot(in_xx, in_yy)
+            ysz = size(in_yy, 2);
+            xsz = size(in_xx, 2);
+            ysz_inv = size(in_yy, 1);
+            xsz_inv = size(in_xx, 1);
+
+            if ysz_inv > ysz
+                in_yy = in_yy';
+                ysz = ysz_inv;
+            end
+
+            if xsz_inv > xsz
+                in_xx = in_xx';
+                xsz = xsz_inv;
+            end
+            
+            xx = in_xx;
+            if xsz > ysz
+                xx = in_xx(1:ysz);
+            elseif xsz < ysz
+                in_yy = in_yy(1:xsz);
+            end
+
+            in_yy(~isfinite(in_yy)) = NaN;
+
+            in_yy = filloutliers(in_yy, 'linear');
+%             negclip = -1.0 * max(in_yy, [], 'all', 'omitnan');
+%             in_yy(in_yy < negclip) = negclip;
+            [~,midx] = max(in_yy, [], 'all', 'omitnan');
+
+            yy = fillgaps(in_yy, 50, 1);
+            yy = smooth(yy)';
+
+            ssz = size(yy, 2);
+            xx = xx(midx:ssz);
+            yy = yy(midx:ssz);
+        end
+
         %%
         function thresh_info = thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, min_points)
             thresh_info.spline_okay = true;
@@ -92,55 +165,13 @@ classdef RNAThreshold
             fitdata = data;
             point_count = size(data,1);
             
-            if thresh_info.log_used_spline
-                fitdata(:,2) = log10(fitdata(:,2));
-                
-                %Remove invalid values...
-                [okay_rows,~] = find(isfinite(fitdata(:,2)));
-                if ~isempty(okay_rows)
-                    keep_row_count = size(okay_rows,1);
-                    if keep_row_count < min_points
-                        thresh_info.spline_okay = false;
-                        return;
-                    end
-                else
-                    thresh_info.spline_okay = false;
-                    return;
-                end
-                
-                fitdata = fitdata(okay_rows,:);
-                [okay_rows,~] = find(fitdata(:,2) > -5); %Remove extremes
-                if ~isempty(okay_rows)
-                    keep_row_count = size(okay_rows,1);
-                    if keep_row_count < min_points
-                        thresh_info.spline_okay = false;
-                        return;
-                    end
-                else
-                    thresh_info.spline_okay = false;
-                    return;
-                end
-                
-                try
-                    fitdata = fitdata(okay_rows,:);
-                    
-                    local_count = size(fitdata,1);
-                    [~,maxidx] = max(fitdata(:,2),[],'omitnan');
-                    thresh_info.max_index = maxidx;
-                    fitdata = fitdata(maxidx:local_count,:);
-                    
-                    %Re-interpolate the removed values
-                    min_x = fitdata(1,1);
-                    max_x = fitdata(size(fitdata,1),1);
-                    xx = [min_x:1:max_x].';
-                    yy = pchip(fitdata(:,1), fitdata(:,2), xx);
-                    fitdata = NaN(size(xx,1),2);
-                    fitdata(:,1) = xx;
-                    fitdata(:,2) = yy;
-                catch ME
-                    thresh_info.spline_okay = false;
-                    return;
-                end
+            if (params.log_proj_mode == 2) & (thresh_info.spline_on_log)
+                 fitdata(:,2) = log10(fitdata(:,2));
+                 [xx, yy] = RNAThreshold.cleanLogPlot(fitdata(:,1), fitdata(:,2));
+                 newsize = size(yy,2);
+                 fitdata = NaN(newsize, 2);
+                 fitdata(:,1) = xx;
+                 fitdata(:,2) = yy;
             else
                 fitdata = data_trimmed;
                 [okay_rows,~] = find(isfinite(fitdata(:,2)));
@@ -161,16 +192,11 @@ classdef RNAThreshold
             if params.verbosity > 0
                 fprintf("Fitting two-piece linear spline...\n");
             end
-            %thresh_info.spline_fit = Seglr2.fitTo(data_trimmed, thresh_info.medth_min, thresh_info.medth_max, params.spline_iterations, verbosity);
-            if params.reweight_fit
-                bpstrat = 'weighted_avg';
-            else
-                bpstrat = 'segrsq';
-            end
+            bpstrat = 'segrsq';
             
             %Trycatch, try again as non log if tried log
             try
-                thresh_info.spline_fit = Seglr2.fitToSpotCurve(fitdata, thresh_info.medth_min, thresh_info.medth_max, params.verbosity, params.fit_strat, bpstrat, params.spline_iterations);
+                thresh_info.spline_fit = Seglr2.fitToSpotCurve(fitdata, thresh_info.medth_min, thresh_info.medth_max, params.verbosity, 'default', bpstrat, -1);
                 if ~isempty(thresh_info.spline_fit)
                     thresh_info.spline_knot_x = fitdata(thresh_info.spline_fit.break_index,1);
                     
@@ -197,7 +223,9 @@ classdef RNAThreshold
             thresh_info.median = median(data(:,2), 'omitnan');
             thresh_info.mad = mad(data(:,2),1);
             thresh_info.scan_value_threshold = thresh_info.median + (thresh_info.mad .* [params.mad_factor_min:0.25:params.mad_factor_max]);
-            thresh_info.log_used_spline = params.fit_to_log;
+            %thresh_info.log_used_spline = params.fit_to_log;
+            thresh_info.med_on_log = (params.log_proj_mode == 1);
+            thresh_info.spline_on_log = (params.log_proj_mode >= 1);
             
             %Trim everything before the initial peak
             point_count = size(data,1);
@@ -249,21 +277,19 @@ classdef RNAThreshold
             end
             
             %If user specified (spline itr > 0), fit spline
-            if params.spline_iterations > 0
-                thresh_info = RNAThreshold.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
-                
-                if params.fit_to_log
-                    if ~thresh_info.spline_okay
-                        thresh_info.log_used_spline = false;
-                        thresh_info = RNAThreshold.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
-                    end
-                end
-                
+            thresh_info = RNAThreshold.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
+
+            if params.log_proj_mode == 2
                 if ~thresh_info.spline_okay
-                    thresh_info.spline_fit = [];
-                    thresh_info.spline_knot_x = 0;
-                    thresh_info.spline_knot_y = 0;
+                    thresh_info.spline_on_log = false;
+                    thresh_info = RNAThreshold.thresholdTestCurveDoFit(data, data_trimmed, thresh_info, params, 5);
                 end
+            end
+
+            if ~thresh_info.spline_okay
+                thresh_info.spline_fit = [];
+                thresh_info.spline_knot_x = 0;
+                thresh_info.spline_knot_y = 0;
             end
             
         end
@@ -283,7 +309,9 @@ classdef RNAThreshold
             %Calculate window position shift.
             winshift = 0;
             if window_size < 1
-                window_size = 1;
+                %Proportion of total points
+                window_size = round(P_count * window_size);
+                if window_size < 3; window_size = 3; end
             elseif window_size > (P_count - 2)
                 window_size = (P_count - 2);
             end
@@ -343,16 +371,17 @@ classdef RNAThreshold
             %threshold_results.mad_factor = parameter_info.mad_factor;
             threshold_results.mad_factor_min = parameter_info.mad_factor_min;
             threshold_results.mad_factor_max = parameter_info.mad_factor_max;
-            threshold_results.spline_iterations = parameter_info.spline_iterations;
+            %threshold_results.spline_iterations = parameter_info.spline_iterations;
             threshold_results.verbosity = parameter_info.verbosity;
-            threshold_results.reweight_fit = parameter_info.reweight_fit;
-            threshold_results.fit_to_log = parameter_info.fit_to_log;
-            threshold_results.fit_strat = parameter_info.fit_strat;
+            %threshold_results.reweight_fit = parameter_info.reweight_fit;
+            %threshold_results.fit_to_log = parameter_info.fit_to_log;
+            %threshold_results.fit_strat = parameter_info.fit_strat;
             threshold_results.fit_ri_weight = parameter_info.fit_ri_weight;
             threshold_results.madth_weight = parameter_info.madth_weight;
             threshold_results.fit_weight = parameter_info.fit_weight;
             threshold_results.std_factor = parameter_info.std_factor;
-            threshold_results.min_log_diff = parameter_info.min_log_diff;
+            %threshold_results.min_log_diff = parameter_info.min_log_diff;
+            threshold_results.log_proj_mode = parameter_info.log_proj_mode;
             
             mweight = threshold_results.madth_weight;
             fweight = threshold_results.fit_weight;
@@ -360,12 +389,12 @@ classdef RNAThreshold
             if mweight < 0.0; mweight = 0.0; end
             if fweight < 0.0; fweight = 0.0; end
             if iweight < 0.0; iweight = 0.0; end
-            if strcmp(threshold_results.fit_strat, 'three_piece')
-                iweight = 0.0;
-            end
-            if threshold_results.spline_iterations < 1
-                fweight = 0.0; iweight = 0.0; mweight = 1.0;
-            end
+            %if strcmp(threshold_results.fit_strat, 'three_piece')
+            %    iweight = 0.0;
+            %end
+            %if threshold_results.spline_iterations < 1
+            %    fweight = 0.0; iweight = 0.0; mweight = 1.0;
+            %end
             wsum = mweight + fweight + iweight;
             if wsum ~= 1.0
                 if mweight == 0.0 & fweight == 0.0 & iweight == 0.0
@@ -382,8 +411,19 @@ classdef RNAThreshold
             
             %Start by calculating the diff
             spotcount_table = double(parameter_info.sample_spot_table);
-            threshold_results.x = spotcount_table(:,1);
-            deriv1 = diff(spotcount_table(:,2));
+            xx = spotcount_table(:,1);
+            yy = spotcount_table(:,2);
+            threshold_results.x = xx;
+            threshold_results.spot_counts = yy;
+
+            if parameter_info.log_proj_mode == 1
+                threshold_results.x_raw = xx;
+                yy = log10(yy);
+                [xx, yy] = RNAThreshold.cleanLogPlot(xx, yy);
+                threshold_results.x = xx';
+            end
+
+            deriv1 = diff(yy);
             deriv1 = smooth(deriv1);
             deriv1 = abs(deriv1);
             T_sample = size(spotcount_table,1);
@@ -392,14 +432,22 @@ classdef RNAThreshold
             %Repeat for control, if present
             ctrl_spotcount_table = double(parameter_info.control_spot_table);
             if ~isempty(ctrl_spotcount_table)
-                ctrlderiv = diff(ctrl_spotcount_table(:,2));
+                xx_c = ctrl_spotcount_table(:,1);
+                yy_c = ctrl_spotcount_table(:,2);
+
+                if parameter_info.log_proj_mode == 1
+                    yy_c = log10(yy_c);
+                    [xx_c, yy_c] = cleanLogPlot(xx_c, yy_c);
+                end
+
+                ctrlderiv = diff(yy_c);
                 ctrlderiv = smooth(ctrlderiv);
                 ctrlderiv = abs(ctrlderiv);
                 T_control = size(ctrl_spotcount_table,1);
                 P_control = T_control - 1;
             else
                 ctrlderiv = [];
-                T_control = 0;
+                %T_control = 0;
                 P_control = 0;
             end
        
@@ -408,7 +456,7 @@ classdef RNAThreshold
                 if parameter_info.verbosity > 0
                     fprintf("Finding noise floor...\n");
                 end
-                [~, cdmaxidx] = max(ctrlderiv(:,1), [], 'omitnan');
+                [~, cdmaxidx] = max(yy_c, [], 'omitnan');
                 cdtest = ctrlderiv(cdmaxidx:P_control,1);
                 
                 [findres, ~] = find(cdtest < 1,1);
@@ -416,7 +464,7 @@ classdef RNAThreshold
                     [findres, ~] = find(cdtest < 2,1);
                 end
                 if ~isempty(findres)
-                    threshold_results.control_floor = spotcount_table(findres+cdmaxidx,1);
+                    threshold_results.control_floor = xx_c(findres+cdmaxidx,1);
                 end
             end
             
@@ -443,7 +491,7 @@ classdef RNAThreshold
                         RNAThreshold.calculateWindowScores(ctrlderiv, wsz, threshold_results.window_pos);
                 end
             end
-           
+
             %Test the spot curve, the diff, and the win score curve (as
             %   wanted)
             %If window scores are not useful, we need to turn on curve and
@@ -495,19 +543,27 @@ classdef RNAThreshold
                 if parameter_info.verbosity > 0
                     fprintf("Testing sample spot curve...\n");
                 end
+
+                T = size(xx, 1);
+                test_table = NaN(T,2);
+                test_table(:,1) = xx;
+                test_table(:,2) = yy;
                 threshold_results.test_data = ...
-                    RNAThreshold.thresholdTestCurve(spotcount_table, RNAThreshold.genEmptyThresholdInfoStruct(), parameter_info);
+                    RNAThreshold.thresholdTestCurve(test_table, RNAThreshold.genEmptyThresholdInfoStruct(), parameter_info);
+                clear T test_table
             end
             
             if parameter_info.test_diff
                 if parameter_info.verbosity > 0
                     fprintf("Testing diff curve...\n");
                 end
+
                 diff_curve = NaN(P_sample,1);
-                diff_curve(:,1) = spotcount_table(1:P_sample,1);
+                diff_curve(:,1) = xx(1:P_sample);
                 diff_curve(:,2) = deriv1(:,1);
                 threshold_results.test_diff = ...
                     RNAThreshold.thresholdTestCurve(diff_curve, RNAThreshold.genEmptyThresholdInfoStruct(), parameter_info);
+                clear diff_curve
             end
             
             
@@ -621,6 +677,9 @@ classdef RNAThreshold
             else
                 [rnaspots_run, param_struct.control_spot_table, ~] = rnaspots_run.loadZTrimmedTables_Control();
             end
+
+            %Prescan to check for low noise...
+            lowNoiseFlag = RNAThreshold.checkLowNoise(rnaspots_run.dims.idims_sample, param_struct.sample_spot_table);
             
             param_struct.verbosity = verbosity;
             
@@ -637,9 +696,14 @@ classdef RNAThreshold
             end
 
             threshold_results = RNAThreshold.estimateThreshold(param_struct);
+            threshold_results.lowNoiseFlag = lowNoiseFlag;
         end
         
-        function threshold_results = runWithPreset(spot_count_table, ctrl_count_table, preset_index)
+        function threshold_results = runWithPreset(spot_count_table, ctrl_count_table, preset_index, intensity_range)
+            if nargin < 4
+                intensity_range = [];
+            end
+
             presets = RNAThreshold.loadPresets();
             if isempty(presets); return; end
             if preset_index < 1; return; end
@@ -653,31 +717,35 @@ classdef RNAThreshold
             win_min = preset_struct.ttune_winsz_min;
             win_max = preset_struct.ttune_winsz_max;
             win_incr = preset_struct.ttune_winsz_incr;
+            if ~isempty(intensity_range)
+                %TODO
+            end
             
             param_struct.window_sizes = [win_min:win_incr:win_max];
-            param_struct.reweight_fit = preset_struct.ttune_reweight_fit;
-            param_struct.fit_to_log = preset_struct.ttune_fit_to_log;
+            %param_struct.reweight_fit = preset_struct.ttune_reweight_fit;
+            %param_struct.fit_to_log = preset_struct.ttune_fit_to_log;
+            param_struct.log_proj_mode = preset_struct.ttune_log_mode;
             param_struct.madth_weight = preset_struct.ttune_thweight_med;
             param_struct.fit_weight = preset_struct.ttune_thweight_fit;
             param_struct.fit_ri_weight = preset_struct.ttune_thweight_fisect;
             param_struct.std_factor = preset_struct.ttune_std_factor;
-            param_struct.spline_iterations = preset_struct.ttune_spline_itr;
+            %param_struct.spline_iterations = preset_struct.ttune_spline_itr;
             param_struct.test_data = preset_struct.ttune_use_rawcurve;
             param_struct.test_diff = preset_struct.ttune_use_diffcurve;
             param_struct.mad_factor_min = preset_struct.ttune_madf_min;
             param_struct.mad_factor_max = preset_struct.ttune_madf_max;
             
-            if isempty(preset_struct.ttune_fit_strat) | (preset_struct.ttune_fit_strat == 0)
-                param_struct.fit_strat = 'default';
-            elseif preset_struct.ttune_fit_strat == 1
-                param_struct.fit_strat = 'slow';
-            elseif preset_struct.ttune_fit_strat == 2
-                param_struct.fit_strat = 'section_fit';
-            elseif preset_struct.ttune_fit_strat == 3
-                param_struct.fit_strat = 'three_piece';
-            else
-                param_struct.fit_strat = 'default';
-            end
+%             if isempty(preset_struct.ttune_fit_strat) | (preset_struct.ttune_fit_strat == 0)
+%                 param_struct.fit_strat = 'default';
+%             elseif preset_struct.ttune_fit_strat == 1
+%                 param_struct.fit_strat = 'slow';
+%             elseif preset_struct.ttune_fit_strat == 2
+%                 param_struct.fit_strat = 'section_fit';
+%             elseif preset_struct.ttune_fit_strat == 3
+%                 param_struct.fit_strat = 'three_piece';
+%             else
+%                 param_struct.fit_strat = 'default';
+%             end
             
             threshold_results = RNAThreshold.estimateThreshold(param_struct);
         end
@@ -755,17 +823,18 @@ classdef RNAThreshold
         	preset_struct.ttune_winsz_min = 3;
             preset_struct.ttune_winsz_max = 21;
             preset_struct.ttune_winsz_incr = 3;
-            preset_struct.ttune_reweight_fit = false;
-            preset_struct.ttune_fit_to_log = true;
+            %preset_struct.ttune_reweight_fit = false;
+            %preset_struct.ttune_fit_to_log = true;
             preset_struct.ttune_thweight_med = 0.0;
             preset_struct.ttune_thweight_fit = 1.0;
             preset_struct.ttune_thweight_fisect = 0.0;
             preset_struct.ttune_std_factor = 0.0;
-            preset_struct.ttune_spline_itr = 3;
+            %preset_struct.ttune_spline_itr = 3;
             preset_struct.ttune_use_rawcurve = false;
             preset_struct.ttune_use_diffcurve = false;
             preset_struct.ttune_madf_min = -1.0;
             preset_struct.ttune_madf_max = 1.0;
+            preset_struct.ttune_log_mode = 2;
         end
         
         function presets = loadPresets()
@@ -801,17 +870,18 @@ classdef RNAThreshold
             spotsrun.options.winsize_incr = wincr;
             spotsrun.th_params.window_sizes = [wmin:wincr:wmax];
 
-            spotsrun.th_params.reweight_fit = preset_struct.ttune_reweight_fit;
-            spotsrun.th_params.fit_to_log = preset_struct.ttune_fit_to_log;
+            %spotsrun.th_params.reweight_fit = preset_struct.ttune_reweight_fit;
+            %spotsrun.th_params.fit_to_log = preset_struct.ttune_fit_to_log;
             spotsrun.th_params.madth_weight = preset_struct.ttune_thweight_med;
             spotsrun.th_params.fit_weight = preset_struct.ttune_thweight_fit;
             spotsrun.th_params.fit_ri_weight = preset_struct.ttune_thweight_fisect;
             spotsrun.th_params.std_factor = preset_struct.ttune_std_factor;
-            spotsrun.th_params.spline_iterations = preset_struct.ttune_spline_itr;
+            %spotsrun.th_params.spline_iterations = preset_struct.ttune_spline_itr;
             spotsrun.th_params.test_data = preset_struct.ttune_use_rawcurve;
             spotsrun.th_params.test_diff = preset_struct.ttune_use_diffcurve;
             spotsrun.th_params.mad_factor_min = preset_struct.ttune_madf_min;
             spotsrun.th_params.mad_factor_max = preset_struct.ttune_madf_max;
+            spotsrun.th_params.log_proj_mode = preset_struct.ttune_log_mode;
         end
         
         %------------ Special Case ------------
@@ -986,6 +1056,18 @@ classdef RNAThreshold
         
         %------------ Plots ------------
 
+        function plotHandle = drawFitLineToCF(slope, yintr, xmin, xmax, xival, color, linestyle, linewidth)
+            if nargin < 5; xival = 1.0; end
+            if nargin < 6; color = [0 0 0]; end
+            if nargin < 7; linestyle = '-'; end
+            if nargin < 8; linewidth = 1.5; end
+
+            xx = [xmin:xival:xmax];
+            yy = (xx .* slope) + yintr;
+            
+            plotHandle = plot(xx, yy, 'Color', color, 'LineStyle', linestyle, 'LineWidth', linewidth);
+        end
+
         function [plot_handle, line_x] = draw_thres_plot(ax, data_x, data_y, curveres, include_madrange, color_base, color_dark, color_light, is_multi)
             %Plot curve
             point_count = size(data_y,1);
@@ -1052,8 +1134,8 @@ classdef RNAThreshold
             end
             
             curve_count = 0;
-            if rnaspots_run.th_params.test_data; curve_count = curve_count+1; end
-            if rnaspots_run.th_params.test_diff; curve_count = curve_count+1; end
+            if rnaspots_run.ttune_use_rawcurve; curve_count = curve_count+1; end
+            if rnaspots_run.ttune_use_diffcurve; curve_count = curve_count+1; end
             
             thres = rnaspots_run.threshold_results;
             if ~isempty(thres.window_sizes)
@@ -1116,7 +1198,7 @@ classdef RNAThreshold
             
             %Raw curve (if applicable)
             spots_table = [];
-            if rnaspots_run.th_params.test_data
+            if rnaspots_run.ttune_use_rawcurve
                 legend_names{1,c_idx} = 'Spot Count';
                 
                 %Plot curve
@@ -1130,7 +1212,7 @@ classdef RNAThreshold
                 c_idx = c_idx + 1;
             end
             
-            if rnaspots_run.th_params.test_diff
+            if rnaspots_run.ttune_use_diffcurve
                 legend_names{1,c_idx} = 'Smoothed Diff';
                 
                 %Plot curve
@@ -1199,8 +1281,8 @@ classdef RNAThreshold
             end
             
             curve_count = 0;
-            if rnaspots_run.th_params.test_data; curve_count = curve_count+1; end
-            if rnaspots_run.th_params.test_diff; curve_count = curve_count+1; end
+            if rnaspots_run.ttune_use_rawcurve; curve_count = curve_count+1; end
+            if rnaspots_run.ttune_use_diffcurve; curve_count = curve_count+1; end
             
             thres = rnaspots_run.threshold_results;
             if ~isempty(thres.window_sizes)
@@ -1219,7 +1301,7 @@ classdef RNAThreshold
             color_light = [0.500, 0.500, 0.500];
             
             spots_table = [];
-            if rnaspots_run.th_params.test_data
+            if rnaspots_run.ttune_use_rawcurve
                 fig_handles(1,c_idx) = figure(figno);
                 clf;
                 ax = axes;  
@@ -1239,7 +1321,7 @@ classdef RNAThreshold
                 figno = figno+1;
             end
             
-            if rnaspots_run.th_params.test_diff
+            if rnaspots_run.ttune_use_diffcurve
                 fig_handles(1,c_idx) = figure(figno);
                 clf;
                 ax = axes;
@@ -1294,6 +1376,152 @@ classdef RNAThreshold
             
         end
         
+        function resultPlotIndivToCF(xx, yy, test_struct, fit_to_log)
+
+            COLOR = [0,0,0];
+            LINE_WIDTH = 2;
+            LINE_STYLE = '-';
+
+            REC_COLOR = [0.8 0.8 0.8];
+            FIT_COLOR = [0.5 0.5 0.5];
+
+            yy = double(yy); %Just in case
+            if fit_to_log
+                yy = log10(yy);
+                [xx, yy] = RNAThreshold.cleanLogPlot(xx, yy);
+            end
+            ymax = max(yy, [], 'all', 'omitnan');
+            ymin = min(yy, [], 'all', 'omitnan');
+
+            hold on;
+            if ~isempty(test_struct)
+                %Draw stdev range.
+                mmin = test_struct.medth_avg - test_struct.medth_std;
+                mmax = test_struct.medth_avg + test_struct.medth_std;
+
+                rectangle('Position', [mmin ymin mmax - mmin ymax-ymin],...
+                'FaceColor', REC_COLOR, 'LineStyle', 'none');
+                clear mmin mmax
+            end
+
+            plot(xx, yy, 'Color', COLOR, 'LineWidth', LINE_WIDTH, 'LineStyle', LINE_STYLE);
+
+            if ~isempty(test_struct)
+                %Two piece...
+                if ~isempty(test_struct.spline_fit)
+                    slope = test_struct.spline_fit.left.slope;
+                    yintr = test_struct.spline_fit.left.yintr;
+                    RNAThreshold.drawFitLineToCF(slope, yintr, 0, test_struct.spline_knot_x, 1, FIT_COLOR, '--', 1);
+
+                    xmax = max(xx, [], 'all', 'omitnan');
+                    slope = test_struct.spline_fit.right.slope;
+                    yintr = test_struct.spline_fit.right.yintr;
+                    RNAThreshold.drawFitLineToCF(slope, yintr, test_struct.spline_knot_x, xmax, 1, FIT_COLOR, '--', 1);
+                    clear xmax slope yintr
+                end
+                
+                %Med th extremes
+                xline(test_struct.medth_min, 'LineStyle', ':', 'LineWidth', 1.5);
+                xline(test_struct.medth_max, 'LineStyle', ':', 'LineWidth', 1.5);
+            end
+
+            ymax = max(yy, [], 'all', 'omitnan');
+            ymin = min(0, min(yy, [], 'all', 'omitnan'));
+            xmax = max(xx, [], 'all', 'omitnan');
+            ylim([ymin ymax]);
+            xlim([0 xmax]);
+
+        end
+
+        function fig_handle = resultPlotsFacet(thres, spot_table)
+
+            if nargin < 2; spot_table = []; end
+
+            if isempty(thres)
+                fig_handle = [];
+                return;
+            end
+
+            fig_handle = figure(216);
+
+            %Count plots so know how many rows grid should be.
+            plotcount = 2;
+            if ~isempty(thres.window_sizes)
+                plotcount = plotcount + size(thres.window_sizes, 2);
+            end
+            if ~isempty(thres.test_data) | ~isempty(spot_table)
+                plotcount = plotcount + 1;
+            end
+            if ~isempty(thres.test_diff) | ~isempty(spot_table)
+                plotcount = plotcount + 1;
+            end
+
+            if plotcount < 5
+                colcount = plotcount;
+                rowcount = 1;
+            else
+                colcount = 5;
+                rowcount = ceil(plotcount / 5);
+            end
+
+            subpos = 1;
+            if ~isempty(thres.test_data) | ~isempty(spot_table)
+                subplot(rowcount, colcount, subpos);
+                hold on;
+                if ~isempty(spot_table)
+                    xx = spot_table(:,1)';
+                    yy = spot_table(:,2)';
+                    %RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_data, thres.fit_to_log);
+                    RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_data, false);
+                    clear xx yy
+                end
+
+                title('Spot Count');
+                subpos = subpos + 1;
+            end
+
+            if ~isempty(thres.test_diff) | ~isempty(spot_table)
+                subplot(rowcount, colcount, subpos);
+                hold on;
+                if ~isempty(spot_table)
+                    xx = spot_table(:,1)';
+                    yy = abs(diff(spot_table(:,2)'));
+                    xx = xx(1:(size(xx,2)-1));
+                    RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_diff, thres.fit_to_log);
+                    clear xx yy
+                end
+
+                title('delta(Spot Count)');
+                subpos = subpos + 1;
+            end
+
+            if ~isempty(thres.test_winsc)
+                wincount = size(thres.test_winsc, 2);
+                for i = 1:wincount
+                    subplot(rowcount, colcount, subpos);
+                    hold on;
+                    windat = thres.window_scores(:,i)';
+                    if ~isempty(windat)
+                        xx = thres.x';
+
+                        %Trim xx
+                        xsz = size(xx, 2);
+                        ysz = size(windat, 2);
+                        if xsz > ysz
+                            xx = xx(1:ysz);
+                        end
+
+                        RNAThreshold.resultPlotIndivToCF(xx, windat, thres.test_winsc(i), thres.fit_to_log);
+                        clear xx
+                    end
+
+                    title(['Window Size = ' num2str(thres.window_sizes(i))]);
+                    subpos = subpos + 1;
+                end
+            end
+
+        end
+
         function rec = drawVerticalBox(ax, x_min, x_max, color, label, label_color)
             %Should go under plot since I'm not sure how to change alpha.
             %get(ax,'YLim')
@@ -1410,7 +1638,52 @@ classdef RNAThreshold
             xlabel('Threshold');
             ylabel(y_lbl);
         end
-        
+
+        %------------ Experimental ------------
+
+        function plotfft(yy, fs, ndivs)
+            ssz = size(yy, 2);
+            divsize = floor(ssz/ndivs);
+
+            if ndivs < 4
+                colcount = ndivs;
+                rowcount = 1;
+            else
+                colcount = 4;
+                rowcount = ceil(ndivs / 4);
+            end
+
+            figure(1805);
+            clf;
+            st = 1;
+            ed = divsize;
+            for d = 1:ndivs
+                subplot(rowcount, colcount, d);
+                hold on;
+                
+                div2 = floor(divsize/2);
+                fnorm = abs(fft(yy(st:ed))/divsize);
+                fnorm = fnorm(1:(div2)+1);
+                fnorm(2:end-1) = 2 * fnorm(2:end-1);
+                f = fs*(0:div2)/divsize;
+
+                cs = cumsum(fnorm);
+                pctl = prctile(fnorm, [50 75 80 90 99]);
+
+                plot(f, fnorm);
+                title([num2str(st) ' - ' num2str(ed)]);
+
+                for j = 1:size(pctl, 2)
+                    xline(pctl(j));
+                end
+
+                st = st + divsize;
+                ed = ed + divsize;
+                %ylim([0 1]);
+            end
+        end
+
+
     end
     
 end
