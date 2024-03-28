@@ -181,15 +181,52 @@ classdef RNADetection
         end
 
         %%
-        function [img_filtered, calls, minVal, maxVal] = testThreshold_maxZ(in_img, threshold)
+        function common_ctx = testThreshold_maxZ(common_ctx)
+            %Z slices outside trim have already been blacked out, so don't
+            %need to worry about those.
 
             %Prepare slice
-            max_proj = max(double(in_img),[],3); % A 2D projection of the brightest pixels in each Z column
+            max_proj = max(double(common_ctx.img_filter),[],3); % A 2D projection of the brightest pixels in each Z column
             p_std = std2(max_proj);
 
-            %Run slice
-            [img_filtered, calls, minVal, maxVal] = RNADetection.testThreshold_slice(max_proj, threshold, p_std);
+            T = size(common_ctx.th_list, 2);
+            for c = 1:T
+                th = common_ctx.th_list(1,c);
+                if common_ctx.verbose
+                    fprintf("Testing threshold %d...\n", th);
+                    tic;
+                end
 
+                %Run 2D
+                [img_filtered, calls, ~, ~] = RNADetection.testThreshold_slice(max_proj, th, p_std);
+
+                %Spot count
+                if ~isempty(calls)
+                    spot_count = size(calls,1);
+                    common_ctx.spot_table(c,2) = spot_count;
+                    %Save coordinates
+                    if isempty(common_ctx.temp_calls)
+                        %Alloc and copy
+                        common_ctx.temp_calls = zeros(spot_count, 2);
+                        common_ctx.temp_calls(:,1) = calls(:);
+                    end
+                    %Update max ths
+                    matches = ismember(common_ctx.temp_calls(:,1), calls);
+                    common_ctx.temp_calls(matches,2) = th;
+                else
+                    common_ctx.spot_table(c,2) = 0;
+                end
+
+                if common_ctx.save_filtered
+                    savepath = sprintf("%s%s%s", common_ctx.save_stem, '_t', num2str(c));
+                    f_img = img_filtered;
+                    save(savepath, 'f_img');
+                    clear f_img
+                end
+                if common_ctx.verbose
+                    toc;
+                end
+            end
         end
 
         %%
@@ -429,10 +466,12 @@ classdef RNADetection
             %Save the basics
             Z = size(common_ctx.img_filter, 3);
             T = size(common_ctx.th_list, 2);
-            minZ = common_ctx.zBorder+1;
-            maxZ = Z-common_ctx.zBorder;
-            common_ctx.minZ = minZ;
-            common_ctx.maxZ = maxZ;
+%             minZ = common_ctx.zBorder+1;
+%             maxZ = Z-common_ctx.zBorder;
+%             common_ctx.minZ = minZ;
+%             common_ctx.maxZ = maxZ;
+            minZ = common_ctx.zmin;
+            maxZ = common_ctx.zmax;
 
             %Pre-allocate some vars we gonna use later...
             common_ctx.plane_avgs = NaN(1,Z);
@@ -456,41 +495,7 @@ classdef RNADetection
                 if common_ctx.verbose
                     fprintf("Running on max projection!\n");
                 end
-                %Use only the max projection slice for spot detection
-                for c = 1:T
-                    th = common_ctx.th_list(1,c);
-                    if common_ctx.verbose
-                        fprintf("Testing threshold %d...\n", th);
-                        tic;
-                    end
-
-                    %Spot detect
-                    [f_img, calls, ~, ~] = RNADetection.testThreshold_maxZ(common_ctx.img_filter, th);
-                    %Spot count
-                    if ~isempty(calls)
-                        spot_count = size(calls,1);
-                        common_ctx.spot_table(c,2) = spot_count;
-                        %Save coordinates
-                        if isempty(common_ctx.temp_calls)
-                            %Alloc and copy
-                            common_ctx.temp_calls = zeros(spot_count, 2);
-                            common_ctx.temp_calls(:,1) = calls(:);
-                        end
-                        %Update max ths
-                        matches = ismember(common_ctx.temp_calls(:,1), calls);
-                        common_ctx.temp_calls(matches,2) = th;
-                    else
-                        common_ctx.spot_table(c,2) = 0;
-                    end
-
-                    if common_ctx.save_filtered
-                        savepath = sprintf("%s%s%s", common_ctx.save_stem, '_t', num2str(c));
-                        save(savepath, 'f_img');
-                    end
-                    if common_ctx.verbose
-                        toc;
-                    end
-                end
+                common_ctx = RNADetection.testThreshold_maxZ(common_ctx);
             else
                 if strcmp(common_ctx.th_strategy, 'max_avg')
                     %Use only the slice w/ highest avg intensity for spot detection

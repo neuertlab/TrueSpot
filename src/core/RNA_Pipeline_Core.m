@@ -153,6 +153,22 @@ if runme
             spotsrun.dims.idims_sample.z = 1;
         end
     end
+
+    %Resolve z range
+    if spotsrun.dims.z_min < 1
+        if spotsrun.dims.ztrim > 1
+            spotsrun.dims.z_min = spotsrun.dims.ztrim + 1;
+        else
+            spotsrun.dims.z_min = 1;
+        end
+    end
+    if spotsrun.dims.z_max < 1
+        if spotsrun.dims.ztrim > 1
+            spotsrun.dims.z_max = spotsrun.dims.idims_sample.z - spotsrun.dims.ztrim;
+        else
+            spotsrun.dims.z_max = spotsrun.dims.idims_sample.z;
+        end
+    end
     
     spotdec = RNA_Threshold_SpotDetector;
     [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, sample_outstem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad, spotsrun.options.save_maxproj);
@@ -187,9 +203,14 @@ if runme
         RNA_Fisher_State.outputMessageLineStatic('Pre-processing complete. Now continuing to detection...', true);
     end
 
-    [auto_zt, call_table] = spotdec.run_spot_detection_main(img_f, sample_outstem, strat, spotsrun.options.t_min, spotsrun.options.t_max, spotsrun.dims.ztrim, (debug_lvl > 0), thread_request);
-    spotsrun.dims.ztrim_auto = auto_zt;
+    %[auto_zt, call_table] = spotdec.run_spot_detection_main(img_f, sample_outstem, strat, spotsrun.options.t_min, spotsrun.options.t_max, spotsrun.dims.ztrim, (debug_lvl > 0), thread_request);
+    %spotsrun.dims.ztrim_auto = auto_zt;
     %spotsrun.t_min = new_th_min;
+    [spotsrun.dims.z_min, spotsrun.dims.z_max, call_table] = ...
+        spotdec.run_spot_detection_main(img_f, sample_outstem, strat, ...
+        spotsrun.options.t_min, spotsrun.options.t_max, ...
+        spotsrun.dims.z_min, spotsrun.dims.z_max,...
+        (debug_lvl > 0), thread_request);
     if ~isempty(call_table)
         if ~bPreloaded
             load(chdat_path, 'sample_rna_ch');
@@ -257,7 +278,12 @@ if ~isempty(spotsrun.paths.ctrl_img_path)
             
             spotdec = RNA_Threshold_SpotDetector;
             [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, ctrl_stem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad, spotsrun.options.save_maxproj);
-            [~, call_table] = spotdec.run_spot_detection_main(ctrl_f, ctrl_stem, strat, spotsrun.options.t_min, spotsrun.options.t_max, spotsrun.dims.ztrim, (debug_lvl > 0), thread_request);
+            %[~, call_table] = spotdec.run_spot_detection_main(ctrl_f, ctrl_stem, strat, spotsrun.options.t_min, spotsrun.options.t_max, spotsrun.dims.ztrim, (debug_lvl > 0), thread_request);
+            [spotsrun.dims.z_min_ctrl, spotsrun.dims.z_max_ctrl, call_table] = ...
+                spotdec.run_spot_detection_main(ctrl_f, ctrl_stem, strat, ...
+                spotsrun.options.t_min, spotsrun.options.t_max, ...
+                spotsrun.dims.z_min, spotsrun.dims.z_max,...
+                (debug_lvl > 0), thread_request);
             if ~isempty(call_table)
                 call_table{:, 'intensity'} = ctrl_image_channel(call_table{:, 'coord_1d'});
                 RNASpotsRun.saveCallTable(call_table, ctrl_stem);

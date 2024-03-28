@@ -124,14 +124,17 @@ classdef RNA_Threshold_SpotDetector
         end
         
         %%
-        function [auto_ztrim, call_table] = run_spot_detection_main(IMG_filtered, save_stem, strategy, th_min, th_max, ztrim, verbose, thread_request)
+        function [auto_zmin, auto_zmax, call_table] = run_spot_detection_main(IMG_filtered, save_stem, strategy, th_min, th_max, zmin, zmax, verbose, thread_request)
             if nargin < 6
-                ztrim = 0;
+                zmin = 1;
             end
             if nargin < 7
-                verbose = true;
+                zmax = size(IMG_filtered, 3);
             end
             if nargin < 8
+                verbose = true;
+            end
+            if nargin < 9
                 thread_request = 1;
             end
 
@@ -139,10 +142,25 @@ classdef RNA_Threshold_SpotDetector
             th_step = 1;
             thh = th_min:th_step:th_max;
 
-            auto_ztrim = ztrim;
+            %Z range
+            Z = size(IMG_filtered, 3);
+            if zmax > Z
+                auto_zmax = Z;
+            else
+                auto_zmax = zmax;
+            end
+
+            if zmin < 1
+                auto_zmin = 1;
+            else
+                auto_zmin = zmin;
+            end
+
             detect_ctx = RNADetection.generateThreshContextStruct(IMG_filtered);
             detect_ctx.th_list = thh;
-            detect_ctx.zBorder = ztrim;
+            %detect_ctx.zBorder = ztrim;
+            detect_ctx.zmin = auto_zmin;
+            detect_ctx.zmax = auto_zmax;
             detect_ctx.save_stem = save_stem;
             detect_ctx.th_strategy = strategy;
             detect_ctx.verbose = verbose;
