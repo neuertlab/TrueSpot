@@ -156,14 +156,14 @@ if runme
 
     %Resolve z range
     if spotsrun.dims.z_min < 1
-        if spotsrun.dims.ztrim > 1
+        if spotsrun.dims.ztrim > 0
             spotsrun.dims.z_min = spotsrun.dims.ztrim + 1;
         else
             spotsrun.dims.z_min = 1;
         end
     end
     if spotsrun.dims.z_max < 1
-        if spotsrun.dims.ztrim > 1
+        if spotsrun.dims.ztrim > 0
             spotsrun.dims.z_max = spotsrun.dims.idims_sample.z - spotsrun.dims.ztrim;
         else
             spotsrun.dims.z_max = spotsrun.dims.idims_sample.z;
