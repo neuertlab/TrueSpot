@@ -5,6 +5,7 @@ classdef RNACoords
 
 methods (Static)
 
+    %%
     function call_table = convertOldCoordTable(spot_table, coord_table_old, image_filtered, image_raw, fit_incl)
         if isempty(coord_table_old)
             call_table = table.empty();
@@ -61,6 +62,7 @@ methods (Static)
         end
     end
 
+    %%
     function app_table = genAppendableTable(og_call_table, alloc)
         if isempty(og_call_table)
             app_table = table.empty();
@@ -73,42 +75,19 @@ methods (Static)
         table_size = [alloc size(varNames,2)];
         app_table = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
 
-        app_table{:,'isnap_x'} = 0;
-        app_table{:,'isnap_y'} = 0;
-        app_table{:,'isnap_z'} = 0;
-        app_table{:,'cell'} = 0;
-        app_table{:,'coord_1d'} = 0;
-
-        app_table{:,'intensity_f'} = NaN;
-        app_table{:,'intensity'} = NaN;
-        app_table{:,'dropout_thresh'} = NaN;
-        app_table{:,'xdist_ref'} = NaN;
-        app_table{:,'ydist_ref'} = NaN;
-        app_table{:,'zdist_ref'} = NaN;
-        app_table{:,'xydist_ref'} = NaN;
-        app_table{:,'xyzdist_ref'} = NaN;
-        app_table{:,'is_true'} = false;
-        app_table{:,'is_trimmed_out'} = false;
-        app_table{:,'in_truth_region'} = false;
-
-        if ismember(varNames, 'fit_x')
-            app_table{:,'fit_x'} = NaN;
-            app_table{:,'fit_y'} = NaN;
-            app_table{:,'fit_z'} = NaN;
-            app_table{:,'fit_intensity'} = NaN;
-        end
-
-        if ismember(varNames, 'xFWHM')
-            app_table{:,'xFWHM'} = NaN;
-            app_table{:,'yFWHM'} = NaN;
-            app_table{:,'fit_total_intensity'} = NaN;
-        end
-
-        if ismember(varNames, 'zfitq')
-            app_table{:,'zfitq'} = NaN;
+        fieldCount = size(varTypes, 2);
+        for i = 1:fieldCount
+            fieldType = varTypes{i};
+            if strcmp(fieldType, 'single') | strcmp(fieldType, 'double')
+                app_table{:, i} = NaN;
+            end
+            if strcmp(fieldType, 'logical')
+                app_table{:, i} = false;
+            end
         end
     end
-
+    
+    %%
     function call_table = genNewCoordTable(alloc, fit_incl)
         if nargin < 2
             fit_incl = 0;
@@ -167,6 +146,7 @@ methods (Static)
         call_table{:,'in_truth_region'} = false;
     end
 
+    %%
     function call_table = extendHBOutputCallTable(og_call_table)
         if isempty(og_call_table)
             call_table = table.empty();
@@ -185,6 +165,7 @@ methods (Static)
         call_table{:,'dropout_thresh'} = og_call_table{:,'dropout_thresh'};
     end
 
+    %%
     function cand_table = findMatchCandidates(callmtx, ref_set, snaprad_3, snaprad_z)
         BLOCK_SIZE = 1024;
         rcount = size(callmtx, 1);
@@ -265,6 +246,80 @@ methods (Static)
         cand_table = sortrows(cand_table);
     end
 
+    %%
+    function cand_table = findMatchCandidates2D(callmtx, ref_set, snaprad)
+        BLOCK_SIZE = 1024;
+        rcount = size(callmtx, 1);
+        ccount = size(ref_set, 1);
+        R = ceil(rcount/BLOCK_SIZE);
+        C = ceil(ccount/BLOCK_SIZE);
+
+        alloc = ceil(rcount * ccount * 0.001);
+        combo_table = single(NaN(alloc,3)); %dist row col
+        table_pos = 1;
+
+        %Go through blocks to get combo candidates
+        rr = 1;
+        for rb = 1:R
+            cc = 1;
+            r_end = rr + BLOCK_SIZE - 1;
+            if r_end > rcount
+                r_end = rcount;
+            end
+        
+            tempmtx_rx = single(repmat(callmtx(rr:r_end,1), [1 BLOCK_SIZE]));
+            tempmtx_ry = single(repmat(callmtx(rr:r_end,2), [1 BLOCK_SIZE]));
+            rb_size = r_end - rr + 1;
+            for cb = 1:C
+                c_end = cc + BLOCK_SIZE - 1;
+                %cb_size = BLOCK_SIZE;
+                if c_end > ccount
+                    c_end = ccount;
+                    cb_size = c_end - cc + 1;
+                    tempmtx_rx = single(repmat(callmtx(rr:r_end,1), [1 cb_size]));
+                    tempmtx_ry = single(repmat(callmtx(rr:r_end,2), [1 cb_size]));
+                end
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,1).', [rb_size 1]));
+                xdist = tempmtx_rx - tempmtx_cols;
+
+                tempmtx_cols = single(repmat(ref_set(cc:c_end,2).', [rb_size 1]));
+                ydist = tempmtx_ry - tempmtx_cols;
+
+                dist2 = sqrt((xdist.^2) + (ydist.^2));
+                clear xdist;
+                clear ydist;
+
+                %Eliminate any combos above radius thresholds
+                dist2(dist2 > snaprad) = NaN;
+
+                %Save remaining combos to the table.
+                okayidx = find(~isnan(dist2));
+                if ~isempty(okayidx)
+                    if size(okayidx,2) > size(okayidx,1)
+                        okayidx = transpose(okayidx);
+                    end
+
+                    matchcount = size(okayidx,1);
+                    tbl_start = table_pos;
+                    tbl_end = table_pos + matchcount - 1;
+                    combo_table(tbl_start:tbl_end, 1) = dist2(okayidx);
+                    [cand_rows, cand_cols] = ind2sub(size(dist2), okayidx);
+                    combo_table(tbl_start:tbl_end, 2) = cand_rows + rr - 1;
+                    combo_table(tbl_start:tbl_end, 3) = cand_cols + cc - 1;
+                    table_pos = tbl_end + 1;
+                end
+
+                cc = c_end + 1;
+            end
+            rr = r_end + 1;
+        end
+        clear tempmtx_rx tempmtx_ry dist2
+
+        cand_table = combo_table(1:table_pos-1,:);
+        cand_table = sortrows(cand_table);
+    end
+
+    %%
     function ref_assign = matchALotOfSpots(callmtx, ref_set, snaprad_3, snaprad_z)
 
         ccount = size(ref_set, 1);
@@ -300,6 +355,43 @@ methods (Static)
         end
     end
 
+    %%
+    function ref_assign = matchALotOfSpots2D(callmtx, ref_set, snaprad)
+
+        ccount = size(ref_set, 1);
+        combo_table = RNACoords.findMatchCandidates2D(callmtx, ref_set, snaprad);
+
+        %Go through combos
+        ref_assign = uint32(zeros(1,ccount));
+        table_end = size(combo_table,1);
+        table_pos = 1;
+        while(table_pos <= table_end)
+            if isnan(combo_table(table_pos,1))
+                table_pos = table_pos + 1;
+                continue;
+            end
+
+            my_row = combo_table(table_pos,2);
+            my_col = combo_table(table_pos,3);
+            ref_assign(my_col) = my_row;
+            table_pos = table_pos + 1;
+
+            %Nan out other candidates from this row and col
+            outidxs = find(combo_table(table_pos:table_end, 2) == my_row) + table_pos - 1; 
+            combo_table(outidxs, :) = NaN;
+
+            outidxs = find(combo_table(table_pos:table_end, 3) == my_col) + table_pos - 1; 
+            combo_table(outidxs, :) = NaN;
+
+            %Cull nans from end
+            table_end = find(~isnan(combo_table(table_pos:table_end, 1)), 1, 'last') + table_pos - 1;
+            if isempty(table_end)
+                break;
+            end
+        end
+    end
+
+    %%
     function ref_assign =  matchSpots(call_table, ref_set, snaprad_3, snaprad_z, snap_minth)
 
         %Convert callxyz to a matrix
@@ -357,6 +449,57 @@ methods (Static)
 
     end
 
+    %%
+    function ref_assign =  matchSpots2D(call_table, ref_set, snaprad, snap_minth)
+
+        %Convert callxyz to a matrix
+        ref_spots = size(ref_set,1);
+        call_spots = size(call_table,1);
+        callmtx = single(zeros(call_spots,3));
+        callmtx(:,1) = single(call_table{:,'isnap_x'});
+        callmtx(:,2) = single(call_table{:,'isnap_y'});
+
+        %NaN out any rows where dropout th is below minimum
+        dropth = call_table{:,'dropout_thresh'};
+        callmtx(dropth < snap_minth, :) = NaN;
+
+        %If the tables are huge, shunt to matchALotOfSpots
+        if (call_spots > 1024) | (ref_spots > 1024)
+            ref_assign = RNACoords.matchALotOfSpots2D(callmtx, ref_set, snaprad);
+            clear callmtx;
+            return;
+        end
+
+        tempmtx_r = single(repmat(ref_set(:,1).', [call_spots 1]));
+        tempmtx_c = single(repmat(callmtx(:,1), [1 ref_spots]));
+        xdist = tempmtx_r - tempmtx_c;
+
+        tempmtx_r = single(repmat(ref_set(:,2).', [call_spots 1]));
+        tempmtx_c = single(repmat(callmtx(:,2), [1 ref_spots]));
+        ydist = tempmtx_r - tempmtx_c;
+        clear tempmtx_r tempmtx_c
+
+        dist2 = sqrt((xdist.^2) + (ydist.^2));
+        clear xdist;
+        clear ydist;
+
+        %Eliminate any combos above radius thresholds
+        dist2(dist2 > snaprad) = NaN;
+
+        %Try to make matches
+        ref_assign = uint32(zeros(1,ref_spots)); %Index of call spot assigned to ref spot
+        while nnz(~isnan(dist2)) > 0
+            [~, minidx] = min(dist2, [], 'all', 'omitnan');
+            [r, c] = ind2sub([call_spots ref_spots], minidx);
+            dist2(:,c) = NaN;
+            dist2(r,:) = NaN;
+            ref_assign(c) = r;
+        end
+        clear dist2;
+
+    end
+
+    %%
     function [call_table, ref_assign] = updateTFCalls(call_table, ref_set, snaprad_3, snaprad_z, snap_minth)
         if nargin < 3
             snaprad_3 = 4;
@@ -379,21 +522,21 @@ methods (Static)
             call_table{cidxs,'is_true'} = true;
 
             %Record distances from match
-            temparr = double(table2array(call_table(cidxs, 'isnap_x')));
+            temparr = double(call_table{cidxs, 'isnap_x'});
             xdist = abs(double(ref_set(fidxs,1)) - temparr);
-            temparr = double(table2array(call_table(cidxs, 'isnap_y')));
+            temparr = double(call_table{cidxs, 'isnap_y'});
             ydist = abs(double(ref_set(fidxs,2)) - temparr);
-            temparr = double(table2array(call_table(cidxs, 'isnap_z')));
+            temparr = double(call_table{cidxs, 'isnap_z'});
             zdist = abs(double(ref_set(fidxs,3)) - temparr);
 
             xydist = sqrt((xdist .^ 2) + (ydist .^ 2));
             xyzdist = sqrt((xdist .^ 2) + (ydist .^ 2) + (zdist .^ 2));
 
-            call_table(cidxs, 'xdist_ref') = array2table(single(xdist));
-            call_table(cidxs, 'ydist_ref') = array2table(single(ydist));
-            call_table(cidxs, 'zdist_ref') = array2table(single(zdist));
-            call_table(cidxs, 'xydist_ref') = array2table(single(xydist));
-            call_table(cidxs, 'xyzdist_ref') = array2table(single(xyzdist));
+            call_table{cidxs, 'xdist_ref'} = single(xdist);
+            call_table{cidxs, 'ydist_ref'} = single(ydist);
+            call_table{cidxs, 'zdist_ref'} = single(zdist);
+            call_table{cidxs, 'xydist_ref'} = single(xydist);
+            call_table{cidxs, 'xyzdist_ref'} = single(xyzdist);
 
             clear xdist ydist zdist xydist xyzdist temparr
         end
@@ -408,9 +551,9 @@ methods (Static)
             x_round = double(round(ref_set(ridxs,1)));
             y_round = double(round(ref_set(ridxs,2)));
             z_round = double(round(ref_set(ridxs,3)));
-            tblappend(:,'isnap_x') = array2table(uint16(x_round));
-            tblappend(:,'isnap_y') = array2table(uint16(y_round));
-            tblappend(:,'isnap_z') = array2table(uint16(z_round));
+            tblappend{:,'isnap_x'} = uint16(x_round);
+            tblappend{:,'isnap_y'} = uint16(y_round);
+            tblappend{:,'isnap_z'} = uint16(z_round);
             tblappend{:,'dropout_thresh'} = 0;
             tblappend{:,'is_true'} = true;
 
@@ -421,17 +564,79 @@ methods (Static)
             xydist = sqrt((xdist .^ 2) + (ydist .^ 2));
             xyzdist = sqrt((xdist .^ 2) + (ydist .^ 2) + (zdist .^ 2));
 
-            tblappend(:, 'xdist_ref') = array2table(single(xdist));
-            tblappend(:, 'ydist_ref') = array2table(single(ydist));
-            tblappend(:, 'zdist_ref') = array2table(single(zdist));
-            tblappend(:, 'xydist_ref') = array2table(single(xydist));
-            tblappend(:, 'xyzdist_ref') = array2table(single(xyzdist));
+            tblappend{cidxs, 'xdist_ref'} = single(xdist);
+            tblappend{cidxs, 'ydist_ref'} = single(ydist);
+            tblappend{cidxs, 'zdist_ref'} = single(zdist);
+            tblappend{cidxs, 'xydist_ref'} = single(xydist);
+            tblappend{cidxs, 'xyzdist_ref'} = single(xyzdist);
 
             call_table = [call_table;tblappend];
         end
 
     end
 
+    %%
+    function [call_table, ref_assign] = updateTFCalls2D(call_table, ref_set, snaprad, snap_minth)
+        if nargin < 3
+            snaprad = 4;
+        end
+        if nargin < 4
+            snap_minth = 25;
+        end
+
+        call_table{:,'is_true'} = false;
+        ref_assign = RNACoords.matchSpots(call_table, ref_set, snaprad, snap_minth);
+
+        %Mark trues in table
+        if nnz(ref_assign) > 0
+            fidxs = find(ref_assign > 0);
+            cidxs = ref_assign(fidxs);
+            call_table{cidxs,'is_true'} = true;
+
+            %Record distances from match
+            temparr = double(call_table{cidxs, 'isnap_x'});
+            xdist = abs(double(ref_set(fidxs,1)) - temparr);
+            temparr = double(call_table{cidxs, 'isnap_x'});
+            ydist = abs(double(ref_set(fidxs,2)) - temparr);
+
+            xydist = sqrt((xdist .^ 2) + (ydist .^ 2));
+
+            call_table{cidxs, 'xdist_ref'} = single(xdist);
+            call_table{cidxs, 'ydist_ref'} = single(ydist);
+            call_table{cidxs, 'xydist_ref'} = single(xydist);
+
+            clear xdist ydist xydist temparr
+        end
+
+        %Import fnegs
+        no_assign = (ref_assign == 0);
+        fn_count = nnz(no_assign);
+        if fn_count > 0
+            ridxs = find(no_assign);
+            tblappend = RNACoords.genAppendableTable(call_table, fn_count);
+            
+            x_round = double(round(ref_set(ridxs,1)));
+            y_round = double(round(ref_set(ridxs,2)));
+            tblappend{:,'isnap_x'} = uint16(x_round);
+            tblappend{:,'isnap_y'} = uint16(y_round);
+            tblappend{:,'dropout_thresh'} = 0;
+            tblappend{:,'is_true'} = true;
+
+            %Add distances
+            xdist = abs(x_round - double(ref_set(ridxs,1)));
+            ydist = abs(y_round - double(ref_set(ridxs,2)));
+            xydist = sqrt((xdist .^ 2) + (ydist .^ 2));
+
+            tblappend{cidxs, 'xdist_ref'} = single(xdist);
+            tblappend{cidxs, 'ydist_ref'} = single(ydist);
+            tblappend{cidxs, 'xydist_ref'} = single(xydist);
+
+            call_table = [call_table;tblappend];
+        end
+
+    end
+
+    %%
     function [call_table_merged, callmap] = mergeSlicedSetTo3D(call_table, snaprad_3, snap_minth)
         call_table_merged = call_table;
 
@@ -594,6 +799,7 @@ methods (Static)
 
     end
 
+    %%
     function xyz_table = getThresholdCalls(call_table, thval)
         xyz_table = [];
         if isempty(call_table); return; end
@@ -608,6 +814,7 @@ methods (Static)
         end
     end
 
+    %%
     function call_table = addFitData(call_table, fit_table, snap_minth)
         %Fit table should be formatted with cols:
         %   x,y,z,int(optional)
@@ -642,6 +849,7 @@ methods (Static)
 
     end
 
+    %%
     function call_table = addFitDataFromQuant(call_table, cell_rna_data, snap_minth, img_size)
         %Count fits in cell_rna_data
         if isempty(call_table); return; end
@@ -738,6 +946,7 @@ methods (Static)
         
     end
 
+    %%
     function call_table = updateRefDistances(call_table, ref_table, ref_call_map)
         x_true = double(call_table{ref_call_map, 'isnap_x'});
         y_true = double(call_table{ref_call_map, 'isnap_y'});
@@ -758,6 +967,7 @@ methods (Static)
         call_table{ref_call_map, 'xyzdist_ref'} = sqrt(xsq + ysq + zsq);
     end
 
+    %%
     function call_table = updateRefDistancesToUseFits(call_table, ref_table, ref_call_map)
         if nnz(ref_call_map) < 1; return; end
         fidxs = find(ref_call_map > 0);
@@ -796,6 +1006,7 @@ methods (Static)
         call_table(cidxs, 'xyzdist_ref') = array2table(single(xyzdist));
     end
 
+    %%
     function call_table = applyCellSegMask(call_table, cell_mask)
         x = table2array(call_table(:,'isnap_x'));
         y = table2array(call_table(:,'isnap_y'));

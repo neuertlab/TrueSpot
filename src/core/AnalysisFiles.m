@@ -100,10 +100,10 @@ classdef AnalysisFiles
                 pmetrics = struct();
             end
 
-            vec_istrimmed = table2array(call_table(:,'is_trimmed_out'));
-            vec_intsreg = table2array(call_table(:,'in_truth_region'));
-            vec_isreal = table2array(call_table(:,'is_true'));
-            vec_dropth = table2array(call_table(:,'dropout_thresh'));
+            vec_istrimmed = call_table{:,'is_trimmed_out'};
+            vec_intsreg = call_table{:,'in_truth_region'};
+            vec_isreal = call_table{:,'is_true'};
+            vec_dropth = call_table{:,'dropout_thresh'};
 
             any_trimmed = nnz(vec_istrimmed) > 0;
             spot_table = AnalysisFiles.callset2SpotcountTable(call_table);
@@ -431,7 +431,10 @@ classdef AnalysisFiles
         end
 
         %%
-        function [rstruct, okay] = updateCallsetTrimRes(rstruct, idims)
+        function [rstruct, okay] = updateCallsetTrimRes(rstruct, idims, ignoreZ)
+
+            if nargin < 3; ignoreZ = false; end
+
             okay = false;
             if isempty(rstruct); return; end
             if isempty(idims); return; end
@@ -451,14 +454,61 @@ classdef AnalysisFiles
             calls_full = rstruct.callset;
             x_okay = and(calls_full{:, 'isnap_x'} >= xmin, calls_full{:, 'isnap_x'} <= xmax);
             y_okay = and(calls_full{:, 'isnap_y'} >= ymin, calls_full{:, 'isnap_y'} <= ymax);
-            z_okay = and(calls_full{:, 'isnap_z'} >= zmin, calls_full{:, 'isnap_z'} <= zmax);
+
+            if ignoreZ
+                z_okay = true(size(calls_full, 1), 1);
+            else
+                z_okay = and(calls_full{:, 'isnap_z'} >= zmin, calls_full{:, 'isnap_z'} <= zmax);
+            end
             keep_rows = find(x_okay & y_okay & z_okay);
 
             if ~isempty(keep_rows)
                 rstruct.callset{:,'is_trimmed_out'} = 1;
                 rstruct.callset{keep_rows,'is_trimmed_out'} = 0;
             else
-                rstruct.callset{:,'is_trimmed_out'} = 0;
+                rstruct.callset{:,'is_trimmed_out'} = 1;
+            end
+
+            okay = true;
+        end
+
+        %%
+        function [callset, okay] = applyTruthRegionMask(truthdims, callset, idims, ignoreZ)
+
+            if nargin < 4; ignoreZ = false; end
+
+            okay = false;
+            if isempty(callset); return; end
+            if isempty(idims); return; end
+
+            xmin = 1; ymin = 1; zmin = 1;
+            xmax = idims.x;
+            ymax = idims.y;
+            zmax = idims.z;
+
+            if ~isempty(truthdims)
+                if isfield(truthdims, 'x0'); xmin = truthdims.x0; end
+                if isfield(truthdims, 'x1'); xmax = truthdims.x1; end
+                if isfield(truthdims, 'y0'); ymin = truthdims.y0; end
+                if isfield(truthdims, 'y1'); ymax = truthdims.y1; end
+                if isfield(truthdims, 'z0'); zmin = truthdims.z0; end
+                if isfield(truthdims, 'z1'); zmax = truthdims.z1; end
+            end
+
+            x_okay = and(callset{:, 'isnap_x'} >= xmin, callset{:, 'isnap_x'} <= xmax);
+            y_okay = and(callset{:, 'isnap_y'} >= ymin, callset{:, 'isnap_y'} <= ymax);
+            if ignoreZ
+                z_okay = true(size(callset, 1), 1);
+            else
+                z_okay = and(callset{:, 'isnap_z'} >= zmin, callset{:, 'isnap_z'} <= zmax);
+            end
+            keep_rows = find(x_okay & y_okay & z_okay);
+
+            if ~isempty(keep_rows)
+                callset{:,'in_truth_region'} = 0;
+                callset{keep_rows,'in_truth_region'} = 1;
+            else
+                callset{:,'in_truth_region'} = 0;
             end
 
             okay = true;
