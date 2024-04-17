@@ -92,6 +92,15 @@ classdef AnalysisFiles
         end
 
         %%
+        function restable = initializeResTable(th_count)
+            varNames = {'thresholdValue' 'spotCount' 'sensitivity' 'precision' 'fScore' 'true_pos' 'false_pos' 'false_neg'};
+            varTypes = {'single' 'uint32' 'double' 'double' 'double' 'uint32' 'uint32' 'uint32'};
+
+            table_size = [th_count size(varNames,2)];
+            restable = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+        end
+
+        %%
         function pmetrics = calculatePerformanceMetrics(call_table, th_val, pmetrics)
             %This method ASSUMES that call_table flag columns are all up to
             %date!
@@ -109,15 +118,14 @@ classdef AnalysisFiles
             spot_table = AnalysisFiles.callset2SpotcountTable(call_table);
 
             th_count = size(spot_table,1);
-            res_untrimmed = ImageResults.initializeResTable(th_count);
+            res_untrimmed = AnalysisFiles.initializeResTable(th_count);
             res_trimmed = table.empty();
 
-            thval_tbl = array2table(double(spot_table(:,1)));
-            res_untrimmed(:,'thresholdValue') = thval_tbl;
+            res_untrimmed{:,'thresholdValue'} = double(spot_table(:,1));
 
             if any_trimmed
                 res_trimmed = ImageResults.initializeResTable(th_count);
-                res_trimmed(:,'thresholdValue') = thval_tbl;
+                res_trimmed{:,'thresholdValue'} = double(spot_table(:,1));
             else
                 %Clean trimmed struct if it is present
                 if isfield(pmetrics, 'performance_trimmed')
@@ -166,10 +174,10 @@ classdef AnalysisFiles
             end
 
             %Let's speed up the easy calculations...
-            res_untrimmed(:, 'spotCount') = array2table(uint32(sc_all(:,1)));
-            res_untrimmed(:, 'true_pos') = array2table(uint32(tp_all(:,1)));
-            res_untrimmed(:, 'false_pos') = array2table(uint32(fp_all(:,1)));
-            res_untrimmed(:, 'false_neg') = array2table(uint32(fn_all(:,1)));
+            res_untrimmed{:, 'spotCount'} = uint32(sc_all(:,1));
+            res_untrimmed{:, 'true_pos'} = uint32(tp_all(:,1));
+            res_untrimmed{:, 'false_pos'} = uint32(fp_all(:,1));
+            res_untrimmed{:, 'false_neg'} = uint32(fn_all(:,1));
 
             recall = tp_all(:,1) ./ (tp_all(:,1) + fn_all(:,1));
             precision = tp_all(:,1) ./ (tp_all(:,1) + fp_all(:,1));
@@ -177,14 +185,14 @@ classdef AnalysisFiles
             pr_auc = RNAUtils.calculateAUC(recall, precision);
             peak_fscore = max(fscores, [], 'all');
             peak_recall= max(recall, [], 'all');
-            res_untrimmed(:, 'sensitivity') = array2table(recall);
-            res_untrimmed(:, 'precision') = array2table(precision);
-            res_untrimmed(:, 'fScore') = array2table(fscores);
+            res_untrimmed{:, 'sensitivity'} = recall;
+            res_untrimmed{:, 'precision'} = precision;
+            res_untrimmed{:, 'fScore'} = fscores;
             if any_trimmed
-                res_trimmed(:, 'spotCount') = array2table(uint32(sc_all(:,2)));
-                res_trimmed(:, 'true_pos') = array2table(uint32(tp_all(:,2)));
-                res_trimmed(:, 'false_pos') = array2table(uint32(fp_all(:,2)));
-                res_trimmed(:, 'false_neg') = array2table(uint32(fn_all(:,2)));
+                res_trimmed{:, 'spotCount'} = uint32(sc_all(:,2));
+                res_trimmed{:, 'true_pos'} = uint32(tp_all(:,2));
+                res_trimmed{:, 'false_pos'} = uint32(fp_all(:,2));
+                res_trimmed{:, 'false_neg'} = uint32(fn_all(:,2));
 
                 recall = tp_all(:,2) ./ (tp_all(:,2) + fn_all(:,2));
                 precision = tp_all(:,2) ./ (tp_all(:,2) + fp_all(:,2));
@@ -192,9 +200,9 @@ classdef AnalysisFiles
                 pr_auc_trim = RNAUtils.calculateAUC(recall, precision);
                 peak_fscore_trim = max(fscores, [], 'all');
                 peak_recall_trim = max(recall, [], 'all');
-                res_trimmed(:, 'sensitivity') = array2table(recall);
-                res_trimmed(:, 'precision') = array2table(precision);
-                res_trimmed(:, 'fScore') = array2table(fscores);
+                res_trimmed{:, 'sensitivity'} = recall;
+                res_trimmed{:, 'precision'} = precision;
+                res_trimmed{:, 'fScore'} = fscores;
             end
 
             th_idx = 0;

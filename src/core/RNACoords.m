@@ -564,11 +564,11 @@ methods (Static)
             xydist = sqrt((xdist .^ 2) + (ydist .^ 2));
             xyzdist = sqrt((xdist .^ 2) + (ydist .^ 2) + (zdist .^ 2));
 
-            tblappend{cidxs, 'xdist_ref'} = single(xdist);
-            tblappend{cidxs, 'ydist_ref'} = single(ydist);
-            tblappend{cidxs, 'zdist_ref'} = single(zdist);
-            tblappend{cidxs, 'xydist_ref'} = single(xydist);
-            tblappend{cidxs, 'xyzdist_ref'} = single(xyzdist);
+            tblappend{:, 'xdist_ref'} = single(xdist);
+            tblappend{:, 'ydist_ref'} = single(ydist);
+            tblappend{:, 'zdist_ref'} = single(zdist);
+            tblappend{:, 'xydist_ref'} = single(xydist);
+            tblappend{:, 'xyzdist_ref'} = single(xyzdist);
 
             call_table = [call_table;tblappend];
         end
@@ -585,7 +585,7 @@ methods (Static)
         end
 
         call_table{:,'is_true'} = false;
-        ref_assign = RNACoords.matchSpots(call_table, ref_set, snaprad, snap_minth);
+        ref_assign = RNACoords.matchSpots2D(call_table, ref_set, snaprad, snap_minth);
 
         %Mark trues in table
         if nnz(ref_assign) > 0
@@ -596,7 +596,7 @@ methods (Static)
             %Record distances from match
             temparr = double(call_table{cidxs, 'isnap_x'});
             xdist = abs(double(ref_set(fidxs,1)) - temparr);
-            temparr = double(call_table{cidxs, 'isnap_x'});
+            temparr = double(call_table{cidxs, 'isnap_y'});
             ydist = abs(double(ref_set(fidxs,2)) - temparr);
 
             xydist = sqrt((xdist .^ 2) + (ydist .^ 2));
@@ -619,6 +619,7 @@ methods (Static)
             y_round = double(round(ref_set(ridxs,2)));
             tblappend{:,'isnap_x'} = uint16(x_round);
             tblappend{:,'isnap_y'} = uint16(y_round);
+            tblappend{:,'isnap_z'} = 1;
             tblappend{:,'dropout_thresh'} = 0;
             tblappend{:,'is_true'} = true;
 
@@ -627,9 +628,9 @@ methods (Static)
             ydist = abs(y_round - double(ref_set(ridxs,2)));
             xydist = sqrt((xdist .^ 2) + (ydist .^ 2));
 
-            tblappend{cidxs, 'xdist_ref'} = single(xdist);
-            tblappend{cidxs, 'ydist_ref'} = single(ydist);
-            tblappend{cidxs, 'xydist_ref'} = single(xydist);
+            tblappend{:, 'xdist_ref'} = single(xdist);
+            tblappend{:, 'ydist_ref'} = single(ydist);
+            tblappend{:, 'xydist_ref'} = single(xydist);
 
             call_table = [call_table;tblappend];
         end
