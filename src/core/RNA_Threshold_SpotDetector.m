@@ -124,12 +124,12 @@ classdef RNA_Threshold_SpotDetector
         end
         
         %%
-        function [auto_zmin, auto_zmax, call_table] = run_spot_detection_main(IMG_filtered, save_stem, strategy, th_min, th_max, zmin, zmax, verbose, thread_request)
+        function [auto_zmin, auto_zmax, call_table] = run_spot_detection_main(IMG_filtered, save_stem, strategy, th_min, th_max, z_min, z_max, verbose, thread_request)
             if nargin < 6
-                zmin = 1;
+                z_min = 0;
             end
             if nargin < 7
-                zmax = size(IMG_filtered, 3);
+                z_max = 0;
             end
             if nargin < 8
                 verbose = true;
@@ -142,31 +142,20 @@ classdef RNA_Threshold_SpotDetector
             th_step = 1;
             thh = th_min:th_step:th_max;
 
-            %Z range
-            Z = size(IMG_filtered, 3);
-            if zmax > Z
-                auto_zmax = Z;
-            else
-                auto_zmax = zmax;
-            end
-
-            if zmin < 1
-                auto_zmin = 1;
-            else
-                auto_zmin = zmin;
-            end
-
-            detect_ctx = RNADetection.generateThreshContextStruct(IMG_filtered);
+            %auto_ztrim = ztrim;
+            detect_ctx = RNADetection.generateDetectContextStruct(IMG_filtered);
             detect_ctx.th_list = thh;
             %detect_ctx.zBorder = ztrim;
-            detect_ctx.zmin = auto_zmin;
-            detect_ctx.zmax = auto_zmax;
+            detect_ctx.minZ = z_min;
+            detect_ctx.maxZ = z_max;
             detect_ctx.save_stem = save_stem;
             detect_ctx.th_strategy = strategy;
             detect_ctx.verbose = verbose;
             detect_ctx.threads = thread_request;
 
             detect_ctx = RNADetection.run_spotDetect(detect_ctx);
+            auto_zmin = detect_ctx.minZ;
+            auto_zmax = detect_ctx.maxZ;
             spot_table = detect_ctx.spot_table;
             call_table = detect_ctx.call_table;
             clear detect_ctx;

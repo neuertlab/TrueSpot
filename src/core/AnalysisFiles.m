@@ -101,9 +101,15 @@ classdef AnalysisFiles
         end
 
         %%
-        function pmetrics = calculatePerformanceMetrics(call_table, th_val, pmetrics)
+        function pmetrics = calculatePerformanceMetrics(call_table, th_val, pmetrics, emptyTSBehavior, minTh, maxTh)
             %This method ASSUMES that call_table flag columns are all up to
             %date!
+
+            if nargin < 4
+                emptyTSBehavior = -1; %Set NaN
+            end
+            if nargin < 5; minTh = 0; end
+            if nargin < 6; maxTh = 0; end
 
             if isempty(pmetrics)
                 pmetrics = struct();
@@ -114,8 +120,12 @@ classdef AnalysisFiles
             vec_isreal = call_table{:,'is_true'};
             vec_dropth = call_table{:,'dropout_thresh'};
 
+            vec_real = vec_isreal & vec_intsreg & ~vec_istrimmed;
+            empty_ts = nnz(vec_real) <= 0;
+
             any_trimmed = nnz(vec_istrimmed) > 0;
-            spot_table = AnalysisFiles.callset2SpotcountTable(call_table);
+            spot_table = RNAUtils.spotTableFromCallTable(call_table, true, minTh, maxTh);
+            %spot_table = AnalysisFiles.callset2SpotcountTable(call_table);
 
             th_count = size(spot_table,1);
             res_untrimmed = AnalysisFiles.initializeResTable(th_count);
@@ -124,7 +134,7 @@ classdef AnalysisFiles
             res_untrimmed{:,'thresholdValue'} = double(spot_table(:,1));
 
             if any_trimmed
-                res_trimmed = ImageResults.initializeResTable(th_count);
+                res_trimmed = AnalysisFiles.initializeResTable(th_count);
                 res_trimmed{:,'thresholdValue'} = double(spot_table(:,1));
             else
                 %Clean trimmed struct if it is present
@@ -179,12 +189,26 @@ classdef AnalysisFiles
             res_untrimmed{:, 'false_pos'} = uint32(fp_all(:,1));
             res_untrimmed{:, 'false_neg'} = uint32(fn_all(:,1));
 
-            recall = tp_all(:,1) ./ (tp_all(:,1) + fn_all(:,1));
-            precision = tp_all(:,1) ./ (tp_all(:,1) + fp_all(:,1));
+            %NaN-ify when total denominator is 0.
+            denom = tp_all(:,1) + fn_all(:,1);
+            denom(denom == 0) = NaN;
+            recall = tp_all(:,1) ./ denom;
+            if empty_ts
+                if emptyTSBehavior == 0
+                    recall(:) = 0;
+                elseif emptyTSBehavior == 1
+                    recall(:) = 1;
+                end
+            end
+
+            denom = tp_all(:,1) + fp_all(:,1);
+            denom(denom == 0) = NaN;
+            precision = tp_all(:,1) ./ denom;
+
             fscores = (2 .* precision .* recall) ./ (precision + recall);
             pr_auc = RNAUtils.calculateAUC(recall, precision);
-            peak_fscore = max(fscores, [], 'all');
-            peak_recall= max(recall, [], 'all');
+            peak_fscore = max(fscores, [], 'all', 'omitnan');
+            peak_recall = max(recall, [], 'all', 'omitnan');
             res_untrimmed{:, 'sensitivity'} = recall;
             res_untrimmed{:, 'precision'} = precision;
             res_untrimmed{:, 'fScore'} = fscores;
@@ -194,12 +218,25 @@ classdef AnalysisFiles
                 res_trimmed{:, 'false_pos'} = uint32(fp_all(:,2));
                 res_trimmed{:, 'false_neg'} = uint32(fn_all(:,2));
 
-                recall = tp_all(:,2) ./ (tp_all(:,2) + fn_all(:,2));
-                precision = tp_all(:,2) ./ (tp_all(:,2) + fp_all(:,2));
+                denom = tp_all(:,2) + fn_all(:,2);
+                denom(denom == 0) = NaN;
+                recall = tp_all(:,2) ./ denom;
+                if empty_ts
+                    if emptyTSBehavior == 0
+                        recall(:) = 0;
+                    elseif emptyTSBehavior == 1
+                        recall(:) = 1;
+                    end
+                end
+
+                denom = tp_all(:,2) + fp_all(:,2);
+                denom(denom == 0) = NaN;
+                precision = tp_all(:,2) ./ denom;
+
                 fscores = (2 .* precision .* recall) ./ (precision + recall);
                 pr_auc_trim = RNAUtils.calculateAUC(recall, precision);
-                peak_fscore_trim = max(fscores, [], 'all');
-                peak_recall_trim = max(recall, [], 'all');
+                peak_fscore_trim = max(fscores, [], 'all', 'omitnan');
+                peak_recall_trim = max(recall, [], 'all', 'omitnan');
                 res_trimmed{:, 'sensitivity'} = recall;
                 res_trimmed{:, 'precision'} = precision;
                 res_trimmed{:, 'fScore'} = fscores;
@@ -537,17 +574,18 @@ classdef AnalysisFiles
         end
         
         %%
-        function analysis = rethresholdExp(analysis, preset, verbose)
+        function analysis = rethresholdExp(analysis, preset, verbose, updatePerf)
+            if nargin < 4; updatePerf = false; end
             if ~isfield(analysis, 'results_hb'); return; end
             rstruct = analysis.results_hb;
 
             %Regen spot table.
             if verbose; fprintf('>> Extracting spot count table...\n'); end
-            spot_table = RNAUtils.spotTableFromCallTable(rstruct.callset, false);
+            spot_table = RNAUtils.spotTableFromCallTable(rstruct.callset, false, rstruct.th_scan_min, rstruct.th_scan_max);
 
             if verbose; fprintf('>> Rethresholding with preset %d...\n', preset); end
             th_res = RNAThreshold.runWithPreset(spot_table, [], preset);
-            th_res.lowNoiseFlag = RNAThreshold.checkLowNoise(analysis.image_dims,spot_table);
+            th_res.lowNoiseFlag = RNAThreshold.checkLowNoise(analysis.image_dims, spot_table);
             rstruct.threshold_details = th_res;
             if th_res.lowNoiseFlag
                 rstruct.threshold = 1;
@@ -555,33 +593,48 @@ classdef AnalysisFiles
                 rstruct.threshold = th_res.threshold;
             end
 
-            thidx = 0;
-            if th_res.threshold > 0
-                thidx = RNAUtils.findThresholdIndex(th_res.threshold, spot_table(:,1)');
-            end
+            if updatePerf
+                if isfield(rstruct, 'benchmarks')
+                    refsetnames = fieldnames(rstruct.benchmarks);
+                    setcount = size(refsetnames, 1);
+                    for i = 1:setcount
+                        setname = refsetnames{i};
+                        if verbose; fprintf('>> Updating performance calculations for refset %s...\n', setname); end
+                        bstruct = rstruct.benchmarks.(setname);
+                        bstruct = AnalysisFiles.calculatePerformanceMetrics(...
+                            rstruct.callset, rstruct.threshold, bstruct, -1, rstruct.th_scan_min, rstruct.th_scan_max);
+                        rstruct.benchmarks.(setname) = bstruct;
+                    end
+                end
+            else
+                thidx = 0;
+                if th_res.threshold > 0
+                    thidx = RNAUtils.findThresholdIndex(th_res.threshold, spot_table(:,1)');
+                end
 
-            if isfield(rstruct, 'benchmarks')
-                refsetnames = fieldnames(rstruct.benchmarks);
-                setcount = size(refsetnames, 1);
-                for i = 1:setcount
-                    setname = refsetnames{i};
-                    if verbose; fprintf('>> Updating threshold FScores for refset %s...\n', setname); end
-                    bstruct = rstruct.benchmarks.(setname);
-                    if isfield(bstruct, 'performance_trimmed')
-                        if thidx > 0
-                            bstruct.fscore_autoth_trimmed = bstruct.performance_trimmed{thidx, 'fScore'};
-                        else
-                            bstruct.fscore_autoth_trimmed = NaN;
+                if isfield(rstruct, 'benchmarks')
+                    refsetnames = fieldnames(rstruct.benchmarks);
+                    setcount = size(refsetnames, 1);
+                    for i = 1:setcount
+                        setname = refsetnames{i};
+                        if verbose; fprintf('>> Updating threshold FScores for refset %s...\n', setname); end
+                        bstruct = rstruct.benchmarks.(setname);
+                        if isfield(bstruct, 'performance_trimmed')
+                            if thidx > 0
+                                bstruct.fscore_autoth_trimmed = bstruct.performance_trimmed{thidx, 'fScore'};
+                            else
+                                bstruct.fscore_autoth_trimmed = NaN;
+                            end
                         end
-                    end
-                    if isfield(bstruct, 'performance')
-                        if thidx > 0
-                            bstruct.fscore_autoth = bstruct.performance{thidx, 'fScore'};
-                        else
-                            bstruct.fscore_autoth = NaN;
+                        if isfield(bstruct, 'performance')
+                            if thidx > 0
+                                bstruct.fscore_autoth = bstruct.performance{thidx, 'fScore'};
+                            else
+                                bstruct.fscore_autoth = NaN;
+                            end
                         end
+                        rstruct.benchmarks.(setname) = bstruct;
                     end
-                    rstruct.benchmarks.(setname) = bstruct;
                 end
             end
 
@@ -589,17 +642,18 @@ classdef AnalysisFiles
         end
 
         %%
-        function analysis = rethresholdSim(analysis, preset, verbose)
+        function analysis = rethresholdSim(analysis, preset, verbose, updatePerf)
+            if nargin < 4; updatePerf = false; end
             if ~isfield(analysis, 'results_hb'); return; end
             rstruct = analysis.results_hb;
 
             %Regen spot table.
             if verbose; fprintf('>> Extracting spot count table...\n'); end
-            spot_table = RNAUtils.spotTableFromCallTable(rstruct.callset, false);
+            spot_table = RNAUtils.spotTableFromCallTable(rstruct.callset, false, rstruct.th_scan_min, rstruct.th_scan_max);
 
             if verbose; fprintf('>> Rethresholding with preset %d...\n', preset); end
             th_res = RNAThreshold.runWithPreset(spot_table, [], preset);
-            th_res.lowNoiseFlag = RNAThreshold.checkLowNoise(analysis.image_dims,spot_table);
+            th_res.lowNoiseFlag = RNAThreshold.checkLowNoise(analysis.image_dims, spot_table);
             rstruct.threshold_details = th_res;
             if th_res.lowNoiseFlag
                 rstruct.threshold = 1;
@@ -607,27 +661,33 @@ classdef AnalysisFiles
                 rstruct.threshold = th_res.threshold;
             end
 
-            thidx = 0;
-            if th_res.threshold > 0
-                thidx = RNAUtils.findThresholdIndex(rstruct.threshold, spot_table(:,1)');
-            end
-
-            if isfield(rstruct, 'performance_trimmed')
-                if thidx > 0
-                    rstruct.fscore_autoth_trimmed = rstruct.performance_trimmed{thidx, 'fScore'};
-                else
-                    rstruct.fscore_autoth_trimmed = NaN;
+            if updatePerf
+                rstruct = AnalysisFiles.calculatePerformanceMetrics(...
+                    rstruct.callset, rstruct.threshold, rstruct, -1, rstruct.th_scan_min, rstruct.th_scan_max);
+            else
+                thidx = 0;
+                if th_res.threshold > 0
+                    thidx = RNAUtils.findThresholdIndex(rstruct.threshold, spot_table(:,1)');
                 end
-            end
-            if isfield(rstruct, 'performance')
-                if thidx > 0
-                    rstruct.fscore_autoth = rstruct.performance{thidx, 'fScore'};
-                else
-                    rstruct.fscore_autoth = NaN;
+
+                if isfield(rstruct, 'performance_trimmed')
+                    if thidx > 0
+                        rstruct.fscore_autoth_trimmed = rstruct.performance_trimmed{thidx, 'fScore'};
+                    else
+                        rstruct.fscore_autoth_trimmed = NaN;
+                    end
+                end
+                if isfield(rstruct, 'performance')
+                    if thidx > 0
+                        rstruct.fscore_autoth = rstruct.performance{thidx, 'fScore'};
+                    else
+                        rstruct.fscore_autoth = NaN;
+                    end
                 end
             end
 
             analysis.results_hb = rstruct; 
         end
+
     end
 end

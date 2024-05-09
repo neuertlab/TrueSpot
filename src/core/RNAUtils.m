@@ -23,8 +23,10 @@ classdef RNAUtils
         end
         
         %%
-        function [xx, yy] = spotCountFromCallTable(call_table, include_trimmed)
+        function [xx, yy] = spotCountFromCallTable(call_table, include_trimmed, min_th, max_th)
             if nargin < 2; include_trimmed = false; end
+            if nargin < 3; min_th = 0; end
+            if nargin < 4; max_th = 0; end
 
             xx = [];
             yy = [];
@@ -36,11 +38,21 @@ classdef RNAUtils
             allth = unique(allth);
             allth = sort(allth);
             
-            tmin = allth(1);
-            tmax = allth(size(allth, 1));
+            if min_th < 1
+                tmin = double(allth(1));
+            else
+                tmin = double(min_th);
+            end
+
+            if max_th < 1
+                tmax = double(allth(size(allth, 1)));
+            else
+                tmax = double(max_th);
+            end
+
             allth_d = diff(allth);
             allth_d = allth_d(allth_d ~= 0);
-            tintr = min(allth_d, [], 'all', 'omitnan');
+            tintr = double(min(allth_d, [], 'all', 'omitnan'));
 
             xx = [tmin:tintr:tmax];
 
@@ -53,9 +65,13 @@ classdef RNAUtils
         end
 
         %%
-        function spot_table = spotTableFromCallTable(call_table, include_trimmed)
+        function spot_table = spotTableFromCallTable(call_table, include_trimmed, min_th, max_th)
+            if nargin < 2; include_trimmed = false; end
+            if nargin < 3; min_th = 0; end
+            if nargin < 4; max_th = 0; end
+
             spot_table = [];
-            [xx, yy] = RNAUtils.spotCountFromCallTable(call_table, include_trimmed);
+            [xx, yy] = RNAUtils.spotCountFromCallTable(call_table, include_trimmed, min_th, max_th);
             
             if isempty(xx); return; end
             T = size(xx, 2);

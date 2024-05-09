@@ -112,7 +112,7 @@ classdef RNAThreshold
             logvox = log10(voxcount);
 
             difflog = logvox - logcount;
-            bool = difflog >= (logvox .* 0.5);
+            bool = difflog >= (logvox .* 0.45);
         end
 
         %%
@@ -421,6 +421,7 @@ classdef RNAThreshold
                 yy = log10(yy);
                 [xx, yy] = RNAThreshold.cleanLogPlot(xx, yy);
                 threshold_results.x = xx';
+                xx = xx';
             end
 
             deriv1 = diff(yy);
@@ -1443,6 +1444,7 @@ classdef RNAThreshold
             end
 
             fig_handle = figure(216);
+            USE_LOG = (thres.log_proj_mode > 0);
 
             %Count plots so know how many rows grid should be.
             plotcount = 2;
@@ -1472,7 +1474,7 @@ classdef RNAThreshold
                     xx = spot_table(:,1)';
                     yy = spot_table(:,2)';
                     %RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_data, thres.fit_to_log);
-                    RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_data, false);
+                    RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_data, USE_LOG);
                     clear xx yy
                 end
 
@@ -1487,7 +1489,7 @@ classdef RNAThreshold
                     xx = spot_table(:,1)';
                     yy = abs(diff(spot_table(:,2)'));
                     xx = xx(1:(size(xx,2)-1));
-                    RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_diff, thres.fit_to_log);
+                    RNAThreshold.resultPlotIndivToCF(xx, yy, thres.test_diff, USE_LOG);
                     clear xx yy
                 end
 
@@ -1511,7 +1513,7 @@ classdef RNAThreshold
                             xx = xx(1:ysz);
                         end
 
-                        RNAThreshold.resultPlotIndivToCF(xx, windat, thres.test_winsc(i), thres.fit_to_log);
+                        RNAThreshold.resultPlotIndivToCF(xx, windat, thres.test_winsc(i), USE_LOG);
                         clear xx
                     end
 
