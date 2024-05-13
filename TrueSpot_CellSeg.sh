@@ -40,11 +40,8 @@ while [[ $# -gt 0 ]]; do
 			SKIP_ME=1
 			shift
 			;;
-		-outdir)
+		-outpath)
 			OUT_DIR="$2"
-			;;
-		-outstem)
-			OUT_STEM="$2"
 			;;
 	esac
 	

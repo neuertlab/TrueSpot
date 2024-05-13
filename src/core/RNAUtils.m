@@ -6,6 +6,12 @@ classdef RNAUtils
     methods (Static)
         
         %%
+        function bool = isTableVariable(myTable, varName)
+            varNames = myTable.Properties.VariableNames;
+            bool = ismember(varName, varNames);
+        end
+
+        %%
         function thresh_idx = findThresholdIndex(thresh_value, thresh_x_tbl)
             %Give thresh_x_tbl as vector (single row)
             
@@ -56,7 +62,7 @@ classdef RNAUtils
 
             xx = [tmin:tintr:tmax];
 
-            if include_trimmed
+            if include_trimmed | ~RNAUtils.isTableVariable(call_table, 'is_trimmed_out')
                 yy = sum(call_table{:, 'dropout_thresh'} >= xx, 1);
             else
                 yy = sum(call_table{~call_table{:,'is_trimmed_out'}, 'dropout_thresh'} >= xx, 1);
