@@ -78,5 +78,8 @@ fi
 
 #Call MATLAB
 get_script_dir
-SCRIPT_NAME="Main_CellSegConsole.m"
+SCRIPT_NAME="Main_CellSegConsole"
+
+echo -e "Submitted command: matlab -nodisplay -nosplash -logfile \"${LOG_PATH}\" -r \"cd '${MY_DIR}/src'; ${SCRIPT_NAME}(${MAT_ARG_STR}); quit;\""
+
 matlab -nodisplay -nosplash -logfile "${LOG_PATH}" -r "cd '${MY_DIR}/src'; ${SCRIPT_NAME}(${MAT_ARG_STR}); quit;"

@@ -90,14 +90,14 @@ classdef Background_Extractor
         %                            segmentation data for image
         %
         function obj = initialize(obj, light_ch, seg_file_path)
-            
-            obj.img_ch = light_ch;
-            
-            %Read in previous segmentation data
-            %load(seg_file_path, 'cells');
             cells = CellSeg.openCellMask(seg_file_path); %More formats.
             obj.cell_mask = (cells == 0);
-            
+            obj = obj.initializeMaskLoaded(light_ch);
+        end
+
+        function obj = initializeMaskLoaded(obj, light_ch)
+            obj.img_ch = light_ch;
+
             %Generate stdev projection
             obj.stdev_proj = std(obj.img_ch, 0, 3);
             
@@ -137,7 +137,6 @@ classdef Background_Extractor
             end
             
             obj = obj.updateBkgMask();
-            
         end
         
         %%
