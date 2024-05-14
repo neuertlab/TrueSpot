@@ -20,6 +20,7 @@ classdef RNASpotsRun
     methods
         
         function obj = saveMe(obj)
+            obj.meta.modifiedDate = datetime;
             outpath = [obj.getFullOutStem() '_rnaspotsrun.mat'];
            
             run_info = struct('RNASpotsRunVersion', 2);
@@ -479,6 +480,9 @@ classdef RNASpotsRun
             rnaspots_run.meta.type_targetmol = '';
             rnaspots_run.meta.idims_voxel = struct('x', -1, 'y', -1, 'z', -1);
             rnaspots_run.meta.idims_expspot = struct('x', -1, 'y', -1, 'z', -1);
+            rnaspots_run.meta.creationDate = datetime;
+            rnaspots_run.meta.modifiedDate = datetime;
+            rnaspots_run.meta.tsSpotsVersion = '2024.05.14.00 (v1.1.0)';
         end
         
         function rnaspots_run = loadFrom(path, updateOutDir)

@@ -4,6 +4,9 @@ addpath('./core');
 addpath('./thirdparty');
 addpath('./celldissect');
 
+BUILD_STRING = '2024.05.14.00';
+VERSION_STRING = 'v1.1.0';
+
 % ========================== Process args ==========================
 
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -196,7 +199,7 @@ if ~isempty(cellseg_options.use_template)
     end
 end
 
-[okay, cellseg_options] = runCellseg(cellseg_options);
+[okay, cellseg_options] = runCellseg(cellseg_options, BUILD_STRING, VERSION_STRING);
 if ~okay
     fprintf('ERROR: Cell segmentation run failed! Exiting...\n');
     return;
@@ -213,7 +216,7 @@ end
 
 % ========================== Helper Functions ==========================
 
-function [okay, options] = runCellseg(options)
+function [okay, options] = runCellseg(options, buildString, versionString)
     okay = false;
 
     %Load image channels
@@ -279,6 +282,11 @@ function [okay, options] = runCellseg(options)
         clear tiffops
     end
 
+    runMeta = struct();
+    runMeta.modifiedDate = datetime;
+    runMeta.tsCellSegBuild = buildString;
+    runMeta.tsCellSegVersion = versionString;
+
     if options.save_fmt_BK
         if ~isfolder(options.output_path)
             mkdir(options.output_path);
@@ -294,7 +302,7 @@ function [okay, options] = runCellseg(options)
             cells = cell_mask;
             segment_mode = cellseg_info.focus_plane_strat;
 
-            save(lab_path, 'CellInfo', 'cells', 'segment_mode', 'trans_plane', '-v7.3');
+            save(lab_path, 'CellInfo', 'cells', 'segment_mode', 'trans_plane', 'runMeta', '-v7.3');
 
             clear CellInfo Cells segment_mode
         end
@@ -311,7 +319,7 @@ function [okay, options] = runCellseg(options)
             nuclei = nuc_res.nuclei;
 
             save(nuc_path, 'Label_hi', 'Label_low', 'Label_mid',...
-                'Maj_axis', 'Min_axis', 'Nuc_int', 'Nuc_vol', 'nuclei', '-v7.3');
+                'Maj_axis', 'Min_axis', 'Nuc_int', 'Nuc_vol', 'nuclei', 'runMeta', '-v7.3');
 
             clear Label_hi Label_low Label_mid Maj_axis Min_axis Nuc_int Nuc_vol
         end
@@ -324,7 +332,7 @@ function [okay, options] = runCellseg(options)
             dapi_threshold = nuc_res.nuc_threshold;
 
             save(nucth_path, 'DAPI_ims_added', 'dapi_label', 'dapi_label_low_1',...
-                'dapi_threshold', '-v7.3');
+                'dapi_threshold', 'runMeta', '-v7.3');
 
             clear DAPI_ims_added dapi_label dapi_label_low_1 dapi_threshold
         end
@@ -346,7 +354,7 @@ function [okay, options] = runCellseg(options)
         cellSeg.trans_plane = trans_plane;
         nucleiSeg = struct('params', nuc_params);
         nucleiSeg.results = nuc_res;
-        save(outpath, 'cellSeg', 'nucleiSeg', '-v7.3');
+        save(outpath, 'cellSeg', 'nucleiSeg', 'runMeta', '-v7.3');
 
         clear cellSeg nucleiSeg
     end

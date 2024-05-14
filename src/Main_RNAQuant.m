@@ -4,6 +4,9 @@
 function Main_RNAQuant(varargin)
 addpath('./core');
 
+BUILD_STRING = '2024.05.14.00';
+VERSION_STRING = 'v1.1.0';
+
 % ========================== Process args ==========================
 
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -177,9 +180,14 @@ quant_results.cell_mask = [];
 quant_results.nuc_mask = [];
 quant_results.t_coord_table = [];
 
+runMeta = struct();
+runMeta.modifiedDate = datetime;
+runMeta.tsQuantBuild = BUILD_STRING;
+runMeta.tsQuantVersion = VERSION_STRING;
+
 imgname = guessImageName(param_struct);
 outpath = [param_struct.outdir filesep imgname '_quantData.mat'];
-save(outpath, 'quant_results');
+save(outpath, 'quant_results', 'runMeta', '-v7.3');
 
 outpath = [param_struct.outdir filesep imgname '_quantResults.csv'];
 quant_table = RNAQuant.cellData2Table(quant_results.cell_rna_data);
