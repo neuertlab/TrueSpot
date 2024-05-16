@@ -3,6 +3,8 @@
 
 function [channels, idims] = LoadTif(tifpath, total_ch, ch_to_read, verbosity)
 
+%addpath('../thirdparty');
+
 %Verbosity:
 %   0 - None
 %   1 - Print local warnings, but not tiffread

@@ -32,9 +32,6 @@ while [[ $# -gt 0 ]]; do
 			usage
 			exit 0
 			;;
-		-input)
-			IN_PATH="$2"
-			;;
 		-log)
 			LOG_PATH="$2"
 			SKIP_ME=1
@@ -42,9 +39,6 @@ while [[ $# -gt 0 ]]; do
 			;;
 		-outdir)
 			OUT_DIR="$2"
-			;;
-		-outstem)
-			OUT_STEM="$2"
 			;;
 	esac
 	
@@ -57,12 +51,6 @@ while [[ $# -gt 0 ]]; do
 	fi
 	shift
 done
-
-if [ -z "$IN_PATH" ]; then
-	echo "Input image path is required!"
-	usage
-	exit 1
-fi
 
 #echo $MAT_ARG_STR
 
