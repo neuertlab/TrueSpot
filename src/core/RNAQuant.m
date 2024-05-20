@@ -949,7 +949,7 @@ classdef RNAQuant
             %This looks stupid, but it's a trick to get MATLAB to
             %more efficiently distribute data to workers.
             cell_list_a = quant_struct.cell_rna_data;
-            cell_list_b = [];
+            %cell_list_b = [];
             
             %Pre-divide image data into cells
             cell_count = size(cell_list_a,2);
@@ -982,9 +982,9 @@ classdef RNAQuant
             task_count = cell_count;
             do_both = false;
             if quant_struct.do_gauss_fit & quant_struct.do_clouds
-                task_count = task_count * 2;
+                %task_count = task_count * 2;
                 do_both = true;
-                cell_list_b = cell_list_a;
+                %cell_list_b = cell_list_a;
             end
             %cell_list_b = cell_list_a;
             
@@ -992,20 +992,26 @@ classdef RNAQuant
             pardir = char(RNAQuant.initParallel(1, quant_struct.workers, quant_struct.workdir));
             %pardir = char(quant_struct.workdir);
             parfor t = 1:task_count
-                tt = max(t - cell_count,1);
+                %tt = max(t - cell_count,1);
                 if do_both
-                    if t > cell_count
-                        %This appears to be causing problems (maybe with the pre-compiling). Fix at some point.
-                        %Something wrong with indexing
-                        
-                        %Cloud
-                        my_cell = cell_list_b(tt);
-                        RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
-                    else
-                        %Gauss fit
-                        my_cell = cell_list_a(t);
-                        RNAQuant.FitGaussians3CellPar(my_cell, xy_rad, z_rad, b_filters, pardir);
-                    end
+%                     if t > cell_count
+%                         %This appears to be causing problems (maybe with the pre-compiling). Fix at some point.
+%                         %Something wrong with indexing
+%                         
+%                         %Cloud
+%                         my_cell = cell_list_b(tt);
+%                         RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
+%                     else
+%                         %Gauss fit
+%                         my_cell = cell_list_a(t);
+%                         RNAQuant.FitGaussians3CellPar(my_cell, xy_rad, z_rad, b_filters, pardir);
+%                         RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
+%                     end
+
+                    my_cell = cell_list_a(t);
+                    RNAQuant.FitGaussians3CellPar(my_cell, xy_rad, z_rad, b_filters, pardir);
+                    RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
+                    cell_list_a(t).img_nobkg = [];
                 elseif do_gauss
                     %Just gaussian fit.
                     my_cell = cell_list_a(t);
@@ -1023,7 +1029,7 @@ classdef RNAQuant
             
             %Cleanup par variables to free some memory.
             clear cell_list_a;
-            clear cell_list_b;
+            %clear cell_list_b;
             clear b_filters;
             
             %Load back in gaussian fit data
@@ -1107,13 +1113,16 @@ classdef RNAQuant
                     cell_raw = my_cell.isolateCellBox(img_raw_dbl);
                     
                     [start_coords, ~] = my_cell.getCoordsSubset(quant_struct.t_coord_table);
-                    [cell_cloud_mask, cloud_boxes] = ...
-                        RNAQuant.DetectRNACloudsCell(cell_raw, start_coords, quant_struct.z_adj);
-                    
-                    clear cell_raw;
-                    cell_nobkg = my_cell.isolateCellBox(img_nobkg_dbl);
-                    my_cell = RNAQuant.FinishRNACloudsCell(my_cell, cell_nobkg, cell_cloud_mask, cloud_boxes, min_cloud_vol);
-                    
+                    if ~isempty(start_coords)
+                        [cell_cloud_mask, cloud_boxes] = ...
+                            RNAQuant.DetectRNACloudsCell(cell_raw, start_coords, quant_struct.z_adj);
+                        clear cell_raw;
+                        cell_nobkg = my_cell.isolateCellBox(img_nobkg_dbl);
+                        my_cell = RNAQuant.FinishRNACloudsCell(my_cell, cell_nobkg, cell_cloud_mask, cloud_boxes, min_cloud_vol);
+                    else
+                        clear cell_raw;
+                    end
+
                     quant_struct.cell_rna_data(c) = my_cell;
                 end
             end

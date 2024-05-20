@@ -809,7 +809,7 @@ classdef CellSeg
             nuc_mask = [];
             if endsWith(path, '.mat')
                 finfo = who('-file', path);
-                if ~isempty(find(ismember(finfo, 'nucSeg'),1))
+                if ~isempty(find(ismember(finfo, 'nucleiSeg'),1))
                     load(path, 'nucleiSeg');
                     if isfield(nucleiSeg, 'results')
                         switch(maskno)
@@ -819,15 +819,15 @@ classdef CellSeg
                                 end
                             case 1
                                 if isfield(nucleiSeg.results, 'lbl_lo')
-                                    nuc_mask = nucleiSeg.results.nuc_label;
+                                    nuc_mask = nucleiSeg.results.lbl_lo;
                                 end
                             case 2
                                 if isfield(nucleiSeg.results, 'lbl_mid')
-                                    nuc_mask = nucleiSeg.results.nuc_label;
+                                    nuc_mask = nucleiSeg.results.lbl_mid;
                                 end
                             case 3
                                 if isfield(nucleiSeg.results, 'lbl_hi')
-                                    nuc_mask = nucleiSeg.results.nuc_label;
+                                    nuc_mask = nucleiSeg.results.lbl_hi;
                                 end
                         end
                     end
