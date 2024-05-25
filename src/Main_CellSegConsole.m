@@ -3,8 +3,9 @@ function Main_CellSegConsole(varargin)
 addpath('./core');
 addpath('./thirdparty');
 addpath('./celldissect');
+addpath('./cellsegTemplates');
 
-BUILD_STRING = '2024.05.14.00';
+BUILD_STRING = '2024.05.24.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -124,6 +125,22 @@ for i = 1:nargin
             cellseg_options.nuc_params.y_trim = Force2Num(argval);
             cellop_override.y_trim = cellseg_options.cell_params.y_trim;
             if arg_debug; fprintf("Y Trim Set: %d\n", cellseg_options.cell_params.y_trim); end
+        elseif strcmp(lastkey, "nuczmin")
+            cellseg_options.nuc_params.z_min = Force2Num(argval);
+            cellop_override.z_min_n = cellseg_options.nuc_params.z_min;
+            if arg_debug; fprintf("Nuc Z Min Set: %d\n", cellseg_options.nuc_params.z_min); end
+        elseif strcmp(lastkey, "nuczmax")
+            cellseg_options.nuc_params.z_max = Force2Num(argval);
+            cellop_override.z_max_n = cellseg_options.nuc_params.z_max;
+            if arg_debug; fprintf("Nuc Z Max Set: %d\n", cellseg_options.nuc_params.z_max); end
+        elseif strcmp(lastkey, "lightzmin")
+            cellseg_options.cell_params.z_min = Force2Num(argval);
+            cellop_override.z_min_c = cellseg_options.cell_params.z_min;
+            if arg_debug; fprintf("Cell Z Min Set: %d\n", cellseg_options.cell_params.z_min); end
+        elseif strcmp(lastkey, "lightzmax")
+            cellseg_options.cell_params.z_max = Force2Num(argval);
+            cellop_override.z_max_c = cellseg_options.cell_params.z_max;
+            if arg_debug; fprintf("Cell Z Max Set: %d\n", cellseg_options.cell_params.z_max); end
         elseif strcmp(lastkey, "nzrange")
             cellseg_options.nuc_params.range = Force2Num(argval);
             cellop_override.nuc.range = cellseg_options.nuc_params.range;
@@ -402,12 +419,16 @@ function printSummary(options)
     fprintf(fileHandle, 'cell_params.focus_offset_max=%d\n', options.cell_params.focus_offset_max);
     fprintf(fileHandle, 'cell_params.x_trim=%d\n', options.cell_params.x_trim);
     fprintf(fileHandle, 'cell_params.y_trim=%d\n', options.cell_params.y_trim);
+    fprintf(fileHandle, 'cell_params.z_min=%d\n', options.cell_params.z_min);
+    fprintf(fileHandle, 'cell_params.z_max=%d\n', options.cell_params.z_max);
     fprintf(fileHandle, 'nuc_params.range=%d\n', options.nuc_params.range);
     fprintf(fileHandle, 'nuc_params.threshold_sampling=%d\n', options.nuc_params.threshold_sampling);
     fprintf(fileHandle, 'nuc_params.min_nucleus_size=%d\n', options.nuc_params.min_nucleus_size);
     fprintf(fileHandle, 'nuc_params.max_nucleus_size=%d\n', options.nuc_params.max_nucleus_size);
     fprintf(fileHandle, 'nuc_params.cutoff=%f\n', options.nuc_params.cutoff);
     fprintf(fileHandle, 'nuc_params.dxy=%d\n', options.nuc_params.dxy);
+    fprintf(fileHandle, 'nuc_params.z_min=%d\n', options.nuc_params.z_min);
+    fprintf(fileHandle, 'nuc_params.z_max=%d\n', options.nuc_params.z_max);
     fclose(fileHandle);
 end
 
@@ -454,6 +475,18 @@ function [options, okay] = loadParamTemplate(options, templateId, cellop_overrid
         if isfield(cellop_override, 'y_trim')
             options.cell_params.y_trim = cellop_override.y_trim;
             options.nuc_params.y_trim = cellop_override.y_trim;
+        end
+        if isfield(cellop_override, 'z_min_n')
+            options.nuc_params.z_min = cellop_override.z_min_n;
+        end
+        if isfield(cellop_override, 'z_max_n')
+            options.nuc_params.z_max = cellop_override.z_max_n;
+        end
+        if isfield(cellop_override, 'z_min_c')
+            options.cell_params.z_min = cellop_override.z_min_c;
+        end
+        if isfield(cellop_override, 'z_max_c')
+            options.cell_params.z_max = cellop_override.z_max_c;
         end
     end
 

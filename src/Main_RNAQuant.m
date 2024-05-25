@@ -5,7 +5,7 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.05.16.00';
+BUILD_STRING = '2024.05.24.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================

@@ -18,6 +18,12 @@ This page lists all arguments recognized by `Main_CellSegConsole.m`. Some additi
 | `-chtotnuc` | *Integer* - Channel Count  | The total number of channels in the `innuc` image stack, if provided. (Default: 1) |
 | `-chlight` | *Integer* - Channel Index (1-based) | The TRANS or passthrough light channel in the input image stack. Only used for background extraction along with cell segmentation mask. |
 | `-chnuc` | *Integer* - Channel Index (1-based) | The nuclear stain (eg. DAPI) channel in the input image stack, or the `innuc` image stack if one is provided. (Default: 1) |
+| `-nuczmin` | *Integer* - Slice Index (1-based) | The minimum slice in the nuclear marker channel to include in nucleus detection. (Default: 1) |
+| `-nuczmax` | *Integer* - Slice Index (1-based) | The maximum slice in the nuclear marker channel to include in nucleus detection. (Default: Z) |
+| `-lightzmin` | *Integer* - Slice Index (1-based) | The minimum slice in the TRANS channel to include in cell boundary detection. (Default: 1) |
+| `-lightzmax` | *Integer* - Slice Index (1-based) | The maximum slice in the TRANS channel to include in cell boundary detection. (Default: Z) |
+
+NOTE: The GUI version appears to have 13 hardcoded as the equivalent to `nuczmin` (see `A1_segment_predefined_variables_streamlined_generalized.m`).
 
 ## Output Options
 | Name | Parameter | Description |
@@ -48,7 +54,7 @@ This page lists all arguments recognized by `Main_CellSegConsole.m`. Some additi
 | ----- | ----- | ----- |
 | `-cszmin` | *Integer* - Size in pixels | Minimum expected area of cell, in pixels (Default: 600) |
 | `-cszmax` | *Integer* - Size in pixels | Maximum expected area of cell, in pixels (Default: 1200) |
-| `-fplstrat` | *String* - Strategy name | Strategy for selecting focus plane. (Default: 'specify') |
+| `-fplstrat` | *String* - Strategy name | Strategy for selecting focus plane for cell segmentation. (Default: 'specify') |
 | `-fzmin` | *Integer* - 1-based Z slice index| Minimum z plane of focus region. Ignored if fplstrat is not 'specify'. (Default: 1) |
 | `-fzmax` | *Integer* - 1-based Z slice index| Maximum z plane of focus region. Ignored if fplstrat is not 'specify'. (Default: Z) |
 | `-foffmin` | *Integer* - Number of Z slices | Offset from focus plane to start bottom of focus region. Ignored if fplstrat is not 'midplane' or 'midplane2'. (Default: 3) |

@@ -17,6 +17,11 @@ classdef CellSeg
             param_struct.end_plane = 0;
             param_struct.x_trim = 4;
             param_struct.y_trim = 4;
+
+            %These are hard trims - slices outside these are ignored from
+            %the start.
+            param_struct.z_min = 1;
+            param_struct.z_max = 0;
         end
 
         %%
@@ -35,6 +40,8 @@ classdef CellSeg
             param_struct.y_trim = 4;
             param_struct.max_proj_z_trim_lo = 0.2;
             param_struct.max_proj_z_trim_hi = 0.0;
+            param_struct.z_min = 1;
+            param_struct.z_max = 0;
         end
 
         %%
@@ -226,6 +233,8 @@ classdef CellSeg
             if use_range
                 if start_plane < param_struct.min_plane; start_plane = param_struct.min_plane; end
                 if end_plane > param_struct.max_plane; end_plane = param_struct.max_plane; end
+                if start_plane < 1; start_plane = 1; end
+                if end_plane > Z; end_plane = Z; end
                 if start_plane > end_plane; start_plane = end_plane; end
                 trans_ring_planes = light_ch_data(:,:,start_plane:end_plane);
                 trans_plane = max(trans_ring_planes,[],3);            % Maximum intensity z-projection
@@ -676,6 +685,22 @@ classdef CellSeg
             %Grab dimensions
             X = size(light_ch_data, 2);
             Y = size(light_ch_data, 1);
+            Z = size(light_ch_data, 3);
+
+            %Z trim
+            if(params.z_min > 1)
+                light_ch_data(:,:,1:(params.z_min - 1)) = NaN;
+                if(params.min_plane < params.z_min)
+                    params.min_plane = params.z_min;
+                end
+            end
+            if(params.z_max < 1); params.z_max = Z; end
+            if(params.z_max < Z)
+                light_ch_data(:,:,(params.z_max+1):Z) = NaN;
+                if(params.max_plane > params.z_max)
+                    params.max_plane = params.z_max;
+                end
+            end
 
             [trans_plane, params] = CellSeg.GenBaseTransPlane(light_ch_data, nuc_label, params);
 
@@ -756,6 +781,16 @@ classdef CellSeg
         %%
         function [nucSegSpecs, nucSegRes] = AutosegmentNuclei(nuc_ch_data, nucSegSpecs)
             if isempty(nuc_ch_data); return; end
+
+            %Z Trim
+            Z = size(nuc_ch_data, 3);
+            if(nucSegSpecs.z_min > 1)
+                nuc_ch_data(:,:,1:(nucSegSpecs.z_min - 1)) = NaN;
+            end
+            if(nucSegSpecs.z_max < 1); nucSegSpecs.z_max = Z; end
+            if(nucSegSpecs.z_max < Z)
+                nuc_ch_data(:,:,(nucSegSpecs.z_max + 1):Z) = NaN;
+            end
 
             if isnan(nucSegSpecs.dxy)
                 %From A0_segment_define_variables_streamlined_non_GUI
