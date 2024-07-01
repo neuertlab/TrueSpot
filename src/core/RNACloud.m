@@ -11,6 +11,7 @@ classdef RNACloud
         is_cyto;
         
         cloud_volume; %Just the number of pix/vox cloud encompasses.
+        max_intensity; %TODO Add
         total_intensity;
     end
     

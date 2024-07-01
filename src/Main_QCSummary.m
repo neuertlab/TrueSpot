@@ -128,7 +128,7 @@ function doDir(thTableHandle, dirPath)
     end
 
     if ~isempty(srPath)
-        spotsrun = RNASpotsRun.loadFrom(srPath);
+        spotsrun = RNASpotsRun.loadFrom(srPath, true);
         fprintf(thTableHandle, '%s', spotsrun.img_name);
         fprintf(thTableHandle, '\t%d', spotsrun.channels.rna_ch);
         fprintf(thTableHandle, '\t%s', spotsrun.meta.type_target);
@@ -136,7 +136,7 @@ function doDir(thTableHandle, dirPath)
 
         fprintf(thTableHandle, '\t%d', spotsrun.options.t_min);
         fprintf(thTableHandle, '\t%d', spotsrun.options.t_max);
-        fprintf(thTableHandle, '\t%d', spotsrun.options.intensity_threshold);
+        fprintf(thTableHandle, '\t%d', spotsrun.intensity_threshold);
 
         %Now need to load call table...
         [~, callTable] = spotsrun.loadCallTable();
@@ -144,8 +144,8 @@ function doDir(thTableHandle, dirPath)
         saveas(figHandle, [dirPath filesep 'scLog.png']);
         close(figHandle);
 
-        if spotsrun.options.intensity_threshold > 0
-            thSpotCount = nnz(callTable{:, 'dropout_thresh'} >= spotsrun.options.intensity_threshold);
+        if spotsrun.intensity_threshold > 0
+            thSpotCount = nnz(callTable{:, 'dropout_thresh'} >= spotsrun.intensity_threshold);
             fprintf(thTableHandle, '\t%d', thSpotCount);
             clear thSpotCount
         else
@@ -179,6 +179,7 @@ function figHandle = renderSpotPlot(spotsrun, callTable)
     y = double(y);
     y = log10(y);
     ymax = max(y, [], 'all', 'omitnan');
+    thval = 0;
 
     hold on;
     if ~isempty(spotsrun.threshold_results)
@@ -195,9 +196,11 @@ function figHandle = renderSpotPlot(spotsrun, callTable)
 
         rectangle('Position', [xmin 0 (xmax - xmin) ymax],...
             'FaceColor', boxcolor, 'LineStyle', 'none');
+
+        thval = spotsrun.threshold_results.threshold;
     end
 
-    plot(x, y, 'LineStyle', linetype, 'LineWidth', linewidth, 'Color', color);
+    plot(x, y, 'LineStyle', '-', 'LineWidth', 1.5, 'Color', color);
 
     if thval > 0
         xline(thval, 'LineStyle', '--', 'LineWidth', 1.5);
