@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.05.17.00';
+BUILD_STRING = '2024.07.01.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -52,6 +52,13 @@ end
 if isempty(output_dir)
     output_dir = input_dir;
 end
+
+fprintf('Main_QCSummary\n');
+fprintf('Script Version: %s\n', BUILD_STRING);
+fprintf('TrueSpot Version: %s\n', VERSION_STRING);
+fprintf('Run Time: %s\n', datetime);
+fprintf('Input: %s\n', input_dir);
+fprintf('Output: %s\n', output_dir);
 
 % ========================== Recursive Scan ==========================
 

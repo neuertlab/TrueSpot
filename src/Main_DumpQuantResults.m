@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.01.00';
+BUILD_STRING = '2024.07.05.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -62,7 +62,7 @@ fprintf('Input: %s\n', input_dir);
 fprintf('Output: %s\n', output_path);
 
 tableHandle = openOutTable(output_path);
-doDir(input_dir);
+doDir(input_dir, tableHandle);
 
 fclose(tableHandle);
 end
@@ -90,8 +90,9 @@ function doResultsSet(quantFilePath, tableHandle)
     [mydir, fname, ~] = fileparts(quantFilePath);
     fstem = replace(fname, '_quantData', '');
 
-    dirContents = dir(dirPath);
+    dirContents = dir(mydir);
     spotsRunPath = [];
+    childCount = size(dirContents, 1);
     for c = 1:childCount
         child = dirContents(c,1);
         if ~child.isdir
@@ -188,7 +189,7 @@ function [nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoC
         spots = myCell.spots;
         fits = [spots.gauss_fit];
         %spotints = [fits.fitMInt];
-        spotints = [fits.totFitInt];
+        spotints = [fits.TotFitInt];
         inNuc = [fits.nucRNA];
         clear spots fits
 
@@ -212,7 +213,7 @@ function [nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoC
         cytoCount = sum(counts(~inNuc));
     end
 
-    totalClouds = size(myCell.spots, 2);
+    totalClouds = size(myCell.clouds, 2);
     if(totalClouds > 0)
         clouds = myCell.clouds;
         cloudInts = [clouds.total_intensity];
