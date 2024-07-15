@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.05.00';
+BUILD_STRING = '2024.07.15.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -176,6 +176,7 @@ end
 function [nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell)
     %TODO Maybe just move this function to RNAQuant and add fields in
     %SingleCell for these values?
+    %Munsky B, Li G, Fox ZR, Shepherd DP, Neuert G. Distribution shapes govern the discovery of predictive models for gene regulation. Proc Natl Acad Sci U S A. 2018;115(29). doi:10.1073/pnas.1804060115
     nucCount = 0;
     nucNascentCount = 0;
     cytoCount = 0;

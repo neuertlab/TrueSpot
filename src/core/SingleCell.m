@@ -284,12 +284,6 @@ classdef SingleCell
             
         end
         
-        %%
-        function [obj, nuc_count, cyto_count, nuc_nascent_count] = estimateTargetCounts(obj, inclClouds)
-            %TODO
-            %Munsky B, Li G, Fox ZR, Shepherd DP, Neuert G. Distribution shapes govern the discovery of predictive models for gene regulation. Proc Natl Acad Sci U S A. 2018;115(29). doi:10.1073/pnas.1804060115
-
-        end
 
     end
     
