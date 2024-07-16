@@ -9,6 +9,11 @@ classdef VisCommon
         colortbl_cyan;
         colortbl_white;
 
+        colorBelowFar;
+        colorBelowNear;
+        colorAboveFar;
+        colorAboveNear;
+
         idims;
     end
 end
