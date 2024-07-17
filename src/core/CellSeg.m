@@ -701,6 +701,9 @@ classdef CellSeg
                     params.max_plane = params.z_max;
                 end
             end
+            if(params.max_plane < 1)
+                params.max_plane = params.z_max;
+            end
 
             [trans_plane, params] = CellSeg.GenBaseTransPlane(light_ch_data, nuc_label, params);
 

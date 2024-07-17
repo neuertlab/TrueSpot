@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2024.05.24.00';
+BUILD_STRING = '2024.07.15.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -287,16 +287,30 @@ function [okay, options] = runCellseg(options, buildString, versionString)
 
     %Save
     if ~isempty(options.outpath_cell_mask)
-        %Save cell mask TIF
-        tiffops = struct('overwrite', true);
-        saveastiff(cell_mask, options.outpath_cell_mask, tiffops);
-        clear tiffops
+        if endsWith(options.outpath_cell_mask, '.tif') | endsWith(options.outpath_cell_mask, '.tiff')
+            %Save cell mask TIF
+            tiffops = struct('overwrite', true);
+            saveastiff(cell_mask, options.outpath_cell_mask, tiffops);
+            clear tiffops
+        else
+            fh = figure(1);
+            imshow(cell_mask, []);
+            saveas(fh, options.outpath_cell_mask);
+            close(fh);
+        end
     end
     if ~isempty(options.outpath_nuc_mask)
-        %Save nuc mask TIF
-        tiffops = struct('overwrite', true);
-        saveastiff(nuc_res.nuc_label, options.outpath_nuc_mask, tiffops);
-        clear tiffops
+        if endsWith(options.outpath_nuc_mask, '.tif') | endsWith(options.outpath_nuc_mask, '.tiff')
+            %Save nuc mask TIF
+            tiffops = struct('overwrite', true);
+            saveastiff(nuc_res.nuc_label, options.outpath_nuc_mask, tiffops);
+            clear tiffops
+        else
+            fh = figure(1);
+            imshow(nuc_res.nuc_label, []);
+            saveas(fh, options.outpath_nuc_mask);
+            close(fh);
+        end
     end
 
     runMeta = struct();
