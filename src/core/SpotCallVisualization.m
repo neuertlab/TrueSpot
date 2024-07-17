@@ -358,6 +358,8 @@ classdef SpotCallVisualization
             end
         end
 
+        
+
         function [figHandle, okay] = drawResultsBasic3D(obj, figHandle, thVal)
             %TODO
             okay = false;
@@ -391,7 +393,6 @@ classdef SpotCallVisualization
         end
 
         function obj = matchCompareSpots(obj, thValA, thValB)
-            %TODO
             %This needs to be rerun every time a new threshold for EITHER
             %tool is tried...
             if isempty(obj); return; end
@@ -426,6 +427,8 @@ classdef SpotCallVisualization
 
             tableATh = tableA{thOkayA, :};
             tableBTh = tableB{thOkayB, :};
+            mapA = find(thOkayA);
+            mapB = find(thOkayB);
 
             %Hold one as reference against the other
             tableBR = NaN(size(tableBTh, 1), 3);
@@ -436,11 +439,23 @@ classdef SpotCallVisualization
             refAssign3 = RNACoords.matchSpots(tableATh, tableBR, obj.matchRad_xy, obj.matchRad_z, thValA);
             refAssign2 = RNACoords.matchSpots2D(tableATh, tableBR, obj.matchRad_xy, thValA);
 
-            %TODO
-            %These indices also need to be mapped back to original tables
-            %at some point
+            %I have no idea if this index wizardry will work. Remember to
+            %test it.
+            match3 = refAssign3(and(isfinite(refAssign3), (refAssign3 ~= 0)));
+            match3 = mapA(match3);
+            obj.callTableCompare.boolFullMatchA(match3) = true;
 
+            match2 = refAssign2(and(isfinite(refAssign2), (refAssign2 ~= 0)));
+            match2 = mapA(match2);
+            obj.callTableCompare.boolXYMatchA(match2) = true;
+            obj.callTableCompare.boolXYMatchA = and(obj.callTableCompare.boolXYMatchA, ~obj.callTableCompare.boolFullMatchA);
 
+            obj.callTableCompare.boolAOnly = and(~obj.callTableCompare.boolXYMatchA, ~obj.callTableCompare.boolFullMatchA);
+
+            noMatch = or(~isfinite(refAssign3), (refAssign3 == 0));
+            noMatch = and(noMatch, or(~isfinite(refAssign2), (refAssign2 == 0)));
+            noMatch = mapB(noMatch);
+            obj.callTableCompare.boolBOnly(noMatch) = true;
         end
 
         function obj = matchReferenceSpots(obj)
@@ -544,6 +559,70 @@ classdef SpotCallVisualization
             if thVal > 0
                 rowBool = and(rowBool, callTable{:, 'dropout_thresh'} >= thVal);
             end
+        end
+
+        function [figHandle, okay] = draw3DPlot(figHandle, mtx, base_color, idims)  
+            okay = false;
+            if isempty(figHandle); return; end
+            if isempty(mtx); return; end
+            if isempty(base_color)
+                base_color = [1 0 0];
+            end
+            if isempty(idims)
+                idims = struct();
+                idims.x = round(max(mtx(:,1), [], 'all', 'omitnan'));
+                idims.y = round(max(mtx(:,2), [], 'all', 'omitnan'));
+                idims.z = round(max(mtx(:,3), [], 'all', 'omitnan'));
+            end
+
+            figure(figHandle);
+            hold on;
+            
+            mtx = double(mtx);
+            X = double(idims.x);
+            Y = double(idims.y);
+            Z = double(idims.z);
+            max_rad = sqrt(X^2 + Y^2 + Z^2);
+            
+            count = size(mtx, 1);
+            for i = 1:count
+                %No wonder this thing is so slow...
+                %Fix this eventually...
+                x = mtx(i,1);
+                y = mtx(i,2);
+                z = mtx(i,3);
+                rad = sqrt(x^2 + y^2 + z^2);
+                rfrac = rad/max_rad;
+                
+                r = base_color(1,1) * rfrac;
+                g = base_color(1,2) * rfrac;
+                b = base_color(1,3) * rfrac;
+                
+                plot3(x, y, z, 'o','MarkerEdgeColor', base_color, 'MarkerFaceColor', [r,g,b]);  
+            end
+            
+            grid on;
+            
+        end
+
+        %%
+        function ax = get3DPlotAxes(idims)
+            if isempty(idims)
+                idims = struct();
+                idims.x = 1;
+                idims.y = 1;
+                idims.z = 1;
+            end
+
+            ax = axes();
+            ax.XLim = [1, idims.x];
+            ax.YLim = [1, idims.y];
+            ax.ZLim = [1, idims.z];
+            ax.XAxisLocation = 'top';
+            ax.YDir = 'reverse';
+            ax.XLabel.String = 'X Axis';
+            ax.YLabel.String = 'Y Axis';
+            ax.ZLabel.String = 'Z Axis';
         end
 
     end

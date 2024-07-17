@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.01.00';
+BUILD_STRING = '2024.07.17.01';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -117,7 +117,7 @@ function doDir(thTableHandle, dirPath)
     end
 
     if ~isempty(csPath)
-        load(csPath, 'cellSeg', 'nucleiSeg');
+        load(csPath, 'cellSeg', 'nucleiSeg', 'runMeta');
         
         figHandle = figure(1);
         clf;
@@ -131,7 +131,71 @@ function doDir(thTableHandle, dirPath)
         saveas(figHandle, [dirPath filesep 'nucLabel.png']);
         close(figHandle);
 
-        clear cellSeg nucleiSeg
+        %overlay the nuc mask over the cell mask and render that image
+        cmX = size(cellSeg.cell_mask, 2);
+        cmY = size(cellSeg.cell_mask, 1);
+        icellnuc = uint8(zeros(cmY, cmX));
+        icellnuc(cellSeg.cell_mask ~= 0) = 255;
+        icellnuc(nucleiSeg.results.nuc_label ~= 0) = 127;
+        figHandle = figure(1);
+        clf;
+        imshow(icellnuc, []);
+        saveas(figHandle, [dirPath filesep 'cellNucMask.png']);
+        close(figHandle);
+        clear icellnuc cmX cmY
+
+        if isfield(runMeta, 'srcImage')
+            tifpath = runMeta.srcImage;
+            if isfile(tifpath)
+                fprintf('\tTIF link found for cell seg. Rendering masks...\n');
+                dapiData = [];
+                if isfield(runMeta, 'srcNucImage')
+                    %separate file for nucleus
+                    [channels, ~] = LoadTif(tifpath, runMeta.srcImageChTotal, [runMeta.srcImageChTrans], 1);
+                    lightData = channels{runMeta.srcImageChTrans, 1};
+                    clear channels
+                    if isfile(runMeta.srcNucImage)
+                        [channels, ~] = LoadTif(runMeta.srcNucImage, runMeta.srcNucImageChTotal, [runMeta.srcImageChNuc], 1);
+                        dapiData = channels{runMeta.srcImageChNuc, 1};
+                        clear channels
+                    end
+                else
+                    [channels, ~] = LoadTif(tifpath, runMeta.srcImageChTotal, [runMeta.srcImageChTrans runMeta.srcImageChNuc], 1);
+                    lightData = channels{runMeta.srcImageChTrans, 1};
+                    dapiData = channels{runMeta.srcImageChNuc, 1};
+                    clear channels
+                end
+
+                renderer = CellsegDrawer;
+                renderer = renderer.initializeMe();
+
+                renderer.cell_mask = (cellSeg.cell_mask ~= 0);
+                renderer.nuc_mask = (nucleiSeg.results.lbl_mid ~= 0); %Change to different one maybe?
+                renderer.cell_color = [1.000 0.400 0.847]; %Makes it stand out better
+
+                if ~isempty(lightData)
+                    figHandle = figure(1);
+                    clf;
+                    lightDataOvr = renderer.applyCellMask(lightData);
+                    imshow(lightDataOvr);
+                    saveas(figHandle, [dirPath filesep 'cellMaskOverlay.png']);
+                    close(figHandle);
+                end
+                clear lightData
+
+                if ~isempty(dapiData)
+                    figHandle = figure(1);
+                    clf;
+                    nucDataOvr = renderer.applyCellMask(dapiData);
+                    imshow(nucDataOvr);
+                    saveas(figHandle, [dirPath filesep 'nucLabelOverlay.png']);
+                    close(figHandle);
+                end
+                clear dapiData renderer
+            end
+        end
+
+        clear cellSeg nucleiSeg runMeta
     end
 
     if ~isempty(srPath)

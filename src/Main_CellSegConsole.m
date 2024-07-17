@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2024.07.15.00';
+BUILD_STRING = '2024.07.17.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -317,6 +317,15 @@ function [okay, options] = runCellseg(options, buildString, versionString)
     runMeta.modifiedDate = datetime;
     runMeta.tsCellSegBuild = buildString;
     runMeta.tsCellSegVersion = versionString;
+
+    runMeta.srcImage = options.input_path;
+    runMeta.srcImageChTotal = options.total_ch;
+    runMeta.srcImageChTrans = options.ch_light;
+    if ~isempty(options.input_nuc)
+        runMeta.srcNucImage = options.input_nuc;
+        runMeta.srcNucImageChTotal = options.total_ch_nuc;
+    end
+    runMeta.srcImageChNuc = options.ch_nuc;
 
     if options.save_fmt_BK
         if ~isfolder(options.output_path)
