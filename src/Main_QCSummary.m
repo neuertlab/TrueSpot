@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.17.01';
+BUILD_STRING = '2024.07.18.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -222,6 +222,61 @@ function doDir(thTableHandle, dirPath)
         else
             fprintf(thTableHandle, '\tNaN');
         end
+
+        %If TIF is available, render spot visualization.
+        tifpath = spotsrun.paths.img_path;
+        if ~isempty(tifpath)
+            if isfile(tifpath)
+                fprintf('\tSource TIF found: %s\n', tifpath);
+                [channels, ~] = LoadTif(tifpath, spotsrun.channels.total_ch, [spotsrun.channels.rna_ch], 1);
+                sampleCh = channels{spotsrun.channels.rna_ch, 1};
+                clear channels
+
+                %Max proj
+                maxProjRaw = max(sampleCh, [], 3);
+
+                %Filter
+                [sampleFilt] = RNA_Threshold_SpotDetector.run_spot_detection_pre(...
+                    sampleCh, [dirPath filesep spotsrun.paths.out_namestem], true, spotsrun.options.dtune_gaussrad, false);
+                clear sampleCh
+
+                maxProjFilt = max(sampleFilt, [], 3);
+                clear sampleFilt
+
+                vis = SpotCallVisualization;
+                vis = vis.initializeMe();
+                vis.visCommon = vis.visCommon.initializeMe(spotsrun.dims.idims_sample);
+                vis.callTable = callTable;
+                vis.zMIPColor = true;
+
+                figHandle = figure(1);
+                clf;
+                imshow(maxProjRaw, []);
+                hold on;
+                [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
+                if okay
+                    saveas(figHandle, [dirPath filesep 'autoSpots.png']);
+                else
+                    fprintf('\tAuto spot render failed for some reason!\n');
+                end
+                close(figHandle);
+
+                figHandle = figure(1);
+                clf;
+                imshow(maxProjFilt, []);
+                hold on;
+                [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
+                if okay
+                    saveas(figHandle, [dirPath filesep 'autoSpotsF.png']);
+                else
+                    fprintf('\tAuto spot render (filtered) failed for some reason!\n');
+                end
+                close(figHandle);
+
+                clear vis maxProjRaw maxProjFilt
+            end
+        end
+
         clear callTable spotsrun
 
         if ~isempty(qdPath)

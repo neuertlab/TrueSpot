@@ -42,6 +42,7 @@ classdef SpotCallVisualization
         zMode; %Max proj(1) or single slice(2)?
         zNearRad; %In single slice mode, how many slices up and down are calls considered "near" and drawn in brighter colors?
         zShowRad; %In single slice mode, how many slices up and down to see calls from 
+        zMIPColor; %Bool. If set, spot circle color is slightly lighter/darker dep. on z position.
         workRegion; %Outside this region, pretend spots don't exist.
 
         matchRad_xy;
@@ -62,6 +63,7 @@ classdef SpotCallVisualization
             obj.zMode = 1;
             obj.zNearRad = 2;
             obj.zShowRad = 7;
+            obj.zMIPColor = false;
             obj.matchRad_xy = 4;
             obj.matchRad_z = 2;
             obj.matchMinTh = 20;
@@ -74,13 +76,10 @@ classdef SpotCallVisualization
             obj.workRegion.z_min = 0;
             obj.workRegion.z_max = 0;
 
-            obj.refRemoveQueue = struct();
-            obj.refRemoveQueue.queue = []; %1D table of row indices in reftable
-            obj.refRemoveQueue.capacity = 0;
-            obj.refRemoveQueue.used = 0;
+            obj.refRemoveQueue = []; %Bool array for each row in ref data
 
             obj.refAddQueue = struct();
-            obj.refAddQueue.queue = []; %Matrix w/ cols x,y,z
+            obj.refAddQueue.queue = []; %Matrix w/ cols x,y,z,flag
             obj.refAddQueue.capacity = 0;
             obj.refAddQueue.used = 0;
 
@@ -101,10 +100,11 @@ classdef SpotCallVisualization
             obj.callTableCompare.checkedThA = 0;
             obj.callTableCompare.checkedThB = 0;
 
-            obj.visCommon = VisCommon.empty();
+            obj.visCommon = VisCommon; %Don't initialize.
         end
 
         function [figHandle, okay] = drawResultsBasic(obj, figHandle, thVal, z)
+            if nargin < 4; z = 0; end
             okay = false;
             if isempty(obj); return; end
             if isempty(figHandle); return; end
@@ -118,7 +118,30 @@ classdef SpotCallVisualization
 
                     figure(figHandle);
                     hold on;
-                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                    
+                    if obj.zMIPColor & ~isempty(obj.visCommon) & obj.visCommon.isInitialized
+                        zz = obj.callTable{rowBool, 'isnap_z'};
+                        zMax = max(zz, [], 'all', 'omitnan');
+                        obj.visCommon.idims.z = max(obj.visCommon.idims.z, zMax);
+                        if size(obj.visCommon.colortbl_red, 1) < zMax
+                            obj = obj.generateColorTables(obj.visCommon.idims.z + 1);
+                        end
+                        clear zMax
+                        zc = obj.visCommon.idims.z/2;
+
+                        for z = 1:obj.visCommon.idims.z
+                            rowBoolz = (zz == z);
+                            if nnz(rowBoolz) > 0
+                                zdist = min(size(obj.visCommon.colortbl_red, 1), (abs(zc - z) * 2) + 1);
+                                plot(xx(rowBoolz), yy(rowBoolz),...
+                                'LineStyle','none','Marker','o',...
+                                'MarkerEdgeColor',obj.visCommon.colortbl_red(zdist, :),'markersize',10);
+                            end
+                        end
+
+                    else
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                    end
                 end
                 okay = true;
             elseif obj.zMode == 2
@@ -358,8 +381,6 @@ classdef SpotCallVisualization
             end
         end
 
-        
-
         function [figHandle, okay] = drawResultsBasic3D(obj, figHandle, thVal)
             %TODO
             okay = false;
@@ -380,15 +401,194 @@ classdef SpotCallVisualization
             okay = false;
         end
 
-        function [obj, figHandle] = onRefModeClick(obj, figHandle, x, y)
-            %TODO Draws new circle and updates queue
+        function obj = expandAddQueue(obj)
+            newCap = obj.refAddQueue.capacity + 256;
+            newTable = zeros(newCap, 4);
+            newTable(1:obj.refAddQueue.used, :) = obj.refAddQueue.queue(1:obj.refAddQueue.used, :);
+
+            obj.refAddQueue.capacity = newCap;
+            obj.refAddQueue.queue = newTable;
+        end
+
+        function [obj, figHandle] = onRefModeClick(obj, figHandle, x, y, z)
+            %Draws new circle and updates queue
+            if nargin < 5; z = 0; end
+            if isempty(figHandle); return; end
+            if isempty(obj.referenceTable); return; end
+
+            %Get idims
+            X = 1024;
+            Y = 1024;
+            Z = 1;
+            if ~isempty(obj.visCommon) & obj.visCommon.isInitialized
+                X = obj.visCommon.idims.x;
+                Y = obj.visCommon.idims.y;
+                Z = obj.visCommon.idims.z;
+            else
+                if ~isempty(obj.callTable)
+                    X = max(obj.callTable{:, 'isnap_x'}, [], 'all', 'omitnan');
+                    Y = max(obj.callTable{:, 'isnap_y'}, [], 'all', 'omitnan');
+                    Z = max(obj.callTable{:, 'isnap_z'}, [], 'all', 'omitnan');
+                elseif ~isempty(obj.referenceTable.data)
+                    X = max(obj.referenceTable.data(:,1), [], 'all', 'omitnan');
+                    Y = max(obj.referenceTable.data(:,2), [], 'all', 'omitnan');
+                    Z = max(obj.referenceTable.data(:,3), [], 'all', 'omitnan');
+                end
+            end
+
+            %Click radius, based on figure scale
+            cRad = SpotCallVisualization.calculateClickRadius(figHandle, X, Y);
+            
+            %Find existing spots within that radius - both in queues and in
+            %ref table
+            %Also, ignore anything outside mask, if active
+            searchRegion = struct();
+            searchRegion.x_min = max(1, x - cRad);
+            searchRegion.x_max = min(X, x + cRad);
+            searchRegion.y_min = max(1, y - cRad);
+            searchRegion.y_max = min(Y, y + cRad);
+
+            if z == 0 | (obj.zMode == 1)
+                searchRegion.z_min = 1;
+                searchRegion.z_max = Z;
+            else
+                searchRegion.z_min = z;
+                searchRegion.z_max = z;
+            end
+
+            if ~isempty(obj.workRegion)
+                if obj.workRegion.x_min > 0
+                    searchRegion.x_min = max(searchRegion.x_min, obj.workRegion.x_min);
+                end
+                if obj.workRegion.x_max > 0
+                    searchRegion.x_max = min(searchRegion.x_max, obj.workRegion.x_max);
+                end
+                if obj.workRegion.y_min > 0
+                    searchRegion.y_min = max(searchRegion.y_min, obj.workRegion.y_min);
+                end
+                if obj.workRegion.y_max > 0
+                    searchRegion.y_max = min(searchRegion.y_max, obj.workRegion.y_max);
+                end
+                if obj.workRegion.z_min > 0
+                    searchRegion.z_min = max(searchRegion.z_min, obj.workRegion.z_min);
+                end
+                if obj.workRegion.z_max > 0
+                    searchRegion.z_max = min(searchRegion.z_max, obj.workRegion.z_max);
+                end
+            end
+
+            figure(figHandle);
+            hold on;
+
+            %Check existing table
+            noHits = true;
+            if ~isempty(obj.referenceTable.data)
+                if isempty(obj.refRemoveQueue)
+                    obj.refRemoveQueue = false(size(obj.reference.data, 1), 1);
+                end
+
+                rowBool = SpotCallVisualization.filterCallsToValidRangeMtx(...
+                    obj.referenceTable.data, searchRegion);
+                if nnz(rowBool) > 0
+                    noHits = false;
+                    obj.refRemoveQueue(rowBool) = ~obj.refRemoveQueue(rowBool);
+                    %Draw magenta
+                    drawBool = and(~obj.refRemoveQueue, rowBool);
+                    xx = obj.referenceTable.data(drawBool, 1);
+                    yy = obj.referenceTable.data(drawBool, 2);
+                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
+
+                    %Draw white
+                    drawBool = and(obj.refRemoveQueue, rowBool);
+                    xx = obj.referenceTable.data(drawBool, 1);
+                    yy = obj.referenceTable.data(drawBool, 2);
+                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                end
+            end
+
+            %Check add queue
+            if ~isempty(obj.refAddQueue.queue) & (obj.refAddQueue.used > 0)
+                rowBool = SpotCallVisualization.filterCallsToValidRangeMtx(...
+                    obj.refAddQueue.queue, searchRegion);
+                rowBool((obj.refAddQueue.used + 1):size(obj.refAddQueue, 1)) = false;
+
+                if nnz(rowBool) > 0
+                    noHits = false;
+                    obj.refAddQueue.queue(rowBool) = ~obj.refAddQueue.queue(rowBool);
+
+                    %Draw cyan
+                    drawBool = and(obj.refAddQueue.queue(:,4), rowBool);
+                    xx = obj.referenceTable.data(drawBool, 1);
+                    yy = obj.referenceTable.data(drawBool, 2);
+                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
+
+                    %Draw white
+                    drawBool = and(~obj.refAddQueue.queue(:,4), rowBool);
+                    xx = obj.referenceTable.data(drawBool, 1);
+                    yy = obj.referenceTable.data(drawBool, 2);
+                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                end
+            end
+
+            %Add click target if there are no matches
+            if noHits
+                if isempty(obj.refAddQueue.queue)
+                    obj.refAddQueue.queue = zeros(256, 4);
+                    obj.refAddQueue.capacity = 256;
+                    obj.refAddQueue.used = 0;
+                end
+
+                if obj.refAddQueue.used >= obj.refAddQueue.capacity
+                    obj = obj.expandAddQueue();
+                end
+
+                if z == 0
+                    z = round(Z ./ 2);
+                end
+                newIndex = obj.refAddQueue.used + 1;
+                obj.refAddQueue.queue(newIndex, 1) = round(x);
+                obj.refAddQueue.queue(newIndex, 2) = round(y);
+                obj.refAddQueue.queue(newIndex, 3) = z;
+                obj.refAddQueue.queue(newIndex, 4) = true;
+                obj.refAddQueue.used = newIndex;
+
+                plot(x, y,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
+            end
+
         end
 
         function obj = onRefModeAccept(obj)
-            %TODO updates ref table to reflect click queue
+            %updates ref table to reflect click queue
+            %Does not redraw anything though. The draw function must be
+            %   called again!
+
+            %First, run removes
+            if ~isempty(obj.refRemoveQueue.queue) & ~isempty(obj.referenceTable.data)
+                if nnz(obj.refRemoveQueue.queue) > 0
+                    obj.referenceTable.data = obj.referenceTable.data(~obj.refRemoveQueue.queue);
+                end
+            end
+            obj.refRemoveQueue.queue = [];
+
+            %Then adds
+            if ~isempty(obj.refAddQueue.queue) & (obj.refAddQueue.used > 0)
+                %Whittle down to those to actually add.
+                addActual = obj.refAddQueue.queue(1:obj.refAddQueue.used, :);
+                if nnz(addActual(:,4))
+                    addActual = addActual(addActual(:,4), 1:3);
+                    obj.referenceTable.data = [obj.referenceTable.data; addActual];
+                    obj.referenceTable.capacity = size(obj.referenceTable.data, 1);
+                    obj.referenceTable.used = obj.referenceTable.capacity;
+                end
+            end
+
+            obj.refAddQueue.queue = [];
+            obj.refAddQueue.capacity = 0;
+            obj.refAddQueue.used = 0;
+
         end
 
-        function obj = refModeSnap(obj, zOnly, filteredImg)
+        function obj = refModeSnap(obj, zOnly, anyZ, filteredImg)
             %TODO Runs spot snap (looking for local maxima)
         end
 
@@ -488,6 +688,9 @@ classdef SpotCallVisualization
     methods(Static)
 
         function rowBool = filterCallsToValidRangeMtx(callMtx, validRegion, zMin, zMax)
+            if nargin < 3; zMin = 0; end
+            if nargin < 4; zMax = 0; end
+
             rowBool = [];
             if isempty(callMtx); return; end
 
@@ -623,6 +826,45 @@ classdef SpotCallVisualization
             ax.XLabel.String = 'X Axis';
             ax.YLabel.String = 'Y Axis';
             ax.ZLabel.String = 'Z Axis';
+        end
+
+        %%
+        function radius = calculateClickRadius(fig_handle, fullX, fullY)
+
+            rad_factor = 10;
+
+            my_axes = findobj(fig_handle, 'type', 'axes');
+
+            x_limits = get(my_axes,'XLim');
+            y_limits = get(my_axes,'YLim');
+
+            x_min = x_limits(1,1);
+            x_max = x_limits(1,2);
+            y_min = y_limits(1,1);
+            y_max = y_limits(1,2);
+
+            %fprintf("X Range: %f - %f\n", x_min, x_max);
+            %fprintf("Y Range: %f - %f\n", y_min, y_max);
+
+            x_range = x_max - x_min;
+            y_range = y_max - y_min;
+
+            x_scale = x_range./fullX;
+            y_scale = y_range./fullY;
+
+            %Use the larger one
+            scale = x_scale;
+            if y_scale > x_scale
+                scale = y_scale;
+            end
+
+
+            radius = rad_factor .* scale;
+
+            %fprintf("Scale Factor: %f\n", scale);
+            %fprintf("Radius: %f\n", radius);
+
+
         end
 
     end

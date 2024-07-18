@@ -107,16 +107,16 @@ classdef RNA_Threshold_SpotDetector
             LmaxF = median(max_proj_f(:)) + round(10 * std(max_proj_f(:)));
             clear IMG3D;
     
-            my_images(1).image = max_proj_f;
-            my_images(1).Lmin = LminF;
-            my_images(1).Lmax = LmaxF;
-    
-            my_images(2).image = max_proj;
-            my_images(2).Lmin = Lmin;
-            my_images(2).Lmax = Lmax;
-
             %Save
             if save_img_proj
+                my_images(1).image = max_proj_f;
+                my_images(1).Lmin = LminF;
+                my_images(1).Lmax = LmaxF;
+
+                my_images(2).image = max_proj;
+                my_images(2).Lmin = Lmin;
+                my_images(2).Lmax = Lmax;
+
                 save([save_stem '_imgviewstructs.mat'], 'my_images');
             end
             
