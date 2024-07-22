@@ -588,8 +588,80 @@ classdef SpotCallVisualization
 
         end
 
-        function obj = refModeSnap(obj, zOnly, anyZ, filteredImg)
-            %TODO Runs spot snap (looking for local maxima)
+        function [obj, snappedCount, removedCount] = refModeSnap(obj, filteredImg, zOnly, anyZ, removeUnsnapped, verbose)
+            if nargin < 3; zOnly = true; end
+            if nargin < 4; anyZ = false; end
+            if nargin < 5; removeUnsnapped = false; end
+            if nargin < 6; verbose = false; end
+            snappedCount = 0;
+            removedCount = 0;
+
+            %Runs spot snap (looking for local maxima)
+            if isempty(obj); return; end
+            if isempty(filteredImg); return; end
+            if isempty(obj.referenceTable); return; end
+            if isempty(obj.referenceTable.data); return; end
+
+            refCount = obj.referenceTable.used;
+            keepRow = true(refCount, 1);
+
+            X = size(filteredImg, 2);
+            Y = size(filteredImg, 1);
+            Z = size(filteredImg, 3);
+
+            %I don't know any way around looping offhand. Maybe fix this
+            %later.
+            for i = 1:refCount
+                x = obj.referenceTable.data(i,1);
+                y = obj.referenceTable.data(i,2);
+                z = obj.referenceTable.data(i,3);
+
+                %Calculate search box...
+                if zOnly
+                    x_min = x; x_max = x;
+                    y_min = y; y_max = y;
+                else
+                    x_min = max(x - obj.matchRad_xy, 1);
+                    x_max = min(x + obj.matchRad_xy, X);
+                    y_min = max(y - obj.matchRad_xy, 1);
+                    y_max = min(y + obj.matchRad_xy, Y);
+                end
+
+                if anyZ
+                    z_min = 1; z_max = Z;
+                else
+                    z_min = max(z - obj.matchRad_z, 1);
+                    z_max = min(z + obj.matchRad_z, Z);
+                end
+
+                ibox = filteredImg(y_min:y_max, x_min:x_max, z_min:z_max);
+                [mVal, mIdx] = max(ibox, [], 'all', 'omitnan');
+                if removeUnsnapped & (mVal < obj.matchMinTh)
+                    keepRow(i, 1) = false;
+                else
+                    if verbose; fprintf('[%d, %d, %d] snapped to ', x, y, z); end
+                    [yy, xx, zz] = ind2sub(size(ibox), mIdx);
+                    x = xx + x_min - 1;
+                    y = yy + y_min - 1;
+                    z = zz + z_min - 1;
+                    filteredImg(y,x,z) = 0; %Zero out in local copy so don't find again.
+                    obj.referenceTable.data(i,1) = x;
+                    obj.referenceTable.data(i,2) = y;
+                    obj.referenceTable.data(i,3) = z;
+                    snappedCount = snappedCount + 1;
+                    if verbose; fprintf('[%d, %d, %d]\n', x, y, z); end
+                end
+            end
+
+            removedCount = nnz(~keepRow);
+            if removedCount > 0
+                obj.referenceTable.data = obj.referenceTable.data(keepRow, :);
+                obj.referenceTable.used = size(obj.referenceTable.data, 1);
+                obj.referenceTable.capacity = obj.referenceTable.used;
+                obj.referenceTable.truePos = []; %Bool vec for call table rows
+                obj.referenceTable.falseNeg = [];
+                obj.referenceTable.checkedVs = false;
+            end
         end
 
         function obj = matchCompareSpots(obj, thValA, thValB)

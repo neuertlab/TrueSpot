@@ -20,6 +20,14 @@ classdef SingleCell
         signal_nuc;
         signal_cyto;
         signal_total;
+
+        %Target molecule count estimates
+        nucCount;
+        nucNascentCount;
+        nucCloud;
+        nucNascentCloud;
+        cytoCount;
+        cytoCloud;
         
         nuc_ellip; %Vector of xy nucR for each z slice
         
@@ -282,8 +290,178 @@ classdef SingleCell
             obj.spotcount_total = obj.spotcount_nuc + obj.spotcount_cyto;
             obj.signal_total = obj.signal_nuc + obj.signal_cyto;
             
+            obj = obj.updateCountEstimates();
         end
         
+        %%
+        function obj = updateCountEstimates(obj, brightStDevs)
+            if nargin < 2; brightStDevs = 2; end
+            %Munsky B, Li G, Fox ZR, Shepherd DP, Neuert G. Distribution shapes govern the discovery of predictive models for gene regulation. Proc Natl Acad Sci U S A. 2018;115(29). doi:10.1073/pnas.1804060115
+            obj.nucCount = 0;
+            obj.nucNascentCount = 0;
+            obj.cytoCount = 0;
+
+            %Get "mature RNA" (single target) intensity
+            %Collect spot intensities
+            totalSpots = size(obj.spots, 2);
+            if(totalSpots > 0)
+                spotList = obj.spots;
+                fits = [spotList.gauss_fit];
+                %spotints = [fits.fitMInt];
+                spotints = [fits.TotFitInt];
+                inNuc = [fits.nucRNA];
+                clear fits
+
+                %         figure(1);
+                %         histogram(spotints);
+
+                iMean = mean(spotints, 'all', 'omitnan');
+                iStd = std(spotints, 0, 'all', 'omitnan');
+                brightnessThreshold = iMean + (brightStDevs * iStd);
+                isTooBright = spotints >= brightnessThreshold;
+                normSpots = spotints(~isTooBright);
+                singleIntensity = median(normSpots, 'all', 'omitnan');
+                clear normSpots
+
+                %For now, all not-too-bright spots are counted as 1?
+                counts = ones(1, totalSpots);
+                counts(isTooBright) = round(spotints(isTooBright) ./ singleIntensity);
+
+                obj.nucCount = sum(counts(inNuc));
+                obj.nucNascentCount = sum(counts(inNuc & isTooBright));
+                obj.cytoCount = sum(counts(~inNuc));
+
+                %MATLAB will let you vector read, but not vector write from
+                %objects. Boooooring.
+                for s = 1:totalSpots
+                    obj.spots(s).nascent_flag = isTooBright(s);
+                end
+            end
+
+            totalClouds = size(obj.clouds, 2);
+            if(totalClouds > 0)
+                cloudList = obj.clouds;
+                cloudInts = [cloudList.total_intensity];
+
+                %Redo spots, omitting spots marked as part of clouds
+                if(totalSpots > 0)
+                    spotList = obj.spots;
+                    inCloud = [spotList.in_cloud];
+                    if nnz(inCloud) > 0
+                        obj.nucCloud = sum(counts(inNuc & ~inCloud));
+                        obj.nucNascentCloud = sum(counts(inNuc & isTooBright & ~inCloud));
+                        obj.cytoCloud = sum(counts(~inNuc & ~inCloud));
+                    else
+                        obj.nucCloud = obj.nucCount;
+                        obj.nucNascentCloud = obj.nucNascentCount;
+                        obj.cytoCloud = obj.cytoCount;
+                    end
+                else
+                    obj.nucCloud = 0;
+                    obj.nucNascentCloud = 0;
+                    obj.cytoCloud = 0;
+
+                    %Need a singleIntensity and brightnessThreshold
+                    iMean = mean(cloudInts, 'all', 'omitnan');
+                    iStd = std(cloudInts, 0, 'all', 'omitnan');
+                    brightnessThreshold = iMean + (brightStDevs * iStd);
+
+                    %The single will just be the smallest cloud
+                    singleIntensity = min(cloudInts, [], 'all', 'omitnan');
+                end
+
+                %Try to get target count from clouds.
+                cloudNuc = [cloudList.is_nuc];
+                cloudTooBright = cloudInts >= brightnessThreshold;
+                cloudCounts = round(cloudInts ./ singleIntensity);
+
+                obj.nucCloud = obj.nucCloud + sum(cloudCounts(cloudNuc));
+                obj.nucNascentCloud = obj.nucNascentCloud + sum(cloudCounts(cloudNuc & cloudTooBright));
+                obj.cytoCloud = obj.cytoCloud + sum(cloudCounts(~cloudNuc));
+
+                for j = 1:totalClouds
+                    obj.clouds(j).nascent_flag = cloudTooBright(j);
+                end
+            else
+                obj.nucCloud = obj.nucCount;
+                obj.nucNascentCloud = obj.nucNascentCount;
+                obj.cytoCloud = obj.cytoCount;
+            end
+        end
+
+        function spotList = getAllSpots(obj, nucFlag, nascentFlag)
+            if nargin < 2; nucFlag = -1; end
+            if nargin < 3; nascentFlag = -1; end
+
+            if isempty(obj.spots)
+                spotList = struct.empty();
+                return;
+            end
+
+            myspots = obj.spots;
+            scount = size(myspots, 2);
+
+            nn = [myspots.nascent_flag];
+            if nascentFlag == 0
+                nascentOkay = ~nn;
+            elseif nascentFlag == 1
+                nascentOkay = nn;
+            else
+                nascentOkay = true(1, scount);
+            end
+            clear nn;
+
+            fits = [myspots.gauss_fit];
+            nn = [fits.nucRNA];
+            if nucFlag == 0
+                nucOkay = ~nn;
+            elseif nucFlag == 1
+                nucOkay = nn;
+            else
+                nucOkay = true(1, scount);
+            end
+            clear nn;
+
+            keepSet = and(nascentOkay, nucOkay);
+            spotList = myspots(keepSet);
+        end
+
+        function cloudList = getAllClouds(obj, nucFlag, nascentFlag)
+            if nargin < 2; nucFlag = -1; end
+            if nargin < 3; nascentFlag = -1; end
+
+            if isempty(obj.clouds)
+                cloudList = struct.empty();
+                return;
+            end
+
+            myclouds = obj.clouds;
+            ccount = size(myclouds, 2);
+
+            nn = [myclouds.nascent_flag];
+            if nascentFlag == 0
+                nascentOkay = ~nn;
+            elseif nascentFlag == 1
+                nascentOkay = nn;
+            else
+                nascentOkay = true(1, ccount);
+            end
+            clear nn;
+
+            nn = [myclouds.is_nuc];
+            if nucFlag == 0
+                nucOkay = ~nn;
+            elseif nucFlag == 1
+                nucOkay = nn;
+            else
+                nucOkay = true(1, ccount);
+            end
+            clear nn;
+
+            keepSet = and(nascentOkay, nucOkay);
+            cloudList = myclouds(keepSet);
+
+        end
 
     end
     

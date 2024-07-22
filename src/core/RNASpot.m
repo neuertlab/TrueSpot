@@ -14,6 +14,7 @@ classdef RNASpot
         
         in_cloud;
         fit_volume;
+        nascent_flag = false;
     end
     
     methods
@@ -63,11 +64,18 @@ classdef RNASpot
             if ~isempty(obj.gfit_slices)
                 zdim = size(obj.gfit_slices,2);
                 sim_spot = NaN(xydim,xydim,zdim);
+                fslices = obj.gfit_slices;
+
+                mu1 = [fslices.mu1] - obj.x + xy_rad;
+                mu2 = [fslices.mu2] - obj.y + xy_rad;
+                s1 = [fslices.s1];
+                s2 = [fslices.s2];
+                A = [fslices.A];
                 
                 for k = 1:zdim
                     sim_spot(:,:,k) = RNAUtils.generateGaussian2D(...
-                        xydim, xydim, obj.gfit_slices(k).mu1, obj.gfit_slices(k).mu2, ...
-                        obj.gfit_slices(k).s1, obj.gfit_slices(k).s2, obj.gfit_slices(k).A);
+                        xydim, xydim, mu1(k), mu2(k), ...
+                        s1(k), s2(k), A(k));
                 end
             else
                 sim_spot = NaN(xydim,xydim,1);

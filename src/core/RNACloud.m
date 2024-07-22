@@ -9,6 +9,7 @@ classdef RNACloud
         
         is_nuc;
         is_cyto;
+        nascent_flag = false;
         
         cloud_volume; %Just the number of pix/vox cloud encompasses.
         max_intensity; %TODO Add

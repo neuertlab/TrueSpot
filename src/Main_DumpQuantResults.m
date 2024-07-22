@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.15.00';
+BUILD_STRING = '2024.07.22.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -156,11 +156,12 @@ function doResultsSet(quantFilePath, tableHandle)
             fprintf(tableHandle, '\t%d', nnz(myCell.mask_nuc));
             fprintf(tableHandle, '\t%d\t%d', myCell.spotcount_nuc, myCell.spotcount_cyto);
             fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
-            [nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
-            fprintf(tableHandle, '\t%d\t%d', nucCount, nucNascentCount);
-            fprintf(tableHandle, '\t%d', cytoCount);
-            fprintf(tableHandle, '\t%d\t%d', nucCloud, nucNascentCloud);
-            fprintf(tableHandle, '\t%d', cytoCloud);
+            %[nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
+            myCell = myCell.updateCountEstimates();
+            fprintf(tableHandle, '\t%d\t%d', myCell.nucCount, myCell.nucNascentCount);
+            fprintf(tableHandle, '\t%d', myCell.cytoCount);
+            fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
+            fprintf(tableHandle, '\t%d', myCell.cytoCloud);
 
             fprintf(tableHandle, '\n');
             clear myCell
@@ -169,95 +170,6 @@ function doResultsSet(quantFilePath, tableHandle)
         clear quant_results cellDat
     else
         fprintf('\t\tQuant data found for %s, but run summary could not be found!\n', fname);
-    end
-
-end
-
-function [nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell)
-    %TODO Maybe just move this function to RNAQuant and add fields in
-    %SingleCell for these values?
-    %Munsky B, Li G, Fox ZR, Shepherd DP, Neuert G. Distribution shapes govern the discovery of predictive models for gene regulation. Proc Natl Acad Sci U S A. 2018;115(29). doi:10.1073/pnas.1804060115
-    nucCount = 0;
-    nucNascentCount = 0;
-    cytoCount = 0;
-
-    BRIGHT_STDEVS = 2; %Number of standard deviations above which a spot is considered too bright to be a single target. 
-
-    %Get "mature RNA" (single target) intensity
-    %Collect spot intensities
-    totalSpots = size(myCell.spots, 2);
-    if(totalSpots > 0)
-        spots = myCell.spots;
-        fits = [spots.gauss_fit];
-        %spotints = [fits.fitMInt];
-        spotints = [fits.TotFitInt];
-        inNuc = [fits.nucRNA];
-        clear spots fits
-
-%         figure(1);
-%         histogram(spotints);
-
-        iMean = mean(spotints, 'all', 'omitnan');
-        iStd = std(spotints, 0, 'all', 'omitnan');
-        brightnessThreshold = iMean + (BRIGHT_STDEVS * iStd);
-        isTooBright = spotints >= brightnessThreshold;
-        normSpots = spotints(~isTooBright);
-        singleIntensity = median(normSpots, 'all', 'omitnan');
-        clear normSpots
-
-        %For now, all not-too-bright spots are counted as 1?
-        counts = ones(1, totalSpots);
-        counts(isTooBright) = round(spotints(isTooBright) ./ singleIntensity);
-
-        nucCount = sum(counts(inNuc));
-        nucNascentCount = sum(counts(inNuc & isTooBright));
-        cytoCount = sum(counts(~inNuc));
-    end
-
-    totalClouds = size(myCell.clouds, 2);
-    if(totalClouds > 0)
-        clouds = myCell.clouds;
-        cloudInts = [clouds.total_intensity];
-
-        %Redo spots, omitting spots marked as part of clouds
-        if(totalSpots > 0)
-            spots = myCell.spots;
-            inCloud = [spots.in_cloud];
-            if nnz(inCloud) > 0
-                nucCloud = sum(counts(inNuc & ~inCloud));
-                nucNascentCloud = sum(counts(inNuc & isTooBright & ~inCloud));
-                cytoCloud = sum(counts(~inNuc & ~inCloud));
-            else
-                nucCloud = nucCount;
-                nucNascentCloud = nucNascentCount;
-                cytoCloud = cytoCount;
-            end
-        else
-            nucCloud = 0;
-            nucNascentCloud = 0;
-            cytoCloud = 0;
-
-            %Need a singleIntensity and brightnessThreshold
-            iMean = mean(cloudInts, 'all', 'omitnan');
-            iStd = std(cloudInts, 0, 'all', 'omitnan');
-            brightnessThreshold = iMean + (BRIGHT_STDEVS * iStd);
-            
-            %The single will just be the smallest cloud
-            singleIntensity = min(cloudInts, [], 'all', 'omitnan');
-        end
-
-        %Try to get target count from clouds.
-        cloudNuc = [clouds.is_nuc];
-        cloudTooBright = cloudInts >= brightnessThreshold;
-        cloudCounts = round(cloudInts ./ singleIntensity);
-
-        nucCloud = nucCloud + sum(cloudCounts(cloudNuc));
-        nucNascentCloud = nucNascentCloud + sum(cloudCounts(cloudNuc & cloudTooBright));
-        cytoCloud = cytoCloud + sum(cloudCounts(~cloudNuc));
-    else
-        nucCloud = nucCount;
-        nucNascentCloud = nucNascentCount;
-        cytoCloud = cytoCount;
     end
 
 end
