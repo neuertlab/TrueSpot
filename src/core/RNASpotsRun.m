@@ -18,11 +18,9 @@ classdef RNASpotsRun
     end
     
     methods
-        
-        function obj = saveMe(obj)
+
+        function [obj, run_info] = bundleForSave(obj)
             obj.meta.modifiedDate = datetime;
-            outpath = [obj.getFullOutStem() '_rnaspotsrun.mat'];
-           
             run_info = struct('RNASpotsRunVersion', 2);
 
             run_info.img_name = obj.img_name;
@@ -34,7 +32,16 @@ classdef RNASpotsRun
             run_info.dims = obj.dims;
             run_info.meta = obj.meta;
             run_info.options = obj.options;
+        end
+        
+        function obj = saveMe(obj)
+            outpath = [obj.getFullOutStem() '_rnaspotsrun.mat'];
+            run_info = obj.bundleForSave();
+            save(outpath, 'run_info');
+        end
 
+        function obj = saveMeTo(obj, outpath)
+            run_info = obj.bundleForSave();
             save(outpath, 'run_info');
         end
         

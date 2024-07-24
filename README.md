@@ -17,7 +17,7 @@ Hospelhorn, B.G., Kesler, B.K., Jashnsaz, H., Neuert, G. (2024). TrueSpot: A rob
 Kesler, B.K. & Neuert, G. (2024). Transcriptional stocahsticity reveals multiple mechanisms of long non-coding RNA regulation at the Xist-Tsix locus. *Nature Communications*, in revision.
 
 ## Dependencies
-[MATLAB 2018b (or higher)](https://www.mathworks.com/products/get-matlab.html?s_tid=gn_getml)
+[MATLAB 2022a (or higher)](https://www.mathworks.com/products/get-matlab.html?s_tid=gn_getml)
 
 [MATLAB Image Processing Toolkit](https://www.mathworks.com/solutions/image-video-processing.html)
 

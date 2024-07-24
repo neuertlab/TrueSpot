@@ -19,14 +19,6 @@ tifpath = [];
 if ~isempty(param_struct.runpath)
     rnaspots_run = RNASpotsRun.loadFrom(param_struct.runpath);
     
-    %Fix stems in spotsrun so that it saves correctly.
-    %This is for cases when the run is moved between computers or to a
-    %different folder.
-    [spotsrun_dir, spotsrun_name, ~] = fileparts(param_struct.runpath);
-    %spotsrun_name = replace(spotsrun_name, '_rnaspotsrun', '');
-    rnaspots_run.paths.out_dir = spotsrun_dir;
-    %rnaspots_run.paths.out_namestem = [spotsrun_dir filesep spotsrun_name];
-    
     if isempty(param_struct.tifpath)
         %Try to use the run's (though it may be no good).
         tifpath = rnaspots_run.paths.img_path;
@@ -43,8 +35,12 @@ if ~isempty(param_struct.runpath)
     %Rethreshold, if needed or requested.
     if param_struct.rethresh | isempty(rnaspots_run.threshold_results)
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Rerunning spot thresholding..."), true);
+        if param_struct.rethreshPreset > 0
+            RNA_Fisher_State.outputMessageLineStatic(sprintf("Using thresholding preset %d...", param_struct.rethreshPreset), true);
+            rnaspots_run = RNAThreshold.applyPreset(rnaspots_run, param_struct.rethreshPreset);
+        end
         rnaspots_run.threshold_results = RNAThreshold.runSavedParameters(rnaspots_run, 0);
-        rnaspots_run.saveMe();
+        rnaspots_run = rnaspots_run.saveMeTo(param_struct.runpath);
         use_thresh = rnaspots_run.threshold_results.threshold;
     else
         use_thresh = rnaspots_run.threshold_results.threshold;

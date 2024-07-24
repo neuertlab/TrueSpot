@@ -70,8 +70,8 @@ This page lists all arguments recognized by `Main_RNASpots.m`. Some additional a
 ### Presets
 | Name | Parameter | Description |
 | ----- | ----- | ----- |
-| `-sensitivity` | *Integer* - Level (0-2) | Set thresholding parameters to preset reflecting desired level of sensitivity (Default: 0) |
-| `-precision` | *Integer* - Level (0-2) | Set thresholding parameters to preset reflecting desired level of precision (Default: 0) |
+| `-sensitivity` | *Integer* - Level (0-5) | Set thresholding parameters to preset reflecting desired level of sensitivity (Default: 0) |
+| `-precision` | *Integer* - Level (0-5) | Set thresholding parameters to preset reflecting desired level of precision (Default: 0) |
 | `-sensitive` | - | **Flag** - Set thresholding parameters to a preset with higher sensitivity. |
 | `-precise` | - | **Flag** - Set thresholding parameters to a preset with higher precision. |
 

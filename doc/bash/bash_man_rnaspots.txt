@@ -52,8 +52,8 @@ Usage Manual
 -automaxth				(Flag) Determine threshold scan maximum automatically from image properties.
 
 --- Thresholding Tuning (Presets) ---
--sensitivity [Int]		Set thresholding parameters to preset reflecting desired level of sensitivity (0-2) (Default: 0)
--precision [Int]		Set thresholding parameters to preset reflecting desired level of precision (0-2) (Default: 0)
+-sensitivity [Int]		Set thresholding parameters to preset reflecting desired level of sensitivity (0-5) (Default: 0)
+-precision [Int]		Set thresholding parameters to preset reflecting desired level of precision (0-5) (Default: 0)
 -sensitive				(Flag) Set thresholding parameters to a preset with higher sensitivity.
 -precise				(Flag) Set thresholding parameters to a preset with higher precision.
 

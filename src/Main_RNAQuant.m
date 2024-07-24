@@ -5,8 +5,11 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.05.24.00';
+BUILD_STRING = '2024.07.24.00';
 VERSION_STRING = 'v1.1.0';
+
+DEFAULT_PRESET_INDEX = 6;
+MAX_TH_PRESET_LEVEL = 5;
 
 % ========================== Process args ==========================
 
@@ -20,6 +23,7 @@ param_struct.cellsegpath = [];
 param_struct.nucsegpath = [];
 param_struct.coord_tbl_path = [];
 param_struct.rethresh = false;
+param_struct.rethreshPreset = 0;
 param_struct.noclouds = false;
 param_struct.no_refilter = false;
 param_struct.dbgcell = 0;
@@ -43,6 +47,8 @@ param_struct.preloaded_image = [];
 param_struct.preloaded_cellmask = [];
 param_struct.preloaded_nucmask = [];
 param_struct.coords = [];
+
+senspe_set = false;
 
 lastkey = [];
 for i = 1:nargin
@@ -84,6 +90,20 @@ for i = 1:nargin
             param_struct.nocells = true;
             if arg_debug; fprintf("Bypassing cell segmentation data.\n"); end
             lastkey = [];
+        elseif strcmp(lastkey, "sensitive")
+            if ~senspe_set
+                if arg_debug; fprintf("Rethreshold tuning Preset: Sensitivity\n"); end
+                senspe_set = true;
+                param_struct.rethreshPreset = DEFAULT_PRESET_INDEX + 3;
+                lastkey = [];
+            end
+        elseif strcmp(lastkey, "precise")
+            if ~senspe_set
+                if arg_debug; fprintf("Rethreshold tuning Preset: Precise\n"); end
+                senspe_set = true;
+                param_struct.rethreshPreset = DEFAULT_PRESET_INDEX - 3;
+                lastkey = [];
+            end
         end
     else
         if isempty(lastkey)
@@ -146,6 +166,16 @@ for i = 1:nargin
         elseif strcmp(lastkey, "dbgcell")
             param_struct.dbgcell = Force2Num(argval);
             if arg_debug; fprintf("DEBUG Cell Index: %d\n", param_struct.dbgcell); end
+        elseif strcmp(lastkey, "sensitivity")
+            specval = Force2Num(argval);
+            if specval > MAX_TH_PRESET_LEVEL; specval = MAX_TH_PRESET_LEVEL; end
+            param_struct.rethreshPreset = DEFAULT_PRESET_INDEX + specval;
+            if arg_debug; fprintf("Rethreshold sensitivity Preset Level Set: %d\n", specval); end
+        elseif strcmp(lastkey, "precision")
+            specval = Force2Num(argval);
+            if specval > MAX_TH_PRESET_LEVEL; specval = MAX_TH_PRESET_LEVEL; end
+            param_struct.rethreshPreset = DEFAULT_PRESET_INDEX - specval;
+            if arg_debug; fprintf("Rethreshold precision Preset Level Set: %d\n", specval); end
         end
     end
 end %End of argin for loop

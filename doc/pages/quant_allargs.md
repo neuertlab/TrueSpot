@@ -25,6 +25,16 @@ No single options are required, but some form of input (ie. image path or spots 
 | `-mthresh` | *Int* - Threshold value  | Threshold value to use to obtain starting calls (Default: Value stored in spotsrun) |
 | `-rethresh` | - | **Flag** - Rerun automatic thresholding using default parameters or parameters stored in spotsrun. |
 
+## Thresholding Tuning
+
+### Presets
+| Name | Parameter | Description |
+| ----- | ----- | ----- |
+| `-sensitivity` | *Integer* - Level (0-5) | Set thresholding parameters to preset reflecting desired level of sensitivity (Default: 0) |
+| `-precision` | *Integer* - Level (0-5) | Set thresholding parameters to preset reflecting desired level of precision (Default: 0) |
+| `-sensitive` | - | **Flag** - Set thresholding parameters to a preset with higher sensitivity. |
+| `-precise` | - | **Flag** - Set thresholding parameters to a preset with higher precision. |
+
 ## Tuning
 
 | Name | Parameter | Description |

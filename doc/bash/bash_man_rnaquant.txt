@@ -28,5 +28,11 @@ Usage Manual
 -nocells					(Flag) Evaluate input image as a whole instead of cell-by-cell. If this flag is set, cell segmentation paths are ignored.
 -noclouds					(Flag) Skip cloud detection and only do gaussian fitting.
 
+--- Thresholding Tuning (Presets) ---
+-sensitivity [Int]		Set thresholding parameters to preset reflecting desired level of sensitivity (0-5) (Default: 0)
+-precision [Int]		Set thresholding parameters to preset reflecting desired level of precision (0-5) (Default: 0)
+-sensitive				(Flag) Set thresholding parameters to a preset with higher sensitivity.
+-precise				(Flag) Set thresholding parameters to a preset with higher precision.
+
 --- Performance Options ---
 -workers [Int]				Number of threads to request from MATLAB. As many threads may run in parallel as there are available cores. When there is more than one worker thread, fitting/quantification can be done on multiple cells at once. (Default: 1)
