@@ -31,6 +31,10 @@ if ~isempty(param_struct.runpath)
     if gaussrad < 1
         gaussrad = rnaspots_run.options.dtune_gaussrad;
     end
+
+    if isempty(param_struct.cellsegpath)
+        param_struct.cellsegpath = rnaspots_run.paths.cellseg_path;
+    end
     
     %Rethreshold, if needed or requested.
     if param_struct.rethresh | isempty(rnaspots_run.threshold_results)
@@ -40,8 +44,10 @@ if ~isempty(param_struct.runpath)
             rnaspots_run = RNAThreshold.applyPreset(rnaspots_run, param_struct.rethreshPreset);
         end
         rnaspots_run.threshold_results = RNAThreshold.runSavedParameters(rnaspots_run, 0);
+        rnaspots_run.intensity_threshold = rnaspots_run.threshold_results.threshold;
         rnaspots_run = rnaspots_run.saveMeTo(param_struct.runpath);
         use_thresh = rnaspots_run.threshold_results.threshold;
+        RNA_Fisher_State.outputMessageLineStatic(sprintf("Rethresholding complete. New threshold: %d", use_thresh), true);
     else
         use_thresh = rnaspots_run.threshold_results.threshold;
     end

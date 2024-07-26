@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.18.00';
+BUILD_STRING = '2024.07.26.00';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -316,10 +316,17 @@ function figHandle = renderSpotPlot(spotsrun, callTable)
         xmax = score_mean + score_std;
         if xmin < 0; xmin = 0; end
 
+        fprintf('[%s] Plot debug -- score_mean = %.4f\n', datetime, score_mean);
+        fprintf('[%s] Plot debug -- score_std = %.4f\n', datetime, score_std);
+
         cdiff = [1 1 1] - color;
         cdiff = cdiff ./ 2;
         boxcolor = color + cdiff;
 
+        fprintf('[%s] Plot debug: attempting to draw rectangle using range:\n', datetime);
+        fprintf('[%s] \tymax=%d\n', datetime, ymax);    
+        fprintf('[%s] \txmin=%.4f\n', datetime, xmin);
+        fprintf('[%s] \txmax=%.4f\n', datetime, xmax);
         rectangle('Position', [xmin 0 (xmax - xmin) ymax],...
             'FaceColor', boxcolor, 'LineStyle', 'none');
 

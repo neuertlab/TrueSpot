@@ -1089,8 +1089,9 @@ classdef RNAQuant
             %We can just do these cell by cell.
             cell_count = size(quant_struct.cell_rna_data,2);
             min_cloud_vol = 0;
+            fprintf("[%s] RNAQuant.FitRNA_S -- Cells found: %d\n", datetime, cell_count);
             if quant_struct.do_gauss_fit
-                fprintf("RNAQuant.FitRNA_S -- Fitting Gaussians to spots...\n");
+                fprintf("[%s] RNAQuant.FitRNA_S -- Fitting Gaussians to spots...\n", datetime);
                 for c = 1:cell_count
                     if (quant_struct.dbgcell > 0) & (c ~= quant_struct.dbgcell); continue; end
                     my_cell = quant_struct.cell_rna_data(c);
@@ -1106,7 +1107,7 @@ classdef RNAQuant
             end
             
             if quant_struct.do_clouds
-                fprintf("RNAQuant.FitRNA_S -- Finding clouds...\n");
+                fprintf("[%s] RNAQuant.FitRNA_S -- Finding clouds...\n", datetime);
                 for c = 1:cell_count
                     if (quant_struct.dbgcell > 0) & (c ~= quant_struct.dbgcell); continue; end
                     my_cell = quant_struct.cell_rna_data(c);
@@ -1142,31 +1143,31 @@ classdef RNAQuant
 
             if quant_output.do_refilter
                 %1. Preprocess
-                fprintf("RNAQuant.FitRNA -- Running prefilter...\n");
+                fprintf("[%s] RNAQuant.FitRNA -- Running prefilter...\n", datetime);
                 [img_clean, imrmax_mask, img_bkg, quant_output.plane_stats] =...
                     RNAQuant.RNAProcess3Dim(quant_output.img_raw, quant_output.threshold, quant_output.small_obj_size,...
                     quant_output.connect_size, quant_output.gaussian_radius, quant_output.workdir);
 
                 %2. NonGauss RNA Pos
-                fprintf("RNAQuant.FitRNA -- Initial cellseg load and spot identification...\n");
+                fprintf("[%s] RNAQuant.FitRNA -- Initial cellseg load and spot identification...\n", datetime);
                 quant_output.cell_rna_data = RNAQuant.NonGaussRNAPos(img_clean,...
                     imrmax_mask, quant_output.cell_mask, quant_output.nuc_mask);
                 clear imrmax_mask;
             else
                 %1. Preprocess
-                fprintf("RNAQuant.FitRNA -- Running prefilter...\n");
+                fprintf("[%s] RNAQuant.FitRNA -- Running prefilter...\n", datetime);
                 [img_clean, ~, img_bkg, quant_output.plane_stats] =...
                     RNAQuant.RNAProcess3Dim(quant_output.img_raw, quant_output.threshold, quant_output.small_obj_size,...
                     quant_output.connect_size, quant_output.gaussian_radius, quant_output.workdir, true);
 
                 %2. NonGauss RNA Pos
-                fprintf("RNAQuant.FitRNA -- Initial cellseg load and spot identification...\n");
+                fprintf("[%s] RNAQuant.FitRNA -- Initial cellseg load and spot identification...\n", datetime);
                 quant_output.cell_rna_data = RNAQuant.RNAPosFromTable(img_clean,...
                     quant_output.t_coord_table, quant_output.cell_mask, quant_output.nuc_mask);
             end
 
             %3. Gaussian Fit & Cloud Detection (where applicable)
-            fprintf("RNAQuant.FitRNA -- Now starting gaussian & cloud fitting...\n");
+            fprintf("[%s] RNAQuant.FitRNA -- Now starting gaussian & cloud fitting...\n", datetime);
             if quant_output.workers > 1
                 quant_output = RNAQuant.FitRNA_P(quant_output, img_clean, img_bkg);
             else
@@ -1176,7 +1177,7 @@ classdef RNAQuant
         
         %%
         function cell_data_table = cellData2Table(cell_rna_data)
-            cell_data_table = [];
+            cell_data_table = table.empty();
             if isempty(cell_rna_data); return; end
             
             var_types = {'uint16' 'uint16' 'uint16' 'uint16' 'uint16' 'uint16' 'uint16' ...
