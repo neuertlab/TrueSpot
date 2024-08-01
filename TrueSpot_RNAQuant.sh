@@ -52,8 +52,6 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
-#echo $MAT_ARG_STR
-
 #Determine log file path
 if [ -z "$LOG_PATH" ]; then
 	echo "Log path not specified."

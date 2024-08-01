@@ -61,8 +61,6 @@ if [ -z "$IN_PATH" ]; then
 	exit 1
 fi
 
-#echo $MAT_ARG_STR
-
 #Determine log file path
 if [ -z "$LOG_PATH" ]; then
 	echo "Log path not specified."
