@@ -13,9 +13,6 @@
 %   1.1.1 | 22.12.12
 %       Round 2 debugging. Fixed parallel, tweaked some cloud stuff.
 
-%TODO Modify to take a coord table directly instead of redoing
-%imregionalmax using provided threshold
-
 classdef RNAQuant
     
     %%

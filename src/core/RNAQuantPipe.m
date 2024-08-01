@@ -217,8 +217,8 @@ if(param_struct.nocells)
         idim_z = 1;
     end
     
-    param_struct.preloaded_cellmask = uint16(ones(idim_y,idim_x));
-    param_struct.preloaded_nucmask = true(idim_y,idim_x,idim_z);
+    cellmask = uint16(ones(idim_y,idim_x));
+    nucmask = true(idim_y,idim_x,idim_z);
 end
 
 %Load coord table, if needed
@@ -287,6 +287,10 @@ quant_results.do_refilter = ~param_struct.no_refilter;
 quant_results.z_adj = param_struct.z_adj;
 quant_results.workers = param_struct.workers;
 quant_results.dbgcell = param_struct.dbgcell;
+
+if ~isempty(quant_results.t_coord_table)
+   quant_results.t_coord_table = int32(quant_results.t_coord_table);
+end
 
 if gaussrad < 1; gaussrad = 7; end
 quant_results.gaussian_radius = gaussrad;
