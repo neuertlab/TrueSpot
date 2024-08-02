@@ -4,14 +4,23 @@ classdef ProbDistroPlots
     %%
     properties
         timePoints = [0:5:30];
-        targets = [];
+        targets = {};
 
         xMax = 150;
         yMax = 1.0;
+        topMargin = 0.050;
+        leftMargin = 0.050;
+        xSpace = 0.008;
+        ySpace = 0.030;
+
+        fszYLabel = 12;
+        fszTicks = 11;
+        fszXTitle = 14;
+
         binSize = 10;
         timeUnit = 'min';
 
-        data = []; %2D mtx of data point structs
+        data = {}; %2D mtx of data point structs
 
     end
 
@@ -23,16 +32,16 @@ classdef ProbDistroPlots
             if ~isempty(obj.timePoints)
                 tpCount = size(obj.timePoints, 2);
             else
-                obj.data = [];
+                obj.data = {};
             end
 
             if ~isempty(obj.targets)
                 trgCount = size(obj.targets, 2);
             else
-                obj.data = [];
+                obj.data = {};
             end
 
-            obj.data(trgCount, tpCount) = struct();
+            obj.data = cell(trgCount, tpCount);
         end
 
         %%
@@ -52,20 +61,25 @@ classdef ProbDistroPlots
                 return;
             end
 
-            n = 1;
-            subplot(trgCount, tpCount, n);
-            for yy = 1:trgCount
-                trgInfo = obj.targets(yy);
-                for xx = 1:tpCount
-                    %subplot(yy, xx, n);
-                    subplot('Position', n);
+            ww = ((1.0 - obj.leftMargin) / tpCount) - (obj.xSpace * 1.1);
+            hh = ((1.0 - obj.topMargin) / trgCount) - (obj.ySpace * 1.1);
+            yy = 1.0 - hh - obj.topMargin;
+
+            %n = 1;
+            subplot(trgCount, tpCount, 1);
+            for y = 1:trgCount
+                trgInfo = obj.targets{y};
+                xx = obj.leftMargin;
+                for x = 1:tpCount
+                    %subplot(trgCount, tpCount, n);
+                    subplot('Position', [xx yy ww hh]);
                     hold on;
 
-                    dataGroup = obj.data(yy, xx);
+                    dataGroup = obj.data{y, x};
                     if ~isempty(dataGroup)
                         repCount = size(dataGroup.reps, 2);
                         for r = 1:repCount
-                            rcolor = trgInfo.colors(r);
+                            rcolor = trgInfo.colors(r,:);
                             lwidth = trgInfo.lineWidth(r);
                             lstyle = trgInfo.lineStyle(r);
                             plot(dataGroup.reps(r).x, dataGroup.reps(r).y,...
@@ -74,33 +88,44 @@ classdef ProbDistroPlots
                         end
                     end
                     
-                    xlim(0, obj.xMax);
-                    ylim(0, obj.yMax);
+                    xlim([0 obj.xMax]);
+                    ylim([0 obj.yMax]);
 
                     %Apply/remove titles or labels as appropriate
-                    if xx > 1
+                    ax = gca;
+                    ax.FontSize = obj.fszTicks;
+                    if x > 1
                         set(gca,'YTickLabel',[]);
                     end
-                    if yy < trgCount
+
+                    if y < trgCount
                         set(gca,'XTickLabel',[]);
                     end
-                    if yy == 1
+
+                    if y == 1
                         %Top titles
-                        if xx == 1
-                            title([num2str(obj.timePoints(xx)) ' ' obj.timeUnit]);
+                        if x == 1
+                            title([num2str(obj.timePoints(x)) ' ' obj.timeUnit], 'FontSize', obj.fszXTitle);
                         else
-                            title(num2str(obj.timePoints(xx)));
+                            title(num2str(obj.timePoints(x)), 'FontSize', obj.fszXTitle);
                         end
                         
                     end
-                    if xx == 1
-                        %Side titles
-                        ylabel(trgInfo.name);
-                    end
-                end
-            end
 
-            
+                    if x == 1
+                        %Side titles
+                        if ~isempty(trgInfo.subtitle)
+                            ylabel({trgInfo.name; trgInfo.subtitle}, 'FontWeight', 'bold', 'FontSize', obj.fszYLabel);
+                        else
+                            ylabel(trgInfo.name, 'FontWeight', 'bold', 'FontSize', obj.fszYLabel);
+                        end
+                    end
+
+                    %n = n+1;
+                    xx = xx + ww + obj.xSpace;
+                end
+                yy = yy - hh - obj.ySpace;
+            end
         end
 
         %%
@@ -108,6 +133,24 @@ classdef ProbDistroPlots
         function obj = setTimePoints(obj, val)
             obj.timePoints = val;
             obj = obj.reallocateDataMtx();
+        end
+
+        %%
+        function obj = loadRawCountSet(obj, rawCounts, targetIndex, timepointIndex, replicate)
+            dataGroup = obj.data{targetIndex, timepointIndex};
+            if isempty(dataGroup)
+                dataGroup = ProbDistroPlots.genDataPointStruct(replicate);
+            end
+
+            myhisto = dataGroup.reps(replicate);
+            cellCount = size(rawCounts, 2);
+            binEdges = [0:obj.binSize:obj.xMax];
+            [myhisto.y, myhisto.x] = histcounts(rawCounts, binEdges);
+            myhisto.y = myhisto.y ./ cellCount;
+            myhisto.x = myhisto.x(1:size(myhisto.y, 2));
+
+            dataGroup.reps(replicate) = myhisto;
+            obj.data{targetIndex, timepointIndex} = dataGroup;
         end
 
     end
@@ -128,9 +171,9 @@ classdef ProbDistroPlots
         %%
         function dstruct = genDataPointStruct(replicateCount)
             dstruct = struct();
-            dstruct.reps(replicateCount, 1) = genHistStruct();
+            dstruct.reps(1, replicateCount) = ProbDistroPlots.genHistStruct();
             for i = 1:replicateCount-1
-                dstruct.reps(i) = genHistStruct();
+                dstruct.reps(i) = ProbDistroPlots.genHistStruct();
             end
         end
 
