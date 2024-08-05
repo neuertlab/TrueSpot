@@ -43,11 +43,11 @@ classdef VisCommon
 
         %%
         function obj = generateColorTables(obj, levels)
-            obj.colortbl_red = RNA_Threshold_SpotSelector.generateColors(levels, [1.0, 0.0, 0.0]);
-            obj.colortbl_magenta = RNA_Threshold_SpotSelector.generateColors(levels, [1.0, 0.0, 1.0]);
-            obj.colortbl_yellow = RNA_Threshold_SpotSelector.generateColors(levels, [1.0, 1.0, 0.0]);
-            obj.colortbl_cyan = RNA_Threshold_SpotSelector.generateColors(levels, [0.0, 1.0, 1.0]);
-            obj.colortbl_white = RNA_Threshold_SpotSelector.generateColors(levels, [1.0, 1.0, 1.0]);
+            obj.colortbl_red = VisCommon.generateDarkColors(levels, [1.0, 0.0, 0.0]);
+            obj.colortbl_magenta = VisCommon.generateDarkColors(levels, [1.0, 0.0, 1.0]);
+            obj.colortbl_yellow = VisCommon.generateDarkColors(levels, [1.0, 1.0, 0.0]);
+            obj.colortbl_cyan = VisCommon.generateDarkColors(levels, [0.0, 1.0, 1.0]);
+            obj.colortbl_white = VisCommon.generateDarkColors(levels, [1.0, 1.0, 1.0]);
         end
 
 
@@ -70,7 +70,7 @@ classdef VisCommon
         end
 
         %%
-        function color_tbl = generateColors(levels, base_color)
+        function color_tbl = generateDarkColors(levels, base_color)
 
             levels = double(levels+1);
             color_tbl = NaN(levels,3);
@@ -100,6 +100,37 @@ classdef VisCommon
                 %b = b-b_div;
                 b = (1 - (log10(l) * konst)) * base_color(1,3);
                 color_tbl(l,3) = b;
+            end
+
+        end
+
+        %%
+        function color_tbl = generateLightColors(levels, base_color)
+
+            levels = double(levels+1);
+            color_tbl = NaN(levels,3);
+            konst = 1/log10(levels);
+
+            r = base_color(1,1);
+            g = base_color(1,2);
+            b = base_color(1,3);
+
+            color_tbl(1,1) = r;
+            color_tbl(1,2) = g;
+            color_tbl(1,3) = b;
+
+            for l = 2:levels
+                %r = r-r_div;
+                r = (log10(l) * konst) + base_color(1,1);
+                color_tbl(l,1) = min(r, 1.0);
+
+                %g = g-g_div;
+                g = (log10(l) * konst) + base_color(1,2);
+                color_tbl(l,2) = min(g, 1.0);
+
+                %b = b-b_div;
+                b = (log10(l) * konst) + base_color(1,3);
+                color_tbl(l,3) = min(b, 1.0);
             end
 
         end
