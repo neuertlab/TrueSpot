@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.26.00';
+BUILD_STRING = '2024.08.12.01';
 VERSION_STRING = 'v1.1.0';
 
 % ========================== Process args ==========================
@@ -199,7 +199,7 @@ function doDir(thTableHandle, dirPath)
     end
 
     if ~isempty(srPath)
-        spotsrun = RNASpotsRun.loadFrom(srPath, true);
+        spotsrun = RNASpotsRun.loadFrom(srPath, false);
         fprintf(thTableHandle, '%s', spotsrun.img_name);
         fprintf(thTableHandle, '\t%d', spotsrun.channels.rna_ch);
         fprintf(thTableHandle, '\t%s', spotsrun.meta.type_target);
@@ -297,6 +297,7 @@ function figHandle = renderSpotPlot(spotsrun, callTable)
 
     color = [0.667 0.220 0.220];
 
+    fprintf('[%s] Plot debug -- callTable rows: %d\n', datetime, size(callTable, 1));
     [x, y] = RNAUtils.spotCountFromCallTable(callTable, false, spotsrun.options.t_min, spotsrun.options.t_max);
 
     figHandle = figure(1);

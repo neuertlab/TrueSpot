@@ -880,10 +880,14 @@ classdef RNAQuant
                 cell_spots = size(my_cell.spots, 2);
                 for s = 1:cell_spots
                     my_spot = my_cell.spots(s); %READ ONLY
-                    x = my_spot.gauss_fit.xfit;
-                    y = my_spot.gauss_fit.yfit;
-                    z = max(my_spot.gauss_fit.zabs, 1); %TODO This is sometimes 0. That needs to be fixed in the fitter.
-                    z = min(z, Z); %Also going outside max...
+%                     x = my_spot.gauss_fit.xfit;
+%                     y = my_spot.gauss_fit.yfit;
+%                     z = max(my_spot.gauss_fit.zabs, 1); %TODO This is sometimes 0. That needs to be fixed in the fitter.
+%                     z = min(z, Z); %Also going outside max...
+                    % Use seed snap instead of fit
+                    y = my_spot.y;
+                    x = my_spot.x;
+                    z = my_spot.z;
                     if kept_cloud_mask(y,x,z)
                         my_cell.spots(s).in_cloud = true;
                     end
