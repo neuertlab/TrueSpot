@@ -10,7 +10,7 @@ classdef ProbDistroPlots
         yMax = 1.0;
         topMargin = 0.050;
         leftMargin = 0.050;
-        xSpace = 0.008;
+        xSpace = 0.004;
         ySpace = 0.030;
 
         fszYLabel = 12;
@@ -65,6 +65,18 @@ classdef ProbDistroPlots
             hh = ((1.0 - obj.topMargin) / trgCount) - (obj.ySpace * 1.1);
             yy = 1.0 - hh - obj.topMargin;
 
+            xtick_dist = round(obj.xMax ./ 4);
+            xtick_vals = [0:xtick_dist:obj.xMax];
+            xtickCount = size(xtick_vals, 2);
+            xtick_vals(xtickCount) = obj.xMax;
+            xtick_str_all = cell(1, xtickCount);
+            for i = 1:xtickCount
+                xtick_str_all{i} = num2str(xtick_vals(i));
+            end
+            xtick_str_trimmed = xtick_str_all;
+            xtick_str_trimmed{1} = '';
+            clear i
+
             %n = 1;
             subplot(trgCount, tpCount, 1);
             for y = 1:trgCount
@@ -75,8 +87,6 @@ classdef ProbDistroPlots
                     subplot('Position', [xx yy ww hh]);
                     hold on;
 
-                    %TODO For purpose of legend, if on last col make a
-                    %dummy plot for all empty datasets
                     dataGroup = obj.data{y, x};
                     if ~isempty(dataGroup)
                         repCount = size(dataGroup.reps, 2);
@@ -120,6 +130,14 @@ classdef ProbDistroPlots
 
                     if y < trgCount
                         set(gca,'XTickLabel',[]);
+                    else
+                        %Reduce ticks shown to avoid crowding
+                        set(gca,'XTick',xtick_vals);
+                        if x == 1
+                            set(gca,'XTickLabel',xtick_str_all);
+                        else
+                            set(gca,'XTickLabel',xtick_str_trimmed);
+                        end
                     end
 
                     if y == 1
@@ -156,7 +174,7 @@ classdef ProbDistroPlots
         %%
         function [obj, figHandle] = renderJointProbHeatmap(obj, figHandle, targetPairs)
             %Uses stored raw counts
-            %Target pairs is a n x 2 matrix of target indices
+            %Target pairs is a cell vector of joint pair structs
             %If at a target/timepoint/rep the number of cells does not
             %match between the two targets, will skip!
 
@@ -171,13 +189,13 @@ classdef ProbDistroPlots
             end
 
             if ~isempty(targetPairs)
-                trgPairCount = size(targetPairs, 1);
+                trgPairCount = size(targetPairs, 2);
             else
                 return;
             end
 
             hmYSpace = obj.ySpace * 1.5;
-            hmXSpace = obj.xSpace * 0.25;
+            hmXSpace = obj.xSpace * 0.3;
             hmLeft = obj.leftMargin * 0.6;
             ww = ((1.0 - (hmLeft * 2)) / tpCount) - (hmXSpace * 1.1);
             hh = ((1.0 - obj.topMargin) / trgPairCount) - (hmYSpace * 1.1);
@@ -188,17 +206,26 @@ classdef ProbDistroPlots
             binCount = size(bin1, 2);
             emptyLabels = cell(1, binCount);
             for i = 1:binCount; emptyLabels{i} = ' '; end
-            edgeLabels = emptyLabels;
-            edgeLabels{1} = '0';
-            edgeLabels{binCount} = num2str(obj.xMax - obj.binSize);
-           
+            edgeLabels_all = emptyLabels;
+            edgeLabels_all{1} = '0';
+            edgeLabels_all{binCount} = num2str(obj.xMax - obj.binSize);
+            mididx = round(binCount./2);
+            midval = bin1(mididx);
+            edgeLabels_all{mididx} = num2str(midval);
+            edgeLabels_trimmed = edgeLabels_all;
+            edgeLabels_trimmed{1} = '';
+
             %subplot(trgPairCount, tpCount, 1);
             for y = 1:trgPairCount
-                trgIndexX = targetPairs(y, 1);
-                trgIndexY = targetPairs(y, 2);
+                trgIndexX = targetPairs{y}.xTargetIndex;
+                trgIndexY = targetPairs{y}.yTargetIndex;
+                heatLog = targetPairs{y}.heatLogScale;
                 trgInfoX = obj.targets{trgIndexX};
                 trgInfoY = obj.targets{trgIndexY};
                 xx = hmLeft;
+
+                hmHandles = cell(1, tpCount);
+                cMax = 0;
                 for x = 1:tpCount
                     %subplot(trgCount, tpCount, n);
                     subplot('Position', [xx yy ww hh]);
@@ -206,15 +233,22 @@ classdef ProbDistroPlots
 
                     dataGroupX = obj.data{trgIndexX, x};
                     dataGroupY = obj.data{trgIndexY, x};
-                    [hmBins, ~] = ProbDistroPlots.heatmapBin(dataGroupX, dataGroupY, obj.xMax, obj.binSize);
+                    [hmBins, ~] = ProbDistroPlots.heatmapBin(dataGroupX, dataGroupY, obj.xMax, obj.binSize, ~heatLog);
+                    myMax = max(hmBins, [], 'all', 'omitnan');
+                    if myMax > cMax; cMax = myMax; end
+                    clear myMax
 
                     hold off;
                     hm = heatmap(bin1, bin1, hmBins);
                     hm.Colormap = turbo;
-                    hm.ColorLimits = [0.0 1.0];
                     hm.CellLabelColor = 'none';
                     hm.GridVisible = 'off';
                     hm.FontSize = obj.fszTicks;
+                    if heatLog
+                        hm.ColorScaling = 'log';
+                    else
+                        hm.ColorLimits = [0.0 1.0];
+                    end
 
                     if x < tpCount
                         hm.ColorbarVisible = 'off';
@@ -222,12 +256,21 @@ classdef ProbDistroPlots
 
                     %https://www.mathworks.com/matlabcentral/answers/513971-how-can-i-modify-the-x-and-y-axis-tick-labels-for-a-heatmap-chart
                     if x == 1
-                        hm.YDisplayLabels = edgeLabels;
+                        hm.YDisplayLabels = edgeLabels_all;
+%                         if y == 1
+%                             hm.YDisplayLabels = edgeLabels_all;
+%                         else
+%                             hm.YDisplayLabels = edgeLabels_trimmed;
+%                         end
                     else 
                         hm.YDisplayLabels = emptyLabels;
                     end
                     if y == trgPairCount
-                        hm.XDisplayLabels = edgeLabels;
+                        if x == 1
+                            hm.XDisplayLabels = edgeLabels_all;
+                        else
+                            hm.XDisplayLabels = edgeLabels_trimmed;
+                        end
                     else
                         hm.XDisplayLabels = emptyLabels;
                     end
@@ -258,8 +301,17 @@ classdef ProbDistroPlots
                     end
                     
                     %n = n+1;
+                    hmHandles{x} = hm;
                     xx = xx + ww + hmXSpace;
                 end
+                if heatLog
+                    cLim = log(cMax);
+                    for x = 1:tpCount
+                        hmHandles{x}.ColorLimits = [0.0 cLim];
+                    end
+                end
+                clear hmHandles
+
                 yy = yy - hh - hmYSpace;
             end
         end
@@ -295,6 +347,18 @@ classdef ProbDistroPlots
     %%
     methods (Static)
         
+        %%
+        function jointPairStruct = genJointPairStruct(xIdx, yIdx, useLog)
+            if nargin < 1; xIdx = 0; end
+            if nargin < 2; yIdx = 0; end
+            if nargin < 3; useLog = false; end
+
+            jointPairStruct = struct();
+            jointPairStruct.xTargetIndex = xIdx;
+            jointPairStruct.yTargetIndex = yIdx;
+            jointPairStruct.heatLogScale = useLog;
+        end
+
         %%
         function tstruct = genTargetInfoStruct(replicateCount)
             tstruct = struct();
@@ -334,7 +398,7 @@ classdef ProbDistroPlots
         end
 
         %%
-        function [hmBins, okay] = heatmapBin(dataGroupX, dataGroupY, xMax, binSize)
+        function [hmBins, okay] = heatmapBin(dataGroupX, dataGroupY, xMax, binSize, normalize)
             bins1 = [0:binSize:xMax];
             bin1Count = size(bins1, 2) - 1;
             hmBins = zeros(bin1Count, bin1Count);
@@ -358,26 +422,32 @@ classdef ProbDistroPlots
                 if isempty(dataY.rawCounts); continue; end
                  
                 ctX = size(dataX.rawCounts, 2);
-                ctY = size(dataX.rawCounts, 2);
+                ctY = size(dataY.rawCounts, 2);
 
                 if ctX ~= ctY; continue; end
 
                 cellCount = cellCount + ctX;
 
                 gtX = dataX.rawCounts >= bins1';
-                binX = min(sum(gtX, 1), bin1Count);
+                binX = sum(gtX, 1); %Trim out of range. Don't bin.
+                binX(binX > bin1Count) = NaN;
                 gtY = dataY.rawCounts >= bins1';
-                binY = min(sum(gtY, 1), bin1Count);
+                binY = sum(gtY, 1);
+                binY(binY > bin1Count) = NaN;
 
                 for i = 1:ctX
                     xx = binX(i);
                     yy = binY(i);
-                    hmBins(yy, xx) = hmBins(yy, xx) + 1;
+                    if isfinite(xx) & isfinite(yy)
+                        hmBins(yy, xx) = hmBins(yy, xx) + 1;
+                    end
                 end
             end
 
             if cellCount < 1; return; end
-            hmBins = hmBins ./ cellCount;
+            if normalize
+                hmBins = hmBins ./ cellCount;
+            end
             okay = true;
         end
 
