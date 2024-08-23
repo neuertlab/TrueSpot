@@ -1,6 +1,8 @@
 %
 %%
 classdef SingleCell
+
+    %TODO Anything that used the spots field needs to be updated!
     
     %%
     properties
@@ -31,9 +33,12 @@ classdef SingleCell
         
         nuc_ellip; %Vector of xy nucR for each z slice
         
-        spots; %Obj array of RNASpot
+        spots; %Obj array of RNASpot -- DEPRECATED left here for compatibility
         clouds; %Obj array of RNACloud
         
+        spotTable;
+        spotZFits; %Cell array stores the fits for each z slice
+
         %TEMP USAGE
         img_raw;
         img_nobkg;
@@ -463,10 +468,163 @@ classdef SingleCell
 
         end
 
+        %%
+        function pkg = packageForSave(obj)
+            pkg = struct();
+            pkg.version = 2;
+            pkg.cell_number = obj.cell_number;
+            pkg.cell_loc = obj.cell_loc;
+            pkg.dim_z = obj.dim_z;
+            pkg.mask_cell = obj.mask_cell;
+            pkg.mask_nuc = obj.mask_nuc;
+            pkg.spotcount_nuc = obj.spotcount_nuc;
+            pkg.spotcount_total = obj.spotcount_total;
+            pkg.signal_nuc = obj.signal_nuc;
+            pkg.signal_cyto = obj.signal_cyto;
+            pkg.signal_total = obj.signal_total;
+
+            pkg.nucCount = obj.nucCount;
+            pkg.nucNascentCount = obj.nucNascentCount;
+            pkg.nucCloud = obj.nucCloud;
+            pkg.nucNascentCloud = obj.nucNascentCloud;
+            pkg.cytoCount = obj.cytoCount;
+            pkg.cytoCloud = obj.cytoCloud;
+
+            pkg.nuc_ellip = obj.nuc_ellip;
+            
+            if ~isempty(obj.clouds)
+                pkg.clouds = arrayfun(@(cloud) cloud.packageForSave(), obj.clouds);
+            else
+                pkg.clouds = [];
+            end
+            
+            %Spots
+            if isempty(obj.spotTable) & ~isempty(obj.spots)
+                obj.spotTable = SingleCell.spotObjArr2Table(obj.spots);
+                spotList = obj.spots;
+
+                spotCount = size(obj.spotTable, 1);
+                obj.spotZFits = cell(1, spotCount);
+                for i = 1:spotCount
+                    obj.spotZFits{i} = spotList(i).gfit_slices;
+                end
+            end
+
+            pkg.spotTable = obj.spotTable;
+            pkg.spotZFits = obj.spotZFits;
+        end
+
     end
     
     methods(Static)
         
+        %%
+        function [fieldNames, fieldTypes] = getSpotTableFields()
+            fieldNames = {'xinit' 'yinit' 'zinit' 'in_cloud' 'fit_volume' 'nascent_flag' ...
+                'xfit' 'yfit' 'xgw' 'ygw' 'xFWHM' 'yFWHM' ...
+                'expMInt' 'fitMInt' 'TotExpInt' 'TotFitInt' ...
+                'r' 'rFit' 'back' 'xsem' 'ysem' 'zxfit' 'zyfit' ...
+                'zint' 'zrel' 'zabs' 'zstd' 'zqFit' ...
+                'nucRNA' 'cytoRNA' 'distRNA' 'szNUC' ...
+                'xabsloc' 'yabsloc' 'normdist' 'nucR'};
+
+            fieldTypes = {'uint16' 'uint16' 'uint16' 'logical' 'single' 'logical'...
+                'single' 'single' 'single' 'single' 'single' 'single'...
+                'uint32' 'single' 'uint32' 'single' ...
+                'single' 'single' 'single' 'single' 'single' 'single' 'single' ...
+                'single' 'single' 'single' 'single' 'single'...
+                'logical' 'logical' 'single' 'single' ...
+                'single' 'single' 'single' 'single'};
+        end
+
+        %%
+        function mycell = readFromSavePackage(pkg)
+            mycell = SingleCell;
+
+            mycell.cell_number = pkg.cell_number;
+            mycell.cell_loc = pkg.cell_loc;
+            mycell.dim_z = pkg.dim_z;
+            mycell.mask_cell = pkg.mask_cell;
+            mycell.mask_nuc = pkg.mask_nuc;
+            mycell.spotcount_nuc = pkg.spotcount_nuc;
+            mycell.spotcount_total = pkg.spotcount_total;
+            mycell.signal_nuc = pkg.signal_nuc;
+            mycell.signal_cyto = pkg.signal_cyto;
+            mycell.signal_total = pkg.signal_total;
+
+            mycell.nucCount = pkg.nucCount;
+            mycell.nucNascentCount = pkg.nucNascentCount;
+            mycell.nucCloud = pkg.nucCloud;
+            mycell.nucNascentCloud = pkg.nucNascentCloud;
+            mycell.cytoCount = pkg.cytoCount;
+            mycell.cytoCloud = pkg.cytoCloud;
+
+            mycell.nuc_ellip = pkg.nuc_ellip;
+            mycell.spotTable = pkg.spotTable;
+            mycell.spotZFits = pkg.spotZFits;
+
+            if ~isempty(pkg.clouds)
+                mycell.clouds = arrayfun(@(cloudStruct) RNACloud.readFromSavePackage(cloudStruct), pkg.clouds);
+            else
+                mycell.clouds = [];
+            end
+
+        end
+
+        %%
+        function spotTable = spotObjArr2Table(spotArr)
+            if isempty(spotArr)
+                spotTable = table.empty();
+                return;
+            end
+
+            [varNames, varTypes] = SingleCell.getSpotTableFields();
+
+            alloc = size(spotArr, 2);
+            table_size = [alloc size(varNames,2)];
+            spotTable = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+
+            spotTable{:, 'in_cloud'} = [spotArr.in_cloud]';
+            spotTable{:, 'fit_volume'} = single([spotArr.fit_volume]');
+            spotTable{:, 'nascent_flag'} = [spotArr.nascent_flag]';
+
+            fits = [spotArr.gauss_fit];
+            spotTable{:, 'xinit'} = uint16([fits.xinit]');
+            spotTable{:, 'yinit'} = uint16([fits.yinit]');
+            spotTable{:, 'zinit'} = uint16([fits.zinit]');
+
+            spotTable{:, 'xfit'} = single([fits.xfit]');
+            spotTable{:, 'yfit'} = single([fits.yfit]');
+            spotTable{:, 'xgw'} = single([fits.xgw]');
+            spotTable{:, 'ygw'} = single([fits.ygw]');
+            spotTable{:, 'xFWHM'} = single([fits.xFWHM]');
+            spotTable{:, 'yFWHM'} = single([fits.yFWHM]');
+            spotTable{:, 'expMInt'} = uint32([fits.expMInt]');
+            spotTable{:, 'fitMInt'} = single([fits.fitMInt]');
+            spotTable{:, 'TotExpInt'} = uint32([fits.TotExpInt]');
+            spotTable{:, 'TotFitInt'} = single([fits.TotFitInt]');
+            spotTable{:, 'r'} = single([fits.r]');
+            spotTable{:, 'rFit'} = single([fits.rFit]');
+            spotTable{:, 'back'} = single([fits.back]');
+            spotTable{:, 'xsem'} = single([fits.xsem]');
+            spotTable{:, 'ysem'} = single([fits.ysem]');
+            spotTable{:, 'zxfit'} = single([fits.zxfit]');
+            spotTable{:, 'zyfit'} = single([fits.zyfit]');
+            spotTable{:, 'zint'} = single([fits.zint]');
+            spotTable{:, 'zrel'} = single([fits.zrel]');
+            spotTable{:, 'zabs'} = single([fits.zabs]');
+            spotTable{:, 'zstd'} = single([fits.zstd]');
+            spotTable{:, 'zqFit'} = single([fits.zqFit]');
+            spotTable{:, 'nucRNA'} = [fits.nucRNA]';
+            spotTable{:, 'cytoRNA'} = [fits.cytoRNA]';
+            spotTable{:, 'distRNA'} = single([fits.distRNA]');
+            spotTable{:, 'szNUC'} = single([fits.szNUC]');
+            spotTable{:, 'xabsloc'} = single([fits.xabsloc]');
+            spotTable{:, 'yabsloc'} = single([fits.yabsloc]');
+            spotTable{:, 'normdist'} = single([fits.normdist]');
+            spotTable{:, 'nucR'} = single([fits.nucR]');
+        end
+
         %%
         function recstruct = generateRectangleStruct(x0, x1, y0, y1)
             recstruct = SingleCell.generateRecPrismStruct(x0, x1, y0, y1, 1, 1);

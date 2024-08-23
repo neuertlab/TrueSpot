@@ -1211,6 +1211,33 @@ classdef RNAQuant
             end
         end
         
+        %%
+        function results_pkg = results2SavePackage(quant_results)
+            results_pkg = quant_results;
+            %For now, only cell_rna_data is converted.
+            if ~isempty(quant_results.cell_rna_data)
+                myCells = arrayfun(@(mycell) mycell.packageForSave(), quant_results.cell_rna_data);
+                results_pkg.cellData = myCells;
+            else
+                results_pkg.cellData = [];
+            end
+
+            results_pkg = rmfield(results_pkg, 'cell_rna_data');
+        end
+
+        %%
+        function quant_results = readResultsSavePackage(results_pkg)
+            quant_results = results_pkg;
+            if ~isempty(results_pkg.cellData)
+                myCells = arrayfun(@(mycell) SingleCell.readFromSavePackage(mycell), results_pkg.cellData);
+                quant_results.cell_rna_data = myCells;
+            else
+                quant_results.cell_rna_data = [];
+            end
+
+            quant_results = rmfield(quant_results, 'cellData');
+        end
+
     end
     
 end

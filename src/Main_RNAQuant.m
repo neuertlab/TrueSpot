@@ -5,8 +5,8 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.08.12.00';
-VERSION_STRING = 'v1.1.0';
+BUILD_STRING = '2024.08.23.00';
+VERSION_STRING = 'v1.1.1';
 
 DEFAULT_PRESET_INDEX = 6;
 MAX_TH_PRESET_LEVEL = 5;
@@ -217,12 +217,15 @@ runMeta.tsQuantBuild = BUILD_STRING;
 runMeta.tsQuantVersion = VERSION_STRING;
 
 imgname = guessImageName(param_struct);
-outpath = [param_struct.outdir filesep imgname '_quantData.mat'];
-save(outpath, 'quant_results', 'runMeta', '-v7.3');
 
 outpath = [param_struct.outdir filesep imgname '_quantResults.csv'];
 quant_table = RNAQuant.cellData2Table(quant_results.cell_rna_data);
 writetable(quant_table, outpath);
+
+outpath = [param_struct.outdir filesep imgname '_quantData.mat'];
+quant_results = RNAQuant.results2SavePackage(quant_results);
+save(outpath, 'quant_results', 'runMeta');
+%save(outpath, 'quant_results', 'runMeta', '-v7.3');
 
 end %end of Main function
 
