@@ -48,6 +48,19 @@ classdef SingleCell
     methods
         
         %%
+        function obj = convertSpotStorage(obj)
+            obj.spotTable = SingleCell.spotObjArr2Table(obj.spots);
+            spotList = obj.spots;
+
+            spotCount = size(obj.spotTable, 1);
+            obj.spotZFits = cell(1, spotCount);
+            for i = 1:spotCount
+                obj.spotZFits{i} = spotList(i).gfit_slices;
+            end
+            obj.spots = [];
+        end
+
+        %%
         function obj = preallocSpots(obj, count)
             if count < 1
                 obj.spots = RNASpot.empty();
@@ -163,10 +176,14 @@ classdef SingleCell
         
         %%
         function spot_count = getSpotCount(obj)
-            if isempty(obj.spots)
-                spot_count = 0;
+            if ~isempty(obj.spotTable)
+                spot_count = size(obj.spotTable, 1);
             else
-                spot_count = size(obj.spots,2);
+                if isempty(obj.spots)
+                    spot_count = 0;
+                else
+                    spot_count = size(obj.spots,2);
+                end
             end
         end
         
@@ -253,29 +270,28 @@ classdef SingleCell
             obj.signal_nuc = 0.0;
             obj.signal_cyto = 0.0;
             obj.signal_total = 0.0;
+
+            %If not stored in table, convert to table
+            if isempty(obj.spotTable) & ~isempty(obj.spots)
+                obj = obj.convertSpotStorage();
+            end
             
             %Count spots
             spot_count = obj.getSpotCount();
             if spot_count > 0
-                for s = 1:spot_count
-                    this_spot = obj.spots(s);
-                    if ~isempty(this_spot.gauss_fit)
-                        if this_spot.gauss_fit.nucRNA
-                            obj.spotcount_nuc = obj.spotcount_nuc + 1;
-                        else
-                            obj.spotcount_cyto = obj.spotcount_cyto + 1;
-                        end
-                        
-                        %Add to signal.
-                        if ~this_spot.in_cloud
-                            if this_spot.gauss_fit.nucRNA
-                                obj.signal_nuc = obj.signal_nuc + this_spot.gauss_fit.TotFitInt;
-                            else
-                                obj.signal_cyto = obj.signal_cyto + this_spot.gauss_fit.TotFitInt;
-                            end
-                        end
-                    end
-                end
+                nucFlag = obj.spotTable{:, 'nucRNA'};
+                obj.spotcount_nuc = nnz(nucFlag);
+                obj.spotcount_cyto = nnz(~nucFlag);
+
+                cloudFlag = obj.spotTable{:, 'in_cloud'};
+                nucNoCloud = and(~cloudFlag, nucFlag);
+                cytoNoCloud = and(~cloudFlag, ~nucFlag);
+                ttfit = obj.spotTable{nucNoCloud, 'TotFitInt'};
+                obj.signal_nuc = sum(ttfit, 'all');
+                ttfit = obj.spotTable{cytoNoCloud, 'TotFitInt'};
+                obj.signal_cyto = sum(ttfit, 'all');
+
+                clear nucFlag cloudFlag nucNoCloud cytoNoCloud ttfit
             end
             
             %Clouds
@@ -306,24 +322,22 @@ classdef SingleCell
             obj.nucNascentCount = 0;
             obj.cytoCount = 0;
 
+            %If not stored in table, convert to table
+            if isempty(obj.spotTable) & ~isempty(obj.spots)
+                obj = obj.convertSpotStorage();
+            end
+
             %Get "mature RNA" (single target) intensity
             %Collect spot intensities
-            totalSpots = size(obj.spots, 2);
+            totalSpots = size(obj.spotTable, 1);
             if(totalSpots > 0)
-                spotList = obj.spots;
-                fits = [spotList.gauss_fit];
-                %spotints = [fits.fitMInt];
-                spotints = [fits.TotFitInt];
-                inNuc = [fits.nucRNA];
-                clear fits
-
-                %         figure(1);
-                %         histogram(spotints);
+                spotints = obj.spotTable{:, 'TotFitInt'};
+                inNuc = obj.spotTable{:, 'nucRNA'};
 
                 iMean = mean(spotints, 'all', 'omitnan');
                 iStd = std(spotints, 0, 'all', 'omitnan');
                 brightnessThreshold = iMean + (brightStDevs * iStd);
-                isTooBright = spotints >= brightnessThreshold;
+                isTooBright = (spotints >= brightnessThreshold);
                 normSpots = spotints(~isTooBright);
                 singleIntensity = median(normSpots, 'all', 'omitnan');
                 clear normSpots
@@ -336,11 +350,7 @@ classdef SingleCell
                 obj.nucNascentCount = sum(counts(inNuc & isTooBright));
                 obj.cytoCount = sum(counts(~inNuc));
 
-                %MATLAB will let you vector read, but not vector write from
-                %objects. Boooooring.
-                for s = 1:totalSpots
-                    obj.spots(s).nascent_flag = isTooBright(s);
-                end
+                obj.spotTable{:, 'nascent_flag'} = isTooBright;
             end
 
             totalClouds = size(obj.clouds, 2);
@@ -350,8 +360,7 @@ classdef SingleCell
 
                 %Redo spots, omitting spots marked as part of clouds
                 if(totalSpots > 0)
-                    spotList = obj.spots;
-                    inCloud = [spotList.in_cloud];
+                    inCloud = obj.spotTable{:, 'in_cloud'};
                     if nnz(inCloud) > 0
                         obj.nucCloud = sum(counts(inNuc & ~inCloud));
                         obj.nucNascentCloud = sum(counts(inNuc & isTooBright & ~inCloud));
@@ -394,43 +403,7 @@ classdef SingleCell
             end
         end
 
-        function spotList = getAllSpots(obj, nucFlag, nascentFlag)
-            if nargin < 2; nucFlag = -1; end
-            if nargin < 3; nascentFlag = -1; end
-
-            if isempty(obj.spots)
-                spotList = struct.empty();
-                return;
-            end
-
-            myspots = obj.spots;
-            scount = size(myspots, 2);
-
-            nn = [myspots.nascent_flag];
-            if nascentFlag == 0
-                nascentOkay = ~nn;
-            elseif nascentFlag == 1
-                nascentOkay = nn;
-            else
-                nascentOkay = true(1, scount);
-            end
-            clear nn;
-
-            fits = [myspots.gauss_fit];
-            nn = [fits.nucRNA];
-            if nucFlag == 0
-                nucOkay = ~nn;
-            elseif nucFlag == 1
-                nucOkay = nn;
-            else
-                nucOkay = true(1, scount);
-            end
-            clear nn;
-
-            keepSet = and(nascentOkay, nucOkay);
-            spotList = myspots(keepSet);
-        end
-
+        %%
         function cloudList = getAllClouds(obj, nucFlag, nascentFlag)
             if nargin < 2; nucFlag = -1; end
             if nargin < 3; nascentFlag = -1; end

@@ -87,8 +87,11 @@ classdef QuantVisualization
             end
 
             %Get spots
-            spotList = myCell.getAllSpots(-1, nval);
-            if isempty(spotList)
+            if isempty(myCell.spotTable) & ~isempty(myCell.spots)
+                myCell = myCell.convertSpotStorage();
+            end
+
+            if isempty(myCell.spotTable)
                 okay = true;
                 return; %Return empty mask so don't waste time applying it
             end
@@ -101,9 +104,9 @@ classdef QuantVisualization
 
             %Spot locations
             spotCount = size(spotList, 2);
-            sx = [spotList.x];
-            sy = [spotList.y];
-            sz = [spotList.z];
+            sx = myCell.spotTable{:, 'xinit'};
+            sy = myCell.spotTable{:, 'yinit'};
+            sz = myCell.spotTable{:, 'zinit'};
 
             %Determine render boxes
             [tx0, tx1, rx0, rx1] = QuantVisualization.getBoxBounds(sx, obj.spotrad_xy, cX);
@@ -111,7 +114,8 @@ classdef QuantVisualization
             [tz0, tz1, rz0, rz1] = QuantVisualization.getBoxBounds(sz, obj.spotrad_z, cZ);
 
             for i = 1:spotCount
-                subimg = spotList(i).generateSimSpotFromFit(obj.spotrad_xy);
+                %subimg = spotList(i).generateSimSpotFromFit(obj.spotrad_xy);
+                subimg = RNASpot.generateSimSpotFromFit_Table(myCell.spotTable, i, myCell.spotZFits{i}, obj.spotrad_xy);
                 alphaMask(ty0(i):ty1(i), tx0(i):tx1(i), tz0(i):tz1(i))...
                     = alphaMask(ty0(i):ty1(i), tx0(i):tx1(i), tz0(i):tz1(i))...
                     + subimg(ry0(i):ry1(i), rx0(i):rx1(i), rz0(i):rz1(i));

@@ -3,8 +3,8 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.07.22.00';
-VERSION_STRING = 'v1.1.0';
+BUILD_STRING = '2024.08.26.00';
+VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
 

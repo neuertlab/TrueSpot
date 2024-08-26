@@ -92,6 +92,35 @@ classdef RNASpot
     methods (Static)
         
         %%
+        function sim_spot = generateSimSpotFromFit_Table(spotTable, row, gfit_slices, xy_rad)
+            xydim = (xy_rad * 2) + 1;
+            
+            if ~isempty(gfit_slices)
+                zdim = size(gfit_slices,2);
+                sim_spot = NaN(xydim,xydim,zdim);
+
+                mu1 = [gfit_slices.mu1] - spotTable{row, 'xinit'} + xy_rad;
+                mu2 = [gfit_slices.mu2] - spotTable{row, 'yinit'} + xy_rad;
+                s1 = [gfit_slices.s1];
+                s2 = [gfit_slices.s2];
+                A = [gfit_slices.A];
+                
+                for k = 1:zdim
+                    sim_spot(:,:,k) = RNAUtils.generateGaussian2D(...
+                        xydim, xydim, mu1(k), mu2(k), ...
+                        s1(k), s2(k), A(k));
+                end
+            else
+                sim_spot = NaN(xydim,xydim,1);
+                mu1 = spotTable{row, 'xfit'} - spotTable{row, 'xinit'} + xy_rad;
+                mu2 = spotTable{row, 'yfit'} - spotTable{row, 'yinit'} + xy_rad;
+                sim_spot(:,:,1) = RNAUtils.generateGaussian2D(...
+                        xydim, xydim, mu1, mu2, ...
+                        spotTable{row, 'xgw'}, spotTable{row, 'ygw'}, spotTable{row, 'expMInt'});
+            end
+        end
+
+        %%
         function rna_spot = newRNASpot()
             rna_spot = RNASpot;
             rna_spot.gfit_slices = RNAQuant.genEmptyGaussFitParamStruct(false);

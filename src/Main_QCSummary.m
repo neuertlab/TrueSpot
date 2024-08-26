@@ -3,8 +3,8 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.08.12.01';
-VERSION_STRING = 'v1.1.0';
+BUILD_STRING = '2024.08.26.00';
+VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -253,6 +253,8 @@ function doDir(thTableHandle, dirPath)
                 clf;
                 imshow(maxProjRaw, []);
                 hold on;
+                saveas(figHandle, [dirPath filesep 'rawMIP.png']);
+
                 [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
                 if okay
                     saveas(figHandle, [dirPath filesep 'autoSpots.png']);
@@ -265,6 +267,8 @@ function doDir(thTableHandle, dirPath)
                 clf;
                 imshow(maxProjFilt, []);
                 hold on;
+                saveas(figHandle, [dirPath filesep 'filtMIP.png']);
+
                 [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
                 if okay
                     saveas(figHandle, [dirPath filesep 'autoSpotsF.png']);
