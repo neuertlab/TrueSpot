@@ -383,10 +383,15 @@ classdef CellSeg
             if min_slice < 1; min_slice = 1; end
             if max_slice > Z; max_slice = Z; end
 
+%             figure(1);
+%             clf;
             for i = (threshold_sampling/10):T                        %see how many nuclei for every threshold
                 nucSegRes.nuc_threshold = test_thresh(i);
                 dapi_bw = (nuc_ch_data > nucSegRes.nuc_threshold); % only take DAPI intensities above the identified threshold for 3D stack
                 dapi_bw_max = max(dapi_bw(:,:,min_slice:max_slice), [], 3, 'omitnan');  % Maximum projection for the binary pixels above the threshold
+%                 if i == T
+%                     imshow(dapi_bw_max, []);
+%                 end
 
                 % remove nuclei > than max_nucleus and < than min_nucleus
                 dapi_normal = bwareaopen(dapi_bw_max, min_nucleus_size);                        % remove DAPI signal that are too small
@@ -396,6 +401,12 @@ classdef CellSeg
                 dapi_OK = bwareaopen(dapi_bw_max, 4);                                       % segment all DAPI spots
                 nucSegRes.nuc_label = bwlabeln(dapi_OK, 8);                                          % label all segmented DAPI spots
                 nucSegRes.nuclei_num(i) = max(nucSegRes.nuc_label(:));
+
+%                 if i == T
+%                     imshow(dapi_normal, []);
+%                     imshow(dapi_huge, []);
+%                     imshow(dapi_bw2, []);
+%                 end
 
                 %added 4-29 BK
                 nucSegRes.test_sum = nucSegRes.test_sum + dapi_OK;
@@ -720,6 +731,20 @@ classdef CellSeg
             cells = bwlabeln(cells_filtered);                                           % labels cells
             Label1 = uint16(cells);                                                     % convert segmented cell image to 16bit
             cell_count = max(Label1(:));                                                % determine the maximum number of segmented cells
+            clear cells_filtered
+
+            %BH addition. Put back in nuclei that got missed
+            nonly = and(Label1 == 0, nuc_label);
+            if nnz(nonly) >= 500
+                newcells = or(Label1 ~= 0, nonly);
+                cells = bwlabeln(newcells);
+                Label1 = uint16(cells);
+                cell_count = max(Label1(:));
+
+                clear newcells
+            end
+
+            clear cells cells_normal cells_huge
 
             %Go through each cell and analyze the shape, remove cells and get information
             for j = 1:cell_count                                                                % m number of cells
