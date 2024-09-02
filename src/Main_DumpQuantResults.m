@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.08.26.00';
+BUILD_STRING = '2024.09.02.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -141,7 +141,12 @@ function doResultsSet(quantFilePath, tableHandle)
         clear spotsRun
 
         load(quantFilePath, 'quant_results');
-        cellDat = quant_results.cell_rna_data;
+        if isfield(quant_results, 'cell_rna_data')
+            cellDat = quant_results.cell_rna_data;
+        elseif isfield(quant_results, 'cellData')
+            quant_results = RNAQuant.readResultsSavePackage(quant_results);
+            cellDat = quant_results.cell_rna_data;
+        end
         cellCount = size(cellDat, 2);
 
         for c = 1:cellCount

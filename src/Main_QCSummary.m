@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.08.26.00';
+BUILD_STRING = '2024.09.02.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -285,7 +285,12 @@ function doDir(thTableHandle, dirPath)
 
         if ~isempty(qdPath)
             load(qdPath, 'quant_results');
-            cellCount = size(quant_results.cell_rna_data, 2);
+            cellCount = 0;
+            if isfield(quant_results, 'cell_rna_data')
+                cellCount = size(quant_results.cell_rna_data, 2);
+            elseif isfield(quant_results, 'cellData')
+                cellCount = size(quant_results.cellData, 2);
+            end
             fprintf(thTableHandle, '\t%d', cellCount);
             clear quant_results
         else
