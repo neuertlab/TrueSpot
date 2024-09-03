@@ -1,0 +1,349 @@
+%
+%%
+function Main_QCIntensityDistro(varargin)
+
+%TODO Also dump local stats:
+   %    1. Around each spot (its local background)
+   %    2. Split up image into cubes and get profiles of each local cube
+   %    3. Don't forget z-trimmed stats too.
+
+addpath('./core');
+addpath('./thirdparty');
+
+BUILD_STRING = '2024.09.03.00';
+VERSION_STRING = 'v1.1.1';
+
+% ========================== Process args ==========================
+arg_debug = true; %CONSTANT used for debugging arg parser.
+
+input_dir = []; %Give a dir for a batch and it will look recursively through it for TS results.
+output_dir = []; %Defaults to input dir/IntensityDistro. Place to put intensity stat profiles.
+zmin = 0; %Min z to use for trimmed stats
+zmax = 0; %Max z to use for trimmed stats
+
+blockZ = 4;
+blockXY = 64;
+
+lastkey = [];
+for i = 1:nargin
+    argval = varargin{i};
+    if ischar(argval) & startsWith(argval, "-")
+        %Key
+        if size(argval,2) >= 2
+            lastkey = argval(2:end);
+        else
+            lastkey = [];
+        end
+        
+    else
+        if isempty(lastkey)
+            fprintf("Value without key: %s - Skipping...\n", argval);
+            continue;
+        end
+        
+        %Value
+        if strcmp(lastkey, "input")
+            input_dir = argval;
+            if arg_debug; fprintf("Input Directory Set: %s\n", input_dir); end
+        elseif strcmp(lastkey, "output")
+            output_dir = argval;
+            if arg_debug; fprintf("Output Directory Set: %s\n", output_dir); end
+        elseif strcmp(lastkey, "zmin")
+            zmin = Force2Num(argval);
+            if arg_debug; fprintf("Trim Z Min Set: %s\n", zmin); end
+        elseif strcmp(lastkey, "zmax")
+            zmax = Force2Num(argval);
+            if arg_debug; fprintf("Trim Z Max Set: %s\n", zmax); end
+        elseif strcmp(lastkey, "localxy")
+            blockXY = Force2Num(argval);
+            if arg_debug; fprintf("Local Block XY Size Set: %s\n", blockXY); end
+        elseif strcmp(lastkey, "localz")
+            blockZ = Force2Num(argval);
+            if arg_debug; fprintf("Local Block Z Size Set: %s\n", blockZ); end
+        else
+            fprintf("Key not recognized: %s - Skipping...\n", lastkey);
+        end
+    end
+end
+
+%--- Check args (Fill in defaults based on inputs)
+
+if isempty(input_dir)
+    fprintf('Please provide an input directory!\n');
+    return;
+end
+
+if isempty(output_dir)
+    output_dir = [input_dir filesep 'IntensityDistro'];
+end
+
+fprintf('Main_QCIntensityDistro\n');
+fprintf('Script Version: %s\n', BUILD_STRING);
+fprintf('TrueSpot Version: %s\n', VERSION_STRING);
+fprintf('Run Start: %s\n', datetime);
+fprintf('Input: %s\n', input_dir);
+fprintf('Output: %s\n', output_dir);
+
+if ~isfolder(output_dir); mkdir(output_dir); end
+
+% ========================== Recursive Scan ==========================
+
+doDir(input_dir, output_dir, zmin, zmax, blockXY, blockZ);
+
+end
+
+% ========================== Additional Functions ==========================
+
+function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
+    if nargin < 4; localXY = 0; end
+    if nargin < 5; localZ = 0; end
+
+%Apply mask if nonempty
+    if ~isempty(mask)
+        data(mask == 0) = NaN;
+    end
+
+%Histo
+    data_all = uint16(data(isfinite(data)));
+    statsStruct.min = min(data_all, [], 'all', 'omitnan');
+    statsStruct.max = max(data_all, [], 'all', 'omitnan');
+
+    [bins, edges] = histcounts(data_all, statsStruct.max);
+    statsStruct.histo_y = uint16(bins);
+    statsStruct.histo_x = uint16(edges(1:size(bins,2)));
+    clear edges bins
+
+    statsStruct.median = median(data_all, 'all', 'omitnan');
+    statsStruct.mad = mad(data_all, 1, 'all');
+
+    data_all = double(data_all);
+
+    statsStruct.mean = mean(data_all, 'all', 'omitnan');
+    statsStruct.stdev = std(data_all, 0, 'all', 'omitnan');
+    clear data_all
+
+%Local blocks, if applicable
+    if (localXY > 0) & (localZ > 0)
+        X = size(data, 2);
+        Y = size(data, 1);
+        Z = size(data, 3);
+        zBlocks = ceil(Z ./ localZ);
+        xBlocks = ceil(X ./ localXY);
+        yBlocks = ceil(Y ./ localXY);
+        totalBlocks = zBlocks * xBlocks * yBlocks;
+        statsStruct.localBlocks(totalBlocks) = struct();
+        i = 1;
+        z0 = 1;
+        for zb = 1:zBlocks
+            z1 = min((z0 + localZ) - 1, Z);
+            x0 = 1;
+            for xb = 1:xBlocks
+                x1 = min((x0 + localXY) - 1, X);
+                y0 = 1;
+                for yb = 1:yBlocks
+                    y1 = min((y0 + localXY) - 1, Y);
+
+                    %Do actual block.
+                    statsStruct.localBlocks(i).x0 = x0;
+                    statsStruct.localBlocks(i).x1 = x1;
+                    statsStruct.localBlocks(i).y0 = y0;
+                    statsStruct.localBlocks(i).y1 = y1;
+                    statsStruct.localBlocks(i).z0 = z0;
+                    statsStruct.localBlocks(i).z1 = z1;
+
+                    statsStruct.localBlocks(i).histo_y = [];
+                    statsStruct.localBlocks(i).histo_x = [];
+
+                    statsStruct.localBlocks(i).median = 0;
+                    statsStruct.localBlocks(i).mad = 0;
+                    statsStruct.localBlocks(i).mean = NaN;
+                    statsStruct.localBlocks(i).stdev = NaN;
+                    %Don't need mask again because it's already been
+                    %applied.
+                    statsStruct.localBlocks(i) = ...
+                        takeStats(data(y0:y1,x0:x1,z0:z1), [], statsStruct.localBlocks(i), 0, 0);
+
+                    y0 = y1 + 1;
+                    i = i + 1;
+                end
+                x0 = x1 + 1;
+            end
+            z0 = z1+1;
+        end
+    end
+
+end
+
+function spotMask = genSpotMaskQuant(quant_results)
+%TODO
+end
+
+function spotMask = genSpotMaskCall(spotsrun, gaussrad)
+%TODO
+end
+
+function spotProfile = getSpotProfileQuant(quant_results, imageData)
+%TODO
+    spTable = [];
+    myCells = quant_results.cell_rna_data;
+    cellCount = size(myCells, 2);
+
+    %Merge together all spot tables
+    for c = 1:cellCount
+        myCell = myCells(c);
+        if ~isempty(myCell.spotTable)
+            spt = myCell.spotTable;
+            spt{:, 'cell'} = c;
+
+            %TODO
+            %Adjust to absolute coordinates
+
+            %TODO Remove unneeded fields
+
+            if isempty(spTable)
+                spTable = spt;
+            else
+                spTable = [spTable;spt];
+            end
+        end
+
+        %TODO
+
+    end
+
+
+
+end
+
+function spotProfile = getSpotProfileCall(spotsrun, imageData, gaussrad)
+%TODO
+end
+
+function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
+    %Look for a spotsrun (and quant, if available)
+    fprintf('Scanning %s ...\n', dirPath);
+    dirContents = dir(dirPath);
+    childCount = size(dirContents, 1);
+
+    srPath = [];
+    qdPath = [];
+
+    for i = 1:childCount
+        fname = dirContents(i,1).name;
+        isdir = dirContents(i,1).isdir;
+        if isdir
+            if ~strcmp(fname, '.') & ~strcmp(fname, '..')
+                doDir([dirPath filesep fname], outputDir, zmin, zmax);
+            end
+        else
+            if endsWith(fname, '_rnaspotsrun.mat')
+                srPath = [dirPath filesep fname];
+            elseif endsWith(fname, '_quantData.mat')
+                qdPath = [dirPath filesep fname];
+            end
+        end
+    end
+
+    if ~isempty(srPath)
+        intensityStats = struct();
+        spotsrun = RNASpotsRun.loadFrom(srPath, false);
+        fprintf('\tRun found: %s\n', spotsrun.img_name);
+
+        intensityStats.img_name = spotsrun.img_name;
+        intensityStats.channel = spotsrun.channels.rna_ch;
+        intensityStats.target = spotsrun.meta.type_target;
+        intensityStats.probe = spotsrun.meta.type_probe;
+        intensityStats.t_min = spotsrun.options.t_min;
+        intensityStats.t_max = spotsrun.options.t_max;
+        intensityStats.threshold = spotsrun.options.intensity_threshold;
+        intensityStats.gaussrad = spotsrun.options.dtune_gaussrad;
+
+        %Load source image
+        tifPath = spotsrun.paths.img_path;
+        if isempty(tifPath) | ~isfile(tifPath)
+            fprintf('\t[ERROR] Spotsrun was found in directory, but TIF file could not be linked! Cannot calculate image stats...\n');
+            return;
+        end
+
+        [channels, ~] = LoadTif(tifPath, spotsrun.channels.total_ch, [spotsrun.channels.rna_ch], 1);
+        sampleCh = channels{spotsrun.channels.rna_ch, 1};
+        sampleCh = uint16(sampleCh); %Reduce memory size
+        clear channels;
+
+        Z = size(sampleCh, 3);
+        if zmin < 1; zmin = 1; end
+        if zmax < 1; zmax = Z; end
+        doTrimmed = false;
+        if zmin > 1; doTrimmed = true; end
+        if zmax < Z; doTrimmed = true; end
+
+        intensityStats.statsRawFull = takeStats(sampleCh, [], struct(), 0, 0);
+
+        if(doTrimmed)
+            intensityStats.statsRawZTrim = takeStats(sampleCh(:,:,zmin:zmax), [], struct(), 0, 0);
+        end
+
+        %Load cellseg and quant
+        cspath = rnaspots_run.paths.cellseg_path;
+        cellMask = [];
+        if ~isempty(cspath)
+            if isfile(cspath)
+                cellMask = CellSeg.openCellMask(cspath);
+
+                %Convert cellMask to 3D...
+                if ndims(cellMask) < 3
+                    cellMask = repmat(cellMask, [1, 1, Z]);
+                end
+            end
+        end
+
+        quant_results = [];
+        if ~isempty(qdPath)
+            load(qdPath, 'quant_results');
+            if ~isfield(quant_results, 'cell_rna_data')
+                quant_results = RNAQuant.readResultsSavePackage(quant_results);
+            end
+        end
+
+        %Mask spots from quant (or call table if no quant)
+        if ~isempty(quant_results)
+            spotMask = genSpotMaskQuant(quant_results);
+        else
+            spotMask = genSpotMaskCall(spotsrun, intensityStats.gaussrad);
+        end
+
+        %TODO Do raw image
+        currentMask = and(~cellMask, ~spotMask);
+        intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct());
+        if(doTrimmed)
+            intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask, struct(), localXY, localZ);
+        end
+
+        currentMask = and(cellMask, ~spotMask);
+        intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct());
+        if(doTrimmed)
+            intensityStats.statsRawZTrim.cbkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask, struct(), localXY, localZ);
+        end
+
+        intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct());
+        if(doTrimmed)
+            intensityStats.statsRawZTrim.spotsTotal = takeStats(sampleCh(:,:,zmin:zmax), spotMask, struct(), 0, 0);
+        end
+
+        %TODO Spots by peaks
+
+        %TODO Local profiles
+        
+
+        %TODO Filter image
+        %TODO Repeat all with filtered image
+
+        %Save
+        savepath = [outputDir, filesep, spotsrun.img_name '_istats.mat'];
+        save(savepath, 'intensityStats');
+    end
+
+end
+
+
+

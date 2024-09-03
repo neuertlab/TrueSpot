@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.09.02.00';
+BUILD_STRING = '2024.09.03.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -64,7 +64,9 @@ fprintf('Output: %s\n', output_dir);
 
 thTablePath = [output_dir filesep 'batchThresholdInfo.tsv'];
 tableHandle = openThTable(thTablePath);
-doDir(tableHandle, input_dir);
+%distroDir = [input_dir filesep 'IntensityProfiles'];
+%if ~isfolder(distroDir); mkdir(distroDir); end
+doDir(tableHandle, input_dir, input_dir);
 fclose(tableHandle);
 
 end
@@ -85,7 +87,7 @@ function tableHandle = openThTable(tablePath)
     fprintf(tableHandle, '\n');
 end
 
-function doDir(thTableHandle, dirPath)
+function doDir(thTableHandle, dirPath, baseDir)
     %Look for cellseg, rnaspotsrun/callTable, or quant results
     %For cellseg, render cell and nuc mask to png.
     %For spots, grab th info and render spot count curve to png
@@ -103,7 +105,7 @@ function doDir(thTableHandle, dirPath)
         isdir = dirContents(i,1).isdir;
         if isdir
             if ~strcmp(fname, '.') & ~strcmp(fname, '..')
-                doDir(thTableHandle, [dirPath filesep fname]);
+                doDir(thTableHandle, [dirPath filesep fname], baseDir);
             end
         else
             if startsWith(fname, 'CellSeg_')
