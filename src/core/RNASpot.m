@@ -92,6 +92,21 @@ classdef RNASpot
     methods (Static)
         
         %%
+        function [spot_mask, gaussian] = genSpotMask(dims, xw, yw, zw)
+            spot_mask = false(dims);
+            X = size(spot_mask, 2);
+            Y = size(spot_mask, 1);
+            Z = size(spot_mask, 3);
+
+            mu_x = floor(X./2);
+            mu_y = floor(Y./2);
+            mu_z = floor(Z./2);
+
+            gaussian = RNAUtils.generateGaussian3D(X, Y, Z, mu_x, mu_y, mu_z, xw, yw, zw, 1.0);
+            spot_mask = (gaussian >= 0.45);
+        end
+
+        %%
         function sim_spot = generateSimSpotFromFit_Table(spotTable, row, gfit_slices, xy_rad)
             xydim = (xy_rad * 2) + 1;
             

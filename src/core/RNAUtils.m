@@ -172,6 +172,20 @@ classdef RNAUtils
             
             gauss_spot = peak * exp(-((x_factor ./ xw_factor) + (y_factor ./ yw_factor)));
         end
+
+        %%
+        function gauss_spot = generateGaussian3D(xdim, ydim, zdim, mu_x, mu_y, mu_z, w_x, w_y, w_z, peak)
+            [XX,YY,ZZ] = meshgrid(1:1:xdim,1:1:ydim,1:1:zdim);
+            
+            x_factor = (XX - mu_x - 1).^2;
+            y_factor = (YY - mu_y - 1).^2;
+            z_factor = (ZZ - mu_z - 1).^2;
+            xw_factor = 2 * (w_x^2);
+            yw_factor = 2 * (w_y^2);
+            zw_factor = 2 * (w_z^2);
+            
+            gauss_spot = peak * exp(-((x_factor ./ xw_factor) + (y_factor ./ yw_factor) + (z_factor ./ zw_factor)));
+        end
         
         %%
         function auc_value = calculateAUC(x, y)
