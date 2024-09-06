@@ -92,7 +92,9 @@ classdef RNASpot
     methods (Static)
         
         %%
-        function [spot_mask, gaussian] = genSpotMask(dims, xw, yw, zw)
+        function [spot_mask, gaussian] = genSpotMask(dims, xw, yw, zw, gthresh)
+            if nargin < 5; gthresh = 0.25; end
+
             spot_mask = false(dims);
             X = size(spot_mask, 2);
             Y = size(spot_mask, 1);
@@ -108,14 +110,15 @@ classdef RNASpot
 
         %%
         function sim_spot = generateSimSpotFromFit_Table(spotTable, row, gfit_slices, xy_rad)
+            xy_rad_d = double(xy_rad);
             xydim = (xy_rad * 2) + 1;
             
             if ~isempty(gfit_slices)
                 zdim = size(gfit_slices,2);
                 sim_spot = NaN(xydim,xydim,zdim);
 
-                mu1 = [gfit_slices.mu1] - spotTable{row, 'xinit'} + xy_rad;
-                mu2 = [gfit_slices.mu2] - spotTable{row, 'yinit'} + xy_rad;
+                mu1 = [gfit_slices.mu1] - double(spotTable{row, 'xinit'}) + xy_rad_d;
+                mu2 = [gfit_slices.mu2] - double(spotTable{row, 'yinit'}) + xy_rad_d;
                 s1 = [gfit_slices.s1];
                 s2 = [gfit_slices.s2];
                 A = [gfit_slices.A];

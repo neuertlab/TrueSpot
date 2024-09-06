@@ -21,7 +21,7 @@ classdef RNASpotsRun
 
         function [obj, run_info] = bundleForSave(obj)
             obj.meta.modifiedDate = datetime;
-            run_info = struct('RNASpotsRunVersion', 2);
+            run_info = struct('RNASpotsRunVersion', 3);
 
             run_info.img_name = obj.img_name;
             run_info.intensity_threshold = obj.intensity_threshold;
@@ -36,12 +36,12 @@ classdef RNASpotsRun
         
         function obj = saveMe(obj)
             outpath = [obj.getFullOutStem() '_rnaspotsrun.mat'];
-            run_info = obj.bundleForSave();
+            [obj, run_info] = obj.bundleForSave();
             save(outpath, 'run_info');
         end
 
         function obj = saveMeTo(obj, outpath)
-            run_info = obj.bundleForSave();
+            [obj, run_info] = obj.bundleForSave();
             save(outpath, 'run_info');
         end
         
@@ -485,6 +485,7 @@ classdef RNASpotsRun
             rnaspots_run.meta.type_cell = '';
             rnaspots_run.meta.type_target = '';
             rnaspots_run.meta.type_targetmol = '';
+            rnaspots_run.meta.noProbe_flag = false;
             rnaspots_run.meta.idims_voxel = struct('x', -1, 'y', -1, 'z', -1);
             rnaspots_run.meta.idims_expspot = struct('x', -1, 'y', -1, 'z', -1);
             rnaspots_run.meta.creationDate = datetime;

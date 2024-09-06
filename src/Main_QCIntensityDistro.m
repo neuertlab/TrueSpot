@@ -2,15 +2,12 @@
 %%
 function Main_QCIntensityDistro(varargin)
 
-%TODO Also dump local stats:
-   %    1. Around each spot (its local background)
-   %    2. Split up image into cubes and get profiles of each local cube
-   %    3. Don't forget z-trimmed stats too.
+%TODO Add a nospots flag for noprobe images
 
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.09.03.00';
+BUILD_STRING = '2024.09.06.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -21,8 +18,8 @@ output_dir = []; %Defaults to input dir/IntensityDistro. Place to put intensity 
 zmin = 0; %Min z to use for trimmed stats
 zmax = 0; %Max z to use for trimmed stats
 
-blockZ = 4;
-blockXY = 64;
+blockZ = 8;
+blockXY = 256;
 
 lastkey = [];
 for i = 1:nargin
@@ -105,13 +102,38 @@ function [fieldNames, fieldTypes] = getSpotProfileTableFields()
         'uint16' 'single' 'uint32' 'single' 'single'};
 end
 
+function [fieldNames, fieldTypes] = getLocalRegionStatsFields()
+    fieldNames = {'x' 'y' 'z' 'width' 'height' 'depth' ...
+        'min' 'max' 'median' 'mad' 'mean' 'stdev' ...
+        'histo_x' 'histo_y'};
+    
+    fieldTypes = {'uint16' 'uint16' 'uint16' 'uint16' 'uint16' 'uint16' ...
+        'uint16' 'uint16' 'single' 'single' 'single' 'single'...
+        'cell' 'cell'};
+end
+
 function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
     if nargin < 4; localXY = 0; end
     if nargin < 5; localZ = 0; end
 
 %Apply mask if nonempty
-    if ~isempty(mask)
-        data(mask == 0) = NaN;
+    if ~isempty(mask) & (nnz(~mask) > 0)
+        data = double(data);
+        %fprintf('DEBUG -- Expected NaNs: %d\n', nnz(~mask));
+        data(~mask) = NaN;
+        %fprintf('DEBUG -- Added NaNs: %d\n', nnz(isnan(data)));
+    end
+
+    if nnz(isfinite(data)) < 1
+        statsStruct.histo_y = [];
+        statsStruct.histo_x = [];
+        statsStruct.min = 0;
+        statsStruct.max = 0;
+        statsStruct.median = NaN;
+        statsStruct.mad = NaN;
+        statsStruct.mean = NaN;
+        statsStruct.stdev = NaN;
+        return;
     end
 
 %Histo
@@ -119,16 +141,16 @@ function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
     statsStruct.min = min(data_all, [], 'all', 'omitnan');
     statsStruct.max = max(data_all, [], 'all', 'omitnan');
 
-    [bins, edges] = histcounts(data_all, statsStruct.max);
+    edges = [0:1:statsStruct.max];
+    [bins, edges] = histcounts(data_all, edges);
     statsStruct.histo_y = uint32(bins);
     statsStruct.histo_x = uint16(edges(1:size(bins,2)));
     clear edges bins
 
-    statsStruct.median = median(data_all, 'all', 'omitnan');
-    statsStruct.mad = mad(data_all, 1, 'all');
-
     data_all = double(data_all);
 
+    statsStruct.median = median(data_all, 'all', 'omitnan');
+    statsStruct.mad = mad(data_all, 1, 'all');
     statsStruct.mean = mean(data_all, 'all', 'omitnan');
     statsStruct.stdev = std(data_all, 0, 'all', 'omitnan');
     clear data_all
@@ -142,7 +164,11 @@ function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
         xBlocks = ceil(X ./ localXY);
         yBlocks = ceil(Y ./ localXY);
         totalBlocks = zBlocks * xBlocks * yBlocks;
-        statsStruct.localBlocks(totalBlocks) = struct();
+
+        [fieldNames, fieldTypes] = getLocalRegionStatsFields();
+        table_size = [totalBlocks size(fieldNames,2)];
+        statsStruct.localBlocks = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
+
         i = 1;
         z0 = 1;
         for zb = 1:zBlocks
@@ -155,24 +181,31 @@ function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
                     y1 = min((y0 + localXY) - 1, Y);
 
                     %Do actual block.
-                    statsStruct.localBlocks(i).x0 = x0;
-                    statsStruct.localBlocks(i).x1 = x1;
-                    statsStruct.localBlocks(i).y0 = y0;
-                    statsStruct.localBlocks(i).y1 = y1;
-                    statsStruct.localBlocks(i).z0 = z0;
-                    statsStruct.localBlocks(i).z1 = z1;
+                    statsStruct.localBlocks{i, 'x'} = x0;
+                    statsStruct.localBlocks{i, 'y'} = y0;
+                    statsStruct.localBlocks{i, 'z'} = z0;
+                    statsStruct.localBlocks{i, 'width'} = x1 - x0 + 1;
+                    statsStruct.localBlocks{i, 'height'} = y1 - y0 + 1;
+                    statsStruct.localBlocks{i, 'depth'} = z1 - z0 + 1;
 
-                    statsStruct.localBlocks(i).histo_y = [];
-                    statsStruct.localBlocks(i).histo_x = [];
-
-                    statsStruct.localBlocks(i).median = 0;
-                    statsStruct.localBlocks(i).mad = 0;
-                    statsStruct.localBlocks(i).mean = NaN;
-                    statsStruct.localBlocks(i).stdev = NaN;
                     %Don't need mask again because it's already been
                     %applied.
-                    statsStruct.localBlocks(i) = ...
-                        takeStats(data(y0:y1,x0:x1,z0:z1), [], statsStruct.localBlocks(i), 0, 0);
+                    localSStruct = ...
+                        takeStats(data(y0:y1,x0:x1,z0:z1), [], struct(), 0, 0);
+
+                    statsStruct.localBlocks{i, 'min'} = localSStruct.min;
+                    statsStruct.localBlocks{i, 'max'} = localSStruct.max;
+                    statsStruct.localBlocks{i, 'median'} = single(localSStruct.median);
+                    statsStruct.localBlocks{i, 'mad'} = single(localSStruct.mad);
+                    statsStruct.localBlocks{i, 'mean'} = single(localSStruct.mean);
+                    statsStruct.localBlocks{i, 'stdev'} = single(localSStruct.stdev);
+
+                    ccx = cell(1,1);
+                    ccx{1} = localSStruct.histo_x;
+                    ccy = cell(1,1);
+                    ccy{1} = localSStruct.histo_y;
+                    statsStruct.localBlocks{i, 'histo_x'} = ccx;
+                    statsStruct.localBlocks{i, 'histo_y'} = ccy;
 
                     y0 = y1 + 1;
                     i = i + 1;
@@ -186,7 +219,7 @@ function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
 end
 
 function spotMask = genSpotMaskQuant(quant_results, dims, gaussThresh)
-    if(nargin < 3); gaussThresh = 0.45; end
+    if(nargin < 3); gaussThresh = 0.125; end
 
     spotMask = false(dims);
     X = size(spotMask, 2);
@@ -249,12 +282,12 @@ function spotProfile = getSpotProfileQuant(quant_results, imageData)
     for c = 1:cellCount
         myCell = myCells(c);
         if ~isempty(myCell.spotTable)
-            spotCount = spotcount + size(myCell.spotTable, 1);
+            spotCount = spotCount + size(myCell.spotTable, 1);
         end
     end
 
     [fieldNames, fieldTypes] = getSpotProfileTableFields();
-    table_size = [spotCount size(varNames,2)];
+    table_size = [spotCount size(fieldNames,2)];
     spTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
     %Merge together all spot tables
     spotPos = 1;
@@ -370,6 +403,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
             end
         end
     end
+    clear isdir fname dirContents childCount i
 
     if ~isempty(srPath)
         intensityStats = struct();
@@ -382,8 +416,13 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         intensityStats.probe = spotsrun.meta.type_probe;
         intensityStats.t_min = spotsrun.options.t_min;
         intensityStats.t_max = spotsrun.options.t_max;
-        intensityStats.threshold = spotsrun.options.intensity_threshold;
+        intensityStats.threshold = spotsrun.intensity_threshold;
         intensityStats.gaussrad = spotsrun.options.dtune_gaussrad;
+        intensityStats.noprobe = false;
+
+        if isfield(spotsrun.meta, 'noProbe_flag')
+            intensityStats.noprobe = spotsrun.meta.noProbe_flag;
+        end
 
         %Load source image
         tifPath = spotsrun.paths.img_path;
@@ -398,6 +437,8 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         clear channels;
 
         Z = size(sampleCh, 3);
+        Y = size(sampleCh, 1);
+        X = size(sampleCh, 2);
         if zmin < 1; zmin = 1; end
         if zmax < 1; zmax = Z; end
         doTrimmed = false;
@@ -411,7 +452,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         end
 
         %Load cellseg and quant
-        cspath = rnaspots_run.paths.cellseg_path;
+        cspath = spotsrun.paths.cellseg_path;
         cellMask = [];
         if ~isempty(cspath)
             if isfile(cspath)
@@ -424,51 +465,63 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
             end
         end
 
-        quant_results = [];
-        if ~isempty(qdPath)
-            load(qdPath, 'quant_results');
-            if ~isfield(quant_results, 'cell_rna_data')
-                quant_results = RNAQuant.readResultsSavePackage(quant_results);
+        if ~intensityStats.noprobe
+            quant_results = [];
+            if ~isempty(qdPath)
+                load(qdPath, 'quant_results');
+                if ~isfield(quant_results, 'cell_rna_data')
+                    quant_results = RNAQuant.readResultsSavePackage(quant_results);
+                end
             end
-        end
 
-        %Mask spots from quant (or call table if no quant)
-        if ~isempty(quant_results)
-            spotMask = genSpotMaskQuant(quant_results, size(sampleCh));
+            if ~isempty(quant_results)
+                spotMask = genSpotMaskQuant(quant_results, size(sampleCh));
+            else
+                spotMask = genSpotMaskCall(spotsrun, intensityStats.gaussrad);
+            end
         else
-            spotMask = genSpotMaskCall(spotsrun, intensityStats.gaussrad);
+            spotMask = false(Y,X,Z);
         end
 
+        fprintf('\t> Working on image background...\n');
         currentMask = and(~cellMask, ~spotMask);
         intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct(), localXY, localZ);
         if(doTrimmed)
-            intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask, struct(), 0, 0);
+            intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
         end
 
+        fprintf('\t> Working on cell background...\n');
         currentMask = and(cellMask, ~spotMask);
         intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct(), localXY, localZ);
         if(doTrimmed)
-            intensityStats.statsRawZTrim.cbkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask, struct(), 0, 0);
+            intensityStats.statsRawZTrim.cbkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
         end
 
-        intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct(), localXY, localZ);
-        if(doTrimmed)
-            intensityStats.statsRawZTrim.spotsTotal = takeStats(sampleCh(:,:,zmin:zmax), spotMask, struct(), 0, 0);
-        end
+        if ~intensityStats.noprobe
+            fprintf('\t> Working on overall spots...\n');
+            intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct(), localXY, localZ);
+            if(doTrimmed)
+                intensityStats.statsRawZTrim.spotsTotal = takeStats(sampleCh(:,:,zmin:zmax), spotMask(:,:,zmin:zmax), struct(), 0, 0);
+            end
 
-        if ~isempty(quant_results)
-            intensityStats.spotProfile = getSpotProfileQuant(quant_results, sampleCh);
-        else
-            intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, intensityStats.gaussrad);
+            fprintf('\t> Working on spot profiles...\n');
+            if ~isempty(quant_results)
+                intensityStats.spotProfile = getSpotProfileQuant(quant_results, sampleCh);
+            else
+                intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, intensityStats.gaussrad);
+            end
         end
 
         %Save
         savepath = [outputDir, filesep, spotsrun.img_name '_istats.mat'];
         save(savepath, 'intensityStats');
 
-        savepath = [outputDir, filesep, spotsrun.img_name '_spotmask.tif'];
-        tifop = struct('overwrite', true);
-        saveastiff(spotMask, savepath, tifop);
+        if ~intensityStats.noprobe
+            savepath = [outputDir, filesep, spotsrun.img_name '_spotmask.tif'];
+            tifop = struct('overwrite', true);
+            spotMask = uint8(spotMask);
+            saveastiff(spotMask, savepath, tifop);
+        end
     end
 
 end

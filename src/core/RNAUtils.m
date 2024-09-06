@@ -119,6 +119,10 @@ classdef RNAUtils
         
         %%
         function [d_min, d_max, dtrim_lo, dtrim_hi, needs_trim] = getDimSpotIsolationParams(d_coord, max_d, rad)
+            d_coord = uint32(d_coord);
+            max_d = uint32(max_d);
+            rad = uint32(rad);
+            
             d_min = d_coord - rad; d_max = d_coord + rad;
             dtrim_lo = max(1 - d_min,0);
             dtrim_hi = max(d_max - max_d,0);
