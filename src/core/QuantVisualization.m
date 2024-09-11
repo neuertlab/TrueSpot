@@ -25,13 +25,23 @@ classdef QuantVisualization
     methods
 
         %%
+        function [obj, okay] = prerenderCells(obj, peakIntensity)
+            cellCount = size(obj.cells, 2);
+            obj.rgbCellRenders(cellCount) = struct('cellBounds', [], 'red', [], 'green', [], 'blue', [], 'alpha', []);
+            for c = 1:cellCount
+                [obj, okay] = obj.renderCellRGB(obj.cells(c), peakIntensity);
+                if ~okay; return; end
+            end
+        end
+ 
+        %%
         function [obj, okay] = renderCellRGB(obj, myCell, peakIntensity)
             okay = false;
             if isempty(obj); return; end
             if isempty(myCell); return; end
 
-            cellRender = struct();
-            cellRender.cellBounds = myCell.cell_loc;
+            %cellRender = struct();
+            %cellRender.cellBounds = myCell.cell_loc;
 
             r = zeros(myCell.cell_loc.height, myCell.cell_loc.width, myCell.cell_loc.depth);
             g = zeros(myCell.cell_loc.height, myCell.cell_loc.width, myCell.cell_loc.depth);
@@ -62,12 +72,14 @@ classdef QuantVisualization
                 [r, g, b, a] = QuantVisualization.applyNewMask(alphaMask, obj.spotColor, r, g, b, a);
             end
 
+            cellRender = obj.rgbCellRenders(myCell.cell_number);
+            cellRender.cellBounds = myCell.cell_loc;
             cellRender.red = r;
             cellRender.green = g;
             cellRender.blue = b;
             cellRender.alpha = a;
 
-            obj.rgbCellRenders(myCell.cell_number) = cellRender;
+            obj.rgbCellRenders(myCell.cell_number) = cellRender; %TODO This assignment probably won't work...
             okay = true;
         end
 
@@ -168,6 +180,86 @@ classdef QuantVisualization
             okay = true;
         end
 
+        %%
+        function imgOut = applyToImage(obj, imgIn, z)
+            %Don't forget to check if input is already RGB first
+            if ndims(imgIn) > 2
+                %See if it's already RGB
+                if isa(imgIn, 'uint8') & (size(imgIn, 3) == 3)
+                    red = double(imgIn(:,:,1)) ./ 255.0;
+                    green = double(imgIn(:,:,2)) ./ 255.0;
+                    blue = double(imgIn(:,:,3)) ./ 255.0;
+                else
+                    %Assume 3D BW
+                    if obj.maxProj
+                        bw = double(max(imgIn, [], 3));
+                    else
+                        bw = double(imgIn(:,:,z));
+                    end
+                    mm = max(bw, [], 'all', 'omitnan');
+                    bw = bw ./ mm;
+                    red = bw;
+                    green = bw;
+                    blue = bw;
+                end
+            else
+                %Assume it's 2D BW
+                mm = max(imgIn, [], 'all', 'omitnan');
+                bw = imgIn ./ mm;
+                red = bw;
+                green = bw;
+                blue = bw;
+            end
+            X = size(red, 2);
+            Y = size(red, 1);
+            imgOut = NaN(Y,X,3);
+            imgOut(:,:,1) = red;
+            imgOut(:,:,2) = green;
+            imgOut(:,:,3) = blue;
+
+            cellCount = size(obj.rgbCellRenders, 2);
+            for c = 1:cellCount
+                cellRender = obj.rgbCellRenders(c);
+                x0 = cellRender.cellBounds.left;
+                x1 = cellRender.cellBounds.right;
+                y0 = cellRender.cellBounds.top;
+                y1 = cellRender.cellBounds.bottom;
+                z0 = cellRender.cellBounds.z_bottom;
+                %z1 = cellRender.cellBounds.z_top;
+
+                rr = red(y0:y1,x0:x1);
+                gg = green(y0:y1,x0:x1);
+                bb = blue(y0:y1,x0:x1);
+
+                rc = cellRender.red;
+                gc = cellRender.green;
+                bc = cellRender.blue;
+                aa = cellRender.alpha;
+
+                if obj.maxProj
+                    rc = max(rc, [], 3);
+                    gc = max(gc, [], 3);
+                    bc = max(bc, [], 3);
+                    aa = max(aa, [], 3);
+                else
+                    zst = z - z0 + 1;
+                    rc = rc(:,:,zst);
+                    gc = gc(:,:,zst);
+                    bc = bc(:,:,zst);
+                    aa = aa(:,:,zst);
+                end
+
+                aInv = 1.0 - aa;
+                rr = (rr .* aInv) + (rc .* aa);
+                gg = (gg .* aInv) + (gc .* aa);
+                bb = (bb .* aInv) + (bc .* aa);
+
+                imgOut(y0:y1,x0:x1,1) = rr;
+                imgOut(y0:y1,x0:x1,2) = gg;
+                imgOut(y0:y1,x0:x1,3) = bb;
+            end
+
+        end
     end
 
     %%
