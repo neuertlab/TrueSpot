@@ -7,7 +7,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.09.06.00';
+BUILD_STRING = '2024.09.09.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -47,16 +47,16 @@ for i = 1:nargin
             if arg_debug; fprintf("Output Directory Set: %s\n", output_dir); end
         elseif strcmp(lastkey, "zmin")
             zmin = Force2Num(argval);
-            if arg_debug; fprintf("Trim Z Min Set: %s\n", zmin); end
+            if arg_debug; fprintf("Trim Z Min Set: %s\n", num2str(zmin)); end
         elseif strcmp(lastkey, "zmax")
             zmax = Force2Num(argval);
-            if arg_debug; fprintf("Trim Z Max Set: %s\n", zmax); end
+            if arg_debug; fprintf("Trim Z Max Set: %s\n", num2str(zmax)); end
         elseif strcmp(lastkey, "localxy")
             blockXY = Force2Num(argval);
-            if arg_debug; fprintf("Local Block XY Size Set: %s\n", blockXY); end
+            if arg_debug; fprintf("Local Block XY Size Set: %s\n", num2str(blockXY)); end
         elseif strcmp(lastkey, "localz")
             blockZ = Force2Num(argval);
-            if arg_debug; fprintf("Local Block Z Size Set: %s\n", blockZ); end
+            if arg_debug; fprintf("Local Block Z Size Set: %s\n", num2str(blockZ)); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -393,7 +393,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         isdir = dirContents(i,1).isdir;
         if isdir
             if ~strcmp(fname, '.') & ~strcmp(fname, '..')
-                doDir([dirPath filesep fname], outputDir, zmin, zmax);
+                doDir([dirPath filesep fname], outputDir, zmin, zmax, localXY, localZ);
             end
         else
             if endsWith(fname, '_rnaspotsrun.mat')
