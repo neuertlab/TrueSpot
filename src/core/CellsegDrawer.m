@@ -20,10 +20,10 @@ classdef CellsegDrawer
 
         %%
         function obj = initializeMe(obj)
-            obj.cell_color = [0.8 0.8 0.8];
-            obj.cell_alpha = 0.4;
+            obj.cell_color = [0.8 0.0 0.8];
+            obj.cell_alpha = 0.25;
             obj.nuc_color = [0.369 0.510 0.788];
-            obj.nuc_alpha = 0.4;
+            obj.nuc_alpha = 0.25;
             obj.cell_mask = [];
             obj.nuc_mask = [];
             obj.useMaxProj = true;
@@ -49,8 +49,15 @@ classdef CellsegDrawer
                 end
             end
 
-            imgOut = uint16(imgOut);
-            imgOut = imadjust(imgOut);
+%             if isa(imgIn, 'double')
+%                 inMax = max(imgIn, [], 'all', 'omitnan');
+%                 if inMax <= 1.0
+%                     return;
+%                 end
+%             end
+% 
+%             imgOut = uint16(imgOut);
+%             imgOut = imadjust(imgOut);
         end
 
         %%
@@ -77,7 +84,7 @@ classdef CellsegDrawer
                 end
             end
 
-            imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.cell_color, 'Transparency', obj.cell_alpha);
+            imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.cell_color, 'Transparency', 1.0 - obj.cell_alpha);
         end
 
         %%
@@ -104,7 +111,7 @@ classdef CellsegDrawer
                 end
             end
 
-            imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.nuc_color, 'Transparency', obj.nuc_alpha);
+            imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.nuc_color, 'Transparency', 1.0 - obj.nuc_alpha);
         end
 
     end
