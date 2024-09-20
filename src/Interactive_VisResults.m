@@ -36,8 +36,11 @@ end
 
 quantPath = [spotsrun.getFullOutStem() '_quantData.mat'];
 if ~isfile(quantPath)
-    fprintf('WARNING: Quant file not found at "%s"\n', quantPath);
-    quantPath = [];
+    quantPath = replace(quantPath, '_spotCall', '');
+    if ~isfile(quantPath)
+        fprintf('WARNING: Quant file not found at "%s"\n', quantPath);
+        quantPath = [];
+    end
 end
 
 % ------------------------ GUI LOAD ------------------------
@@ -47,6 +50,7 @@ mygui = mygui.initCallView(spotsrun, quantPath);
 
 mygui.cellLayerOn = true;
 mygui.nucLayerOn = true;
+%mygui.quantFitLayerOn = true;
 mygui.spotCircleLayerOn = true;
 
 mygui = mygui.launchFigureGUI();

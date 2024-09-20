@@ -135,6 +135,7 @@ classdef VisInteractive
                 end
 
                 obj.qnVis.cells = quant_results.cell_rna_data;
+                clear quant_results;
             else
                 fprintf('[VisInteractive.initCommon] WARNING: Quant data file "%s" not found. Quant results will not be visible.\n', quantPath);
             end
@@ -157,6 +158,11 @@ classdef VisInteractive
                 end
             else
                 fprintf('[VisInteractive.initCommon] WARNING: Image path was not saved! Cannot load source image.\n');
+            end
+
+            if ~isempty(obj.qnVis.cells)
+                %fprintf('[VisInteractive.initCommon] Prerendering fit data...\n');
+                %[obj.qnVis, ~] = obj.qnVis.prerenderCells(max(obj.imageCh, [], 'all', 'omitnan'));
             end
 
             %
@@ -232,23 +238,34 @@ classdef VisInteractive
             if ~isempty(okayRegion)
                 Y = size(obj.imageCh,1);
                 X = size(obj.imageCh,2);
+                Z = size(obj.imageCh,3);
                 immul_mask = double(ones(Y,X));
                 dval = 0.25;
+
+                x_min = max(1, okayRegion.x_min);
+                x_max = min(X, okayRegion.x_max);
+                if x_max < 1; x_max = X; end
+                y_min = max(1, okayRegion.y_min);
+                y_max = min(Y, okayRegion.y_max);
+                if y_max < 1; y_max = Y; end
+                z_min = max(1, okayRegion.z_min);
+                z_max = min(Z, okayRegion.z_max);
+                if z_max < 1; z_max = Z; end
 
                 zout = false;
                 if ~obj.maxProj
                     %Check if z in range.
-                    if obj.currentSlice < okayRegion.z_min | obj.currentSlice > okayRegion.z_max
+                    if obj.currentSlice < z_min | obj.currentSlice > z_max
                         immul_mask(:,:) = dval;
                         zout = true;
                     end
                 end
 
-                if zout
-                    immul_mask(:,1:okayRegion.x_min) = dval;
-                    immul_mask(:,okayRegion.x_max:X) = dval;
-                    immul_mask(1:okayRegion.y_min,:) = dval;
-                    immul_mask(okayRegion.y_max:Y,:) = dval;
+                if ~zout
+                    if (x_min > 1); immul_mask(:,1:x_min) = dval; end
+                    if (x_max < X); immul_mask(:,x_max:X) = dval; end
+                    if (y_min > 1); immul_mask(1:y_min,:) = dval; end
+                    if (y_max < Y); immul_mask(y_max:Y,:) = dval; end
                 end
                 clear zout
 
