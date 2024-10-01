@@ -50,7 +50,7 @@ mygui = mygui.initCallView(spotsrun, quantPath);
 
 mygui.cellLayerOn = true;
 mygui.nucLayerOn = true;
-%mygui.quantFitLayerOn = true;
+mygui.quantFitLayerOn = true;
 mygui.spotCircleLayerOn = true;
 
 mygui = mygui.launchFigureGUI();

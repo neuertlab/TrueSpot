@@ -161,8 +161,8 @@ classdef VisInteractive
             end
 
             if ~isempty(obj.qnVis.cells)
-                %fprintf('[VisInteractive.initCommon] Prerendering fit data...\n');
-                %[obj.qnVis, ~] = obj.qnVis.prerenderCells(max(obj.imageCh, [], 'all', 'omitnan'));
+                fprintf('[VisInteractive.initCommon] Prerendering fit data...\n');
+                [obj.qnVis, ~] = obj.qnVis.prerenderCells();
             end
 
             %
@@ -350,7 +350,13 @@ classdef VisInteractive
             if obj.cellLayerOn
                 irender = obj.csVis.applyCellMask(irender, obj.currentSlice);
             else
-                %TODO Rescale input!!
+                %Rescale input!!
+                inmax = max(irender, [], 'all', 'omitnan');
+                irender = irender ./ inmax;
+                irender = irender .* 255.0;
+                irender = round(irender);
+                clear inmax
+
                 irender8 = uint8(zeros(Y, X, 3));
                 irender8(:,:,1) = uint8(irender(:,:));
                 irender8(:,:,2) = irender8(:,:,1);
@@ -380,6 +386,7 @@ classdef VisInteractive
             end
 
             % ----- DEBUG
+            figure(obj.figHandle);
             clf;
             imshow(irender);
 
@@ -456,6 +463,7 @@ classdef VisInteractive
                 obj = obj.updateRender();
             elseif btn == 'm' %toggle max projection
                 obj.maxProj = ~obj.maxProj;
+                %TODO Also needs to update sub-renderers!
                 fprintf('Max projection toggle set: %d\n', obj.maxProj);
                 obj = obj.updateRender();
             elseif btn == 'g' %toggle global contrast scale

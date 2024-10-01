@@ -18,16 +18,48 @@ classdef QuantVisualization
         countLabelColor = [1.000 0.000 0.000];
         showCountLabels = false;
 
-        rgbCellRenders = struct.empty();
+        rgbCellRenders = [];
     end
 
     %%
     methods
 
         %%
-        function [obj, okay] = prerenderCells(obj, peakIntensity)
+        function [obj, okay] = prerenderCells(obj)
             cellCount = size(obj.cells, 2);
-            obj.rgbCellRenders(cellCount) = struct('cellBounds', [], 'red', [], 'green', [], 'blue', [], 'alpha', []);
+            
+            %Determine scale intensity
+            %TODO
+            peakIntensity = 1;
+            for c = 1:cellCount
+                myCell = obj.cells(c);
+                if isempty(myCell.spotTable) & ~isempty(myCell.spots)
+                    myCell = myCell.convertSpotStorage();
+                end
+
+                maxi = 0;
+                if ~isempty(myCell.spotZFits)
+                    fits = myCell.spotZFits;
+                    sCount = size(fits, 2);
+                    for j = 1:sCount
+                        myFits = fits{j};
+                        mm = max([myFits.A], [], 'all', 'omitnan');
+                        if mm > maxi; maxi = mm; end
+                    end
+                    clear mm fits
+                else
+                    if ~isempty(myCell.spotTable)
+                        maxi = max(myCell.spotTable{:, 'expMInt'});
+                    end
+                end
+
+                if maxi > peakIntensity; peakIntensity = maxi; end
+                obj.cells(c) = myCell;
+            end
+            clear maxi;
+
+
+            obj.rgbCellRenders = cell(1,cellCount);
             for c = 1:cellCount
                 [obj, okay] = obj.renderCellRGB(obj.cells(c), peakIntensity);
                 if ~okay; return; end
@@ -72,14 +104,14 @@ classdef QuantVisualization
                 [r, g, b, a] = QuantVisualization.applyNewMask(alphaMask, obj.spotColor, r, g, b, a);
             end
 
-            cellRender = obj.rgbCellRenders(myCell.cell_number);
+            cellRender = struct('cellNumber', myCell.cell_number);
             cellRender.cellBounds = myCell.cell_loc;
             cellRender.red = r;
             cellRender.green = g;
             cellRender.blue = b;
             cellRender.alpha = a;
 
-            obj.rgbCellRenders(myCell.cell_number) = cellRender; %TODO This assignment probably won't work...
+            obj.rgbCellRenders{myCell.cell_number} = cellRender;
             okay = true;
         end
 
@@ -92,12 +124,6 @@ classdef QuantVisualization
             if isempty(obj); return; end
             if isempty(myCell); return; end
 
-            if nascentFlag
-                nval = 1;
-            else
-                nval = 0;
-            end
-
             %Get spots
             if isempty(myCell.spotTable) & ~isempty(myCell.spots)
                 myCell = myCell.convertSpotStorage();
@@ -108,6 +134,15 @@ classdef QuantVisualization
                 return; %Return empty mask so don't waste time applying it
             end
 
+            %Filter spots
+            keepRows = (myCell.spotTable{:, 'nascent_flag'} == nascentFlag);
+            if nnz(keepRows) < 1
+                okay = true;
+                return; %Return empty mask
+            end
+            spotList = myCell.spotTable(keepRows, :);
+            zFits = myCell.spotZFits(keepRows);
+
             %Cell dims
             cX = myCell.cell_loc.width;
             cY = myCell.cell_loc.height;
@@ -115,10 +150,10 @@ classdef QuantVisualization
             alphaMask = zeros(cY, cX, cZ);
 
             %Spot locations
-            spotCount = size(spotList, 2);
-            sx = myCell.spotTable{:, 'xinit'};
-            sy = myCell.spotTable{:, 'yinit'};
-            sz = myCell.spotTable{:, 'zinit'};
+            spotCount = size(spotList, 1);
+            sx = spotList{:, 'xinit'}';
+            sy = spotList{:, 'yinit'}';
+            sz = spotList{:, 'zinit'}';
 
             %Determine render boxes
             [tx0, tx1, rx0, rx1] = QuantVisualization.getBoxBounds(sx, obj.spotrad_xy, cX);
@@ -127,7 +162,8 @@ classdef QuantVisualization
 
             for i = 1:spotCount
                 %subimg = spotList(i).generateSimSpotFromFit(obj.spotrad_xy);
-                subimg = RNASpot.generateSimSpotFromFit_Table(myCell.spotTable, i, myCell.spotZFits{i}, obj.spotrad_xy);
+
+                subimg = RNASpot.generateSimSpotFromFit_Table(spotList, i, zFits{i}, obj.spotrad_xy);
                 alphaMask(ty0(i):ty1(i), tx0(i):tx1(i), tz0(i):tz1(i))...
                     = alphaMask(ty0(i):ty1(i), tx0(i):tx1(i), tz0(i):tz1(i))...
                     + subimg(ry0(i):ry1(i), rx0(i):rx1(i), rz0(i):rz1(i));
@@ -210,6 +246,7 @@ classdef QuantVisualization
                 green = bw;
                 blue = bw;
             end
+
             X = size(red, 2);
             Y = size(red, 1);
             imgOut = NaN(Y,X,3);
@@ -219,7 +256,7 @@ classdef QuantVisualization
 
             cellCount = size(obj.rgbCellRenders, 2);
             for c = 1:cellCount
-                cellRender = obj.rgbCellRenders(c);
+                cellRender = obj.rgbCellRenders{c};
                 x0 = cellRender.cellBounds.left;
                 x1 = cellRender.cellBounds.right;
                 y0 = cellRender.cellBounds.top;
@@ -249,6 +286,20 @@ classdef QuantVisualization
                     aa = aa(:,:,zst);
                 end
 
+                %DEBUG----
+                figure(500);
+                clf;
+                imshow(rc, []);
+                figure(501);
+                clf;
+                imshow(gc, []);
+                figure(502);
+                clf;
+                imshow(bc, []);
+                figure(503);
+                clf;
+                imshow(aa, []);
+
                 aInv = 1.0 - aa;
                 rr = (rr .* aInv) + (rc .* aa);
                 gg = (gg .* aInv) + (gc .* aa);
@@ -270,8 +321,8 @@ classdef QuantVisualization
             count = size(center, 2);
             subdim = (rad * 2) + 1;
 
-            main0 = center - rad;
-            main1 = center + rad;
+            main0 = double(center - rad);
+            main1 = double(center + rad);
 
             sub0 = ones(1, count);
             sub1 = repmat(subdim, 1, count);
@@ -282,6 +333,11 @@ classdef QuantVisualization
             hangamt = max(main1 - maxDim, 0);
             main1 = main1 - hangamt;
             sub1 = sub1 - hangamt;
+
+            main0 = uint16(round(main0));
+            main1 = uint16(round(main1));
+            sub0 = uint16(round(sub0));
+            sub1 = uint16(round(sub1));
         end
 
         %%
