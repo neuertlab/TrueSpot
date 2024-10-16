@@ -174,7 +174,7 @@ methods (Static)
         C = ceil(ccount/BLOCK_SIZE);
 
         alloc = ceil(rcount * ccount * 0.001);
-        combo_table = single(NaN(alloc,3)); %dist3 row col
+        combo_table = single(NaN(alloc,5)); %dist3 row col dist2 distz
         table_pos = 1;
 
         %Go through blocks to get combo candidates
@@ -209,6 +209,7 @@ methods (Static)
                 tempmtx_cols = single(repmat(ref_set(cc:c_end,3).', [rb_size 1]));
                 zdist = tempmtx_rz - tempmtx_cols;
 
+                dist2 = sqrt((xdist.^2) + (ydist.^2));
                 dist3 = sqrt((xdist.^2) + (ydist.^2) + (zdist.^2));
                 clear xdist;
                 clear ydist;
@@ -217,7 +218,6 @@ methods (Static)
                 %Eliminate any combos above radius thresholds
                 dist3(zdist > snaprad_z) = NaN;
                 dist3(dist3 > snaprad_3) = NaN;
-                clear zdist
 
                 %Save remaining combos to the table.
                 okayidx = find(~isnan(dist3));
@@ -230,11 +230,15 @@ methods (Static)
                     tbl_start = table_pos;
                     tbl_end = table_pos + matchcount - 1;
                     combo_table(tbl_start:tbl_end, 1) = dist3(okayidx);
+                    combo_table(tbl_start:tbl_end, 4) = dist2(okayidx);
+                    combo_table(tbl_start:tbl_end, 5) = zdist(okayidx);
+
                     [cand_rows, cand_cols] = ind2sub(size(dist3), okayidx);
                     combo_table(tbl_start:tbl_end, 2) = cand_rows + rr - 1;
                     combo_table(tbl_start:tbl_end, 3) = cand_cols + cc - 1;
                     table_pos = tbl_end + 1;
                 end
+                clear zdist dist2
 
                 cc = c_end + 1;
             end
@@ -1027,6 +1031,180 @@ methods (Static)
         end
 
         call_table(:,'cell') = array2table(uint16(cells));
+    end
+
+    %%
+    function gen_coords = genSpotsRandom(X, Y, Z, count)
+        gen_coords = zeros(count, 3);
+        
+        rr = rand(count, 1);
+        rr = (rr * X);
+        rr = rr + 1;
+        gen_coords(:,1) = round(rr);
+
+        rr = rand(count, 1);
+        rr = (rr * Y);
+        rr = rr + 1;
+        gen_coords(:,2) = round(rr);
+
+        rr = rand(count, 1);
+        rr = (rr * Z);
+        rr = rr + 1;
+        gen_coords(:,3) = round(rr);
+    end
+
+    %%
+    function gen_coords = genSpotsRandomWeightedZ(X, Y, Z_weights, count)
+        gen_coords = zeros(count, 3);
+        
+        rr = rand(count, 1);
+        rr = (rr * X);
+        rr = rr + 1;
+        gen_coords(:,1) = round(rr);
+
+        rr = rand(count, 1);
+        rr = (rr * Y);
+        rr = rr + 1;
+        gen_coords(:,2) = round(rr);
+
+        zsum = sum(Z_weights, 'all');
+        Z_weights = Z_weights ./ zsum;
+        zcsum = cumsum(Z_weights);
+        rr = rand(count, 1);
+        cmtx = rr > zcsum;
+        gen_coords(:,3) = sum(cmtx, 2);
+
+    end
+
+    %%
+    function nearby_counts = countNearbySpotsOneChannel(call_mtx, radXY, radZ)
+        nearby_counts = RNACoords.countNearbySpotsOtherChannel(call_mtx, call_mtx, radXY, radZ);
+    end
+
+    %%
+    function nearby_counts = countNearbySpotsTwoChannel(call_mtx, other_mtx, rad3, radZ)
+        spot_count = size(call_mtx, 1);
+
+        cand_table = RNACoords.findMatchCandidates(call_mtx, other_mtx, rad3, radZ);
+        bins = [1:1:spot_count+1];
+        [nearby_counts, ~] = histcounts(cand_table(:,2), bins);
+    end
+
+    %%
+    function [rad3, radZ, colocRes] = colocAutoRadiusTwoChannel(callmtx_ch_A, callmtx_ch_B, idims, voxdims_nm, maxR_nm, maxZR_nm)
+        if nargin < 5; maxR_nm = 1000; end
+        if nargin < 6; maxZR_nm = 2000; end
+
+        %If maxZR_nm is set to 0, then collapse to 2D. %TODO
+
+        if isstruct(idims)
+            X = idims.x;
+            Y = idims.y;
+            Z = idims.z;
+        else
+            X = 1; Y = 1; Z = 1;
+            sz = size(idims, 2);
+            if sz >= 1; X = idims(1); end
+            if sz >= 2; Y = idims(2); end
+            if sz >= 3; Z = idims(3); end
+        end
+
+        if isstruct(voxdims_nm)
+            vx = voxdims_nm.x;
+            vy = voxdims_nm.y;
+            vz = voxdims_nm.z;
+        else
+            vx = 65; vy = 65; vz = 300;
+            sz = size(voxdims_nm, 2);
+            if sz >= 1; vx = voxdims_nm(1); end
+            if sz >= 2; vy = voxdims_nm(2); end
+            if sz >= 3; vz = voxdims_nm(3); end
+        end
+
+        rad3 = 0;
+        radZ = 0;
+
+        inCount = size(callmtx_ch_A,1);
+        colocRes = cell(1,inCount);
+        randCount = size(callmtx_ch_B,1);
+
+        %Weight Z for random?
+        [Zw, ~] = histcounts(callmtx_ch_B(:,3), [1:Z+1]);
+        Zw = Zw ./ randCount;
+        randCoords = RNACoords.genSpotsRandomWeightedZ(X, Y, Zw, randCount);
+        %randCoords = RNACoords.genSpotsRandom(X, Y, Z, randCount);
+
+        %Convert all coords to nm (so can better weigh Z)
+        callmtx_ch_A_nm = callmtx_ch_A - 1;
+        callmtx_ch_A_nm(:,1) = callmtx_ch_A_nm(:,1) .* vx;
+        callmtx_ch_A_nm(:,2) = callmtx_ch_A_nm(:,2) .* vy;
+        callmtx_ch_A_nm(:,3) = callmtx_ch_A_nm(:,3) .* vz;
+
+        callmtx_ch_B_nm = callmtx_ch_B - 1;
+        callmtx_ch_B_nm(:,1) = callmtx_ch_B_nm(:,1) .* vx;
+        callmtx_ch_B_nm(:,2) = callmtx_ch_B_nm(:,2) .* vy;
+        callmtx_ch_B_nm(:,3) = callmtx_ch_B_nm(:,3) .* vz;
+
+        randCoords_nm = randCoords - 1;
+        randCoords_nm(:,1) = randCoords_nm(:,1) .* vx;
+        randCoords_nm(:,2) = randCoords_nm(:,2) .* vy;
+        randCoords_nm(:,3) = randCoords_nm(:,3) .* vz;
+
+
+        %TODO
+        randMatches = RNACoords.findMatchCandidates(callmtx_ch_A_nm, randCoords_nm, maxR_nm, maxZR_nm);
+        callMatches = RNACoords.findMatchCandidates(callmtx_ch_A_nm, callmtx_ch_B_nm, maxR_nm, maxZR_nm);
+        alldist = [randMatches(:,1)' callMatches(:,1)'];
+        alldist = unique(sort(alldist));
+        %alldist2 = [randMatches(:,4)' callMatches(:,4)'];
+        %alldist2 = unique(sort(alldist2));
+        %alldistz = [0:1:maxZR];
+        alldistz = [randMatches(:,5)' callMatches(:,5)'];
+        alldistz = unique(sort(alldistz));
+
+        hbinsA = [1:1:(inCount+1)];
+        %hbinsB = [1:1:(randCount+1)];
+
+        d3Count = size(alldist, 2);
+        %d2Count = size(alldist2, 2);
+        dzCount = size(alldistz, 2);
+        callAvgCounts = zeros(d3Count, dzCount);
+        randAvgCounts = zeros(d3Count, dzCount);
+        %callMedCounts = zeros(1,dCount);
+        %randMedCounts = zeros(1,dCount);
+        for i = 1:d3Count
+            d3Val = alldist(i);
+            for j = 1:dzCount
+                dzVal = alldistz(j);
+
+                fbool = and(callMatches(:,1) <= d3Val, callMatches(:,5) <= dzVal);
+                cm_filt = callMatches(fbool, :);
+                fbool = and(randMatches(:,1) <= d3Val, randMatches(:,5) <= dzVal);
+                rn_filt = randMatches(fbool, :);
+
+                if ~isempty(cm_filt)
+                    [hh, ~] = histcounts(cm_filt(:,2), hbinsA);
+                    callAvgCounts(i,j) = mean(hh, 'all', 'omitnan');
+                    %callMedCounts(i) = median(hh, 'all', 'omitnan');
+                    clear hh
+                end
+
+                if ~isempty(rn_filt)
+                    [hh, ~] = histcounts(rn_filt(:,2), hbinsA);
+                    randAvgCounts(i,j) = mean(hh, 'all', 'omitnan');
+                    %randMedCounts(i) = median(hh, 'all', 'omitnan');
+                    clear hh
+                end
+            end
+        end
+
+        lrAvgCounts = log10(randAvgCounts);
+        lcAvgCounts = log10(callAvgCounts);
+
+
+
+        %TODO
+
     end
 
 end
