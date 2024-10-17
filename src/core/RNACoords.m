@@ -1040,17 +1040,17 @@ methods (Static)
         rr = rand(count, 1);
         rr = (rr * X);
         rr = rr + 1;
-        gen_coords(:,1) = round(rr);
+        gen_coords(:,1) = floor(rr);
 
         rr = rand(count, 1);
         rr = (rr * Y);
         rr = rr + 1;
-        gen_coords(:,2) = round(rr);
+        gen_coords(:,2) = floor(rr);
 
         rr = rand(count, 1);
         rr = (rr * Z);
         rr = rr + 1;
-        gen_coords(:,3) = round(rr);
+        gen_coords(:,3) = floor(rr);
     end
 
     %%
@@ -1060,12 +1060,12 @@ methods (Static)
         rr = rand(count, 1);
         rr = (rr * X);
         rr = rr + 1;
-        gen_coords(:,1) = round(rr);
+        gen_coords(:,1) = floor(rr);
 
         rr = rand(count, 1);
         rr = (rr * Y);
         rr = rr + 1;
-        gen_coords(:,2) = round(rr);
+        gen_coords(:,2) = floor(rr);
 
         zsum = sum(Z_weights, 'all');
         Z_weights = Z_weights ./ zsum;
@@ -1095,7 +1095,25 @@ methods (Static)
         if nargin < 5; maxR_nm = 1000; end
         if nargin < 6; maxZR_nm = 2000; end
 
-        %If maxZR_nm is set to 0, then collapse to 2D. %TODO
+        %If maxZR_nm is set to 0, then collapse to 2D.
+        if maxZR_nm <= 0
+            maxZR_nm = 0;
+            if size(callmtx_ch_A, 2) < 3
+                aold = callmtx_ch_A;
+                callmtx_ch_A = zeros(size(callmtx_ch_A,1), 3);
+                callmtx_ch_A(:,1:2) = aold(:,1:2);
+                clear aold;
+            end
+            callmtx_ch_A(:,3) = 1;
+
+            if size(callmtx_ch_B, 2) < 3
+                bold = callmtx_ch_B;
+                callmtx_ch_B = zeros(size(callmtx_ch_B,1), 3);
+                callmtx_ch_B(:,1:2) = bold(:,1:2);
+                clear bold;
+            end
+            callmtx_ch_B(:,3) = 1;
+        end
 
         if isstruct(idims)
             X = idims.x;
@@ -1121,6 +1139,10 @@ methods (Static)
             if sz >= 3; vz = voxdims_nm(3); end
         end
 
+        if maxZR_nm <= 0
+            Z = 1;
+        end
+
         rad3 = 0;
         radZ = 0;
 
@@ -1129,10 +1151,14 @@ methods (Static)
         randCount = size(callmtx_ch_B,1);
 
         %Weight Z for random?
-        [Zw, ~] = histcounts(callmtx_ch_B(:,3), [1:Z+1]);
-        Zw = Zw ./ randCount;
-        randCoords = RNACoords.genSpotsRandomWeightedZ(X, Y, Zw, randCount);
-        %randCoords = RNACoords.genSpotsRandom(X, Y, Z, randCount);
+        if maxZR_nm > 0
+            [Zw, ~] = histcounts(callmtx_ch_B(:,3), [1:Z+1]);
+            Zw = Zw ./ randCount;
+            randCoords = RNACoords.genSpotsRandomWeightedZ(X, Y, Zw, randCount);
+            %randCoords = RNACoords.genSpotsRandom(X, Y, Z, randCount);
+        else
+            randCoords = RNACoords.genSpotsRandom(X, Y, Z, randCount);
+        end
 
         %Convert all coords to nm (so can better weigh Z)
         callmtx_ch_A_nm = callmtx_ch_A - 1;
@@ -1150,8 +1176,6 @@ methods (Static)
         randCoords_nm(:,2) = randCoords_nm(:,2) .* vy;
         randCoords_nm(:,3) = randCoords_nm(:,3) .* vz;
 
-
-        %TODO
         randMatches = RNACoords.findMatchCandidates(callmtx_ch_A_nm, randCoords_nm, maxR_nm, maxZR_nm);
         callMatches = RNACoords.findMatchCandidates(callmtx_ch_A_nm, callmtx_ch_B_nm, maxR_nm, maxZR_nm);
         alldist = [randMatches(:,1)' callMatches(:,1)'];
@@ -1170,8 +1194,6 @@ methods (Static)
         dzCount = size(alldistz, 2);
         callAvgCounts = zeros(d3Count, dzCount);
         randAvgCounts = zeros(d3Count, dzCount);
-        %callMedCounts = zeros(1,dCount);
-        %randMedCounts = zeros(1,dCount);
         for i = 1:d3Count
             d3Val = alldist(i);
             for j = 1:dzCount
