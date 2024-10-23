@@ -134,6 +134,7 @@ classdef RNAThreshold
             [counts, ~] = histcounts(sugg_set, hedge);
             clear hedge
 
+            sugg_set = double(sugg_set);
             pool_mean = mean(sugg_set, 'all', 'omitnan');
             pool_med = median(sugg_set, 'all', 'omitnan');
             pool_std = std(sugg_set, 0, 'all', 'omitnan');
@@ -160,11 +161,13 @@ classdef RNAThreshold
 
         %%
         function thresh_res = scoreThresholdSuggestions(thresh_res)
+            if ~isfield(thresh_res, 'pool'); thresh_res.pool = struct(); end
             thresh_res.pool.sugg_m = RNAThreshold.getAllMedThresholds(thresh_res);
             thresh_res.pool.sugg_f = RNAThreshold.getAllFitThresholds(thresh_res);
             thresh_res.pool.sugg_fri = RNAThreshold.getAllRightISectThresholds(thresh_res);
 
             thvals = thresh_res.x';
+            if ~isfield(thresh_res, 'thstats'); thresh_res.thstats = struct(); end
             thresh_res.thstats.value_table = RNAThreshold.genThresholdValueInfoTable(thvals);
             
             all_sugg = [thresh_res.pool.sugg_m thresh_res.pool.sugg_f thresh_res.pool.sugg_fri];
@@ -176,33 +179,33 @@ classdef RNAThreshold
 
             if ~isempty(thresh_res.pool.sugg_m)
                 [thscores, counts] = RNAThreshold.scoreSuggestions(thvals, thresh_res.pool.sugg_m);
-                thresh_res.thstats.value_table{:,'hits_m'} = counts;
-                thresh_res.thstats.value_table{:,'score_m'} = thscores;
+                thresh_res.thstats.value_table{:,'hits_m'} = counts(:);
+                thresh_res.thstats.value_table{:,'score_m'} = thscores(:);
             end
 
             if ~isempty(thresh_res.pool.sugg_f)
                 [thscores, counts] = RNAThreshold.scoreSuggestions(thvals, thresh_res.pool.sugg_f);
-                thresh_res.thstats.value_table{:,'hits_f'} = counts;
-                thresh_res.thstats.value_table{:,'score_f'} = thscores;
+                thresh_res.thstats.value_table{:,'hits_f'} = counts(:);
+                thresh_res.thstats.value_table{:,'score_f'} = thscores(:);
             end
 
             if ~isempty(thresh_res.pool.sugg_fri)
                 [thscores, counts] = RNAThreshold.scoreSuggestions(thvals, thresh_res.pool.sugg_fri);
-                thresh_res.thstats.value_table{:,'hits_fri'} = counts;
-                thresh_res.thstats.value_table{:,'score_fri'} = thscores;
+                thresh_res.thstats.value_table{:,'hits_fri'} = counts(:);
+                thresh_res.thstats.value_table{:,'score_fri'} = thscores(:);
             end
 
-            ovr_scores = zeros(1,size(thvals,2));
+            ovr_scores = zeros(1, size(thvals,2));
             if thresh_res.madth_weight > 0.0
-                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_m'} .* thresh_res.madth_weight);
+                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_m'}' .* thresh_res.madth_weight);
             end
             if thresh_res.fit_weight > 0.0
-                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_f'} .* thresh_res.fit_weight);
+                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_f'}' .* thresh_res.fit_weight);
             end
             if thresh_res.fit_ri_weight > 0.0
-                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_fri'} .* thresh_res.fit_ri_weight);
+                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_fri'}' .* thresh_res.fit_ri_weight);
             end
-            thresh_res.thstats.value_table{:,'score'} = ovr_scores;
+            thresh_res.thstats.value_table{:,'score'} = ovr_scores(:);
 
         end
         

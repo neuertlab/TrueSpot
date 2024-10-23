@@ -7,7 +7,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.10.23.00';
+BUILD_STRING = '2024.10.23.04';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -334,18 +334,20 @@ function spotProfile = getSpotProfileQuant(spotsrun, quant_results, imageData, s
                 spTable{rows, 'z'} = zint(zbad);
             end
 
-            x0 = max((spTable{spotPos:lastSpot, 'x'} - spTable{spotPos:lastSpot, 'xFWHM'} - 5), 1);
-            x1 = min((spTable{spotPos:lastSpot, 'x'} + spTable{spotPos:lastSpot, 'xFWHM'} + 5), X);
-            y0 = max((spTable{spotPos:lastSpot, 'y'} - spTable{spotPos:lastSpot, 'yFWHM'} - 5), 1);
-            y1 = min((spTable{spotPos:lastSpot, 'y'} + spTable{spotPos:lastSpot, 'yFWHM'} + 5), Y);
-            z0 = max((spTable{spotPos:lastSpot, 'z'} - spTable{spotPos:lastSpot, 'zFWHM'} - 5), 1);
-            z1 = min((spTable{spotPos:lastSpot, 'z'} + spTable{spotPos:lastSpot, 'zFWHM'} + 5), Z);
+            x0 = int32(max(floor(spTable{spotPos:lastSpot, 'x'} - spTable{spotPos:lastSpot, 'xFWHM'} - 5), 1));
+            x1 = int32(min(ceil(spTable{spotPos:lastSpot, 'x'} + spTable{spotPos:lastSpot, 'xFWHM'} + 5), X));
+            y0 = int32(max(floor(spTable{spotPos:lastSpot, 'y'} - spTable{spotPos:lastSpot, 'yFWHM'} - 5), 1));
+            y1 = int32(min(ceil(spTable{spotPos:lastSpot, 'y'} + spTable{spotPos:lastSpot, 'yFWHM'} + 5), Y));
+            z0 = int32(max(floor(spTable{spotPos:lastSpot, 'z'} - 3), 1));
+            z1 = int32(min(ceil(spTable{spotPos:lastSpot, 'z'} + 3), Z));
 
             %Local background for each spot.
             for s = 1:cspotCount
                 idat = imageData(y0(s):y1(s), x0(s):x1(s), z0(s):z1(s));
                 lmask = spotMask(y0(s):y1(s), x0(s):x1(s), z0(s):z1(s));
-                spTable{spotPos + s - 1, 'localBkgStats'} = takeStats(idat, ~lmask, struct(), 0, 0);
+                cll = cell(1,1);
+                cll{1} = takeStats(idat, ~lmask, struct(), 0, 0);
+                spTable{spotPos + s - 1, 'localBkgStats'} = cll;
             end
 
             spotPos = lastSpot + 1;
@@ -353,11 +355,11 @@ function spotProfile = getSpotProfileQuant(spotsrun, quant_results, imageData, s
     end
 
     %Get filtered values
-    fImg = RNA_Threshold_SpotDetector.run_spot_detection_pre(imageData, '.', true, spotsrun.options.dtune_gaussrad, false);
+    fImg = RNA_Threshold_SpotDetector.run_spot_detection_pre(imageData, [spotsrun.paths.out_dir filesep], true, spotsrun.options.dtune_gaussrad, false);
     fImg = uint16(fImg);
-    xr = min(max(round(spTable{spotPos:lastSpot, 'x'}),1), X);
-    yr = min(max(round(spTable{spotPos:lastSpot, 'y'}),1), Y);
-    zr = min(max(round(spTable{spotPos:lastSpot, 'z'}),1), Z);
+    xr = int32(min(max(round(spTable{:, 'x'}),1), X));
+    yr = int32(min(max(round(spTable{:, 'y'}),1), Y));
+    zr = int32(min(max(round(spTable{:, 'z'}),1), Z));
     coords1 = sub2ind([Y X Z], yr, xr, zr);
     spTable{:, 'mFiltInt'} = fImg(coords1);
     clear fImg
@@ -564,7 +566,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
 
             fprintf('\t> Working on spot profiles...\n');
             if ~isempty(quant_results)
-                intensityStats.spotProfile = getSpotProfileQuant(quant_results, sampleCh, spotMask);
+                intensityStats.spotProfile = getSpotProfileQuant(spotsrun, quant_results, sampleCh, spotMask);
             else
                 intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, intensityStats.gaussrad);
             end
@@ -572,20 +574,20 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
 
         fprintf('\t> Working on individual cells...\n');
         if ~isempty(quant_results)
-            %TODO
             [fieldNames, fieldTypes] = getCellTableFields();
             table_size = [cellCount size(fieldNames,2)];
             cellTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
 
             for c = 1:cellCount
-                %TODO
                 cellTable{c, 'cellNo'} = uint16(c);
                 oneCellMask = (cellMask == c);
                 rp3 = regionprops3(oneCellMask, 'BoundingBox', 'Centroid');
                 cellTable{c, 'centroid_x'} = single(rp3.Centroid(1));
                 cellTable{c, 'centroid_y'} = single(rp3.Centroid(2));
                 cobj = quant_results.cell_rna_data(c);
-                cellTable{c, 'box'} = cobj.cell_loc;
+                cll = cell(1,1);
+                cll{1} = cobj.cell_loc;
+                cellTable{c, 'box'} = cll;
                 cellTable{c, 'spot_count'} = size(cobj.spotTable, 1);
 
                 x0 = max(cobj.cell_loc.left - 5,1);
@@ -598,11 +600,14 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
                 cellLocMask = false(Y,X,Z);
                 cellLocMask(y0:y1,x0:x1,z0:z1) = true;
                 cellLocMask = and(cellLocMask, ~oneCellMask);
-                cellTable{c, 'local_img_bkg'} = takeStats(sampleCh, cellLocMask, struct(), 0, 0);
+                cll = cell(1,1);
+                cll{1} = takeStats(sampleCh, cellLocMask, struct(), 0, 0);
+                cellTable{c, 'local_img_bkg'} = cll;
                 clear cellLocMask
 
                 cbkgMask = and(oneCellMask, ~spotMask);
-                cellTable{c, 'cell_bkg'} = takeStats(sampleCh, cbkgMask, struct(), 0, 0);
+                cll{1} = takeStats(sampleCh, cbkgMask, struct(), 0, 0);
+                cellTable{c, 'cell_bkg'} = cll;
                 clear cbkgMask
 
             end

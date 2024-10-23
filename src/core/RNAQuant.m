@@ -582,7 +582,7 @@ classdef RNAQuant
                         cell_rna_data(c).spots(i).x = x;
                         cell_rna_data(c).spots(i).y = y;
                         cell_rna_data(c).spots(i).z = z;
-                        cell_rna_data(c).spots(i).dropout_thresh = img_f(y,x,z);
+                        cell_rna_data(c).spots(i).dropout_thresh = img_f((y+Y0),(x+X0),z);
                     end
                 end
                 cell_rna_data(c).spotcount_total = numr_cell;
