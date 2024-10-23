@@ -805,17 +805,25 @@ methods (Static)
     end
 
     %%
-    function xyz_table = getThresholdCalls(call_table, thval)
+    function xyz_table = getThresholdCalls(call_table, thval, include_thvals)
+        if nargin < 3; include_thvals = false; end
+
         xyz_table = [];
         if isempty(call_table); return; end
 
+        colcount = 3;
+        if include_thvals; colcount = 4; end
         tokay = find(call_table{:, 'dropout_thresh'} >= thval);
         if ~isempty(tokay)
             count = size(tokay, 1);
-            xyz_table = int32(NaN(count, 3));
+            xyz_table = int32(NaN(count, colcount));
             xyz_table(:,1) = call_table{tokay, 'isnap_x'};
             xyz_table(:,2) = call_table{tokay, 'isnap_y'};
             xyz_table(:,3) = call_table{tokay, 'isnap_z'};
+            
+            if include_thvals
+                xyz_table(:,4) = call_table{tokay, 'dropout_thresh'};
+            end
         end
     end
 

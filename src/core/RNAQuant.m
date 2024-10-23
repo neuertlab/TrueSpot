@@ -411,7 +411,7 @@ classdef RNAQuant
         %% ========================== Fit Primary Functions ==========================
         
         %%
-        function [img_dpcleaned, imrmax_mask, img_bkg, plane_stats] = RNAProcess3Dim(img_raw, threshold, small_obj_size, connect_size, gaussian_radius, workdir, skip_imrm)
+        function [img_dpcleaned, img_processed, imrmax_mask, img_bkg, plane_stats] = RNAProcess3Dim(img_raw, threshold, small_obj_size, connect_size, gaussian_radius, workdir, skip_imrm)
             if nargin < 7
                 skip_imrm = false;
             end
@@ -470,6 +470,7 @@ classdef RNAQuant
                 img_processed = RNA_Threshold_Common.blackoutBorders(img_processed, gaussian_radius, 0);
                 imrmax_mask = imregionalmax(img_processed,26);
             else
+                img_processed = [];
                 imrmax_mask = [];
             end
         end
@@ -513,6 +514,9 @@ classdef RNAQuant
                         cell_rna_data(c).spots(i).x = rna_in_cell(i,1);
                         cell_rna_data(c).spots(i).y = rna_in_cell(i,2);
                         cell_rna_data(c).spots(i).z = rna_in_cell(i,3);
+                        if size(rna_in_cell, 2) > 3
+                            cell_rna_data(c).spots(i).dropout_thresh = rna_in_cell(i,4);
+                        end
                     end
                 end
             end
@@ -520,11 +524,11 @@ classdef RNAQuant
         end
 
         %%
-        function cell_rna_data = NonGaussRNAPos(img_raw, imrmax_mask, cell_mask, nuc_mask)
+        function cell_rna_data = NonGaussRNAPos(img_f, imrmax_mask, cell_mask, nuc_mask)
             %B3_nongaussRNApos
             Z = 1;
-            if ndims(img_raw) >= 3
-                Z = size(img_raw, 3);
+            if ndims(img_f) >= 3
+                Z = size(img_f, 3);
             end
             
             cell_count = max(cell_mask(:));
@@ -535,7 +539,7 @@ classdef RNAQuant
                 cell_rna_data(i).dim_z = Z;
             end
             
-            img_imrmax = immultiply(img_raw, imrmax_mask);
+            img_imrmax = immultiply(img_f, imrmax_mask);
             for c = 1:cell_count
                 cell_rna_data(c) = cell_rna_data(c).findBoundaries(cell_mask, nuc_mask);
                 this_cell = cell_rna_data(c); %READ ONLY
@@ -578,6 +582,7 @@ classdef RNAQuant
                         cell_rna_data(c).spots(i).x = x;
                         cell_rna_data(c).spots(i).y = y;
                         cell_rna_data(c).spots(i).z = z;
+                        cell_rna_data(c).spots(i).dropout_thresh = img_f(y,x,z);
                     end
                 end
                 cell_rna_data(c).spotcount_total = numr_cell;
@@ -955,8 +960,12 @@ classdef RNAQuant
             %Pre-divide image data into cells
             cell_count = size(cell_list_a,2);
             img_raw_dbl = double(img_clean);
-            img_bkg_dbl = double(img_bkg);
-            img_nobkg_dbl = img_raw_dbl - img_bkg_dbl;
+            if quant_struct.no_bkg_subtract
+                img_use_dbl = img_raw_dbl;
+            else
+                img_bkg_dbl = double(img_bkg);
+                img_use_dbl = img_raw_dbl - img_bkg_dbl;
+            end
             clear img_bkg_dbl;
             for c = 1:cell_count
                 this_cell = cell_list_a(c);
@@ -966,7 +975,7 @@ classdef RNAQuant
                 Y1 = this_cell.cell_loc.bottom;
                 
                 cell_dbl = double(this_cell.get3DCellMask());
-                cell_list_a(c).img_nobkg = immultiply(img_nobkg_dbl(Y0:Y1,X0:X1,:), cell_dbl);
+                cell_list_a(c).img_nobkg = immultiply(img_use_dbl(Y0:Y1,X0:X1,:), cell_dbl);
                 cell_list_a(c).img_raw = immultiply(img_raw_dbl(Y0:Y1,X0:X1,:), cell_dbl);
                 [cell_list_a(c).coord_list, ~] = this_cell.getCoordsSubset(quant_struct.t_coord_table);
             end
@@ -1059,7 +1068,7 @@ classdef RNAQuant
                     if isfile(cfilepath)
                         %Reload cell image.
                         my_cell = quant_struct.cell_rna_data(c);
-                        cell_nobkg_dbl = my_cell.isolateCellBox(img_nobkg_dbl);
+                        cell_nobkg_dbl = my_cell.isolateCellBox(img_use_dbl);
                         
                         %Load and finish processing clouds
                         load(cfilepath, 'cell_cloud_mask', 'cloud_boxes');
@@ -1082,8 +1091,12 @@ classdef RNAQuant
             %Get some common stuff.
             xydim = (quant_struct.spotzoom_r_xy * 2) + 1;
             img_raw_dbl = double(img_clean);
-            img_bkg_dbl = double(img_bkg);
-            img_nobkg_dbl = img_raw_dbl - img_bkg_dbl;
+            if quant_struct.no_bkg_subtract
+                img_use_dbl = img_raw_dbl;
+            else
+                img_bkg_dbl = double(img_bkg);
+                img_use_dbl = img_raw_dbl - img_bkg_dbl;
+            end
             clear img_bkg_dbl;
             b_filters = RNAQuant.generateGaussianBFilters(xydim);
             
@@ -1096,7 +1109,7 @@ classdef RNAQuant
                 for c = 1:cell_count
                     if (quant_struct.dbgcell > 0) & (c ~= quant_struct.dbgcell); continue; end
                     my_cell = quant_struct.cell_rna_data(c);
-                    cell_nobkg = my_cell.isolateCellBox(img_nobkg_dbl);
+                    cell_nobkg = my_cell.isolateCellBox(img_use_dbl);
                     
                     my_cell = RNAQuant.FitGaussians3Cell(cell_nobkg, my_cell,...
                         quant_struct.spotzoom_r_xy, quant_struct.spotzoom_r_z, b_filters);
@@ -1119,7 +1132,7 @@ classdef RNAQuant
                         [cell_cloud_mask, cloud_boxes] = ...
                             RNAQuant.DetectRNACloudsCell(cell_raw, start_coords, quant_struct.z_adj);
                         clear cell_raw;
-                        cell_nobkg = my_cell.isolateCellBox(img_nobkg_dbl);
+                        cell_nobkg = my_cell.isolateCellBox(img_use_dbl);
                         my_cell = RNAQuant.FinishRNACloudsCell(my_cell, cell_nobkg, cell_cloud_mask, cloud_boxes, min_cloud_vol);
                     else
                         clear cell_raw;
@@ -1145,19 +1158,19 @@ classdef RNAQuant
             if quant_output.do_refilter
                 %1. Preprocess
                 fprintf("[%s] RNAQuant.FitRNA -- Running prefilter...\n", datetime);
-                [img_clean, imrmax_mask, img_bkg, quant_output.plane_stats] =...
+                [img_clean, img_processed, imrmax_mask, img_bkg, quant_output.plane_stats] =...
                     RNAQuant.RNAProcess3Dim(quant_output.img_raw, quant_output.threshold, quant_output.small_obj_size,...
                     quant_output.connect_size, quant_output.gaussian_radius, quant_output.workdir);
 
                 %2. NonGauss RNA Pos
                 fprintf("[%s] RNAQuant.FitRNA -- Initial cellseg load and spot identification...\n", datetime);
-                quant_output.cell_rna_data = RNAQuant.NonGaussRNAPos(img_clean,...
+                quant_output.cell_rna_data = RNAQuant.NonGaussRNAPos(img_processed,...
                     imrmax_mask, quant_output.cell_mask, quant_output.nuc_mask);
                 clear imrmax_mask;
             else
                 %1. Preprocess
                 fprintf("[%s] RNAQuant.FitRNA -- Running prefilter...\n", datetime);
-                [img_clean, ~, img_bkg, quant_output.plane_stats] =...
+                [img_clean, ~, ~, img_bkg, quant_output.plane_stats] =...
                     RNAQuant.RNAProcess3Dim(quant_output.img_raw, quant_output.threshold, quant_output.small_obj_size,...
                     quant_output.connect_size, quant_output.gaussian_radius, quant_output.workdir, true);
 

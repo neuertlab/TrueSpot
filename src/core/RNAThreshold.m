@@ -79,7 +79,7 @@ classdef RNAThreshold
             res.threshold = 0; %Overall suggestion
             res.test_data = [];
             res.test_diff = [];
-            res.struct_ver = 4;
+            res.struct_ver = 5;
             %res.reweight_fit = true;
             %res.fit_to_log = true;
             %res.fit_strat = 'default';
@@ -90,7 +90,120 @@ classdef RNAThreshold
             res.log_proj_mode = 2;
             %res.min_log_diff = 0.5;
             res.lowNoiseFlag = false;
+
+            res.pool = struct();
+            res.pool.sugg_m = [];
+            res.pool.sugg_f = [];
+            res.pool.sugg_fri = [];
+
+            res.thstats = struct();
+            res.thstats.mean_overall = NaN;
+            res.thstats.med_overall = NaN;
+            res.thstats.std_overall = NaN;
+            res.thstats.min_overall = NaN;
+            res.thstats.max_overall = NaN;
+            res.thstats.value_table = []; %Will be filled with a table containing info for each tested th value
+
             tres_struct = res;
+        end
+
+        %%
+        function tbl = genThresholdValueInfoTable(thvals)
+            varNames = {'threshold_value' 'score' 'hits_m' 'hits_f' 'hits_fri' ...
+               'score_m' 'score_f' 'score_fri'};
+            varTypes = {'int32' 'double' 'int32' 'int32' 'int32' ...
+                'double' 'double' 'double'};
+
+            table_size = [size(thvals,2) size(varNames,2)];
+            tbl = table('Size', table_size, 'VariableTypes',varTypes, 'VariableNames',varNames);
+
+            tbl{:, 'threshold_value'} = thvals(:);
+            tbl{:, 'score'} = NaN;
+            tbl{:, 'score_m'} = NaN;
+            tbl{:, 'score_f'} = NaN;
+            tbl{:, 'score_fri'} = NaN;
+
+            tbl{:, 'hits_m'} = 0;
+            tbl{:, 'hits_f'} = 0;
+            tbl{:, 'hits_fri'} = 0;
+        end
+
+        %%
+        function [thscores, counts] = scoreSuggestions(thvals, sugg_set)
+            hedge = [thvals (thvals(size(thvals,2))+1)];
+            [counts, ~] = histcounts(sugg_set, hedge);
+            clear hedge
+
+            pool_mean = mean(sugg_set, 'all', 'omitnan');
+            pool_med = median(sugg_set, 'all', 'omitnan');
+            pool_std = std(sugg_set, 0, 'all', 'omitnan');
+            pool_mad = mad(sugg_set, 1, 'all');
+
+            score_norm = normpdf(thvals, pool_mean, pool_std);
+            score_med = zeros(1, size(thvals,2));
+
+            factors = [0.25:0.25:8];
+            fcount = size(factors,2);
+            for i = 1:fcount
+                f = factors(i);
+                limlo = pool_med - (f * pool_mad);
+                limhi = pool_med + (f * pool_mad);
+                entry_bool = and(thvals >= limlo, thvals <= limhi);
+                score_med(entry_bool) = score_med(entry_bool) + 1;
+            end
+
+            ss = sum(score_med, 'all', 'omitnan');
+            score_med = score_med ./ ss;
+
+            thscores = (score_norm .* 0.5) + (score_med .* 0.5);
+        end
+
+        %%
+        function thresh_res = scoreThresholdSuggestions(thresh_res)
+            thresh_res.pool.sugg_m = RNAThreshold.getAllMedThresholds(thresh_res);
+            thresh_res.pool.sugg_f = RNAThreshold.getAllFitThresholds(thresh_res);
+            thresh_res.pool.sugg_fri = RNAThreshold.getAllRightISectThresholds(thresh_res);
+
+            thvals = thresh_res.x';
+            thresh_res.thstats.value_table = RNAThreshold.genThresholdValueInfoTable(thvals);
+            
+            all_sugg = [thresh_res.pool.sugg_m thresh_res.pool.sugg_f thresh_res.pool.sugg_fri];
+            thresh_res.thstats.mean_overall = mean(all_sugg, 'all', 'omitnan');
+            thresh_res.thstats.med_overall = median(all_sugg, 'all', 'omitnan');
+            thresh_res.thstats.std_overall = std(all_sugg, 0, 'all', 'omitnan');
+            thresh_res.thstats.min_overall = min(all_sugg, [], 'all', 'omitnan');
+            thresh_res.thstats.max_overall = max(all_sugg, [], 'all', 'omitnan');
+
+            if ~isempty(thresh_res.pool.sugg_m)
+                [thscores, counts] = RNAThreshold.scoreSuggestions(thvals, thresh_res.pool.sugg_m);
+                thresh_res.thstats.value_table{:,'hits_m'} = counts;
+                thresh_res.thstats.value_table{:,'score_m'} = thscores;
+            end
+
+            if ~isempty(thresh_res.pool.sugg_f)
+                [thscores, counts] = RNAThreshold.scoreSuggestions(thvals, thresh_res.pool.sugg_f);
+                thresh_res.thstats.value_table{:,'hits_f'} = counts;
+                thresh_res.thstats.value_table{:,'score_f'} = thscores;
+            end
+
+            if ~isempty(thresh_res.pool.sugg_fri)
+                [thscores, counts] = RNAThreshold.scoreSuggestions(thvals, thresh_res.pool.sugg_fri);
+                thresh_res.thstats.value_table{:,'hits_fri'} = counts;
+                thresh_res.thstats.value_table{:,'score_fri'} = thscores;
+            end
+
+            ovr_scores = zeros(1,size(thvals,2));
+            if thresh_res.madth_weight > 0.0
+                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_m'} .* thresh_res.madth_weight);
+            end
+            if thresh_res.fit_weight > 0.0
+                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_f'} .* thresh_res.fit_weight);
+            end
+            if thresh_res.fit_ri_weight > 0.0
+                ovr_scores = ovr_scores + (thresh_res.thstats.value_table{:,'score_fri'} .* thresh_res.fit_ri_weight);
+            end
+            thresh_res.thstats.value_table{:,'score'} = ovr_scores;
+
         end
         
         %%

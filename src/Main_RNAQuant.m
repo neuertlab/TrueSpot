@@ -5,7 +5,7 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.09.26.00';
+BUILD_STRING = '2024.10.21.00';
 VERSION_STRING = 'v1.1.1';
 
 DEFAULT_PRESET_INDEX = 6;
@@ -27,6 +27,7 @@ param_struct.rethreshPreset = 0;
 param_struct.noclouds = false;
 param_struct.no_refilter = false;
 param_struct.dbgcell = 0;
+param_struct.no_bkg_subtract = false;
 param_struct.use_nuc_mask = 2; %lbl_mid
 param_struct.workers = 1;
 
@@ -104,6 +105,10 @@ for i = 1:nargin
                 param_struct.rethreshPreset = DEFAULT_PRESET_INDEX - 3;
                 lastkey = [];
             end
+        elseif strcmp(lastkey, "nosubbkg")
+            param_struct.no_bkg_subtract = true;
+            if arg_debug; fprintf("Calculate & Subtract background: Off\n"); end
+            lastkey = [];
         end
     else
         if isempty(lastkey)

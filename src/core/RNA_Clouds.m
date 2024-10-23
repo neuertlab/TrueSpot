@@ -85,11 +85,10 @@ classdef RNA_Clouds
         %       to determine which pixels are part of signal clouds.
         %
         function [cloud_mask, cloud_boxes] = detectClouds(obj, img, nuc_coord_table, z_adj)
-            if isempty(nuc_coord_table)
-                cloud_mask = [];
-                cloud_boxes = [];
-                return;
-            end
+            cloud_mask = [];
+            cloud_boxes = [];
+
+            if isempty(nuc_coord_table); return; end
 
             %Count columns in coord table to see if it's 2D or 3D
             coord_dims = size(nuc_coord_table, 2);
@@ -117,6 +116,7 @@ classdef RNA_Clouds
         %       to determine which pixels are part of signal clouds.
         %
         function [cloud_mask, cloud_boxes] = detectClouds2D(obj, img, nuc_coord_table)
+            cloud_boxes = [];
             X = size(img, 2);
             Y = size(img, 1);
             cloud_mask = logical(Y,X);

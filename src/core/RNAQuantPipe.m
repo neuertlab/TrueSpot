@@ -82,7 +82,7 @@ if ~isempty(param_struct.runpath)
 
     [~, call_table] = rnaspots_run.loadCallTable();
     if ~isempty(call_table)
-        param_struct.coords = RNACoords.getThresholdCalls(call_table, use_thresh);
+        param_struct.coords = RNACoords.getThresholdCalls(call_table, use_thresh, true);
         if isempty(param_struct.coords)
             param_struct.noclouds = true;
             param_struct.no_refilter = false;
@@ -253,7 +253,7 @@ if param_struct.no_refilter
                         end
                     elseif ~isempty(find(ismember(finfo, 'call_table'),1))
                         load(param_struct.coord_tbl_path, 'call_table');
-                        param_struct.coords = RNACoords.getThresholdCalls(call_table, use_thresh);
+                        param_struct.coords = RNACoords.getThresholdCalls(call_table, use_thresh, true);
                         clear call_table 
                     else
                         RNA_Fisher_State.outputMessageLineStatic(sprintf("Refilter skip requested, but coord table file not recognized! Doing refilter..."), true);
@@ -287,6 +287,7 @@ quant_results.do_refilter = ~param_struct.no_refilter;
 quant_results.z_adj = param_struct.z_adj;
 quant_results.workers = param_struct.workers;
 quant_results.dbgcell = param_struct.dbgcell;
+quant_results.no_bkg_subtract = param_struct.no_bkg_subtract;
 
 if ~isempty(quant_results.t_coord_table)
    quant_results.t_coord_table = int32(quant_results.t_coord_table);

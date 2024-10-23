@@ -7,6 +7,7 @@ classdef RNASpot
         x;
         y;
         z;
+        dropout_thresh = 0;
         
         gauss_fit;
         gfit_slices; %Gauss fit parameters for all z tested. Primary fit is for middle of these.

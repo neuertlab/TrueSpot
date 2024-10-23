@@ -7,7 +7,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.09.09.00';
+BUILD_STRING = '2024.10.22.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -92,14 +92,15 @@ end
 % ========================== Additional Functions ==========================
 
 function [fieldNames, fieldTypes] = getSpotProfileTableFields()
-    fieldNames = {'x' 'y' 'z' 'cell' 'nascent_flag' 'nuc_flag' ...
+    fieldNames = {'x' 'y' 'z' 'cell' 'dropout_thresh' 'nascent_flag' 'nuc_flag' ...
         'xgw' 'ygw' 'xFWHM' 'yFWHM' ...
-        'expMInt' 'fitMInt' 'TotExpInt' 'TotFitInt' ... 
-        'bkgLevel'};
+        'expMInt' 'fitMInt' 'TotExpInt' 'TotFitInt' 'mFiltInt' ... 
+        'bkgLevelq' 'localBkgStats'};
     
-    fieldTypes = {'single' 'single' 'single' 'uint16' 'logical' 'logical' ...
+    fieldTypes = {'single' 'single' 'single' 'uint16' 'uint16' 'logical' 'logical' ...
         'single' 'single' 'single' 'single' ...
-        'uint16' 'single' 'uint32' 'single' 'single'};
+        'uint16' 'single' 'uint32' 'single' 'uint16' ...
+        'single' 'cell'};
 end
 
 function [fieldNames, fieldTypes] = getLocalRegionStatsFields()
@@ -109,6 +110,14 @@ function [fieldNames, fieldTypes] = getLocalRegionStatsFields()
     
     fieldTypes = {'uint16' 'uint16' 'uint16' 'uint16' 'uint16' 'uint16' ...
         'uint16' 'uint16' 'single' 'single' 'single' 'single'...
+        'cell' 'cell'};
+end
+
+function [fieldNames, fieldTypes] = getCellTableFields()
+    fieldNames = {'cellNo' 'centroid_x' 'centroid_y' 'box' 'spot_count' ...
+        'local_img_bkg' 'cell_bkg'};
+    
+    fieldTypes = {'uint16' 'single' 'single' 'cell' 'int32' ...
         'cell' 'cell'};
 end
 
@@ -274,7 +283,7 @@ function spotMask = genSpotMaskCall(spotsrun, gaussrad)
 %TODO
 end
 
-function spotProfile = getSpotProfileQuant(quant_results, imageData)
+function spotProfile = getSpotProfileQuant(spotsrun, quant_results, imageData, spotMask)
     myCells = quant_results.cell_rna_data;
     cellCount = size(myCells, 2);
 
@@ -286,6 +295,10 @@ function spotProfile = getSpotProfileQuant(quant_results, imageData)
         end
     end
 
+    X = size(imageData, 2);
+    Y = size(imageData, 1);
+    Z = size(imageData, 3);
+
     [fieldNames, fieldTypes] = getSpotProfileTableFields();
     table_size = [spotCount size(fieldNames,2)];
     spTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
@@ -294,11 +307,13 @@ function spotProfile = getSpotProfileQuant(quant_results, imageData)
     for c = 1:cellCount
         myCell = myCells(c);
         if ~isempty(myCell.spotTable)
-            lastSpot = spotPos + size(myCell.spotTable, 1) - 1;
+            cspotCount = size(myCell.spotTable, 1);
+            lastSpot = spotPos + cspotCount - 1;
             spTable{spotPos:lastSpot, 'cell'} = c;
             spTable{spotPos:lastSpot, 'x'} = myCell.spotTable{:, 'xabsloc'};
             spTable{spotPos:lastSpot, 'y'} = myCell.spotTable{:, 'yabsloc'};
             spTable{spotPos:lastSpot, 'z'} = myCell.spotTable{:, 'zabs'};
+            spTable{spotPos:lastSpot, 'dropout_thresh'} = myCell.spotTable{:, 'dropout_thresh'};
             spTable{spotPos:lastSpot, 'nascent_flag'} = myCell.spotTable{:, 'nascent_flag'};
             spTable{spotPos:lastSpot, 'nuc_flag'} = myCell.spotTable{:, 'nucRNA'};
             spTable{spotPos:lastSpot, 'xgw'} = myCell.spotTable{:, 'xgw'};
@@ -309,11 +324,43 @@ function spotProfile = getSpotProfileQuant(quant_results, imageData)
             spTable{spotPos:lastSpot, 'fitMInt'} = myCell.spotTable{:, 'fitMInt'};
             spTable{spotPos:lastSpot, 'TotExpInt'} = myCell.spotTable{:, 'TotExpInt'};
             spTable{spotPos:lastSpot, 'TotFitInt'} = myCell.spotTable{:, 'TotFitInt'};
-            spTable{spotPos:lastSpot, 'bkgLevel'} = myCell.spotTable{:, 'back'};
+            spTable{spotPos:lastSpot, 'bkgLevelq'} = myCell.spotTable{:, 'back'};
+
+            %Clean up any NaN z positions...
+            zbad = isnan(spTable{spotPos:lastSpot, 'z'});
+            if nnz(zbad) > 0
+                zint = myCell.spotTable{:, 'zinit'} + myCell.cell_loc.z_bottom - 1;
+                rows = find(zbad) + spotPos - 1;
+                spTable{rows, 'z'} = zint(zbad);
+            end
+
+            x0 = max((spTable{spotPos:lastSpot, 'x'} - spTable{spotPos:lastSpot, 'xFWHM'} - 5), 1);
+            x1 = min((spTable{spotPos:lastSpot, 'x'} + spTable{spotPos:lastSpot, 'xFWHM'} + 5), X);
+            y0 = max((spTable{spotPos:lastSpot, 'y'} - spTable{spotPos:lastSpot, 'yFWHM'} - 5), 1);
+            y1 = min((spTable{spotPos:lastSpot, 'y'} + spTable{spotPos:lastSpot, 'yFWHM'} + 5), Y);
+            z0 = max((spTable{spotPos:lastSpot, 'z'} - spTable{spotPos:lastSpot, 'zFWHM'} - 5), 1);
+            z1 = min((spTable{spotPos:lastSpot, 'z'} + spTable{spotPos:lastSpot, 'zFWHM'} + 5), Z);
+
+            %Local background for each spot.
+            for s = 1:cspotCount
+                idat = imageData(y0(s):y1(s), x0(s):x1(s), z0(s):z1(s));
+                lmask = spotMask(y0(s):y1(s), x0(s):x1(s), z0(s):z1(s));
+                spTable{spotPos + s - 1, 'localBkgStats'} = takeStats(idat, ~lmask, struct(), 0, 0);
+            end
 
             spotPos = lastSpot + 1;
         end
     end
+
+    %Get filtered values
+    fImg = RNA_Threshold_SpotDetector.run_spot_detection_pre(imageData, '.', true, spotsrun.options.dtune_gaussrad, false);
+    fImg = uint16(fImg);
+    xr = min(max(round(spTable{spotPos:lastSpot, 'x'}),1), X);
+    yr = min(max(round(spTable{spotPos:lastSpot, 'y'}),1), Y);
+    zr = min(max(round(spTable{spotPos:lastSpot, 'z'}),1), Z);
+    coords1 = sub2ind([Y X Z], yr, xr, zr);
+    spTable{:, 'mFiltInt'} = fImg(coords1);
+    clear fImg
 
     %Gen output struct and calculate overall stats of interest
     spotProfile = struct();
@@ -419,6 +466,8 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         intensityStats.threshold = spotsrun.intensity_threshold;
         intensityStats.gaussrad = spotsrun.options.dtune_gaussrad;
         intensityStats.noprobe = false;
+        intensityStats.trim_z_min = zmin;
+        intensityStats.trim_z_max = zmax;
 
         if isfield(spotsrun.meta, 'noProbe_flag')
             intensityStats.noprobe = spotsrun.meta.noProbe_flag;
@@ -462,6 +511,8 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
                 if ndims(cellMask) < 3
                     cellMask = repmat(cellMask, [1, 1, Z]);
                 end
+                cellMaskBool = (cellMask ~= 0);
+                cellCount = max(cellMask, [], 'all', 'omitnan');
             end
         end
 
@@ -484,14 +535,14 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         end
 
         fprintf('\t> Working on image background...\n');
-        currentMask = and(~cellMask, ~spotMask);
+        currentMask = and(~cellMaskBool, ~spotMask);
         intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct(), localXY, localZ);
         if(doTrimmed)
             intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
         end
 
         fprintf('\t> Working on cell background...\n');
-        currentMask = and(cellMask, ~spotMask);
+        currentMask = and(cellMaskBool, ~spotMask);
         intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct(), localXY, localZ);
         if(doTrimmed)
             intensityStats.statsRawZTrim.cbkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
@@ -506,10 +557,50 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
 
             fprintf('\t> Working on spot profiles...\n');
             if ~isempty(quant_results)
-                intensityStats.spotProfile = getSpotProfileQuant(quant_results, sampleCh);
+                intensityStats.spotProfile = getSpotProfileQuant(quant_results, sampleCh, spotMask);
             else
                 intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, intensityStats.gaussrad);
             end
+        end
+
+        fprintf('\t> Working on individual cells...\n');
+        if ~isempty(quant_results)
+            %TODO
+            [fieldNames, fieldTypes] = getCellTableFields();
+            table_size = [cellCount size(fieldNames,2)];
+            cellTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
+
+            for c = 1:cellCount
+                %TODO
+                cellTable{c, 'cellNo'} = uint16(c);
+                oneCellMask = (cellMask == c);
+                rp3 = regionprops3(oneCellMask, 'BoundingBox', 'Centroid');
+                cellTable{c, 'centroid_x'} = single(rp3.Centroid(1));
+                cellTable{c, 'centroid_y'} = single(rp3.Centroid(2));
+                cobj = quant_results.cell_rna_data(c);
+                cellTable{c, 'box'} = cobj.cell_loc;
+                cellTable{c, 'spot_count'} = size(cobj.spotTable, 1);
+
+                x0 = max(cobj.cell_loc.left - 5,1);
+                x1 = min(cobj.cell_loc.right + 5,X);
+                y0 = max(cobj.cell_loc.top - 5, 1);
+                y1 = min(cobj.cell_loc.bottom + 5,Y);
+                z0 = max(cobj.cell_loc.z_bottom - 5,1);
+                z1 = min(cobj.cell_loc.z_top + 5,Z);
+
+                cellLocMask = false(Y,X,Z);
+                cellLocMask(y0:y1,x0:x1,z0:z1) = true;
+                cellLocMask = and(cellLocMask, ~oneCellMask);
+                cellTable{c, 'local_img_bkg'} = takeStats(sampleCh, cellLocMask, struct(), 0, 0);
+                clear cellLocMask
+
+                cbkgMask = and(oneCellMask, ~spotMask);
+                cellTable{c, 'cell_bkg'} = takeStats(sampleCh, cbkgMask, struct(), 0, 0);
+                clear cbkgMask
+
+            end
+
+            intensityStats.cellProfile = cellTable;
         end
 
         %Save
