@@ -7,7 +7,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.10.22.00';
+BUILD_STRING = '2024.10.23.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -456,6 +456,13 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         intensityStats = struct();
         spotsrun = RNASpotsRun.loadFrom(srPath, false);
         fprintf('\tRun found: %s\n', spotsrun.img_name);
+
+        %Update threshold stats
+        if ~isempty(spotsrun.threshold_results)
+            fprintf('\tUpdating threshold pool stats...\n');
+            spotsrun.threshold_results = RNAThreshold.scoreThresholdSuggestions(spotsrun.threshold_results);
+            spotsrun.saveMeTo(srPath);
+        end
 
         intensityStats.img_name = spotsrun.img_name;
         intensityStats.channel = spotsrun.channels.rna_ch;
