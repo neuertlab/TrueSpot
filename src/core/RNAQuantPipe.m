@@ -192,7 +192,10 @@ if ~param_struct.nocells
                 RNA_Fisher_State.outputMessageLineStatic(sprintf("WARNING: Nucleus mask file %s could not be found! Cell seg will not be used.", nucmask_path), true);
                 param_struct.nocells = true;
             else
-                nucmask = CellSeg.openNucMask(nucmask_path, use_nuc_mask);  
+                nucmask = CellSeg.openNucMask(nucmask_path, use_nuc_mask); 
+                if ndims(image_raw) < 3
+                    nucmask = max(nucmask, [], 3);
+                end
             end
         end
     else
