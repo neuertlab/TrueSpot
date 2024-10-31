@@ -5,8 +5,8 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2024.07.17.00';
-VERSION_STRING = 'v1.1.0';
+BUILD_STRING = '2024.10.31.00';
+VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
 
@@ -37,6 +37,10 @@ for i = 1:nargin
         elseif strcmp(lastkey, "savebk")
             cellseg_options.save_fmt_BK = true;
             if arg_debug; fprintf("Use CellDissect Output Organization: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "nuconly")
+            cellseg_options.nuc_only = true;
+            if arg_debug; fprintf("Nuclear Segmentation Only: On\n"); end
             lastkey = [];
         end
         
@@ -268,7 +272,7 @@ function [okay, options] = runCellseg(options, buildString, versionString)
     clear nuc_ch_data
     
     %Load light channel, if not alread loaded.
-    if isempty(light_ch_data)
+    if isempty(light_ch_data) & ~options.nuc_only
         fprintf('> Loading light channel...\n');
         [channels, ~] = LoadTif(options.input_path, options.total_ch, [options.ch_light], 1);
         if isempty(channels); return; end
@@ -277,14 +281,38 @@ function [okay, options] = runCellseg(options, buildString, versionString)
     end
 
     %Attempt cell segmentation
-    [cell_mask, cell_info, trans_plane, cellseg_info] = ...
-        CellSeg.AutosegmentCells(light_ch_data, nuc_res.nuc_label, options.cell_params);
-    clear light_ch_data
-    if isempty(cell_mask)
-        fprintf('Cell segmentation failed!\n');
-        return;
+    if ~options.nuc_only
+        [cell_mask, cell_info, trans_plane, cellseg_info] = ...
+            CellSeg.AutosegmentCells(light_ch_data, nuc_res.nuc_label, options.cell_params);
+        clear light_ch_data
+        if isempty(cell_mask)
+            fprintf('Cell segmentation failed!\n');
+            return;
+        end
+    else
+        %Just use nuc mask
+        [cell_mask, cellCount] = bwlabel(max(nuc_res.lbl_mid, [], 3), 8);
+        cell_mask = uint16(cell_mask);
+        if cellCount >= 1
+            cell_info(cellCount) = struct('Centroid', NaN, 'MajorAxisLength', NaN, 'MinorAxisLength', NaN, 'FilledArea', NaN, 'Image', []);
+            for j = 1 : cellCount
+                % Determine cell properties
+                this_cell_mask = uint16(cell_mask == j);
+                try
+                    cell_reg = regionprops(this_cell_mask,'Centroid','MajorAxisLength','MinorAxisLength','FilledArea','Image');
+                    cell_info(j).Centroid = cell_reg.Centroid;
+                    cell_info(j).MajorAxisLength = cell_reg.MajorAxisLength;
+                    cell_info(j).MinorAxisLength = cell_reg.MinorAxisLength;
+                    cell_info(j).FilledArea = cell_reg.FilledArea;
+                    cell_info(j).Image = cell_reg.Image;
+                catch
+                end
+                clear this_cell_mask cell_reg
+            end
+        end
+        cellseg_info = options.cell_params;
     end
-
+    
     %Save
     if ~isempty(options.outpath_cell_mask)
         if endsWith(options.outpath_cell_mask, '.tif') | endsWith(options.outpath_cell_mask, '.tiff')
@@ -431,6 +459,7 @@ function printSummary(options)
     fprintf(fileHandle, 'overwrite_output=%d\n', options.overwrite_output);
     fprintf(fileHandle, 'dump_summary=%d\n', options.dump_summary);
     fprintf(fileHandle, 'save_fmt_BK=%d\n', options.save_fmt_BK);
+    fprintf(fileHandle, 'nuc_only=%d\n', options.nuc_only);
     fprintf(fileHandle, 'save_template_as=%s\n', options.save_template_as);
     fprintf(fileHandle, 'use_template=%s\n', options.use_template);
     fprintf(fileHandle, 'cell_params.focus_plane_strat=%s\n', options.cell_params.focus_plane_strat);
@@ -554,6 +583,7 @@ function cellseg_options = genOptionsStruct()
     cellseg_options.overwrite_output = false;
     cellseg_options.dump_summary = false;
     cellseg_options.save_fmt_BK = false;
+    cellseg_options.nuc_only = false;
 
     cellseg_options.save_template_as = [];
     cellseg_options.use_template = [];
