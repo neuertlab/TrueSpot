@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2024.11.01.00';
+BUILD_STRING = '2024.11.01.01';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -340,7 +340,12 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         if endsWith(options.outpath_nuc_mask, '.tif') | endsWith(options.outpath_nuc_mask, '.tiff')
             %Save nuc mask TIF
             tiffops = struct('overwrite', true);
-            saveastiff(uint8(nuc_res.lbl_mid), options.outpath_nuc_mask, tiffops);
+
+            %Labels
+            cm3 = repmat(cell_mask, [1, 1, size(nuc_res.lbl_mid, 3)]);
+            nnmask = uint16(immultiply(cm3, nuc_res.lbl_mid));
+
+            saveastiff(nnmask, options.outpath_nuc_mask, tiffops);
             clear tiffops
         else
             nucm = max(nuc_res.lbl_mid, [], 3);
