@@ -383,15 +383,15 @@ classdef CellSeg
             if min_slice < 1; min_slice = 1; end
             if max_slice > Z; max_slice = Z; end
 
-%             figure(1);
-%             clf;
+%              figure(1);
+%              clf;
             for i = (threshold_sampling/10):T                        %see how many nuclei for every threshold
                 nucSegRes.nuc_threshold = test_thresh(i);
                 dapi_bw = (nuc_ch_data > nucSegRes.nuc_threshold); % only take DAPI intensities above the identified threshold for 3D stack
                 dapi_bw_max = max(dapi_bw(:,:,min_slice:max_slice), [], 3, 'omitnan');  % Maximum projection for the binary pixels above the threshold
-%                 if i == T
-%                     imshow(dapi_bw_max, []);
-%                 end
+%                  if i == T
+%                      imshow(dapi_bw_max, []);
+%                  end
 
                 % remove nuclei > than max_nucleus and < than min_nucleus
                 dapi_normal = bwareaopen(dapi_bw_max, min_nucleus_size);                        % remove DAPI signal that are too small
@@ -402,17 +402,21 @@ classdef CellSeg
                 nucSegRes.nuc_label = bwlabeln(dapi_OK, 8);                                          % label all segmented DAPI spots
                 nucSegRes.nuclei_num(i) = max(nucSegRes.nuc_label(:));
 
-%                 if i == T
-%                     imshow(dapi_normal, []);
-%                     imshow(dapi_huge, []);
-%                     imshow(dapi_bw2, []);
-%                 end
+%                  if i == T
+%                      imshow(dapi_normal, []);
+%                      imshow(dapi_huge, []);
+%                      imshow(dapi_bw2, []);
+%                  end
 
                 %added 4-29 BK
                 nucSegRes.test_sum = nucSegRes.test_sum + dapi_OK;
             end
             clear test_thresh dapi_bw min_slice dapi_OK...
                 dapi_bw_max dapi_bw_max
+
+%             figure(1);
+%             clf;
+%             imshow(nucSegRes.test_sum, []);
 
             % Apply cutoff for added image
             cutoff = nucSegSpecs.cutoff;    %This is a kind of cutoff. It's a proportion of the maximum number of times a pixel is present
@@ -423,6 +427,7 @@ classdef CellSeg
                 dapi_huge = bwareaopen(DAPI_ims_final, max_nucleus_size);                          % remove DAPI signal that are too large
                 DAPI_ims_cut = dapi_normal - dapi_huge;
                 DAPI_ims_final = immultiply(DAPI_ims_cut, DAPI_ims_final);
+%                 imshow(DAPI_ims_cut, []);
                 clear DAPI_ims_cut
             end
 

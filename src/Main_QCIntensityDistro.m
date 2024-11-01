@@ -7,7 +7,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.10.24.00';
+BUILD_STRING = '2024.10.29.03';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -284,7 +284,7 @@ function [spotMask, call_table] = genSpotMaskCall(spotsrun, gaussrad, gaussThres
 
     [~, call_table] = spotsrun.loadCallTable();
     th = spotsrun.intensity_threshold;
-    call_table = call_table{(call_table{:, 'intensity_threshold'} >= th), :};
+    call_table = call_table((call_table{:, 'dropout_thresh'} >= th), :);
 
     Z = spotsrun.dims.idims_sample.z;
     Y = spotsrun.dims.idims_sample.y;
@@ -414,18 +414,21 @@ function spotProfile = getSpotProfileQuant(spotsrun, quant_results, imageData, s
     spotProfile.spotData = spTable;
 end
 
-function spotProfile = getSpotProfileCall(spotsrun, imageData, gaussrad)
+function spotProfile = getSpotProfileCall(spotsrun, imageData, call_table, gaussrad)
     spotProfile = struct();
-    [~, call_table] = spotsrun.loadCallTable();
-    if isempty(call_table); return; end
 
+    if isempty(call_table)
+        [~, call_table] = spotsrun.loadCallTable();
+        if isempty(call_table); return; end
+    end
+   
     ithresh = spotsrun.intensity_threshold;
     iokay = call_table{:, 'dropout_thresh'} >= ithresh;
-    call_table = call_table{iokay, :};
+    call_table = call_table(iokay, :);
 
     spotCount = size(call_table, 1);
     [fieldNames, fieldTypes] = getSpotProfileTableFields();
-    table_size = [spotCount size(varNames,2)];
+    table_size = [spotCount size(fieldNames,2)];
     spTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
 
     spTable{:, 'cell'} = 0;
@@ -565,8 +568,8 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
             end
         end
 
+        quant_results = [];
         if ~intensityStats.noprobe
-            quant_results = [];
             if ~isempty(qdPath)
                 load(qdPath, 'quant_results');
                 if ~isfield(quant_results, 'cell_rna_data')
@@ -578,6 +581,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
                 spotMask = genSpotMaskQuant(quant_results, size(sampleCh));
             else
                 [spotMask, call_table] = genSpotMaskCall(spotsrun, intensityStats.gaussrad);
+                call_table = RNACoords.applyCellSegMask(call_table, cellMask);
             end
         else
             spotMask = false(Y,X,Z);
@@ -608,7 +612,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
             if ~isempty(quant_results)
                 intensityStats.spotProfile = getSpotProfileQuant(spotsrun, quant_results, sampleCh, spotMask);
             else
-                intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, intensityStats.gaussrad);
+                intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, call_table, intensityStats.gaussrad);
             end
         end
 
@@ -658,7 +662,9 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
                 z1 = min(z1 + 5,Z);
 
                 %spot count from call table
-                cellTable{c, 'spot_count'} = nnz(call_table{:,'cell'} == c);
+                if ~intensityStats.noprobe
+                    cellTable{c, 'spot_count'} = nnz(call_table{:,'cell'} == c);
+                end
             end
 
             cellLocMask = false(Y,X,Z);

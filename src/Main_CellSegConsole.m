@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2024.10.31.00';
+BUILD_STRING = '2024.11.01.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -252,14 +252,22 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         nuc_ch_data = channels{options.ch_nuc, 1};
         clear channels
     else
-        %Load both at once
-        fprintf('> Loading nuclear marker and light channels...\n');
-        [channels, ~] = LoadTif(options.input_path,...
-            options.total_ch, [options.ch_nuc options.ch_light], 1);
-        if isempty(channels); return; end
-        nuc_ch_data = channels{options.ch_nuc, 1};
-        light_ch_data = channels{options.ch_light, 1};
-        clear channels
+        if ~options.nuc_only
+            %Load both at once
+            fprintf('> Loading nuclear marker and light channels...\n');
+            [channels, ~] = LoadTif(options.input_path,...
+                options.total_ch, [options.ch_nuc options.ch_light], 1);
+            if isempty(channels); return; end
+            nuc_ch_data = channels{options.ch_nuc, 1};
+            light_ch_data = channels{options.ch_light, 1};
+            clear channels
+        else
+            fprintf('> Loading nuclear marker channel...\n');
+            [channels, ~] = LoadTif(options.input_path, options.total_ch, [options.ch_nuc], 1);
+            if isempty(channels); return; end
+            nuc_ch_data = channels{options.ch_nuc, 1};
+            clear channels
+        end
     end
 
     %Attempt nuclear segmentation
@@ -291,6 +299,7 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         end
     else
         %Just use nuc mask
+        trans_plane = [];
         [cell_mask, cellCount] = bwlabel(max(nuc_res.lbl_mid, [], 3), 8);
         cell_mask = uint16(cell_mask);
         if cellCount >= 1
@@ -331,11 +340,13 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         if endsWith(options.outpath_nuc_mask, '.tif') | endsWith(options.outpath_nuc_mask, '.tiff')
             %Save nuc mask TIF
             tiffops = struct('overwrite', true);
-            saveastiff(nuc_res.nuc_label, options.outpath_nuc_mask, tiffops);
+            saveastiff(uint8(nuc_res.lbl_mid), options.outpath_nuc_mask, tiffops);
             clear tiffops
         else
+            nucm = max(nuc_res.lbl_mid, [], 3);
+            nucm = uint8(nucm);
             fh = figure(1);
-            imshow(nuc_res.nuc_label, []);
+            imshow(nucm, []);
             saveas(fh, options.outpath_nuc_mask);
             close(fh);
         end
