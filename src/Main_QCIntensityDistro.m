@@ -2,12 +2,10 @@
 %%
 function Main_QCIntensityDistro(varargin)
 
-%TODO Add a nospots flag for noprobe images
-
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.10.29.03';
+BUILD_STRING = '2024.11.08.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -253,9 +251,9 @@ function spotMask = genSpotMaskQuant(quant_results, dims, gaussThresh)
                 xyrad = ceil(xyrad * 2);
 
                 %Expected center of output image
-                x_snap = myCell.spotTable{s, 'xinit'} + cell_x;
-                y_snap = myCell.spotTable{s, 'yinit'} + cell_y;
-                z_snap = myCell.spotTable{s, 'zinit'} + cell_z;
+                x_snap = myCell.spotTable{s, 'xinit'} + cell_x - 1;
+                y_snap = myCell.spotTable{s, 'yinit'} + cell_y - 1;
+                z_snap = myCell.spotTable{s, 'zinit'} + cell_z - 1;
                 sim_spot = RNASpot.generateSimSpotFromFit_Table(myCell.spotTable, s, myCell.spotZFits{s}, xyrad);
                 mOvrl = max(sim_spot, [], 'all', 'omitnan');
                 sim_mask = (sim_spot >= (gaussThresh * mOvrl));

@@ -287,18 +287,18 @@ classdef QuantVisualization
                 end
 
                 %DEBUG----
-                figure(500);
-                clf;
-                imshow(rc, []);
-                figure(501);
-                clf;
-                imshow(gc, []);
-                figure(502);
-                clf;
-                imshow(bc, []);
-                figure(503);
-                clf;
-                imshow(aa, []);
+%                 figure(500);
+%                 clf;
+%                 imshow(rc, []);
+%                 figure(501);
+%                 clf;
+%                 imshow(gc, []);
+%                 figure(502);
+%                 clf;
+%                 imshow(bc, []);
+%                 figure(503);
+%                 clf;
+%                 imshow(aa, []);
 
                 aInv = 1.0 - aa;
                 rr = (rr .* aInv) + (rc .* aa);
