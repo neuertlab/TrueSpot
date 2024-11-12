@@ -134,7 +134,7 @@ for i = 1:nargin
                 lastkey = [];
             end
         elseif strcmp(lastkey, "noprobe")
-            rna_spot_run.options.noProbe_flag = true;
+            rna_spot_run.meta.noProbe_flag = true;
             if arg_debug; fprintf("Control/No Probe Flag: On\n"); end
             lastkey = [];
         end
