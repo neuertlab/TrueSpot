@@ -3,7 +3,7 @@ function Main_CSRes2Tif(matpath)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.11.05.00';
+BUILD_STRING = '2024.11.14.00';
 VERSION_STRING = 'v1.1.1';
 
 fprintf('Running Main_CSRes2Tif\n');
@@ -41,6 +41,8 @@ if ~isempty(nuc_mask)
         Z = size(nuc_mask, 3);
         cm3 = repmat(cell_mask, [1 1 Z]);
         nuc_mask = immultiply(nuc_mask, cm3);
+        nmcell_count = max(nuc_mask, [], 'all', 'omitnan');
+        fprintf('Nuclei labeled: %d\n', nmcell_count);
     end
 
     tifop = struct();
