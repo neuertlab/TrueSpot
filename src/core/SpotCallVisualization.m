@@ -410,9 +410,11 @@ classdef SpotCallVisualization
             obj.refAddQueue.queue = newTable;
         end
 
-        function [obj, figHandle] = onRefModeClick(obj, figHandle, x, y, z)
+        function [obj, figHandle] = onRefModeClick(obj, figHandle, x, y, z, allowAdd, allowRemove)
             %Draws new circle and updates queue
             if nargin < 5; z = 0; end
+            if nargin < 6; allowAdd = true; end
+            if nargin < 7; allowRemove = true; end
             if isempty(figHandle); return; end
             if isempty(obj.referenceTable); return; end
 
@@ -491,22 +493,24 @@ classdef SpotCallVisualization
                     obj.referenceTable.data, searchRegion);
                 if nnz(rowBool) > 0
                     noHits = false;
-                    obj.refRemoveQueue(rowBool) = ~obj.refRemoveQueue(rowBool);
-                    %Draw magenta
-                    drawBool = and(~obj.refRemoveQueue, rowBool);
-                    xx = obj.referenceTable.data(drawBool, 1);
-                    yy = obj.referenceTable.data(drawBool, 2);
-                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
+                    if allowRemove
+                        obj.refRemoveQueue(rowBool) = ~obj.refRemoveQueue(rowBool);
+                        %Draw magenta
+                        drawBool = and(~obj.refRemoveQueue, rowBool);
+                        xx = obj.referenceTable.data(drawBool, 1);
+                        yy = obj.referenceTable.data(drawBool, 2);
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
 
-                    %Draw white
-                    drawBool = and(obj.refRemoveQueue, rowBool);
-                    xx = obj.referenceTable.data(drawBool, 1);
-                    yy = obj.referenceTable.data(drawBool, 2);
-                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                        %Draw white
+                        drawBool = and(obj.refRemoveQueue, rowBool);
+                        xx = obj.referenceTable.data(drawBool, 1);
+                        yy = obj.referenceTable.data(drawBool, 2);
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                    end
                 end
             end
 
-            %Check add queue
+            %Check add queue (Always allow)
             if ~isempty(obj.refAddQueue.queue) & (obj.refAddQueue.used > 0)
                 rowBool = SpotCallVisualization.filterCallsToValidRangeMtx(...
                     obj.refAddQueue.queue, searchRegion);
@@ -531,7 +535,7 @@ classdef SpotCallVisualization
             end
 
             %Add click target if there are no matches
-            if noHits
+            if noHits & allowAdd
                 if isempty(obj.refAddQueue.queue)
                     obj.refAddQueue.queue = zeros(256, 4);
                     obj.refAddQueue.capacity = 256;

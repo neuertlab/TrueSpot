@@ -66,6 +66,7 @@ classdef VisInteractive
         useFilt = false; %Toggle between filtered and raw image channel
         maxProj = true; %Toggle between single slice view and max projection
         globalContrast = true; %(Slice view only) Toggle between contrast scale from full image or just that slice
+        zSetToggle = false; %False = min, true = max
 
         %Layer visibility
         %callMode = 0; %Enum for mode of SpotCallVisualization
@@ -463,7 +464,13 @@ classdef VisInteractive
                 obj = obj.updateRender();
             elseif btn == 'm' %toggle max projection
                 obj.maxProj = ~obj.maxProj;
-                %TODO Also needs to update sub-renderers!
+                obj.csVis.useMaxProj = obj.maxProj;
+                if obj.maxProj
+                    obj.scVis.zMode = 1;
+                else
+                    obj.scVis.zMode = 2;
+                end
+                obj.qnVis.maxProj = obj.maxProj;
                 fprintf('Max projection toggle set: %d\n', obj.maxProj);
                 obj = obj.updateRender();
             elseif btn == 'g' %toggle global contrast scale
@@ -505,19 +512,89 @@ classdef VisInteractive
             elseif btn == 'M' %Mask select XY
                 obj = obj.whileMouseListening_selectMask();
             elseif btn == 'Z' %toggle selected z boundary top/bottom
-                %TODO
+                obj.zSetToggle = ~obj.zSetToggle;
+                if obj.zSetToggle
+                    fprintf('Z set mode: MAX\n');
+                else
+                    fprintf('Z set mode: MIN\n');
+                end
             elseif btn == '^' %Z boundary up
-                %TODO
+                if obj.zSetToggle
+                    Z = size(obj.imageCh,3);
+                    zz = obj.scVis.workRegion.z_max;
+                    zz = zz + 1;
+                    if zz > Z
+                        fprintf('Z MAX already at stack top!\n');
+                    else
+                        obj.scVis.workRegion.z_max = zz;
+                        fprintf('Z MAX set to: %d\n', zz);
+                    end
+                else
+                    zz = obj.scVis.workRegion.z_min;
+                    zz = zz + 1;
+                    if zz >  obj.scVis.workRegion.z_max
+                        fprintf('Z MIN already at Z MAX!\n');
+                    else
+                        obj.scVis.workRegion.z_min = zz;
+                        fprintf('Z MIN set to: %d\n', zz);
+                    end
+                end
             elseif btn == 'v' %Z boundary down
-                %TODO
+                if obj.zSetToggle
+                    zz = obj.scVis.workRegion.z_max;
+                    zz = zz - 1;
+                    if zz < obj.scVis.workRegion.z_min
+                        fprintf('Z MAX already at Z MIN!\n');
+                    else
+                        obj.scVis.workRegion.z_max = zz;
+                        fprintf('Z MAX set to: %d\n', zz);
+                    end
+                else
+                    zz = obj.scVis.workRegion.z_min;
+                    zz = zz - 1;
+                    if zz < 1
+                        fprintf('Z MIN already at bottom of stack!\n');
+                    else
+                        obj.scVis.workRegion.z_min = zz;
+                        fprintf('Z MIN set to: %d\n', zz);
+                    end
+                end
             elseif btn == '+' %Up 1 z slice
-                %TODO
+                Z = size(obj.imageCh,3);
+                zz = obj.currentSlice + 1;
+                if zz > Z
+                    fprintf('Already at stack top!\n');
+                else
+                    obj.currentSlice = zz;
+                    fprintf('Current slice set to: %d\n', zz);
+                end
             elseif btn == '-' %Down 1 z slice
-                %TODO
+                zz = obj.currentSlice - 1;
+                if zz < 1
+                    fprintf('Already at stack bottom!\n');
+                else
+                    obj.currentSlice = zz;
+                    fprintf('Current slice set to: %d\n', zz);
+                end
             elseif btn == '=' %Up 10 z slices
-                %TODO
+                Z = size(obj.imageCh,3);
+                if obj.currentSlice == Z
+                    fprintf('Already at stack top!\n');
+                else
+                    zz = obj.currentSlice + 10;
+                    if zz > Z; zz = Z; end
+                    obj.currentSlice = zz;
+                    fprintf('Current slice set to: %d\n', zz);
+                end
             elseif btn == '_' %Down 10 z slices
-                %TODO
+                if obj.currentSlice == 1
+                    fprintf('Already at stack bottom!\n');
+                else
+                    zz = obj.currentSlice - 10;
+                    if zz < 1; zz = 1; end
+                    obj.currentSlice = zz;
+                    fprintf('Current slice set to: %d\n', zz);
+                end
             elseif btn == '<' %Decrease threshold by 1
                 %TODO
             elseif btn == '>' %Increase threshold by 1
@@ -542,12 +619,12 @@ classdef VisInteractive
         end
 
         %
-        function obj = onLeftClick(obj, x, y, r)
+        function obj = onLeftClick(obj, x, y)
             %TODO
         end
 
         %
-        function obj = onRightClick(obj, x, y, r)
+        function obj = onRightClick(obj, x, y)
             %TODO
         end
 
