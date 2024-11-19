@@ -303,11 +303,15 @@ classdef VisInteractive
 
                 if obj.globalContrast
                     if obj.useFilt
-                        cScaleMin = min(obj.imageChFilt(:));
-                        cScaleMax = median(obj.imageChFilt(:)) + round(10 * std(obj.imageChFilt(:)));
+                        allvals = double(obj.imageChFilt(:));
+                        cScaleMin = min(allvals);
+                        cScaleMax = median(allvals) + round(10 * std(allvals));
+                        clear allvals
                     else
-                        cScaleMin = min(obj.imageCh(:));
-                        cScaleMax = median(obj.imageCh(:)) + round(10 * std(obj.imageCh(:)));
+                        allvals = double(obj.imageCh(:));
+                        cScaleMin = min(allvals);
+                        cScaleMax = median(allvals) + round(10 * std(allvals));
+                        clear allvals
                     end
                 else
                     cScaleMin = min(irender(:));
@@ -352,11 +356,12 @@ classdef VisInteractive
                 irender = obj.csVis.applyCellMask(irender, obj.currentSlice);
             else
                 %Rescale input!!
-                inmax = max(irender, [], 'all', 'omitnan');
-                irender = irender ./ inmax;
+                %inmax = max(irender, [], 'all', 'omitnan');
+                %irender = irender ./ inmax;
                 irender = irender .* 255.0;
                 irender = round(irender);
-                clear inmax
+                irender(irender > 255) = 255;
+                %clear inmax
 
                 irender8 = uint8(zeros(Y, X, 3));
                 irender8(:,:,1) = uint8(irender(:,:));
@@ -511,6 +516,7 @@ classdef VisInteractive
                 obj = obj.updateRender();
             elseif btn == 'M' %Mask select XY
                 obj = obj.whileMouseListening_selectMask();
+                obj = obj.updateRender();
             elseif btn == 'Z' %toggle selected z boundary top/bottom
                 obj.zSetToggle = ~obj.zSetToggle;
                 if obj.zSetToggle
@@ -528,6 +534,7 @@ classdef VisInteractive
                     else
                         obj.scVis.workRegion.z_max = zz;
                         fprintf('Z MAX set to: %d\n', zz);
+                        obj = obj.updateRender();
                     end
                 else
                     zz = obj.scVis.workRegion.z_min;
@@ -537,6 +544,7 @@ classdef VisInteractive
                     else
                         obj.scVis.workRegion.z_min = zz;
                         fprintf('Z MIN set to: %d\n', zz);
+                        obj = obj.updateRender();
                     end
                 end
             elseif btn == 'v' %Z boundary down
@@ -548,6 +556,7 @@ classdef VisInteractive
                     else
                         obj.scVis.workRegion.z_max = zz;
                         fprintf('Z MAX set to: %d\n', zz);
+                        obj = obj.updateRender();
                     end
                 else
                     zz = obj.scVis.workRegion.z_min;
@@ -557,6 +566,7 @@ classdef VisInteractive
                     else
                         obj.scVis.workRegion.z_min = zz;
                         fprintf('Z MIN set to: %d\n', zz);
+                        obj = obj.updateRender();
                     end
                 end
             elseif btn == '+' %Up 1 z slice
@@ -567,6 +577,7 @@ classdef VisInteractive
                 else
                     obj.currentSlice = zz;
                     fprintf('Current slice set to: %d\n', zz);
+                    obj = obj.updateRender();
                 end
             elseif btn == '-' %Down 1 z slice
                 zz = obj.currentSlice - 1;
@@ -575,6 +586,7 @@ classdef VisInteractive
                 else
                     obj.currentSlice = zz;
                     fprintf('Current slice set to: %d\n', zz);
+                    obj = obj.updateRender();
                 end
             elseif btn == '=' %Up 10 z slices
                 Z = size(obj.imageCh,3);
@@ -585,6 +597,7 @@ classdef VisInteractive
                     if zz > Z; zz = Z; end
                     obj.currentSlice = zz;
                     fprintf('Current slice set to: %d\n', zz);
+                    obj = obj.updateRender();
                 end
             elseif btn == '_' %Down 10 z slices
                 if obj.currentSlice == 1
@@ -594,6 +607,7 @@ classdef VisInteractive
                     if zz < 1; zz = 1; end
                     obj.currentSlice = zz;
                     fprintf('Current slice set to: %d\n', zz);
+                    obj = obj.updateRender();
                 end
             elseif btn == '<' %Decrease threshold by 1
                 %TODO
@@ -609,23 +623,96 @@ classdef VisInteractive
 
         %
         function obj = whileMouseListening(obj, x1, y1, b1)
-            %TODO
+
+            if ~obj.spotCircleLayerOn
+                fprintf('Spot call layer is not visible!\n');
+                return;
+            end
+
+            if (obj.callViewMode ~= 2) & (obj.callViewMode ~= 4)
+                fprintf('Spot selection not available outside reference mode!\n');
+                return;
+            end
+
+            if b1 == 1
+                obj = obj.onLeftClick(x1, y1);
+            elseif b1 == 3
+                obj = obj.onRightClick(x1, y1);
+            end
+
+            loopy = 1;
+            while loopy == 1
+                [x,y,btn] = ginput_color(1, obj.crosshairColor);
+                %fprintf("Click detected at %f,%f\n", x, y);
+                if btn == 1
+                    obj = obj.onLeftClick(x, y);
+                elseif btn == 3
+                    obj = obj.onRightClick(x, y);
+                else
+                    loopy = 0;
+                end
+            end
+
+            %Save
+            obj.scVis = obj.scVis.onRefModeAccept();
+            obj = obj.updateRender();
         end
 
         %
         function obj = whileMouseListening_selectMask(obj)
-            %TODO
             %Left clicks to set mask, right click to clear
+
+            %Click 1
+            [x,y,btn] = ginput_color(1, obj.crosshairColor);
+            if btn == 1
+                xPix0 = x;
+                yPix0 = y;
+            elseif btn == 3
+                obj.scVis.workRegion.x_min = 1;
+                obj.scVis.workRegion.x_max = size(obj.imageCh, 2);
+                obj.scVis.workRegion.y_min = 1;
+                obj.scVis.workRegion.y_max = size(obj.imageCh, 1);
+                fprintf('XY mask cleared!\n');
+                return;
+            else
+                return;
+            end
+
+            %Click 2
+            [x,y,btn] = ginput_color(1, obj.crosshairColor);
+            if btn == 1
+                xPix1 = x;
+                yPix1 = y;
+            else
+                return;
+            end
+
+            x0 = round(min(xPix0, xPix1));
+            x1 = round(max(xPix0, xPix1));
+            y0 = round(min(yPix0, yPix1));
+            y1 = round(max(yPix0, yPix1));
+
+            x0 = uint16(max(x0, 1));
+            x1 = uint16(min(x1, size(obj.imageCh, 2)));
+            y0 = uint16(max(y0, 1));
+            y1 = uint16(min(y1, size(obj.imageCh, 1)));
+
+            obj.scVis.workRegion.x_min = x0;
+            obj.scVis.workRegion.x_max = x1;
+            obj.scVis.workRegion.y_min = y0;
+            obj.scVis.workRegion.y_max = y1;
+
+            fprintf('XY Mask set: (%d,%d) to (%d,%d)n\',x0, y0, x1, y1);
         end
 
         %
         function obj = onLeftClick(obj, x, y)
-            %TODO
+            [obj, obj.figHandle] = obj.scVis.onRefModeClick(obj.figHandle, x, y, obj.currentSlice, true, false);
         end
 
         %
         function obj = onRightClick(obj, x, y)
-            %TODO
+            [obj, obj.figHandle] = obj.scVis.onRefModeClick(obj.figHandle, x, y, obj.currentSlice, false, true);
         end
 
     end

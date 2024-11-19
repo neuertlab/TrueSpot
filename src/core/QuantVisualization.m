@@ -151,9 +151,9 @@ classdef QuantVisualization
 
             %Spot locations
             spotCount = size(spotList, 1);
-            sx = spotList{:, 'xinit'}';
-            sy = spotList{:, 'yinit'}';
-            sz = spotList{:, 'zinit'}';
+            sx = int32(spotList{:, 'xinit'}');
+            sy = int32(spotList{:, 'yinit'}');
+            sz = int32(spotList{:, 'zinit'}');
 
             %Determine render boxes
             [tx0, tx1, rx0, rx1] = QuantVisualization.getBoxBounds(sx, obj.spotrad_xy, cX);

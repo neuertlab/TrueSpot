@@ -6,11 +6,12 @@ addpath('./thirdparty');
 
 % ------------------------ INPUT PATHS ------------------------
 
-%ResultsBasePath = 'D:\Users\hospelb\labdata\RNAFISH\Analysis';
+ResultsBasePath = 'D:\Users\hospelb\labdata\RNAFISH\Analysis';
+ImagesBasePath = 'D:\Users\hospelb\labdata\RNAFISH\Images';
 %ImagesBasePath = 'C:\Users\hospelb\labdata\imgproc\img';
 
-ResultsBasePath = 'D:\usr\bghos\labdat\RNAFISH\Analysis';
-ImagesBasePath = 'D:\usr\bghos\labdat\RNAFISH\Images';
+%ResultsBasePath = 'D:\usr\bghos\labdat\RNAFISH\Analysis';
+%ImagesBasePath = 'D:\usr\bghos\labdat\RNAFISH\Images';
 
 AnalysisDir = [ResultsBasePath filesep 'SimerlyLab\40x\MEO\FemaleX_MEO_BSTam_40xstack_I1'];
 RunPath = [AnalysisDir filesep 'CH3\FemaleX_MEO_BSTam_40xstack_I1_CH3_spotCall_rnaspotsrun.mat'];
