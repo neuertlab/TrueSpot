@@ -367,7 +367,7 @@ classdef SingleCell
                 obj.nucNascentCount = sum(counts(inNuc & isTooBright));
                 obj.cytoCount = sum(counts(~inNuc));
 
-                obj.spotTable{:, 'nascent_flag'} = isTooBright;
+                obj.spotTable{:, 'nascent_flag'} = and(isTooBright, inNuc);
             end
 
             totalClouds = size(obj.clouds, 2);
