@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.11.12.00';
+BUILD_STRING = '2024.11.19.00';
 VERSION_STRING = 'v1.1.1';
 
 % ========================== Process args ==========================
@@ -273,7 +273,8 @@ function [spotMask, indivSpotMasks] = genSpotMaskQuant(quant_results, dims, gaus
                 z1 = size(sim_mask, 3) - ztrim_hi;
 
                 spotMask(y_min:y_max, x_min:x_max, z_min:z_max) =...
-                    sim_mask(y0:y1, x0:x1, z0:z1);
+                    or(sim_mask(y0:y1, x0:x1, z0:z1), ...
+                    spotMask(y_min:y_max, x_min:x_max, z_min:z_max));
 
                 %Also save mask and top right corner coords
                 mySpotMask = struct();
@@ -327,9 +328,10 @@ function [spotMask, call_table] = genSpotMaskCall(spotsrun, gaussrad, gaussThres
 %         [z_min, z_max, ztrim_lo, ztrim_hi, ~] = RNAUtils.getDimSpotIsolationParams(1, Z, gaussrad_z);
 
         spotMask(y_min:y_max, x_min:x_max, z_min:z_max) = ...
+            or(spotMask(y_min:y_max, x_min:x_max, z_min:z_max), ...
             gauss_spot_mask((1+ytrim_lo):(xydim-ytrim_hi), ...
                             (1+xtrim_lo):(xydim-xtrim_hi), ...
-                            (1+ztrim_lo):(zdim-ztrim_hi));
+                            (1+ztrim_lo):(zdim-ztrim_hi)));
     end
 
 end

@@ -1141,10 +1141,43 @@ classdef RNAQuant
                     quant_struct.cell_rna_data(c) = my_cell;
                 end
             end
-            
+
+            %Profile spots so have global intensities to work with
+            sCount = 0;
             for c = 1:cell_count
-                quant_struct.cell_rna_data(c) = quant_struct.cell_rna_data(c).updateSpotAndSignalValues();
+                myCell = quant_struct.cell_rna_data(c);
+                if isempty(myCell.spotTable) & ~isempty(myCell.spots)
+                    myCell = myCell.convertSpotStorage();
+                end
+
+                sCount = sCount + nnz(~myCell.spotTable{:, 'in_cloud'});
+                quant_struct.cell_rna_data(c) = myCell;
             end
+
+            allInt = NaN(1, sCount);
+            nowRow = 1;
+            for c = 1:cell_count
+                myCell = quant_struct.cell_rna_data(c);
+                notCloud = ~myCell.spotTable{:, 'in_cloud'};
+                cellInts = myCell.spotTable{notCloud, 'TotFitInt'};
+                edRow = nowRow + size(cellInts, 1) - 1;
+
+                allInt(nowRow:edRow) = cellInts';
+                nowRow = edRow + 1;
+            end
+            clear myCell notCloud cellInts nowRow edRow
+
+            iMean = mean(allInt, 'all', 'omitnan');
+            iStd = std(allInt, 0, 'all', 'omitnan');
+            globalBrightTh = iMean + (iStd * 2.0);
+            globalSingleInt = median(allInt(allInt < globalBrightTh), 'all', 'omitnan');
+
+            for c = 1:cell_count
+                quant_struct.cell_rna_data(c) = quant_struct.cell_rna_data(c).updateSpotAndSignalValues(globalBrightTh, globalSingleInt);
+            end
+
+            quant_struct.globalBrightTh = globalBrightTh;
+            quant_struct.globalSingleInt = globalSingleInt;
         end
         
         %% ========================== Interface ==========================

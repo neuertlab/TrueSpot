@@ -262,7 +262,10 @@ classdef SingleCell
         end
         
         %%
-        function obj = updateSpotAndSignalValues(obj)
+        function obj = updateSpotAndSignalValues(obj, globalBrightTh, globalSingleInt)
+            if nargin < 2; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
+            if nargin < 3; globalSingleInt = 200.0; end
+
             %Reset.
             obj.spotcount_nuc = 0;
             obj.spotcount_cyto = 0;
@@ -311,12 +314,15 @@ classdef SingleCell
             obj.spotcount_total = obj.spotcount_nuc + obj.spotcount_cyto;
             obj.signal_total = obj.signal_nuc + obj.signal_cyto;
             
-            obj = obj.updateCountEstimates();
+            obj = obj.updateCountEstimates(2, globalBrightTh, globalSingleInt);
         end
         
         %%
-        function obj = updateCountEstimates(obj, brightStDevs)
+        function obj = updateCountEstimates(obj, brightStDevs, globalBrightTh, globalSingleInt)
             if nargin < 2; brightStDevs = 2; end
+            if nargin < 3; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
+            if nargin < 4; globalSingleInt = 200.0; end
+
             %Munsky B, Li G, Fox ZR, Shepherd DP, Neuert G. Distribution shapes govern the discovery of predictive models for gene regulation. Proc Natl Acad Sci U S A. 2018;115(29). doi:10.1073/pnas.1804060115
             obj.nucCount = 0;
             obj.nucNascentCount = 0;
@@ -334,13 +340,24 @@ classdef SingleCell
                 spotints = obj.spotTable{:, 'TotFitInt'};
                 inNuc = obj.spotTable{:, 'nucRNA'};
 
-                iMean = mean(spotints, 'all', 'omitnan');
-                iStd = std(spotints, 0, 'all', 'omitnan');
-                brightnessThreshold = iMean + (brightStDevs * iStd);
+                if totalSpots > 2
+                    iMean = mean(spotints, 'all', 'omitnan');
+                    %iMed = median(spotints, 'all', 'omitnan');
+                    iStd = std(spotints, 0, 'all', 'omitnan');
+                    brightnessThreshold = iMean + (brightStDevs * iStd);
+                    %brightnessThreshold = iMed + (brightStDevs * iStd);
+                else
+                    brightnessThreshold = globalBrightTh;
+                end
+
                 isTooBright = (spotints >= brightnessThreshold);
-                normSpots = spotints(~isTooBright);
-                singleIntensity = median(normSpots, 'all', 'omitnan');
-                clear normSpots
+                if totalSpots > 2
+                    normSpots = spotints(~isTooBright);
+                    singleIntensity = median(normSpots, 'all', 'omitnan');
+                    clear normSpots
+                else
+                    singleIntensity = globalSingleInt;
+                end
 
                 %For now, all not-too-bright spots are counted as 1?
                 counts = ones(1, totalSpots);
@@ -377,8 +394,10 @@ classdef SingleCell
 
                     %Need a singleIntensity and brightnessThreshold
                     iMean = mean(cloudInts, 'all', 'omitnan');
+                    %iMed = median(cloudInts, 'all', 'omitnan');
                     iStd = std(cloudInts, 0, 'all', 'omitnan');
                     brightnessThreshold = iMean + (brightStDevs * iStd);
+                    %brightnessThreshold = iMed + (brightStDevs * iStd);
 
                     %The single will just be the smallest cloud
                     singleIntensity = min(cloudInts, [], 'all', 'omitnan');
