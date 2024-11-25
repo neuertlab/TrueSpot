@@ -5,8 +5,8 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.11.19.00';
-VERSION_STRING = 'v1.1.1';
+BUILD_STRING = '2024.11.22.00';
+VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -380,8 +380,9 @@ function spotProfile = getSpotProfileQuant(spotsrun, quant_results, imageData, s
             spTable{spotPos:lastSpot, 'TotFitInt'} = myCell.spotTable{:, 'TotFitInt'};
             spTable{spotPos:lastSpot, 'bkgLevelq'} = myCell.spotTable{:, 'back'};
 
-            %Clean up any NaN z positions...
+            %Clean up any NaN or negative (bugged) z positions...
             zbad = isnan(spTable{spotPos:lastSpot, 'z'});
+            zbad = or(zbad, spTable{spotPos:lastSpot, 'z'} < 1);
             if nnz(zbad) > 0
                 zint = myCell.spotTable{:, 'zinit'} + myCell.cell_loc.z_bottom - 1;
                 rows = find(zbad) + spotPos - 1;

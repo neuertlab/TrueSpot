@@ -83,13 +83,7 @@ classdef SpotCallVisualization
             obj.refAddQueue.capacity = 0;
             obj.refAddQueue.used = 0;
 
-            obj.referenceTable = struct();
-            obj.referenceTable.data = []; %Matrix w/ cols x,y,z
-            obj.referenceTable.capacity = 0;
-            obj.referenceTable.used = 0;
-            obj.referenceTable.truePos = []; %Bool vec for call table rows
-            obj.referenceTable.falseNeg = []; %Bool vec for ref table rows
-            obj.referenceTable.checkedVs = false;
+            obj = obj.setRefSetEmpty();
 
             obj.callTableCompare = struct();
             obj.callTableCompare.callTable = [];
@@ -357,21 +351,21 @@ classdef SpotCallVisualization
                             'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',10);
                     end
 
-                    groupBool = and(rowBool, tableR(:, 3) >= (z - obj.zNearRad));
+                    groupBool = and(rowBoolRef, tableR(:, 3) >= (z - obj.zNearRad));
                     groupBool = and(groupBool, tableR(:, 3) < z);
                     if nnz(groupBool) > 0
                         plot(tableR(groupBool, 1), tableR(groupBool, 2),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',10);
                     end
 
-                    groupBool = and(rowBool, tableR(:, 3) <= (z + obj.zNearRad));
+                    groupBool = and(rowBoolRef, tableR(:, 3) <= (z + obj.zNearRad));
                     groupBool = and(groupBool, tableR(:, 3) > z);
                     if nnz(groupBool) > 0
                         plot(tableR(groupBool, 1), tableR(groupBool, 2),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',10);
                     end
 
-                    groupBool = and(rowBool, tableR(:, 3) == z);
+                    groupBool = and(rowBoolRef, tableR(:, 3) == z);
                     if nnz(groupBool) > 0
                         plot(tableR(groupBool, 1), tableR(groupBool, 2),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',10);
@@ -399,6 +393,16 @@ classdef SpotCallVisualization
         function [figHandle, okay] = drawReferenceSet3D(obj, figHandle)
             %TODO
             okay = false;
+        end
+
+        function obj = setRefSetEmpty(obj)
+            obj.referenceTable = struct();
+            obj.referenceTable.data = []; %Matrix w/ cols x,y,z
+            obj.referenceTable.capacity = 0;
+            obj.referenceTable.used = 0;
+            obj.referenceTable.truePos = []; %Bool vec for call table rows
+            obj.referenceTable.falseNeg = []; %Bool vec for ref table rows
+            obj.referenceTable.checkedVs = false;
         end
 
         function obj = expandAddQueue(obj)
@@ -486,7 +490,7 @@ classdef SpotCallVisualization
             noHits = true;
             if ~isempty(obj.referenceTable.data)
                 if isempty(obj.refRemoveQueue)
-                    obj.refRemoveQueue = false(size(obj.reference.data, 1), 1);
+                    obj.refRemoveQueue = false(size(obj.referenceTable.data, 1), 1);
                 end
 
                 rowBool = SpotCallVisualization.filterCallsToValidRangeMtx(...
@@ -567,19 +571,20 @@ classdef SpotCallVisualization
             %   called again!
 
             %First, run removes
-            if ~isempty(obj.refRemoveQueue.queue) & ~isempty(obj.referenceTable.data)
-                if nnz(obj.refRemoveQueue.queue) > 0
-                    obj.referenceTable.data = obj.referenceTable.data(~obj.refRemoveQueue.queue);
+            if ~isempty(obj.refRemoveQueue) & ~isempty(obj.referenceTable.data)
+                if nnz(obj.refRemoveQueue) > 0
+                    obj.referenceTable.data = obj.referenceTable.data(~obj.refRemoveQueue);
                 end
             end
-            obj.refRemoveQueue.queue = [];
+            obj.refRemoveQueue = [];
 
             %Then adds
             if ~isempty(obj.refAddQueue.queue) & (obj.refAddQueue.used > 0)
                 %Whittle down to those to actually add.
                 addActual = obj.refAddQueue.queue(1:obj.refAddQueue.used, :);
-                if nnz(addActual(:,4))
-                    addActual = addActual(addActual(:,4), 1:3);
+                rowbool = logical(addActual(:,4));
+                if nnz(rowbool) > 0
+                    addActual = addActual(rowbool, 1:3);
                     obj.referenceTable.data = [obj.referenceTable.data; addActual];
                     obj.referenceTable.capacity = size(obj.referenceTable.data, 1);
                     obj.referenceTable.used = obj.referenceTable.capacity;

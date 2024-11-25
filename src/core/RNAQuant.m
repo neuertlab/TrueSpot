@@ -764,10 +764,14 @@ classdef RNAQuant
                     spot_params.zqFit = NaN; %r1
                 end
                 
-                spot_params.zrel = nanmean([spot_params.zxfit spot_params.zyfit spot_params.zint]);
-                spot_params.zstd = nanstd([spot_params.zxfit spot_params.zyfit spot_params.zint]);
+                spot_params.zrel = mean([spot_params.zxfit spot_params.zyfit spot_params.zint], 'all', 'omitnan');
+                spot_params.zstd = std([spot_params.zxfit spot_params.zyfit spot_params.zint], 0, 'all', 'omitnan');
                 spot_params.zinit = my_spot.z;
                 spot_params.zabs = spot_params.zrel + my_spot.z - z_mid;
+
+                if isnan(spot_params.zabs)
+                    spot_params.zabs = spot_params.zinit;
+                end
                 
                 %Check if nuclear RNA, and calculate related
                 %properties.
@@ -1189,6 +1193,8 @@ classdef RNAQuant
             clear quant_input;
 
             if quant_output.do_refilter
+                fprintf("[%s] RNAQuant.FitRNA -- Refilter requested\n", datetime);
+
                 %1. Preprocess
                 fprintf("[%s] RNAQuant.FitRNA -- Running prefilter...\n", datetime);
                 [img_clean, img_processed, imrmax_mask, img_bkg, quant_output.plane_stats] =...
@@ -1201,13 +1207,19 @@ classdef RNAQuant
                     imrmax_mask, quant_output.cell_mask, quant_output.nuc_mask);
                 clear imrmax_mask;
             else
+                fprintf("[%s] RNAQuant.FitRNA -- No refilter requested. Will try to use previous coordinates.\n", datetime);
+                if ~isempty(quant_output.t_coord_table)
+                    fprintf('\tSpots in coord table: %d\n', size(quant_output.t_coord_table, 1));
+                    fprintf('\tCoord table includes dropout thresholds: %d\n', (size(quant_output.t_coord_table, 2) > 3));
+                end
+
                 %1. Preprocess
                 fprintf("[%s] RNAQuant.FitRNA -- Running prefilter...\n", datetime);
                 [img_clean, ~, ~, img_bkg, quant_output.plane_stats] =...
                     RNAQuant.RNAProcess3Dim(quant_output.img_raw, quant_output.threshold, quant_output.small_obj_size,...
                     quant_output.connect_size, quant_output.gaussian_radius, quant_output.workdir, true);
 
-                %2. NonGauss RNA Pos
+                %2. Pos from table
                 fprintf("[%s] RNAQuant.FitRNA -- Initial cellseg load and spot identification...\n", datetime);
                 quant_output.cell_rna_data = RNAQuant.RNAPosFromTable(img_clean,...
                     quant_output.t_coord_table, quant_output.cell_mask, quant_output.nuc_mask);

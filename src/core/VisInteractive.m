@@ -12,6 +12,11 @@ classdef VisInteractive
             %   space (or any key) - Ready listener
             %   s - Save (ref set)
             %   x - Exit
+            %   c - Clear all ref spots
+            %   3 - 3D snap to local maxima
+            %   z - Z only snap to local maxima
+            %   R - Increase xy snap radius by 1
+            %   r - Decrease xy snap radius by 1
 
             % --- Threshold/Z Slice Movement ---
             %   + - Up one z slice
@@ -27,6 +32,7 @@ classdef VisInteractive
             %   f - Filtered/raw image toggle
             %   m - Maximum projection/indiv slice toggle
             %   g - Global (z) contrast toggle
+            %   U - When snapping, removed any spots that do not snap to a maximum
 
             % --- Layers ---
             %   C - Cells on/off
@@ -67,6 +73,7 @@ classdef VisInteractive
         maxProj = true; %Toggle between single slice view and max projection
         globalContrast = true; %(Slice view only) Toggle between contrast scale from full image or just that slice
         zSetToggle = false; %False = min, true = max
+        remUnsnapped = false;
 
         %Layer visibility
         %callMode = 0; %Enum for mode of SpotCallVisualization
@@ -213,11 +220,14 @@ classdef VisInteractive
         function obj = loadRefSet(obj)
             refpath = obj.getRefSavePath();
             if isfile(refpath)
-                load(refpath, 'refset');
+                load(refpath, 'refset', 'version', 'workRegion');
                 obj.scVis.referenceTable = refset;
+                if version > 1
+                    obj.scVis.workRegion = workRegion;
+                end
             else
                 %Start empty.
-                obj.scVis.referenceTable = [];
+                obj.scVis = obj.scVis.setRefSetEmpty();
             end
         end
 
@@ -225,9 +235,10 @@ classdef VisInteractive
         function obj = saveRefSet(obj)
             refpath = obj.getRefSavePath();
             refset = obj.scVis.referenceTable;
-            version = 1;
+            version = 2;
+            workRegion = obj.scVis.workRegion;
             timestamp = datetime();
-            save(refpath, 'version', 'timestamp', 'refset');
+            save(refpath, 'version', 'timestamp', 'refset', 'workRegion');
         end
 
         %% ================== Rendering ===============================
@@ -463,6 +474,25 @@ classdef VisInteractive
                 else
                     fprintf('GUI is not in reference edit mode!\n');
                 end
+            elseif btn == 'c' %'c' - clear
+                obj.scVis = obj.scVis.setRefSetEmpty();
+                obj = obj.updateRender();
+            elseif btn == '3' %'3' - 3D snap
+                [obj.scVis, snappedCount, removedCount] =...
+                    obj.scVis.refModeSnap(obj.imageChFilt, false, obj.maxProj, obj.remUnsnapped, true);
+                fprintf('3D local snap done.\n');
+                fprintf('\tSpots Snapped: %d\n', snappedCount);
+                fprintf('\tSpots Removed: %d\n', removedCount);
+                obj = obj.updateRender();
+            elseif btn == 'z' %'z' - z only snap
+                [obj.scVis, snappedCount, removedCount] =...
+                    obj.scVis.refModeSnap(obj.imageChFilt, true, obj.maxProj, obj.remUnsnapped, true);
+                fprintf('Z only local snap done.\n');
+                fprintf('\tSpots Snapped: %d\n', snappedCount);
+                fprintf('\tSpots Removed: %d\n', removedCount);
+            elseif btn == 'U' %'U' - remove unsnapped spots toggle
+                obj.remUnsnapped = ~obj.remUnsnapped;
+                fprintf('Remove unsnapped spots toggle: %d\n', obj.remUnsnapped);
             elseif btn == 'f' %toggle filtered/raw
                 obj.useFilt = ~obj.useFilt;
                 fprintf('Filter toggle set: %d\n', obj.useFilt);
@@ -617,6 +647,17 @@ classdef VisInteractive
                 %TODO
             elseif btn == ']' %Increase threshold by 10
                 %TODO
+            elseif btn == 'R' %Increase xy snap radius by 1
+                obj.scVis.matchRad_xy = obj.scVis.matchRad_xy + 1;
+                fprintf('XY snap radius set to: %d\n', obj.scVis.matchRad_xy);
+            elseif btn == 'r' %Decrease xy snap radius by 1
+                obj.scVis.matchRad_xy = obj.scVis.matchRad_xy - 1;
+                if obj.scVis.matchRad_xy > 0
+                    fprintf('XY snap radius set to: %d\n', obj.scVis.matchRad_xy);
+                else
+                    obj.scVis.matchRad_xy = 1;
+                    fprintf('XY snap radius cannot go below 1.\n');
+                end
             end
 
         end
@@ -702,17 +743,21 @@ classdef VisInteractive
             obj.scVis.workRegion.y_min = y0;
             obj.scVis.workRegion.y_max = y1;
 
-            fprintf('XY Mask set: (%d,%d) to (%d,%d)n\',x0, y0, x1, y1);
+            fprintf('XY Mask set: (%d,%d) to (%d,%d)\n',x0, y0, x1, y1);
         end
 
         %
         function obj = onLeftClick(obj, x, y)
-            [obj, obj.figHandle] = obj.scVis.onRefModeClick(obj.figHandle, x, y, obj.currentSlice, true, false);
+            fh = obj.figHandle;
+            [obj.scVis, fh] = obj.scVis.onRefModeClick(fh, x, y, obj.currentSlice, true, false);
+            obj.figHandle = fh;
         end
 
         %
         function obj = onRightClick(obj, x, y)
-            [obj, obj.figHandle] = obj.scVis.onRefModeClick(obj.figHandle, x, y, obj.currentSlice, false, true);
+            fh = obj.figHandle;
+            [obj.scVis, fh] = obj.scVis.onRefModeClick(fh, x, y, obj.currentSlice, false, true);
+            obj.figHandle = fh;
         end
 
     end
