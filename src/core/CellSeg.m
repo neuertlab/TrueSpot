@@ -869,9 +869,12 @@ classdef CellSeg
         end
 
         %%
-        function nuc_mask = openNucMask(path, maskno)
+        function nuc_mask = openNucMask(path, maskno, fill3)
             if nargin < 2
                 maskno = 2; %lblmid
+            end
+            if nargin < 3
+                fill3 = true;
             end
 
             nuc_mask = [];
@@ -897,6 +900,31 @@ classdef CellSeg
                                 if isfield(nucleiSeg.results, 'lbl_hi')
                                     nuc_mask = nucleiSeg.results.lbl_hi;
                                 end
+                        end
+                    end
+                    if fill3 & (ndims(nuc_mask) > 2)
+                        if isfield(nucleiSeg, 'params')
+                            Z = size(nuc_mask, 3);
+                            z_min = 1;
+                            z_max = Z;
+                            if isfield(nucleiSeg.params, 'z_min')
+                                z_min = nucleiSeg.params.z_min;
+                            end
+                            if isfield(nucleiSeg.params, 'z_max')
+                                z_max = nucleiSeg.params.z_max;
+                            end
+
+                            if z_min > 1
+                                for zz = 1:(z_min - 1)
+                                    nuc_mask(:,:,zz) = nuc_mask(:,:,z_min);
+                                end
+                            end
+
+                            if z_max < Z
+                                for zz = (z_max + 1):Z
+                                    nuc_mask(:,:,zz) = nuc_mask(:,:,z_max);
+                                end
+                            end
                         end
                     end
                     clear nucleiSeg;
@@ -928,6 +956,9 @@ classdef CellSeg
             elseif endsWith(path, '.tsv') | endsWith(path, '.csv')
                 nuc_mask = readmatrix(path);
             end
+
+
+            
         end
 
     end
