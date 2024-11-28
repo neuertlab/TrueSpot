@@ -1154,7 +1154,9 @@ classdef RNAQuant
                     myCell = myCell.convertSpotStorage();
                 end
 
-                sCount = sCount + nnz(~myCell.spotTable{:, 'in_cloud'});
+                if ~isempty(myCell.spotTable)
+                    sCount = sCount + nnz(~myCell.spotTable{:, 'in_cloud'});
+                end
                 quant_struct.cell_rna_data(c) = myCell;
             end
 
@@ -1162,12 +1164,15 @@ classdef RNAQuant
             nowRow = 1;
             for c = 1:cell_count
                 myCell = quant_struct.cell_rna_data(c);
-                notCloud = ~myCell.spotTable{:, 'in_cloud'};
-                cellInts = myCell.spotTable{notCloud, 'TotFitInt'};
-                edRow = nowRow + size(cellInts, 1) - 1;
 
-                allInt(nowRow:edRow) = cellInts';
-                nowRow = edRow + 1;
+                if ~isempty(myCell.spotTable)
+                    notCloud = ~myCell.spotTable{:, 'in_cloud'};
+                    cellInts = myCell.spotTable{notCloud, 'TotFitInt'};
+                    edRow = nowRow + size(cellInts, 1) - 1;
+
+                    allInt(nowRow:edRow) = cellInts';
+                    nowRow = edRow + 1;
+                end
             end
             clear myCell notCloud cellInts nowRow edRow
 
