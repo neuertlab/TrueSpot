@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.11.22.00';
+BUILD_STRING = '2024.12.01.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -537,9 +537,11 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         fprintf('\tRun found: %s\n', spotsrun.img_name);
 
         %Update threshold stats
+        tres = [];
         if ~isempty(spotsrun.threshold_results)
             fprintf('\tUpdating threshold pool stats...\n');
             spotsrun.threshold_results = RNAThreshold.scoreThresholdSuggestions(spotsrun.threshold_results);
+            tres = spotsrun.threshold_results;
             spotsrun.saveMeTo(srPath);
         end
 
@@ -554,6 +556,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ)
         intensityStats.noprobe = false;
         intensityStats.trim_z_min = zmin;
         intensityStats.trim_z_max = zmax;
+        intensityStats.threshold_results = tres;
 
         if isfield(spotsrun.meta, 'noProbe_flag')
             intensityStats.noprobe = spotsrun.meta.noProbe_flag;
