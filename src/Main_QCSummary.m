@@ -3,8 +3,8 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.09.03.00';
-VERSION_STRING = 'v1.1.1';
+BUILD_STRING = '2024.12.02.00';
+VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -108,7 +108,7 @@ function doDir(thTableHandle, dirPath, baseDir)
                 doDir(thTableHandle, [dirPath filesep fname], baseDir);
             end
         else
-            if startsWith(fname, 'CellSeg_')
+            if startsWith(fname, 'CellSeg_') & endsWith(fname, '.mat')
                 csPath = [dirPath filesep fname];
             elseif endsWith(fname, '_rnaspotsrun.mat')
                 srPath = [dirPath filesep fname];
