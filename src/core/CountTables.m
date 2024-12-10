@@ -31,7 +31,7 @@ classdef CountTables
                         tpCount = size(alltp, 2);
                         for tpi = 1:tpCount
                             tpVal = alltp(tpi);
-                            tpName = ['T' num2str(tpVal) 'min'];
+                            tpName = CountTables.generateTimepointStructName(tpVal, 'min');
                             timeStr = struct();
 
                             timeStr.time = tpVal;
@@ -57,11 +57,11 @@ classdef CountTables
 
         end
 
-        function tableData = loadTSDumpTable(path, timeColFunc)
+        function tableData = loadTSDumpTable(path, timeColFunc, timeUnit)
             %Target -> Time
             fmtStr = [repmat('%s', 1, 4) repmat('%d', 1, 13)];
-            rawTable = readtable(path, 'Format',fmtStr);
-            rawTable = timeColFunc(rawTable, 'TIME');
+            rawTable = readtable(path, 'FileType', 'text', 'Delimiter', '\t', 'Format', fmtStr);
+            rawTable = timeColFunc(rawTable, 'TIME', timeUnit);
 
             tableData = struct();
             allTrg = unique(rawTable{:, 'TARGET'});
@@ -77,7 +77,7 @@ classdef CountTables
 
                 for tpi = 1:tpCount
                     tpVal = alltp(tpi);
-                    tpName = ['T' num2str(tpVal) 'min'];
+                    tpName = CountTables.generateTimepointStructName(tpVal, timeUnit);
                     timeStr = struct();
 
                     timeData = filtTable(filtTable{:,'TIME'} == tpVal,:);
@@ -96,6 +96,12 @@ classdef CountTables
                 end
                 tableData.(trgName) = trgStr;
             end
+        end
+
+        function tpStructName = generateTimepointStructName(tpValue, unitName)
+            nstr = num2str(tpValue);
+            nstr = replace(nstr, '.', 'p');
+            tpStructName = ['T' nstr unitName];
         end
 
     end
