@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.12.10.00';
+BUILD_STRING = '2024.12.12.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -93,8 +93,9 @@ if ~isfolder(output_dir); mkdir(output_dir); end
 try
     doDir(input_dir, output_dir, zmin, zmax, blockXY, blockZ, outputSpotMasks);
 catch MEx
-    fprintf('There was an error processing %s. Skipped remainder. See below for details.', input_dir);
-    disp(MEx.message);
+    fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', input_dir);
+    %disp(MEx.message);
+    disp(MEx.getReport('extended'));
 end
 
 end
@@ -535,8 +536,9 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks)
                 try
                     doDir(subdirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks);
                 catch MEx
-                    fprintf('There was an error processing %s. Skipped remainder. See below for details.', subdirPath);
-                    disp(MEx.message);
+                    fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', subdirPath);
+                    %disp(MEx.message);
+                    disp(MEx.getReport('extended'));
                 end
             end
         else
@@ -756,8 +758,9 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks)
             end
 
         catch MEx
-            fprintf('There was an error processing %s. Skipped remainder. See below for details.', srPath);
-            disp(MEx.message);
+            fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', srPath);
+            %disp(MEx.message);
+            disp(MEx.getReport('extended'));
         end
     end
 

@@ -64,7 +64,7 @@ classdef CountTables
             rawTable = timeColFunc(rawTable, 'TIME', timeUnit);
 
             tableData = struct();
-            allTrg = unique(rawTable{:, 'TARGET'});
+            allTrg = unique(rawTable{:, 'TARGET'})';
             trgCount = size(allTrg, 2);
 
             for t = 1:trgCount
@@ -88,8 +88,8 @@ classdef CountTables
                     timeStr.nascent = timeData{:,'EST_NASCENT_COUNT_NUC'}';
                     timeStr.cytoSignal = timeData{:,'SIGNAL_CYTO'}';
                     timeStr.nucSignal = timeData{:,'SIGNAL_NUC'}';
-                    timeStr.cellAreaPix = timeData{:,'CELLAREA(PIX)'}';
-                    timeStr.nucVolVox = timeData{:,'NUCVOL(VOX)'}';
+                    timeStr.cellAreaPix = timeData{:,'CELLAREA_PIX_'}';
+                    timeStr.nucVolVox = timeData{:,'NUCVOL_VOX_'}';
                     timeStr.voxelDimsString = timeData{:,'VOXDIMS'}';
 
                     trgStr.(tpName) = timeStr;
@@ -102,6 +102,15 @@ classdef CountTables
             nstr = num2str(tpValue);
             nstr = replace(nstr, '.', 'p');
             tpStructName = ['T' nstr unitName];
+        end
+
+        function stringField = getTableFieldAsString(rawField)
+            if iscell(rawField)
+                stringField = strjoin(rawField,'');
+            else
+                stringField = string(rawField);
+            end
+            
         end
 
     end
