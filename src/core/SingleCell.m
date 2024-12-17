@@ -262,6 +262,52 @@ classdef SingleCell
         end
         
         %%
+        function [cyto_calls, nuc_calls] = getCellCalls(obj, call_table)
+            if isempty(call_table); return; end
+            cyto_calls = [];
+            nuc_calls = [];
+
+            %1. convert all coordinates to cell local and toss those
+            %   outside box
+            xx = int32(call_table{:, 'isnap_x'}) - obj.cell_loc.left + 1;
+            yy = int32(call_table{:, 'isnap_y'}) - obj.cell_loc.top + 1;
+            zz = int32(call_table{:, 'isnap_z'}) - obj.cell_loc.z_bottom + 1;
+
+            xOkay = and(xx > 0, xx <= obj.cell_loc.width);
+            yOkay = and(yy > 0, yy <= obj.cell_loc.height);
+            zOkay = and(zz > 0, zz <= obj.cell_loc.depth);
+            keep = and(xOkay, and(yOkay, zOkay));
+            if nnz(keep) < 1; return; end
+
+            xx = xx(keep,:);
+            yy = yy(keep,:);
+            zz = zz(keep,:);
+            call_table = call_table(keep,:);
+
+            %Put thru masks
+
+            if ndims(obj.mask_nuc) > 2
+                inNuc = RNAUtils.isInMask3(obj.mask_nuc, xx, yy, zz);
+            else
+                inNuc = RNAUtils.isInMask2(obj.mask_nuc, xx, yy);
+            end
+            if nnz(inNuc > 0)
+                nuc_calls = call_table(inNuc, :);
+            end
+
+            if ndims(obj.mask_cell) > 2
+                inCell = RNAUtils.isInMask3(obj.mask_cell, xx, yy, zz);
+            else
+                inCell = RNAUtils.isInMask2(obj.mask_cell, xx, yy);
+            end
+            inCyto = and(inCell, ~inNuc);
+            if nnz(inCyto > 0)
+                cyto_calls = call_table(inCyto, :);
+            end
+
+        end
+
+        %%
         function obj = updateSpotAndSignalValues(obj, globalBrightTh, globalSingleInt)
             if nargin < 2; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
             if nargin < 3; globalSingleInt = 200.0; end

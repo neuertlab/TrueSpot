@@ -274,6 +274,49 @@ classdef RNAUtils
             end
         end
 
+        %%
+        function boolRes = isInMask3(mask, x, y, z)
+            if isvector(x)
+                s1 = size(x,1);
+                s2 = size(x,2);
+                if s1 > s2
+                    eCount = s1;
+                    x = x';
+                    y = y';
+                    z = z';
+                else
+                    eCount = s2;
+                end
+
+                boolRes = false(eCount, 1);
+                for i = 1:eCount; boolRes(i) = mask(y(i),x(i),z(i)); end
+
+            else
+                boolRes = mask(y,x,z);
+            end
+        end
+
+        %%
+        function boolRes = isInMask2(mask, x, y)
+            if isvector(x)
+                s1 = size(x,1);
+                s2 = size(x,2);
+                if s1 > s2
+                    eCount = s1;
+                    x = x';
+                    y = y';
+                else
+                    eCount = s2;
+                end
+
+                boolRes = false(eCount, 1);
+                for i = 1:eCount; boolRes(i) = mask(y(i),x(i)); end
+
+            else
+                boolRes = mask(y,x);
+            end
+        end
+
     end
     
 end
