@@ -18,6 +18,8 @@ classdef ProbDistroPlots
         fszXTitle = 14;
 
         binSize = 10;
+        runSmoothing = false;
+        smoothWindowSize = 3;
         timeUnit = 'min';
 
         data = {}; %2D mtx of data point structs
@@ -94,9 +96,16 @@ classdef ProbDistroPlots
                             rcolor = trgInfo.colors(r,:);
                             lwidth = trgInfo.lineWidth(r);
                             lstyle = trgInfo.lineStyle{r};
+
+                            xData = dataGroup.reps(r).x;
+                            yData = dataGroup.reps(r).y;
                             
-                            if ~isempty(dataGroup.reps(r).x)
-                                plot(dataGroup.reps(r).x, dataGroup.reps(r).y,...
+                            if ~isempty(xData)
+                                if obj.runSmoothing
+                                    yData = smoothdata(yData, 'movmean', obj.smoothWindowSize);
+                                end
+
+                                plot(xData, yData,...
                                     'Color', rcolor, 'LineWidth', lwidth, 'LineStyle', lstyle);
                             else
                                 plot(0, 0,...
