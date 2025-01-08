@@ -501,15 +501,19 @@ classdef SpotCallVisualization
                         obj.refRemoveQueue(rowBool) = ~obj.refRemoveQueue(rowBool);
                         %Draw magenta
                         drawBool = and(~obj.refRemoveQueue, rowBool);
-                        xx = obj.referenceTable.data(drawBool, 1);
-                        yy = obj.referenceTable.data(drawBool, 2);
-                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
+                        if nnz(drawBool) > 0
+                            xx = obj.referenceTable.data(drawBool, 1);
+                            yy = obj.referenceTable.data(drawBool, 2);
+                            plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
+                        end
 
                         %Draw white
                         drawBool = and(obj.refRemoveQueue, rowBool);
-                        xx = obj.referenceTable.data(drawBool, 1);
-                        yy = obj.referenceTable.data(drawBool, 2);
-                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                        if nnz(drawBool) > 0
+                            xx = obj.referenceTable.data(drawBool, 1);
+                            yy = obj.referenceTable.data(drawBool, 2);
+                            plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                        end
                     end
                 end
             end
@@ -526,15 +530,19 @@ classdef SpotCallVisualization
 
                     %Draw cyan
                     drawBool = and(obj.refAddQueue.queue(:,4), rowBool);
-                    xx = obj.referenceTable.data(drawBool, 1);
-                    yy = obj.referenceTable.data(drawBool, 2);
-                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
+                    if nnz(drawBool) > 0
+                        xx = obj.referenceTable.data(drawBool, 1);
+                        yy = obj.referenceTable.data(drawBool, 2);
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
+                    end
 
                     %Draw white
                     drawBool = and(~obj.refAddQueue.queue(:,4), rowBool);
-                    xx = obj.referenceTable.data(drawBool, 1);
-                    yy = obj.referenceTable.data(drawBool, 2);
-                    plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                    if nnz(drawBool) > 0
+                        xx = obj.referenceTable.data(drawBool, 1);
+                        yy = obj.referenceTable.data(drawBool, 2);
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                    end
                 end
             end
 
@@ -573,7 +581,11 @@ classdef SpotCallVisualization
             %First, run removes
             if ~isempty(obj.refRemoveQueue) & ~isempty(obj.referenceTable.data)
                 if nnz(obj.refRemoveQueue) > 0
-                    obj.referenceTable.data = obj.referenceTable.data(~obj.refRemoveQueue);
+                    rCount = nnz(obj.refRemoveQueue);
+                    nowCount = size(obj.referenceTable.data,1);
+                    obj.referenceTable.data = obj.referenceTable.data(~obj.refRemoveQueue, :);
+                    obj.referenceTable.capacity = size(obj.referenceTable.data,1);
+                    obj.referenceTable.used = nowCount - rCount;
                 end
             end
             obj.refRemoveQueue = [];

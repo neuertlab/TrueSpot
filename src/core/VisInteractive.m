@@ -436,6 +436,12 @@ classdef VisInteractive
                 end
             end
 
+            if ~obj.maxProj
+                title(['z = ' num2str(obj.currentSlice)]);
+            else
+                title('');
+            end
+
         end
 
         %% ================== GUI ===============================

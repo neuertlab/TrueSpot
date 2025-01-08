@@ -14,7 +14,7 @@ ImagesBasePath = 'D:\Users\hospelb\labdata\RNAFISH\Images';
 %ImagesBasePath = 'D:\usr\bghos\labdat\RNAFISH\Images';
 
 AnalysisDir = [ResultsBasePath filesep 'SimerlyLab\40x\MEO\FemaleX_MEO_BSTam_40xstack_I1'];
-RunPath = [AnalysisDir filesep 'CH3\FemaleX_MEO_BSTam_40xstack_I1_CH3_spotCall_rnaspotsrun.mat'];
+RunPath = [AnalysisDir filesep 'CH2\FemaleX_MEO_BSTam_40xstack_I1_CH2_spotCall_rnaspotsrun.mat'];
 
 %Overrides
 
