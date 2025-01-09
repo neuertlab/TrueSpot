@@ -49,6 +49,7 @@ classdef ProbDistroPlots
         %%
         function [obj, figHandle] = render(obj, figHandle)
             figure(figHandle);
+            clf;
             hold on;
 
             if ~isempty(obj.timePoints)
@@ -83,6 +84,29 @@ classdef ProbDistroPlots
             subplot(trgCount, tpCount, 1);
             for y = 1:trgCount
                 trgInfo = obj.targets{y};
+
+                xMaxUse = obj.xMax;
+                yMaxUse = obj.yMax;
+                if ~isnan(trgInfo.xMaxOverride)
+                    xMaxUse = trgInfo.xMaxOverride;
+
+                    xtick_dist_use = round(xMaxUse ./ 4);
+                    xtick_vals_use = [0:xtick_dist_use:xMaxUse];
+                    xtickCount_use = size(xtick_vals_use, 2);
+                    xtick_vals_use(xtickCount_use) = xMaxUse;
+                    xtick_str_all_use = cell(1, xtickCount_use);
+                    for i = 1:xtickCount_use
+                        xtick_str_all_use{i} = num2str(xtick_vals_use(i));
+                    end
+                    xtick_str_trimmed_use = xtick_str_all_use;
+                    xtick_str_trimmed_use{1} = '';
+                    clear i
+                else
+                    xtick_vals_use = xtick_vals;
+                    xtick_str_all_use = xtick_str_all;
+                    xtick_str_trimmed_use = xtick_str_trimmed;
+                end
+
                 xx = obj.leftMargin;
                 for x = 1:tpCount
                     %subplot(trgCount, tpCount, n);
@@ -127,8 +151,8 @@ classdef ProbDistroPlots
                         end
                     end
                     
-                    xlim([0 obj.xMax]);
-                    ylim([0 obj.yMax]);
+                    xlim([0 xMaxUse]);
+                    ylim([0 yMaxUse]);
 
                     %Apply/remove titles or labels as appropriate
                     ax = gca;
@@ -137,15 +161,15 @@ classdef ProbDistroPlots
                         set(gca,'YTickLabel',[]);
                     end
 
-                    if y < trgCount
+                    if (y < trgCount) & isnan(trgInfo.xMaxOverride)
                         set(gca,'XTickLabel',[]);
                     else
                         %Reduce ticks shown to avoid crowding
-                        set(gca,'XTick',xtick_vals);
+                        set(gca,'XTick',xtick_vals_use);
                         if x == 1
-                            set(gca,'XTickLabel',xtick_str_all);
+                            set(gca,'XTickLabel',xtick_str_all_use);
                         else
-                            set(gca,'XTickLabel',xtick_str_trimmed);
+                            set(gca,'XTickLabel',xtick_str_trimmed_use);
                         end
                     end
 
@@ -166,6 +190,13 @@ classdef ProbDistroPlots
                         else
                             ylabel(trgInfo.name, 'FontWeight', 'bold', 'FontSize', obj.fszYLabel);
                         end
+                    end
+
+                    if ~isnan(trgInfo.binSizeOverride) & (x == 1)
+                        yShift = yMaxUse ./ 10;
+                        xShift = xMaxUse ./ 2;
+                        text(xMaxUse - xShift, yMaxUse - yShift, ['Bin Size: ' num2str(trgInfo.binSizeOverride)]);
+                        clear xShift yShift
                     end
 
                     if x == tpCount
@@ -339,9 +370,19 @@ classdef ProbDistroPlots
                 dataGroup = ProbDistroPlots.genDataPointStruct(replicate);
             end
 
+            trgInfo = obj.targets{targetIndex};
+            xMaxUse = obj.xMax;
+            binSizeUse = obj.binSize;
+            if ~isnan(trgInfo.xMaxOverride)
+                xMaxUse = trgInfo.xMaxOverride;
+            end
+            if ~isnan(trgInfo.binSizeOverride)
+                binSizeUse = trgInfo.binSizeOverride;
+            end
+
             myhisto = dataGroup.reps(replicate);
             cellCount = size(rawCounts, 2);
-            binEdges = [0:obj.binSize:obj.xMax];
+            binEdges = [0:binSizeUse:xMaxUse];
             [myhisto.y, myhisto.x] = histcounts(rawCounts, binEdges);
             myhisto.y = myhisto.y ./ cellCount;
             myhisto.x = myhisto.x(1:size(myhisto.y, 2));
@@ -375,6 +416,9 @@ classdef ProbDistroPlots
             tstruct.subtitle = [];
             tstruct.colors = zeros(replicateCount, 3);
             tstruct.lineWidth = repmat(2, 1, replicateCount);
+            tstruct.xMaxOverride = NaN;
+            tstruct.yMaxOverride = NaN;
+            tstruct.binSizeOverride = NaN;
 
             tstruct.lineStyle = cell(1, replicateCount);
             for i = 1:replicateCount; tstruct.lineStyle{i} = '-'; end
