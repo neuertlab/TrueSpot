@@ -90,7 +90,11 @@ classdef ProbDistroPlots
                 if ~isnan(trgInfo.xMaxOverride)
                     xMaxUse = trgInfo.xMaxOverride;
 
-                    xtick_dist_use = round(xMaxUse ./ 4);
+                    if ~isnan(trgInfo.xTickDistOverride)
+                        xtick_dist_use = trgInfo.xTickDistOverride;
+                    else
+                        xtick_dist_use = round(xMaxUse ./ 4);
+                    end
                     xtick_vals_use = [0:xtick_dist_use:xMaxUse];
                     xtickCount_use = size(xtick_vals_use, 2);
                     xtick_vals_use(xtickCount_use) = xMaxUse;
@@ -419,6 +423,7 @@ classdef ProbDistroPlots
             tstruct.xMaxOverride = NaN;
             tstruct.yMaxOverride = NaN;
             tstruct.binSizeOverride = NaN;
+            tstruct.xTickDistOverride = NaN;
 
             tstruct.lineStyle = cell(1, replicateCount);
             for i = 1:replicateCount; tstruct.lineStyle{i} = '-'; end

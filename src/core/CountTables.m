@@ -38,6 +38,7 @@ classdef CountTables
                             timeData = repData(repData{:,'TIME'} == tpVal,:);
                             %timeStr.total = timeData{:,'TOTAL'}';
                             timeStr.nuc = timeData{:,'NUC'}';
+                            timeStr.nucCalls = timeData{:,'NUC'}';
                             timeStr.cyto = timeData{:,'TOTAL'}' - timeStr.nuc;
 
                             repStr.(tpName) = timeStr;
@@ -47,7 +48,7 @@ classdef CountTables
                         strainStr.(rName) = repStr;
                     end
 
-                    expStr.BY4147 = strainStr;
+                    expStr.BY4741 = strainStr;
                     eName = concNames{exp};
                     chstr.(eName) = expStr;
                 end
@@ -85,6 +86,7 @@ classdef CountTables
                     timeStr.time = tpVal;
                     timeStr.cyto = timeData{:,'EST_COUNT_CYTO'}';
                     timeStr.nuc = timeData{:,'EST_COUNT_NUC'}';
+                    timeStr.nucCalls = timeData{:,'SPOTS_NUC'}';
                     timeStr.nascent = timeData{:,'EST_NASCENT_COUNT_NUC'}';
                     timeStr.cytoSignal = timeData{:,'SIGNAL_CYTO'}';
                     timeStr.nucSignal = timeData{:,'SIGNAL_NUC'}';

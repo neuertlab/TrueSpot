@@ -3,8 +3,11 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.09.02.00';
+BUILD_STRING = '2025.01.08.00';
 VERSION_STRING = 'v1.1.1';
+
+%TODO Could the issue be due to the shape of the nucleus? Did the old masks
+%extend to the top and bottom of stack? Did these?
 
 % ========================== Process args ==========================
 
@@ -149,6 +152,9 @@ function doResultsSet(quantFilePath, tableHandle)
         end
         cellCount = size(cellDat, 2);
 
+        globalBrightTh = quant_results.globalBrightTh;
+        globalSingleInt = quant_results.globalSingleInt;
+
         for c = 1:cellCount
             myCell = cellDat(c);
             fprintf(tableHandle, '%s\t%s\t%s', iname, targetName, probeName);
@@ -157,12 +163,14 @@ function doResultsSet(quantFilePath, tableHandle)
             else
                 fprintf(tableHandle, '\t(0,0,0)');
             end
+            myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt);
+
             fprintf(tableHandle, '\t%d\t%d', c, nnz(myCell.mask_cell));
             fprintf(tableHandle, '\t%d', nnz(myCell.mask_nuc));
             fprintf(tableHandle, '\t%d\t%d', myCell.spotcount_nuc, myCell.spotcount_cyto);
             fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
             %[nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
-            myCell = myCell.updateCountEstimates();
+            %myCell = myCell.updateCountEstimates();
             fprintf(tableHandle, '\t%d\t%d', myCell.nucCount, myCell.nucNascentCount);
             fprintf(tableHandle, '\t%d', myCell.cytoCount);
             fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
