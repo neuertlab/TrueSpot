@@ -330,11 +330,29 @@ classdef CellSeg
             Y = size(nuc_ch_data,1);
             Z = size(nuc_ch_data,3);                                                       % stack size in number of images
 
+            %Z Trim
+            if(nucSegSpecs.z_max < 1); nucSegSpecs.z_max = Z; end
+
+%             nuc_ch_data_ztrim = nuc_ch_data;
+%             if(nucSegSpecs.z_min > 1)
+%                 nuc_ch_data_ztrim(:,:,1:(nucSegSpecs.z_min - 1)) = NaN;
+%             end
+%             if(nucSegSpecs.z_max < 1); nucSegSpecs.z_max = Z; end
+%             if(nucSegSpecs.z_max < Z)
+%                 nuc_ch_data_ztrim(:,:,(nucSegSpecs.z_max + 1):Z) = NaN;
+%             end
+
             STD2D = NaN(1,Z);                                                           %BK 5/16, needed this so timepoints with more stacks wouldn't be left over
             for z = 1:Z                                                                % Find the Image with the strongest DAPI signal (largest STD)
                 STD2D(z) = std2(nuc_ch_data(:,:,z));
             end
             clear z
+            if(nucSegSpecs.z_min > 1)
+                STD2D(1:(nucSegSpecs.z_min - 1)) = NaN;
+            end
+            if(nucSegSpecs.z_max < Z)
+                STD2D((nucSegSpecs.z_max + 1):Z) = NaN;
+            end
 
             [~,ip] = max(STD2D);
 
@@ -493,6 +511,15 @@ classdef CellSeg
             dapi_normal = bwareaopen(DAPI_ims_final, min_nucleus_size);                        % remove DAPI signal that are too small
             dapi_huge = bwareaopen(DAPI_ims_final, max_nucleus_size);                          % remove DAPI signal that are too large
             DAPI_ims_final = dapi_normal - dapi_huge;
+            
+%             figure(2);
+%             clf;
+%             imshow(max(dapi_normal, [], 3, 'omitnan'), []);
+% 
+%             figure(3);
+%             clf;
+%             imshow(max(DAPI_ims_final, [], 3, 'omitnan'), []);
+            
             dapi_normal = bwareaopen(nucSegRes.nuc_label_lo, min_nucleus_size);                        % remove DAPI signal that are too small
             dapi_huge = bwareaopen(nucSegRes.nuc_label_lo, max_nucleus_size);                          % remove DAPI signal that are too large
             nucSegRes.nuc_label_lo = dapi_normal - dapi_huge;
@@ -703,6 +730,12 @@ classdef CellSeg
             Y = size(light_ch_data, 1);
             Z = size(light_ch_data, 3);
 
+            nucmax = uint16(max(nuc_label, [], 3, 'omitnan'));
+
+%             figure(6);
+%             clf;
+%             imshow(nucmax, []);
+
             %Z trim
             if(params.z_min > 1)
                 light_ch_data(:,:,1:(params.z_min - 1)) = NaN;
@@ -730,6 +763,15 @@ classdef CellSeg
 
             gradmag2 = imimposemin(trans_plane, nuc_label, 26);      % generate superimposed image of the trans signal and the DAPI stained nucleus
             cells = watershed(gradmag2);                                                % segment cell using water shed algorithem
+           
+%             figure(1);
+%             clf;
+%             imshow(gradmag2, []);
+% 
+%             figure(2);
+%             clf;
+%             imshow(cells, []);
+
             cells_normal = bwareaopen(cells, params.min_cell_size);                     %filter out cells that are too small
             cells_huge = bwareaopen(cells, params.max_cell_size);                       %filter out cells that are too large
             cells_filtered = cells_normal - cells_huge;                                 % remaining cells have the right size
@@ -738,16 +780,31 @@ classdef CellSeg
             cell_count = max(Label1(:));                                                % determine the maximum number of segmented cells
             clear cells_filtered
 
-            %BH addition. Put back in nuclei that got missed
-            nonly = and(Label1 == 0, nuc_label);
-            if nnz(nonly) >= 500
-                newcells = or(Label1 ~= 0, nonly);
-                cells = bwlabeln(newcells);
-                Label1 = uint16(cells);
-                cell_count = max(Label1(:));
+%             figure(3);
+%             clf;
+%             imshow(Label1, []);
 
-                clear newcells
-            end
+            %BH addition. Clean up using nuclei info
+%             nonly = and(Label1 == 0, nucmax);
+%             if nnz(nonly) >= 500
+%                 %Merging into other cells. Need some kind of outlining to
+%                 %put back in.
+%                 nonly = imdilate(nonly, strel('disk',10));
+%                 newcells = or(Label1 ~= 0, nonly);
+%                 cells = bwlabeln(newcells);
+%                 Label1 = uint16(cells);
+%                 cell_count = max(Label1(:));
+% 
+% %                 figure(7);
+% %                 clf;
+% %                 imshow(nonly, []);
+% 
+%                 clear newcells
+%             end
+
+%             figure(4);
+%             clf;
+%             imshow(Label1, []);
 
             clear cells cells_normal cells_huge
 
@@ -776,6 +833,10 @@ classdef CellSeg
                 clear this_cell_mask cell_box box_bounds box_area
             end
 
+%             figure(5);
+%             clf;
+%             imshow(Label1, []);
+
             %generate cell label
             %[BH] This labelf appears to be for debug purposes, so I'll
             %   leave it.
@@ -795,8 +856,28 @@ classdef CellSeg
             %Analyze cell shape for further analysis
             cell_info(mm) = struct('Centroid', NaN, 'MajorAxisLength', NaN, 'MinorAxisLength', NaN, 'FilledArea', NaN, 'Image', []);
             for j = 1 : mm                                                            % organise cell information
-                % Determine cell properties
                 this_cell_mask = uint16(Lab == j);  %sieve out dots in cell j
+                
+                % Try to cleanup edge to include full nucleus
+                this_nuc_mask = immultiply(nucmax, this_cell_mask);
+                %most common nonzero value
+                all_nuc_nums = this_nuc_mask(:);
+                all_nuc_nums = all_nuc_nums(all_nuc_nums ~= 0);
+                if ~isempty(all_nuc_nums)
+                    nuc_lbl_num = mode(all_nuc_nums, 'all');
+                    trg_nuc_mask = uint16(nucmax == nuc_lbl_num);
+                    not_in_cell = immultiply(trg_nuc_mask, ~this_nuc_mask);
+                    total_nuc_pix = nnz(trg_nuc_mask);
+                    outside_cell_pix = nnz(not_in_cell);
+                    if outside_cell_pix > 0
+                        if (outside_cell_pix <= (total_nuc_pix * 0.2))
+                            Lab(outside_cell_pix) = j;
+                            this_cell_mask = uint16(Lab == j);
+                        end
+                    end
+                end
+
+                % Determine cell properties
                 try
                     cell_reg = regionprops(this_cell_mask,'Centroid','MajorAxisLength','MinorAxisLength','FilledArea','Image');
                     cell_info(j).Centroid = cell_reg.Centroid;
@@ -816,14 +897,14 @@ classdef CellSeg
             if isempty(nuc_ch_data); return; end
 
             %Z Trim
-            Z = size(nuc_ch_data, 3);
-            if(nucSegSpecs.z_min > 1)
-                nuc_ch_data(:,:,1:(nucSegSpecs.z_min - 1)) = NaN;
-            end
-            if(nucSegSpecs.z_max < 1); nucSegSpecs.z_max = Z; end
-            if(nucSegSpecs.z_max < Z)
-                nuc_ch_data(:,:,(nucSegSpecs.z_max + 1):Z) = NaN;
-            end
+%             Z = size(nuc_ch_data, 3);
+%             if(nucSegSpecs.z_min > 1)
+%                 nuc_ch_data(:,:,1:(nucSegSpecs.z_min - 1)) = NaN;
+%             end
+%             if(nucSegSpecs.z_max < 1); nucSegSpecs.z_max = Z; end
+%             if(nucSegSpecs.z_max < Z)
+%                 nuc_ch_data(:,:,(nucSegSpecs.z_max + 1):Z) = NaN;
+%             end
 
             if isnan(nucSegSpecs.dxy)
                 %From A0_segment_define_variables_streamlined_non_GUI
