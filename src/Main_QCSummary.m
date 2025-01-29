@@ -3,7 +3,7 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.12.02.00';
+BUILD_STRING = '2025.01.29.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -200,106 +200,110 @@ function doDir(thTableHandle, dirPath, baseDir)
         clear cellSeg nucleiSeg runMeta
     end
 
-    if ~isempty(srPath)
-        spotsrun = RNASpotsRun.loadFrom(srPath, false);
-        fprintf(thTableHandle, '%s', spotsrun.img_name);
-        fprintf(thTableHandle, '\t%d', spotsrun.channels.rna_ch);
-        fprintf(thTableHandle, '\t%s', spotsrun.meta.type_target);
-        fprintf(thTableHandle, '\t%s', spotsrun.meta.type_probe);
+    try
+        if ~isempty(srPath)
+            spotsrun = RNASpotsRun.loadFrom(srPath, false);
+            fprintf(thTableHandle, '%s', spotsrun.img_name);
+            fprintf(thTableHandle, '\t%d', spotsrun.channels.rna_ch);
+            fprintf(thTableHandle, '\t%s', spotsrun.meta.type_target);
+            fprintf(thTableHandle, '\t%s', spotsrun.meta.type_probe);
 
-        fprintf(thTableHandle, '\t%d', spotsrun.options.t_min);
-        fprintf(thTableHandle, '\t%d', spotsrun.options.t_max);
-        fprintf(thTableHandle, '\t%d', spotsrun.intensity_threshold);
+            fprintf(thTableHandle, '\t%d', spotsrun.options.t_min);
+            fprintf(thTableHandle, '\t%d', spotsrun.options.t_max);
+            fprintf(thTableHandle, '\t%d', spotsrun.intensity_threshold);
 
-        %Now need to load call table...
-        [~, callTable] = spotsrun.loadCallTable();
-        figHandle = renderSpotPlot(spotsrun, callTable);
-        saveas(figHandle, [dirPath filesep 'scLog.png']);
-        close(figHandle);
+            %Now need to load call table...
+            [~, callTable] = spotsrun.loadCallTable();
+            figHandle = renderSpotPlot(spotsrun, callTable);
+            saveas(figHandle, [dirPath filesep 'scLog.png']);
+            close(figHandle);
 
-        if spotsrun.intensity_threshold > 0
-            thSpotCount = nnz(callTable{:, 'dropout_thresh'} >= spotsrun.intensity_threshold);
-            fprintf(thTableHandle, '\t%d', thSpotCount);
-            clear thSpotCount
-        else
-            fprintf(thTableHandle, '\tNaN');
-        end
-
-        %If TIF is available, render spot visualization.
-        tifpath = spotsrun.paths.img_path;
-        if ~isempty(tifpath)
-            if isfile(tifpath)
-                fprintf('\tSource TIF found: %s\n', tifpath);
-                [channels, ~] = LoadTif(tifpath, spotsrun.channels.total_ch, [spotsrun.channels.rna_ch], 1);
-                sampleCh = channels{spotsrun.channels.rna_ch, 1};
-                clear channels
-
-                %Max proj
-                maxProjRaw = max(sampleCh, [], 3);
-
-                %Filter
-                [sampleFilt] = RNA_Threshold_SpotDetector.run_spot_detection_pre(...
-                    sampleCh, [dirPath filesep spotsrun.paths.out_namestem], true, spotsrun.options.dtune_gaussrad, false);
-                clear sampleCh
-
-                maxProjFilt = max(sampleFilt, [], 3);
-                clear sampleFilt
-
-                vis = SpotCallVisualization;
-                vis = vis.initializeMe();
-                vis.visCommon = vis.visCommon.initializeMe(spotsrun.dims.idims_sample);
-                vis.callTable = callTable;
-                vis.zMIPColor = true;
-
-                figHandle = figure(1);
-                clf;
-                imshow(maxProjRaw, []);
-                hold on;
-                saveas(figHandle, [dirPath filesep 'rawMIP.png']);
-
-                [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
-                if okay
-                    saveas(figHandle, [dirPath filesep 'autoSpots.png']);
-                else
-                    fprintf('\tAuto spot render failed for some reason!\n');
-                end
-                close(figHandle);
-
-                figHandle = figure(1);
-                clf;
-                imshow(maxProjFilt, []);
-                hold on;
-                saveas(figHandle, [dirPath filesep 'filtMIP.png']);
-
-                [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
-                if okay
-                    saveas(figHandle, [dirPath filesep 'autoSpotsF.png']);
-                else
-                    fprintf('\tAuto spot render (filtered) failed for some reason!\n');
-                end
-                close(figHandle);
-
-                clear vis maxProjRaw maxProjFilt
+            if spotsrun.intensity_threshold > 0
+                thSpotCount = nnz(callTable{:, 'dropout_thresh'} >= spotsrun.intensity_threshold);
+                fprintf(thTableHandle, '\t%d', thSpotCount);
+                clear thSpotCount
+            else
+                fprintf(thTableHandle, '\tNaN');
             end
-        end
 
-        clear callTable spotsrun
+            %If TIF is available, render spot visualization.
+            tifpath = spotsrun.paths.img_path;
+            if ~isempty(tifpath)
+                if isfile(tifpath)
+                    fprintf('\tSource TIF found: %s\n', tifpath);
+                    [channels, ~] = LoadTif(tifpath, spotsrun.channels.total_ch, [spotsrun.channels.rna_ch], 1);
+                    sampleCh = channels{spotsrun.channels.rna_ch, 1};
+                    clear channels
 
-        if ~isempty(qdPath)
-            load(qdPath, 'quant_results');
-            cellCount = 0;
-            if isfield(quant_results, 'cell_rna_data')
-                cellCount = size(quant_results.cell_rna_data, 2);
-            elseif isfield(quant_results, 'cellData')
-                cellCount = size(quant_results.cellData, 2);
+                    %Max proj
+                    maxProjRaw = max(sampleCh, [], 3);
+
+                    %Filter
+                    [sampleFilt] = RNA_Threshold_SpotDetector.run_spot_detection_pre(...
+                        sampleCh, [dirPath filesep spotsrun.paths.out_namestem], true, spotsrun.options.dtune_gaussrad, false);
+                    clear sampleCh
+
+                    maxProjFilt = max(sampleFilt, [], 3);
+                    clear sampleFilt
+
+                    vis = SpotCallVisualization;
+                    vis = vis.initializeMe();
+                    vis.visCommon = vis.visCommon.initializeMe(spotsrun.dims.idims_sample);
+                    vis.callTable = callTable;
+                    vis.zMIPColor = true;
+
+                    figHandle = figure(1);
+                    clf;
+                    imshow(maxProjRaw, []);
+                    hold on;
+                    saveas(figHandle, [dirPath filesep 'rawMIP.png']);
+
+                    [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
+                    if okay
+                        saveas(figHandle, [dirPath filesep 'autoSpots.png']);
+                    else
+                        fprintf('\tAuto spot render failed for some reason!\n');
+                    end
+                    close(figHandle);
+
+                    figHandle = figure(1);
+                    clf;
+                    imshow(maxProjFilt, []);
+                    hold on;
+                    saveas(figHandle, [dirPath filesep 'filtMIP.png']);
+
+                    [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
+                    if okay
+                        saveas(figHandle, [dirPath filesep 'autoSpotsF.png']);
+                    else
+                        fprintf('\tAuto spot render (filtered) failed for some reason!\n');
+                    end
+                    close(figHandle);
+
+                    clear vis maxProjRaw maxProjFilt
+                end
             end
-            fprintf(thTableHandle, '\t%d', cellCount);
-            clear quant_results
-        else
-            fprintf(thTableHandle, '\tNOQUANT');
-        end
 
-        fprintf(thTableHandle, '\n');
+            clear callTable spotsrun
+
+            if ~isempty(qdPath)
+                load(qdPath, 'quant_results');
+                cellCount = 0;
+                if isfield(quant_results, 'cell_rna_data')
+                    cellCount = size(quant_results.cell_rna_data, 2);
+                elseif isfield(quant_results, 'cellData')
+                    cellCount = size(quant_results.cellData, 2);
+                end
+                fprintf(thTableHandle, '\t%d', cellCount);
+                clear quant_results
+            else
+                fprintf(thTableHandle, '\tNOQUANT');
+            end
+
+            fprintf(thTableHandle, '\n');
+        end
+    catch Excp
+        fprintf('WARNING: Failed one or more QC steps. There is probably something wrong with this run!\n');
     end
 
 end
