@@ -3,11 +3,8 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.01.08.00';
-VERSION_STRING = 'v1.1.1';
-
-%TODO Could the issue be due to the shape of the nucleus? Did the old masks
-%extend to the top and bottom of stack? Did these?
+BUILD_STRING = '2025.02.05.00';
+VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
 
@@ -76,10 +73,14 @@ function tableHandle = openOutTable(tablePath)
     tableHandle = fopen(tablePath, 'w');
 
     outfields = {'#SRCIMGNAME' 'TARGET' 'PROBE' 'VOXDIMS'...
-        'CELLNO' 'CELLAREA(PIX)' 'NUCVOL(VOX)'...
+        'CELLNO' 'CELLAREA_PIX' 'NUCVOL_VOX'...
         'SPOTS_NUC' 'SPOTS_CYTO' 'SIGNAL_NUC' 'SIGNAL_CYTO'...
         'EST_COUNT_NUC' 'EST_NASCENT_COUNT_NUC' 'EST_COUNT_CYTO'...
-        'EST_COUNT_NUC_CLOUD' 'EST_NASCENT_COUNT_NUC_CLOUD' 'EST_COUNT_CYTO_CLOUD'};
+        'EST_COUNT_NUC_CLOUD' 'EST_NASCENT_COUNT_NUC_CLOUD' 'EST_COUNT_CYTO_CLOUD' ...
+        'NUC_TOT_INT' 'NUC_MED_INT' 'NUC_INT_STDEV' ...
+        'NUC_MAXPROJ_AREA' 'NUC_MAXPROJ_TOT_INT' 'NUC_MAXPROJ_MED_INT' 'NUC_MAXPROJ_INT_STDEV' ...
+        'CYTOVOL_VOX' 'CYTO_TOT_INT' 'CYTO_MED_INT' 'CYTO_INT_STDEV' ...
+        'CYTO_MAXPROJ_AREA' 'CYTO_MAXPROJ_TOT_INT' 'CYTO_MAXPROJ_MED_INT' 'CYTO_MAXPROJ_INT_STDEV'};
     field_count = size(outfields, 2);
     for ii = 1:field_count
         if ii > 1; fprintf(tableHandle, '\t'); end
@@ -155,6 +156,8 @@ function doResultsSet(quantFilePath, tableHandle)
         globalBrightTh = quant_results.globalBrightTh;
         globalSingleInt = quant_results.globalSingleInt;
 
+        CSTATS_COL_COUNT = 15;
+
         for c = 1:cellCount
             myCell = cellDat(c);
             fprintf(tableHandle, '%s\t%s\t%s', iname, targetName, probeName);
@@ -175,6 +178,72 @@ function doResultsSet(quantFilePath, tableHandle)
             fprintf(tableHandle, '\t%d', myCell.cytoCount);
             fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
             fprintf(tableHandle, '\t%d', myCell.cytoCloud);
+
+            if ~isempty(myCell.cell_stats)
+
+                suffixes = {'intensity_total' 'intensity_median' 'intensity_stdev'};
+                fmtwrite = {'\t%d' '\t%d' '\t%.3f'};
+                ifieldcount = size(suffixes, 2);
+
+                %Nuc3
+                for i = 1:ifieldcount
+                    myFieldName = ['nuc_' suffixes{i}];
+                    if isfield(myCell.cell_stats, myFieldName)
+                        fprintf(tableHandle, fmtwrite{i}, myCell.cell_stats.(myFieldName));
+                    else
+                        fprintf(tableHandle, '\tNaN');
+                    end
+                end
+
+                %Nuc Max
+                if isfield(myCell.cell_stats, 'nuc_max_area')
+                    fprintf(tableHandle, '\t%d', myCell.cell_stats.nuc_max_area);
+                else
+                    fprintf(tableHandle, '\tNaN');
+                end
+                for i = 1:ifieldcount
+                    myFieldName = ['nuc_max_' suffixes{i}];
+                    if isfield(myCell.cell_stats, myFieldName)
+                        fprintf(tableHandle, fmtwrite{i}, myCell.cell_stats.(myFieldName));
+                    else
+                        fprintf(tableHandle, '\tNaN');
+                    end
+                end
+
+                %Cyto3
+                if isfield(myCell.cell_stats, 'cyto_vol')
+                    fprintf(tableHandle, '\t%d', myCell.cell_stats.cyto_vol);
+                else
+                    fprintf(tableHandle, '\tNaN');
+                end
+                for i = 1:ifieldcount
+                    myFieldName = ['cyto_' suffixes{i}];
+                    if isfield(myCell.cell_stats, myFieldName)
+                        fprintf(tableHandle, fmtwrite{i}, myCell.cell_stats.(myFieldName));
+                    else
+                        fprintf(tableHandle, '\tNaN');
+                    end
+                end
+
+                %Cyto Max
+                if isfield(myCell.cell_stats, 'cyto_max_area')
+                    fprintf(tableHandle, '\t%d', myCell.cell_stats.cyto_max_area);
+                else
+                    fprintf(tableHandle, '\tNaN');
+                end
+                for i = 1:ifieldcount
+                    myFieldName = ['cyto_max_' suffixes{i}];
+                    if isfield(myCell.cell_stats, myFieldName)
+                        fprintf(tableHandle, fmtwrite{i}, myCell.cell_stats.(myFieldName));
+                    else
+                        fprintf(tableHandle, '\tNaN');
+                    end
+                end
+            else
+                for i = 1:CSTATS_COL_COUNT
+                    fprintf(tableHandle, '\tNaN');
+                end
+            end
 
             fprintf(tableHandle, '\n');
             clear myCell

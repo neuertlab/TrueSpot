@@ -563,7 +563,7 @@ classdef SingleCell
                 obj.cell_stats.nuc_intensity_stdev = std(cnuc2, 0, 'all', 'omitnan');
             end
 
-            %Cyto/Full cell TODO
+            %Cyto/Full cell
             if ndims(obj.mask_cyto) > 2
                 if ndims(obj.mask_cell) > 2
                     obj.cell_stats.cell_vol = nnz(obj.mask_cell);
