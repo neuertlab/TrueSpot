@@ -595,6 +595,7 @@ classdef RNAQuant
         function my_cell = FitGaussians3Cell(cell_img_nobkg, my_cell, xy_rad, z_rad, b_filters)
 
             my_cell = my_cell.calculateNuclearEllipticity(); %Precalculate to reduce redundancy
+            my_cell = my_cell.getBasicStats(cell_img_nobkg);
             spot_count = my_cell.getSpotCount();
             if spot_count <= 0; return; end %No spots in this cell. No need to do anything else.
             

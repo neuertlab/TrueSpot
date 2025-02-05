@@ -10,6 +10,7 @@ classdef SingleCell
         cell_number; %Index in cell mask
         cell_loc; %struct describing rectangle encompassing this cell in its original image
         dim_z; %Z dimension of source image
+        cell_stats;
         
         mask_cell; %Boolean filter box.
         mask_nuc; %Same xy dims as cell box.
@@ -503,6 +504,127 @@ classdef SingleCell
 
             keepSet = and(nascentOkay, nucOkay);
             cloudList = myclouds(keepSet);
+
+        end
+
+        %%
+        function obj = getBasicStats(obj, cell_img)
+            obj.cell_stats = struct();
+            cell_img = double(cell_img);
+
+            %Nucleus
+            if ndims(obj.mask_nuc) > 2
+                % 3D
+                cnuc3 = immultiply(cell_img, obj.mask_nuc);
+                cnuc3(cnuc3 == 0) = NaN;
+                obj.cell_stats.nuc_vol = nnz(obj.mask_nuc);
+                obj.cell_stats.nuc_intensity_total = sum(cnuc3, 'all', 'omitnan');
+                obj.cell_stats.nuc_intensity_mean = mean(cnuc3, 'all', 'omitnan');
+                obj.cell_stats.nuc_intensity_median = median(cnuc3, 'all', 'omitnan');
+                obj.cell_stats.nuc_intensity_stdev = std(cnuc3, 0, 'all', 'omitnan');
+
+                % Max proj
+                cmax = max(cell_img, [], 3, 'omitnan');
+                nuc2 = max(obj.mask_nuc, [], 3, 'omitnan');
+                cnucmax = immultiply(cmax, nuc2);
+                cnucmax(cnucmax == 0) = NaN;
+                obj.cell_stats.nuc_max_area = nnz(nuc2);
+                obj.cell_stats.nuc_max_intensity_total = sum(cnucmax, 'all', 'omitnan');
+                obj.cell_stats.nuc_max_intensity_mean = mean(cnucmax, 'all', 'omitnan');
+                obj.cell_stats.nuc_max_intensity_median = median(cnucmax, 'all', 'omitnan');
+                obj.cell_stats.nuc_max_intensity_stdev = std(cnucmax, 0, 'all', 'omitnan');
+
+                % Per slice
+                slice_count = size(obj.mask_nuc, 3);
+                obj.cell_stats.nuc_slices_stats = cell(1, slice_count);
+                for z = 1:slice_count
+                    stat_struct = struct();
+                    cnucz = immultiply(cell_img(:,:,z), obj.mask_nuc(:,:,z));
+                    cnucz(cnucz == 0) = NaN;
+
+                    stat_struct.nuc_slice_area = nnz(cnucz);
+                    stat_struct.nuc_slice_intensity_total = sum(cnucz, 'all', 'omitnan');
+                    stat_struct.nuc_slice_intensity_mean = mean(cnucz, 'all', 'omitnan');
+                    stat_struct.nuc_slice_intensity_median = median(cnucz, 'all', 'omitnan');
+                    stat_struct.nuc_slice_intensity_stdev = std(cnucz, 0, 'all', 'omitnan');
+
+                    obj.cell_stats.nuc_slices_stats{z} = stat_struct;
+                end
+
+            else
+                %Just the 2D
+                cmax = max(cell_img, [], 3, 'omitnan');
+                cnuc2 = immultiply(cmax, obj.mask_nuc);
+                cnuc2(cnuc2 == 0) = NaN;
+                obj.cell_stats.nuc_area = nnz(obj.mask_nuc);
+                obj.cell_stats.nuc_intensity_total = sum(cnuc2, 'all', 'omitnan');
+                obj.cell_stats.nuc_intensity_mean = mean(cnuc2, 'all', 'omitnan');
+                obj.cell_stats.nuc_intensity_median = median(cnuc2, 'all', 'omitnan');
+                obj.cell_stats.nuc_intensity_stdev = std(cnuc2, 0, 'all', 'omitnan');
+            end
+
+            %Cyto/Full cell TODO
+            if ndims(obj.mask_cyto) > 2
+                if ndims(obj.mask_cell) > 2
+                    obj.cell_stats.cell_vol = nnz(obj.mask_cell);
+                    cell_mask2 = max(obj.mask_cell, [], 3, 'omitnan');
+                else
+                    obj.cell_stats.cell_area = nnz(obj.mask_cell);
+                    cell_mask2 = obj.mask_cell;
+                end
+                obj.cell_stats.cyto_vol = nnz(obj.mask_cyto);
+
+                ccyto3 = immultiply(cell_img, obj.mask_cyto);
+                ccyto3(ccyto3 == 0) = NaN;
+                obj.cell_stats.cyto_intensity_total = sum(ccyto3, 'all', 'omitnan');
+                obj.cell_stats.cyto_intensity_mean = mean(ccyto3, 'all', 'omitnan');
+                obj.cell_stats.cyto_intensity_median = median(ccyto3, 'all', 'omitnan');
+                obj.cell_stats.cyto_intensity_stdev = std(ccyto3, 0, 'all', 'omitnan');
+
+                % Max proj (use inverse of nuc mask max proj)
+                if ndims(obj.mask_nuc) > 2
+                    nuc_mask2 = max(obj.mask_nuc, [], 3, 'omitnan');
+                else
+                    nuc_mask2 = obj.mask_nuc;
+                end
+                cmax = max(cell_img, [], 3, 'omitnan');
+                cytomask2 = and(cell_mask2, ~nuc_mask2);
+                ccmax = immultiply(cmax, cytomask2);
+                ccmax(ccmax == 0) = NaN;
+                obj.cell_stats.cyto_max_area = nnz(ccmax);
+                obj.cell_stats.cyto_max_intensity_total = sum(ccmax, 'all', 'omitnan');
+                obj.cell_stats.cyto_max_intensity_mean = mean(ccmax, 'all', 'omitnan');
+                obj.cell_stats.cyto_max_intensity_median = median(ccmax, 'all', 'omitnan');
+                obj.cell_stats.cyto_max_intensity_stdev = std(ccmax, 0, 'all', 'omitnan');
+
+                % Per slice
+                slice_count = size(obj.mask_cyto, 3);
+                obj.cell_stats.cyto_slices_stats = cell(1, slice_count);
+                for z = 1:slice_count
+                    stat_struct = struct();
+                    ccz = immultiply(cell_img(:,:,z), obj.mask_cyto(:,:,z));
+                    ccz(ccz == 0) = NaN;
+
+                    stat_struct.cyto_slice_area = nnz(ccz);
+                    stat_struct.cyto_slice_intensity_total = sum(ccz, 'all', 'omitnan');
+                    stat_struct.cyto_slice_intensity_mean = mean(ccz, 'all', 'omitnan');
+                    stat_struct.cyto_slice_intensity_median = median(ccz, 'all', 'omitnan');
+                    stat_struct.cyto_slice_intensity_stdev = std(ccz, 0, 'all', 'omitnan');
+
+                    obj.cell_stats.cyto_slices_stats{z} = stat_struct;
+                end
+            else
+                obj.cell_stats.cell_area = nnz(obj.mask_cell);
+                obj.cell_stats.cyto_area = nnz(obj.mask_cyto);
+                
+                cmax = max(cell_img, [], 3, 'omitnan');
+                ccyto2 = immultiply(cmax, obj.mask_cyto);
+                ccyto2(ccyto2 == 0) = NaN;
+                obj.cell_stats.cyto_intensity_total = sum(ccyto2, 'all', 'omitnan');
+                obj.cell_stats.cyto_intensity_mean = mean(ccyto2, 'all', 'omitnan');
+                obj.cell_stats.cyto_intensity_median = median(ccyto2, 'all', 'omitnan');
+                obj.cell_stats.cyto_intensity_stdev = std(ccyto2, 0, 'all', 'omitnan');
+            end
 
         end
 
