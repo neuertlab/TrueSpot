@@ -556,6 +556,10 @@ classdef CellSeg
             nuc_max_proj = max(nuc_ch_data(:,:,min_slice:max_slice), [], 3, 'omitnan');
             clear min_slice max_slice
 
+%             figure(1);
+%             clf;
+%             imshow(nuc_max_proj, []);
+
             Label_low = zeros(Y,X,Z);                                      % generate zero 3D matrix of the size of the image stack
             Label_mid = zeros(Y,X,Z);
             Label_hi = zeros(Y,X,Z);
@@ -569,6 +573,10 @@ classdef CellSeg
             % Thresholding by individual cells
             for i = 1:nuc_count
                 k1 = (dapi_label_low1 == i);                                                  % Single cell per image
+
+%                 figure(9);
+%                 clf;
+%                 imshow(max(k1, [], 3), []);
 
                 [ys, xs] = ind2sub(size(k1), find(k1));
                 sumposx = sum(xs(:)); sumposy = sum(ys(:));
@@ -626,6 +634,10 @@ classdef CellSeg
                 dapi_cell_max(other_nuc == 1) = min(temp1(:));                                 %Set the intensity of the other nuclei to the min
                 clear area1 other_nuc temp1
 
+%                 figure(3);
+%                 clf;
+%                 imshow(dapi_cell_max, []);
+
                 %TODO [BH] If corners (xx and yy) are vectors, will this be a
                 %problem?
                 dapi_cell2 = dapi_cell(yy0:yy1,xx0:xx1,:);
@@ -633,21 +645,51 @@ classdef CellSeg
                 dapi_cell2max(dapi_cell2max == 0) = NaN;  %This makes all zero elements NaN instead
                 clear dapi_cell dapi_cell_max
 
+%                 figure(8);
+%                 clf;
+%                 imshow(dapi_cell2max, []);
+% 
+%                 figure(12);
+%                 clf;
+%                 imshow(max(dapi_cell2, [], 3), []);
+
                 % Determine thresholds based on cutoffs in cdf
                 [ysss, xsss] = ecdf(dapi_cell2max(:));                                       %determine cumulative distribution                                                  %Find values closest to certain threshold in cumulative distribution function
                 z2sss = abs(ysss - cumul_cutoff);                        %threshold at cutoff for cumulative distribution function
                 mm5 = xsss(find((z2sss == min(z2sss)), 1, 'first'));                          %threshold at cutoff for cumulative distribution function                      %threshold at cutoff for cumulative distribution function
                 mm4 = mm5 * 0.9;
                 mm6 = mm5 * 1.1;
-                clear cumul_cutoff dapi_cell2max ysss xsss z2sss
+
+%                 figure(11);
+%                 clf;
+%                 plot(xsss, ysss);
+
+                clear cumul_cutoff ysss xsss z2sss
 
                 m1 = mm4;                                                       % set "LOW" threshold to first cumulative distribution cutoff
                 m2 = mm5;                                                       % set "MID" threshold to second of cumulative distribution cutoff
                 m3 = mm6;                                                       % set "HI" threshold to third of cumulative distribution cutoff
+                filtxy_A = (dapi_cell2max > m1);
+                filtxy_B = (dapi_cell2max > m2);
+                filtxy_C = (dapi_cell2max > m3);
                 dapi_label3A = dapi_cell2 > (m1);                                        % "LOW" generate 3D binary image above the thresholds
                 dapi_label3B = dapi_cell2 > (m2);                                        % "MID" generate 3D binary image above the thresholds
                 dapi_label3C = dapi_cell2 > (m3);                                        % "HI" generate 3D binary image above the thresholds
-                clear m1 m2 m3 mm4 mm5 mm6
+                clear m1 m2 m3 mm4 mm5 mm6 dapi_cell2max
+
+                for z = 1:Z
+                    dapi_label3A(:,:,z) = immultiply(dapi_label3A(:,:,z), filtxy_A);
+                    dapi_label3B(:,:,z) = immultiply(dapi_label3B(:,:,z), filtxy_B);
+                    dapi_label3C(:,:,z) = immultiply(dapi_label3C(:,:,z), filtxy_C);
+                end
+
+%                 figure(4);
+%                 clf;
+%                 imshow(max(dapi_label3A, [], 3), []);
+% 
+%                 figure(7);
+%                 clf;
+%                 imshow(max(dapi_label3B, [], 3), []);
 
                 % This fills holes in the image in 3D, but it is very computationally intensive
                 %%% Below fills in holes and takes the most connected area in 2D
@@ -666,6 +708,14 @@ classdef CellSeg
                 dapi_label3B = (dapi_label_mid == mode(dapi_label_mid(dapi_label_mid > 0)));                                        % "MID" fill holes in image
                 dapi_label3C = (dapi_label_hi == mode(dapi_label_hi(dapi_label_hi > 0)));
                 clear dapi_label_low dapi_label_mid dapi_label_hi
+
+%                 figure(5);
+%                 clf;
+%                 imshow(max(dapi_label3A, [], 3), []);
+% 
+%                 figure(6);
+%                 clf;
+%                 imshow(max(dapi_label3B, [], 3), []);
 
                 % Eliminate Cells at the border
                 temp_props = regionprops3(dapi_label3A,'BoundingBox') ;              %Obtain axis lengths for nucleus with low threshold
@@ -698,6 +748,10 @@ classdef CellSeg
                     Label_mid(yy0:yy1,xx0:xx1,:) = Label_mid(yy0:yy1,xx0:xx1,:) + dapi_label3B;                                   % Add to label matrix 'MID'
                     Label_hi(yy0:yy1,xx0:xx1,:) = Label_hi(yy0:yy1,xx0:xx1,:) + dapi_label3C;                                     % Add to label matrix 'HI'
 
+%                     figure(10);
+%                     clf;
+%                     imshow(max(Label_low, [], 3), []);
+
                     Label_index = uint16(Label_index) + Imzero;
                 else
                     %Too close to image edge, remove it.
@@ -710,6 +764,10 @@ classdef CellSeg
             nucSegRes.lbl_lo = Label_low > 0;                                   % Make sure it is binary image
             nucSegRes.lbl_mid = Label_mid > 0;                                   % Make sure it is binary image
             nucSegRes.lbl_hi = Label_hi > 0;                                     % Make sure it is binary image
+
+%             figure(2);
+%             clf;
+%             imshow(max(nucSegRes.lbl_mid, [], 3), []);
 
             nucSegRes.nuclei = Label_index;                                                       % max projection of the segmented dapi signals using the 50% threshold
         
