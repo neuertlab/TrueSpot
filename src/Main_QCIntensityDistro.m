@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2024.12.12.00';
+BUILD_STRING = '2025.02.15.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -19,6 +19,8 @@ zmax = 0; %Max z to use for trimmed stats
 blockZ = 8;
 blockXY = 256;
 outputSpotMasks = false;
+nodpc = false;
+nameincl = [];
 
 lastkey = [];
 for i = 1:nargin
@@ -34,6 +36,10 @@ for i = 1:nargin
         if strcmp(lastkey, "wspotmask")
             outputSpotMasks = true;
             if arg_debug; fprintf("Spot Mask Output: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "nodpc")
+            nodpc = true;
+            if arg_debug; fprintf("Dead Pixel Removal: Off\n"); end
             lastkey = [];
         end
         
@@ -62,6 +68,9 @@ for i = 1:nargin
         elseif strcmp(lastkey, "localz")
             blockZ = Force2Num(argval);
             if arg_debug; fprintf("Local Block Z Size Set: %s\n", num2str(blockZ)); end
+        elseif strcmp(lastkey, "namecontains")
+            nameincl = argval;
+            if arg_debug; fprintf("Run Names Must Include String: %s\n", nameincl); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -91,7 +100,7 @@ if ~isfolder(output_dir); mkdir(output_dir); end
 % ========================== Recursive Scan ==========================
 
 try
-    doDir(input_dir, output_dir, zmin, zmax, blockXY, blockZ, outputSpotMasks);
+    doDir(input_dir, output_dir, zmin, zmax, blockXY, blockZ, outputSpotMasks, nodpc, nameincl);
 catch MEx
     fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', input_dir);
     %disp(MEx.message);
@@ -518,7 +527,7 @@ function spotProfile = getSpotProfileCall(spotsrun, imageData, call_table, gauss
     spotProfile.spotData = spTable;
 end
 
-function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks)
+function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks, nodpc, nameincl)
     %Look for a spotsrun (and quant, if available)
     fprintf('Scanning %s ...\n', dirPath);
     dirContents = dir(dirPath);
@@ -542,10 +551,20 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks)
                 end
             end
         else
-            if endsWith(fname, '_rnaspotsrun.mat')
-                srPath = [dirPath filesep fname];
-            elseif endsWith(fname, '_quantData.mat')
-                qdPath = [dirPath filesep fname];
+            if ~isempty(nameincl)
+                if contains(fname, nameincl)
+                    if endsWith(fname, '_rnaspotsrun.mat')
+                        srPath = [dirPath filesep fname];
+                    elseif endsWith(fname, '_quantData.mat')
+                        qdPath = [dirPath filesep fname];
+                    end
+                end
+            else
+                if endsWith(fname, '_rnaspotsrun.mat')
+                    srPath = [dirPath filesep fname];
+                elseif endsWith(fname, '_quantData.mat')
+                    qdPath = [dirPath filesep fname];
+                end
             end
         end
     end
@@ -578,6 +597,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks)
             intensityStats.trim_z_min = zmin;
             intensityStats.trim_z_max = zmax;
             intensityStats.threshold_results = tres;
+            intensityStats.nodpc = nodpc;
 
             if isfield(spotsrun.meta, 'noProbe_flag')
                 intensityStats.noprobe = spotsrun.meta.noProbe_flag;
@@ -598,6 +618,14 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks)
             sampleCh = channels{spotsrun.channels.rna_ch, 1};
             sampleCh = uint16(sampleCh); %Reduce memory size
             clear channels;
+
+            if ~nodpc
+                %Clean out dead pixels
+                dead_pix_path = [spotsrun.getFullOutStem() '_deadpix_idistro.mat'];
+                fprintf('\tCleaning dead pixels. Dead pixel annotation saving to: %s\n', dead_pix_path);
+                RNA_Threshold_Common.saveDeadPixels(sampleCh, dead_pix_path, true);
+                sampleCh = RNA_Threshold_Common.cleanDeadPixels(sampleCh, dead_pix_path, true);
+            end
 
             Z = size(sampleCh, 3);
             Y = size(sampleCh, 1);
