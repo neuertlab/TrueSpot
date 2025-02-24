@@ -60,7 +60,7 @@ classdef CountTables
 
         function tableData = loadTSDumpTable(path, timeColFunc, timeUnit)
             %Target -> Time
-            fmtStr = [repmat('%s', 1, 4) repmat('%d', 1, 13)];
+            fmtStr = [repmat('%s', 1, 4) repmat('%d', 1, 13) repmat('%f', 1, 15)];
             rawTable = readtable(path, 'FileType', 'text', 'Delimiter', '\t', 'Format', fmtStr);
             rawTable = timeColFunc(rawTable, 'TIME', timeUnit);
 
@@ -90,8 +90,8 @@ classdef CountTables
                     timeStr.nascent = timeData{:,'EST_NASCENT_COUNT_NUC'}';
                     timeStr.cytoSignal = timeData{:,'SIGNAL_CYTO'}';
                     timeStr.nucSignal = timeData{:,'SIGNAL_NUC'}';
-                    timeStr.cellAreaPix = timeData{:,'CELLAREA_PIX_'}';
-                    timeStr.nucVolVox = timeData{:,'NUCVOL_VOX_'}';
+                    timeStr.cellAreaPix = timeData{:,'CELLAREA_PIX'}';
+                    timeStr.nucVolVox = timeData{:,'NUCVOL_VOX'}';
                     timeStr.voxelDimsString = timeData{:,'VOXDIMS'}';
 
                     trgStr.(tpName) = timeStr;
