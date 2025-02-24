@@ -5,22 +5,13 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.02.15.00';
+BUILD_STRING = '2025.02.19.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
 arg_debug = true; %CONSTANT used for debugging arg parser.
 
-input_dir = []; %Give a dir for a batch and it will look recursively through it for TS results.
-output_dir = []; %Defaults to input dir/IntensityDistro. Place to put intensity stat profiles.
-zmin = 0; %Min z to use for trimmed stats
-zmax = 0; %Max z to use for trimmed stats
-
-blockZ = 8;
-blockXY = 256;
-outputSpotMasks = false;
-nodpc = false;
-nameincl = [];
+opStruct = genOptionsStruct();
 
 lastkey = [];
 for i = 1:nargin
@@ -34,12 +25,16 @@ for i = 1:nargin
         end
 
         if strcmp(lastkey, "wspotmask")
-            outputSpotMasks = true;
+            opStruct.outputSpotMasks = true;
             if arg_debug; fprintf("Spot Mask Output: On\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "nodpc")
-            nodpc = true;
+            opStruct.nodpc = true;
             if arg_debug; fprintf("Dead Pixel Removal: Off\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "noprobe")
+            opStruct.forceNoProbe = true;
+            if arg_debug; fprintf("Force No Probe: On\n"); end
             lastkey = [];
         end
         
@@ -51,26 +46,26 @@ for i = 1:nargin
         
         %Value
         if strcmp(lastkey, "input")
-            input_dir = argval;
-            if arg_debug; fprintf("Input Directory Set: %s\n", input_dir); end
+            opStruct.input_dir = argval;
+            if arg_debug; fprintf("Input Directory Set: %s\n", opStruct.input_dir); end
         elseif strcmp(lastkey, "output")
-            output_dir = argval;
-            if arg_debug; fprintf("Output Directory Set: %s\n", output_dir); end
+            opStruct.output_dir = argval;
+            if arg_debug; fprintf("Output Directory Set: %s\n", opStruct.output_dir); end
         elseif strcmp(lastkey, "zmin")
-            zmin = Force2Num(argval);
-            if arg_debug; fprintf("Trim Z Min Set: %s\n", num2str(zmin)); end
+            opStruct.zmin = Force2Num(argval);
+            if arg_debug; fprintf("Trim Z Min Set: %s\n", num2str(opStruct.zmin)); end
         elseif strcmp(lastkey, "zmax")
-            zmax = Force2Num(argval);
-            if arg_debug; fprintf("Trim Z Max Set: %s\n", num2str(zmax)); end
+            opStruct.zmax = Force2Num(argval);
+            if arg_debug; fprintf("Trim Z Max Set: %s\n", num2str(opStruct.zmax)); end
         elseif strcmp(lastkey, "localxy")
-            blockXY = Force2Num(argval);
-            if arg_debug; fprintf("Local Block XY Size Set: %s\n", num2str(blockXY)); end
+            opStruct.blockXY = Force2Num(argval);
+            if arg_debug; fprintf("Local Block XY Size Set: %s\n", num2str(opStruct.blockXY)); end
         elseif strcmp(lastkey, "localz")
-            blockZ = Force2Num(argval);
-            if arg_debug; fprintf("Local Block Z Size Set: %s\n", num2str(blockZ)); end
+            opStruct.blockZ = Force2Num(argval);
+            if arg_debug; fprintf("Local Block Z Size Set: %s\n", num2str(opStruct.blockZ)); end
         elseif strcmp(lastkey, "namecontains")
-            nameincl = argval;
-            if arg_debug; fprintf("Run Names Must Include String: %s\n", nameincl); end
+            opStruct.nameincl = argval;
+            if arg_debug; fprintf("Run Names Must Include String: %s\n", opStruct.nameincl); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -79,30 +74,30 @@ end
 
 %--- Check args (Fill in defaults based on inputs)
 
-if isempty(input_dir)
+if isempty(opStruct.input_dir)
     fprintf('Please provide an input directory!\n');
     return;
 end
 
-if isempty(output_dir)
-    output_dir = [input_dir filesep 'IntensityDistro'];
+if isempty(opStruct.output_dir)
+    opStruct.output_dir = [opStruct.input_dir filesep 'IntensityDistro'];
 end
 
 fprintf('Main_QCIntensityDistro\n');
 fprintf('Script Version: %s\n', BUILD_STRING);
 fprintf('TrueSpot Version: %s\n', VERSION_STRING);
 fprintf('Run Start: %s\n', datetime);
-fprintf('Input: %s\n', input_dir);
-fprintf('Output: %s\n', output_dir);
+fprintf('Input: %s\n', opStruct.input_dir);
+fprintf('Output: %s\n', opStruct.output_dir);
 
-if ~isfolder(output_dir); mkdir(output_dir); end
+if ~isfolder(opStruct.output_dir); mkdir(opStruct.output_dir); end
 
 % ========================== Recursive Scan ==========================
 
 try
-    doDir(input_dir, output_dir, zmin, zmax, blockXY, blockZ, outputSpotMasks, nodpc, nameincl);
+    doDir(opStruct.input_dir, opStruct);
 catch MEx
-    fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', input_dir);
+    fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', opStruct.input_dir);
     %disp(MEx.message);
     disp(MEx.getReport('extended'));
 end
@@ -110,6 +105,21 @@ end
 end
 
 % ========================== Additional Functions ==========================
+
+function opStruct = genOptionsStruct()
+    opStruct = struct();
+    opStruct.input_dir = [];
+    opStruct.output_dir = []; %Defaults to input dir/IntensityDistro. Place to put intensity stat profiles.
+    opStruct.zmin = 0; %Min z to use for trimmed stats
+    opStruct.zmax = 0; %Max z to use for trimmed stats
+    
+    opStruct.blockZ = 8;
+    opStruct.blockXY = 256;
+    opStruct.outputSpotMasks = false;
+    opStruct.nodpc = false;
+    opStruct.nameincl = [];
+    opStruct.forceNoProbe = false;
+end
 
 function [fieldNames, fieldTypes] = getSpotProfileTableFields()
     fieldNames = {'x' 'y' 'z' 'cell' 'dropout_thresh' 'nascent_flag' 'nuc_flag' ...
@@ -527,7 +537,7 @@ function spotProfile = getSpotProfileCall(spotsrun, imageData, call_table, gauss
     spotProfile.spotData = spTable;
 end
 
-function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks, nodpc, nameincl)
+function doDir(dirPath, opStruct)
     %Look for a spotsrun (and quant, if available)
     fprintf('Scanning %s ...\n', dirPath);
     dirContents = dir(dirPath);
@@ -543,7 +553,7 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks,
             if ~strcmp(fname, '.') & ~strcmp(fname, '..')
                 subdirPath = [dirPath filesep fname];
                 try
-                    doDir(subdirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks);
+                    doDir(subdirPath, opStruct);
                 catch MEx
                     fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', subdirPath);
                     %disp(MEx.message);
@@ -551,8 +561,8 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks,
                 end
             end
         else
-            if ~isempty(nameincl)
-                if contains(fname, nameincl)
+            if ~isempty(opStruct.nameincl)
+                if contains(fname, opStruct.nameincl)
                     if endsWith(fname, '_rnaspotsrun.mat')
                         srPath = [dirPath filesep fname];
                     elseif endsWith(fname, '_quantData.mat')
@@ -594,17 +604,21 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks,
             intensityStats.threshold = spotsrun.intensity_threshold;
             intensityStats.gaussrad = spotsrun.options.dtune_gaussrad;
             intensityStats.noprobe = false;
-            intensityStats.trim_z_min = zmin;
-            intensityStats.trim_z_max = zmax;
+            intensityStats.trim_z_min = opStruct.zmin;
+            intensityStats.trim_z_max = opStruct.zmax;
             intensityStats.threshold_results = tres;
-            intensityStats.nodpc = nodpc;
+            intensityStats.nodpc = opStruct.nodpc;
 
-            if isfield(spotsrun.meta, 'noProbe_flag')
-                intensityStats.noprobe = spotsrun.meta.noProbe_flag;
-            end
-            if isfield(spotsrun.options, 'noProbe_flag')
-                %From a bug in the Spots main. Overrides.
-                intensityStats.noprobe = spotsrun.options.noProbe_flag;
+            if opStruct.forceNoProbe
+                intensityStats.noprobe = true;
+            else
+                if isfield(spotsrun.meta, 'noProbe_flag')
+                    intensityStats.noprobe = spotsrun.meta.noProbe_flag;
+                end
+                if isfield(spotsrun.options, 'noProbe_flag')
+                    %From a bug in the Spots main. Overrides.
+                    intensityStats.noprobe = spotsrun.options.noProbe_flag;
+                end
             end
 
             %Load source image
@@ -619,13 +633,16 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks,
             sampleCh = uint16(sampleCh); %Reduce memory size
             clear channels;
 
-            if ~nodpc
+            if ~opStruct.nodpc
                 %Clean out dead pixels
                 dead_pix_path = [spotsrun.getFullOutStem() '_deadpix_idistro.mat'];
                 fprintf('\tCleaning dead pixels. Dead pixel annotation saving to: %s\n', dead_pix_path);
                 RNA_Threshold_Common.saveDeadPixels(sampleCh, dead_pix_path, true);
                 sampleCh = RNA_Threshold_Common.cleanDeadPixels(sampleCh, dead_pix_path, true);
             end
+
+            zmin = opStruct.zmin;
+            zmax = opStruct.zmax;
 
             Z = size(sampleCh, 3);
             Y = size(sampleCh, 1);
@@ -679,21 +696,21 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks,
 
             fprintf('\t> Working on image background...\n');
             currentMask = and(~cellMaskBool, ~spotMask);
-            intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct(), localXY, localZ);
+            intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
             if(doTrimmed)
                 intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
             end
 
             fprintf('\t> Working on cell background...\n');
             currentMask = and(cellMaskBool, ~spotMask);
-            intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct(), localXY, localZ);
+            intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
             if(doTrimmed)
                 intensityStats.statsRawZTrim.cbkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
             end
 
             if ~intensityStats.noprobe
                 fprintf('\t> Working on overall spots...\n');
-                intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct(), localXY, localZ);
+                intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct(), opStruct.blockXY, opStruct.blockZ);
                 if(doTrimmed)
                     intensityStats.statsRawZTrim.spotsTotal = takeStats(sampleCh(:,:,zmin:zmax), spotMask(:,:,zmin:zmax), struct(), 0, 0);
                 end
@@ -775,11 +792,11 @@ function doDir(dirPath, outputDir, zmin, zmax, localXY, localZ, outputSpotMasks,
             intensityStats.cellProfile = cellTable;
 
             %Save
-            savepath = [outputDir, filesep, spotsrun.img_name '_istats.mat'];
+            savepath = [opStruct.outputDir, filesep, spotsrun.img_name '_istats.mat'];
             save(savepath, 'intensityStats');
 
             if outputSpotMasks & ~intensityStats.noprobe
-                savepath = [outputDir, filesep, spotsrun.img_name '_spotmask.tif'];
+                savepath = [opStruct.outputDir, filesep, spotsrun.img_name '_spotmask.tif'];
                 tifop = struct('overwrite', true);
                 spotMask = uint8(spotMask);
                 saveastiff(spotMask, savepath, tifop);
