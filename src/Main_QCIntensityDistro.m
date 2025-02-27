@@ -5,8 +5,11 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.02.19.00';
+BUILD_STRING = '2025.02.27.00';
 VERSION_STRING = 'v1.1.2';
+
+%TODO Add correction matrix input
+%TODO Add nuc/cyto division to per-cell...
 
 % ========================== Process args ==========================
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -66,6 +69,9 @@ for i = 1:nargin
         elseif strcmp(lastkey, "namecontains")
             opStruct.nameincl = argval;
             if arg_debug; fprintf("Run Names Must Include String: %s\n", opStruct.nameincl); end
+        elseif strcmp(lastkey, "correctionmtx")
+            opStruct.correctionmtx = argval;
+            if arg_debug; fprintf("Correction matrix MAT path: %s\n", opStruct.correctionmtx); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -119,6 +125,7 @@ function opStruct = genOptionsStruct()
     opStruct.nodpc = false;
     opStruct.nameincl = [];
     opStruct.forceNoProbe = false;
+    opStruct.correctionmtx = [];
 end
 
 function [fieldNames, fieldTypes] = getSpotProfileTableFields()
@@ -145,10 +152,10 @@ end
 
 function [fieldNames, fieldTypes] = getCellTableFields()
     fieldNames = {'cellNo' 'centroid_x' 'centroid_y' 'box' 'spot_count' ...
-        'local_img_bkg' 'cell_bkg'};
+        'local_img_bkg' 'cell_bkg' 'nuc_bkg' 'cyto_bkg'};
     
     fieldTypes = {'uint16' 'single' 'single' 'cell' 'int32' ...
-        'cell' 'cell'};
+        'cell' 'cell' 'cell' 'cell'};
 end
 
 function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
@@ -662,9 +669,11 @@ function doDir(dirPath, opStruct)
             %Load cellseg and quant
             cspath = spotsrun.paths.cellseg_path;
             cellMask = [];
+            nucMask = [];
             if ~isempty(cspath)
                 if isfile(cspath)
                     cellMask = CellSeg.openCellMask(cspath);
+                    nucMask = CellSeg.openNucMask(csPath);
 
                     %Convert cellMask to 3D...
                     if ndims(cellMask) < 3
@@ -785,7 +794,15 @@ function doDir(dirPath, opStruct)
                 cbkgMask = and(oneCellMask, ~spotMask);
                 cll{1} = takeStats(sampleCh, cbkgMask, struct(), 0, 0);
                 cellTable{c, 'cell_bkg'} = cll;
-                clear cbkgMask
+
+                nucBkgMask = and(cbkgMask, nucMask);
+                cll{1} = takeStats(sampleCh, nucBkgMask, struct(), 0, 0);
+                cellTable{c, 'nuc_bkg'} = cll;
+                cytoBkgMask = and(cbkgMask, ~nucMask);
+                cll{1} = takeStats(sampleCh, cytoBkgMask, struct(), 0, 0);
+                cellTable{c, 'cyto_bkg'} = cll;
+
+                clear cbkgMask cytoBkgMask nucBkgMask
 
             end
 
