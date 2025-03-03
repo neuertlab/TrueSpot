@@ -216,6 +216,160 @@ classdef ProbDistroPlots
         end
 
         %%
+        function [obj, figHandle] = renderJointProbHeatmapOnePair(obj, figHandle, targetPair)
+            figure(figHandle);
+            clf;
+
+            if ~isempty(obj.timePoints)
+                tpCount = size(obj.timePoints, 2);
+            else
+                return;
+            end
+
+            if isempty(targetPair); return; end
+
+            %Determine replicate count
+            xtrg = obj.targets{targetPair.xTargetIndex};
+            ytrg = obj.targets{targetPair.yTargetIndex};
+            replCount = min(size(xtrg.repNames, 2), size(ytrg.repNames, 2));
+
+            hmYSpace = obj.ySpace * 1.5;
+            hmXSpace = obj.xSpace * 0.3;
+            hmLeft = obj.leftMargin;
+            ww = ((1.0 - (hmLeft * 2)) / tpCount) - (hmXSpace * 1.1);
+            hh = ((1.0 - obj.topMargin) / replCount) - (hmYSpace * 1.1);
+            yy = 1.0 - hh - obj.topMargin;
+
+            for y = 1:replCount
+                xx = hmLeft;
+                hmHandles = cell(1, tpCount);
+                cMax = 0;
+                for x = 1:tpCount
+                    subplot('Position', [xx yy ww hh]);
+
+                    dataGroupX = obj.data{targetPair.xTargetIndex, x};
+                    dataGroupY = obj.data{targetPair.yTargetIndex, x};
+                    [hmBins, xBins, yBins, ~] = ProbDistroPlots.heatmapBin(dataGroupX, dataGroupY, y, ...
+                        targetPair.xMax, targetPair.yMax,...
+                        targetPair.xBinSize, targetPair.yBinSize, ~targetPair.heatLogScale);
+                    myMax = max(hmBins, [], 'all', 'omitnan');
+                    if myMax > cMax; cMax = myMax; end
+                    clear myMax
+
+                    xBinCount = size(xBins, 2) - 1;
+                    yBinCount = size(yBins, 2) - 1;
+                    xBins = xBins(1:xBinCount);
+                    yBins = yBins(1:yBinCount);
+
+                    hold off;
+                    hm = heatmap(xBins, yBins, hmBins);
+                    hm.Colormap = turbo;
+                    hm.CellLabelColor = 'none';
+                    hm.GridVisible = 'off';
+                    hm.FontSize = obj.fszTicks;
+                    if targetPair.heatLogScale
+                        hm.ColorScaling = 'log';
+                    else
+                        if isnan(targetPair.colorScaleCap)
+                            hm.ColorLimits = [0.0 1.0];
+                        else
+                            hm.ColorLimits = [0.0 targetPair.colorScaleCap];
+                        end
+                    end
+
+                    if x < tpCount
+                        hm.ColorbarVisible = 'off';
+                    end
+
+                    %Generate labels
+                    xlbl = cell(1, xBinCount);
+                    for n = 1:xBinCount; xlbl{n} = ""; end
+                    ylbl = cell(1, yBinCount);
+                    for n = 1:yBinCount; ylbl{n} = ""; end
+
+                    lblVal = 0;
+                    if x > 1
+                        lblVal = targetPair.xLblInterval;
+                    end
+                    while lblVal < targetPair.xMax
+                        idx = find((xBins == lblVal), 1);
+                        if ~isempty(idx)
+                            xlbl{idx} = num2str(lblVal);
+                        end
+                        lblVal = lblVal + targetPair.xLblInterval;
+                    end
+
+                    if x == 1
+                        lblVal = 0;
+                        if y > 1
+                            lblVal = targetPair.yLblInterval;
+                        end
+                        while lblVal < targetPair.yMax
+                            idx = find((yBins == lblVal), 1);
+                            if ~isempty(idx)
+                                ylbl{idx} = num2str(lblVal);
+                            end
+                            lblVal = lblVal + targetPair.yLblInterval;
+                        end
+                    end
+
+                    hm.XDisplayLabels = xlbl;
+                    hm.YDisplayLabels = ylbl;
+
+                    %https://www.mathworks.com/matlabcentral/answers/554917-heatmap-axis-labels-printing-vertically
+                    hAx = hm.NodeChildren(3);
+                    hAx.XAxis.TickLabelRotation=0;
+
+                    if y == 1
+                        %Top titles
+                        if x == 1
+                            title([num2str(obj.timePoints(x)) ' ' obj.timeUnit]);
+                        else
+                            title(num2str(obj.timePoints(x)));
+                        end
+
+                    end
+
+                    if x == 1
+                        %Side titles
+                        if ~isempty(ytrg.repNames{y})
+                            if ~isempty(ytrg.subtitle)
+                                ylabel([ytrg.repNames{y}; ytrg.name ' [' ytrg.subtitle ']']);
+                            else
+                                ylabel([ytrg.repNames{y}; ytrg.name]);
+                            end
+                        else
+                            if ~isempty(ytrg.subtitle)
+                                ylabel([ytrg.name ' [' ytrg.subtitle ']']);
+                            else
+                                ylabel(ytrg.name);
+                            end
+                        end
+                    end
+
+                    if ~isempty(xtrg.subtitle)
+                        xlabel([xtrg.name ' [' xtrg.subtitle ']']);
+                    else
+                        xlabel(xtrg.name);
+                    end
+
+                    hmHandles{x} = hm;
+                    xx = xx + ww + hmXSpace;
+                end
+                if targetPair.heatLogScale
+                    cLim = log(cMax);
+                    for x = 1:tpCount
+                        hmHandles{x}.ColorLimits = [0.0 cLim];
+                    end
+                end
+                clear hmHandles
+
+                yy = yy - hh - hmYSpace;
+            end
+
+        end
+
+        %%
         function [obj, figHandle] = renderJointProbHeatmap(obj, figHandle, targetPairs)
             %Uses stored raw counts
             %Target pairs is a cell vector of joint pair structs
@@ -411,6 +565,14 @@ classdef ProbDistroPlots
             jointPairStruct.xTargetIndex = xIdx;
             jointPairStruct.yTargetIndex = yIdx;
             jointPairStruct.heatLogScale = useLog;
+            jointPairStruct.colorScaleCap = NaN;
+
+            jointPairStruct.xMax = 150;
+            jointPairStruct.yMax = 150;
+            jointPairStruct.xBinSize = 10;
+            jointPairStruct.yBinSize = 10;
+            jointPairStruct.xLblInterval = 50;
+            jointPairStruct.yLblInterval = 50;
         end
 
         %%
@@ -456,10 +618,9 @@ classdef ProbDistroPlots
         end
 
         %%
-        function [hmBins, okay] = heatmapBin(dataGroupX, dataGroupY, xMax, binSize, normalize)
-            bins1 = [0:binSize:xMax];
-            bin1Count = size(bins1, 2) - 1;
-            hmBins = zeros(bin1Count, bin1Count);
+        function [hmBins, xBins, yBins, okay] = heatmapBin(dataGroupX, dataGroupY, repl, xMax, yMax, xBinSize, yBinSize, normalize)
+            xBins = [0:xBinSize:xMax];
+            yBins = [0:yBinSize:yMax];
             okay = false;
 
             if isempty(dataGroupX); return; end
@@ -472,35 +633,31 @@ classdef ProbDistroPlots
             repCountY = size(dataGroupY.reps, 2);
             repCount = min(repCountX, repCountY);
             if repCount < 1; return; end
-            for r = 1:repCount
-                dataX = dataGroupX.reps(r);
-                dataY = dataGroupY.reps(r);
-
-                if isempty(dataX.rawCounts); continue; end
-                if isempty(dataY.rawCounts); continue; end
-                 
-                ctX = size(dataX.rawCounts, 2);
-                ctY = size(dataY.rawCounts, 2);
-
-                if ctX ~= ctY; continue; end
-
-                cellCount = cellCount + ctX;
-
-                gtX = dataX.rawCounts >= bins1';
-                binX = sum(gtX, 1); %Trim out of range. Don't bin.
-                binX(binX > bin1Count) = NaN;
-                gtY = dataY.rawCounts >= bins1';
-                binY = sum(gtY, 1);
-                binY(binY > bin1Count) = NaN;
-
-                for i = 1:ctX
-                    xx = binX(i);
-                    yy = binY(i);
-                    if isfinite(xx) & isfinite(yy)
-                        hmBins(yy, xx) = hmBins(yy, xx) + 1;
-                    end
+            
+            %Glue reps together and take double hist
+            if isempty(repl) | (repl < 1) | (repl > repCount)
+                for r = 1:repCount
+                    cellCount = cellCount + size(dataGroupX.reps(r).rawCounts, 2);
                 end
+                X = NaN(1, cellCount);
+                Y = NaN(1, cellCount);
+                pos = 1;
+                for r = 1:repCount
+                    rCellCount = size(dataGroupX.reps(r).rawCounts, 2);
+                    endPos = pos + rCellCount;
+                    X(pos:endPos) = dataGroupX.reps(r).rawCounts(:);
+                    Y(pos:endPos) = dataGroupY.reps(r).rawCounts(:);
+                    pos = endPos + 1;
+                end
+            else
+                X = dataGroupX.reps(repl).rawCounts(:);
+                Y = dataGroupY.reps(repl).rawCounts(:);
             end
+
+            cellCount = size(X ,1);
+            
+            [hmBins,xBins,yBins] = histcounts2(X,Y,xBins,yBins);
+            hmBins = hmBins';
 
             if cellCount < 1; return; end
             if normalize

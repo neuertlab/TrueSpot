@@ -5,11 +5,8 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.02.27.00';
+BUILD_STRING = '2025.03.03.00';
 VERSION_STRING = 'v1.1.2';
-
-%TODO Add correction matrix input
-%TODO Add nuc/cyto division to per-cell...
 
 % ========================== Process args ==========================
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -640,6 +637,17 @@ function doDir(dirPath, opStruct)
             sampleCh = uint16(sampleCh); %Reduce memory size
             clear channels;
 
+            if ~isempty(opStruct.correctionmtx)
+                fprintf('\tLoading intensity correction matrix from: %s\n', opStruct.correctionmtx);
+                load(opStruct.correctionmtx, 'BaseLineControl_ImageCorrectionFactor');
+
+                sampleCh = double(sampleCh);
+                sampleCh = sampleCh ./ BaseLineControl_ImageCorrectionFactor;
+                sampleCh = uint16(round(sampleCh));
+
+                clear BaseLineControl_ImageCorrectionFactor
+            end
+
             if ~opStruct.nodpc
                 %Clean out dead pixels
                 dead_pix_path = [spotsrun.getFullOutStem() '_deadpix_idistro.mat'];
@@ -673,7 +681,7 @@ function doDir(dirPath, opStruct)
             if ~isempty(cspath)
                 if isfile(cspath)
                     cellMask = CellSeg.openCellMask(cspath);
-                    nucMask = CellSeg.openNucMask(csPath);
+                    nucMask = CellSeg.openNucMask(cspath);
 
                     %Convert cellMask to 3D...
                     if ndims(cellMask) < 3
