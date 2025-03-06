@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.03.00';
+BUILD_STRING = '2025.03.06.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -817,11 +817,11 @@ function doDir(dirPath, opStruct)
             intensityStats.cellProfile = cellTable;
 
             %Save
-            savepath = [opStruct.outputDir, filesep, spotsrun.img_name '_istats.mat'];
+            savepath = [opStruct.output_dir, filesep, spotsrun.img_name '_istats.mat'];
             save(savepath, 'intensityStats');
 
-            if outputSpotMasks & ~intensityStats.noprobe
-                savepath = [opStruct.outputDir, filesep, spotsrun.img_name '_spotmask.tif'];
+            if opStruct.outputSpotMasks & ~intensityStats.noprobe
+                savepath = [opStruct.output_dir, filesep, spotsrun.img_name '_spotmask.tif'];
                 tifop = struct('overwrite', true);
                 spotMask = uint8(spotMask);
                 saveastiff(spotMask, savepath, tifop);
