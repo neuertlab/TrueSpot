@@ -151,7 +151,7 @@ classdef RNASpot
             rna_spot.in_cloud = false;
             rna_spot.fit_volume = 0.0;
         end
-                
+              
     end
     
 end

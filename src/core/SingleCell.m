@@ -325,6 +325,9 @@ classdef SingleCell
             if isempty(obj.spotTable) & ~isempty(obj.spots)
                 obj = obj.convertSpotStorage();
             end
+
+            %Cluster spots, if applicable
+            obj = obj.clusterLikelyDuplicateSpots();
             
             %Count spots
             spot_count = obj.getSpotCount();
@@ -365,10 +368,11 @@ classdef SingleCell
         end
         
         %%
-        function obj = updateCountEstimates(obj, brightStDevs, globalBrightTh, globalSingleInt)
+        function obj = updateCountEstimates(obj, brightStDevs, globalBrightTh, globalSingleInt, removeLikelyDups)
             if nargin < 2; brightStDevs = 2; end
             if nargin < 3; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
             if nargin < 4; globalSingleInt = 200.0; end
+            if nargin < 5; removeLikelyDups = true; end
 
             %Munsky B, Li G, Fox ZR, Shepherd DP, Neuert G. Distribution shapes govern the discovery of predictive models for gene regulation. Proc Natl Acad Sci U S A. 2018;115(29). doi:10.1073/pnas.1804060115
             obj.nucCount = 0;
@@ -380,12 +384,27 @@ classdef SingleCell
                 obj = obj.convertSpotStorage();
             end
 
+            %Remove duplicates
+            useSpotTable = obj.spotTable;
+            
+            if removeLikelyDups
+                dup_flag = obj.spotTable{:, 'likely_dup'} > 0;
+                is_center = obj.spotTable{:, 'likely_dup'} == obj.spotTable{:, 'uid'};
+                is_dup = and(~is_center, dup_flag);
+
+                useSpotTable = obj.spotTable{~is_dup, :};
+        
+                clear is_center dup_flag
+            else
+                is_dup = false(1, size(obj.spotTable, 1));
+            end
+
             %Get "mature RNA" (single target) intensity
             %Collect spot intensities
-            totalSpots = size(obj.spotTable, 1);
+            totalSpots = size(useSpotTable, 1);
             if(totalSpots > 0)
-                spotints = obj.spotTable{:, 'TotFitInt'};
-                inNuc = obj.spotTable{:, 'nucRNA'};
+                spotints = useSpotTable{:, 'TotFitInt'};
+                inNuc = useSpotTable{:, 'nucRNA'};
 
                 if totalSpots > 2
                     iMean = mean(spotints, 'all', 'omitnan');
@@ -414,7 +433,7 @@ classdef SingleCell
                 obj.nucNascentCount = sum(counts(inNuc & isTooBright));
                 obj.cytoCount = sum(counts(~inNuc));
 
-                obj.spotTable{:, 'nascent_flag'} = and(isTooBright, inNuc);
+                useSpotTable{:, 'nascent_flag'} = and(isTooBright, inNuc);
             end
 
             totalClouds = size(obj.clouds, 2);
@@ -424,7 +443,7 @@ classdef SingleCell
 
                 %Redo spots, omitting spots marked as part of clouds
                 if(totalSpots > 0)
-                    inCloud = obj.spotTable{:, 'in_cloud'};
+                    inCloud = useSpotTable{:, 'in_cloud'};
                     if nnz(inCloud) > 0
                         obj.nucCloud = sum(counts(inNuc & ~inCloud));
                         obj.nucNascentCloud = sum(counts(inNuc & isTooBright & ~inCloud));
@@ -466,6 +485,63 @@ classdef SingleCell
                 obj.nucCloud = obj.nucCount;
                 obj.nucNascentCloud = obj.nucNascentCount;
                 obj.cytoCloud = obj.cytoCount;
+            end
+
+            %Update object table
+            if nnz(is_dup) > 1
+                obj.spotTable{~is_dup, 'nascent_flag'} = useSpotTable{:, 'nascent_flag'};
+            else
+                obj.spotTable = useSpotTable;
+            end
+        end
+
+        %%
+        function obj = clusterLikelyDuplicateSpots(obj, mergeRadXY, mergeRadZ)
+            if nargin < 2; mergeRadXY = 2; end
+            if nargin < 3; mergeRadZ = 1; end
+
+            spotCount = size(obj.spotTable, 1);
+
+            rxysq = double(mergeRadXY) ^ 2;
+            rzsq = double(mergeRadZ) ^ 2;
+            mergeRad3 = sqrt(rxysq + rxysq + rzsq);
+
+            %Update spot table if needed
+            colnames = obj.spotTable.Properties.VariableNames;
+            if ~ismember('likely_dup', colnames)
+                obj.spotTable{:, 'uid'} = [1:1:spotCount]';
+            end
+            obj.spotTable{:, 'likely_dup'} = uint32(zeros(spotCount, 1)); %Reset all to 0
+
+            %Matrix
+            callmtx = NaN(spotCount, 3);
+            callmtx(:,1) = obj.spotTable{:, 'xinit'};
+            callmtx(:,2) = obj.spotTable{:, 'yinit'};
+            callmtx(:,3) = obj.spotTable{:, 'zinit'};
+
+            cand_table = RNACoords.findMatchCandidates(callmtx, callmtx, mergeRad3, mergeRadZ);
+            
+            %Remove any self-matches
+            %dist3 row col dist2 distz
+            cand_table = cand_table((cand_table(:,1) > 0), :);
+            if isempty(cand_table); return; end
+        
+            %Find clusters
+            gg = digraph(cand_table(:,2), cand_table(:,3));
+            gbins = conncomp(gg);
+            binnedSpots = size(gbins, 2);
+            clusterCount = max(gbins, [], 'all', 'omitnan');
+            for c = 1:clusterCount
+                in_cluster = (gbins == c);
+                nodeCount = nnz(in_cluster);
+                if nodeCount > 1
+                    %find the biggest member to be "center" (using max
+                    %total intensity)
+                    totExpInt = immultiply(obj.spotTable{1:binnedSpots, 'TotExpInt'}', in_cluster);
+                    [~, idx] = max(totExpInt, [], 'all', 'omitnan');
+                    nodeId = obj.spotTable{idx, 'uid'};
+                    obj.spotTable{in_cluster, 'likely_dup'} = nodeId;
+                end
             end
         end
 
@@ -631,7 +707,7 @@ classdef SingleCell
         %%
         function pkg = packageForSave(obj)
             pkg = struct();
-            pkg.version = 2;
+            pkg.version = 3;
             pkg.cell_number = obj.cell_number;
             pkg.cell_loc = obj.cell_loc;
             pkg.dim_z = obj.dim_z;
@@ -680,7 +756,8 @@ classdef SingleCell
         
         %%
         function [fieldNames, fieldTypes] = getSpotTableFields()
-            fieldNames = {'xinit' 'yinit' 'zinit' 'dropout_thresh' 'in_cloud' 'fit_volume' 'nascent_flag' ...
+            fieldNames = {'uid' 'xinit' 'yinit' 'zinit' 'dropout_thresh' ...
+                'likely_dup' 'in_cloud' 'fit_volume' 'nascent_flag' ...
                 'xfit' 'yfit' 'xgw' 'ygw' 'xFWHM' 'yFWHM' ...
                 'expMInt' 'fitMInt' 'TotExpInt' 'TotFitInt' ...
                 'r' 'rFit' 'back' 'xsem' 'ysem' 'zxfit' 'zyfit' ...
@@ -688,7 +765,8 @@ classdef SingleCell
                 'nucRNA' 'cytoRNA' 'distRNA' 'szNUC' ...
                 'xabsloc' 'yabsloc' 'normdist' 'nucR'};
 
-            fieldTypes = {'uint16' 'uint16' 'uint16' 'uint16' 'logical' 'single' 'logical'...
+            fieldTypes = {'uint32' 'uint16' 'uint16' 'uint16' 'uint16' ...
+                'uint32' 'logical' 'single' 'logical' ...
                 'single' 'single' 'single' 'single' 'single' 'single'...
                 'uint32' 'single' 'uint32' 'single' ...
                 'single' 'single' 'single' 'single' 'single' 'single' 'single' ...
@@ -699,6 +777,7 @@ classdef SingleCell
 
         %%
         function mycell = readFromSavePackage(pkg)
+
             mycell = SingleCell;
 
             mycell.cell_number = pkg.cell_number;
@@ -722,6 +801,20 @@ classdef SingleCell
             mycell.nuc_ellip = pkg.nuc_ellip;
             mycell.spotTable = pkg.spotTable;
             mycell.spotZFits = pkg.spotZFits;
+
+            if pkg.version < 3
+                %Gen UIDs and add dup/uid table fields
+                spotcount = size(mycell.spotTable, 1);
+                mycell.spotTable{:, 'uid'} = [1:1:spotcount];
+                mycell.spotTable{:, 'likely_dup'} = uint32(zeros(spotcount, 1));
+
+%                 for i = 1:spotCount
+%                     %TODO
+%                     %Eventually, tag the zfits with UID as well. RN would
+%                     %have to update anything accessing zfits though so do
+%                     %later.
+%                 end
+            end
 
             if ~isempty(pkg.clouds)
                 mycell.clouds = arrayfun(@(cloudStruct) RNACloud.readFromSavePackage(cloudStruct), pkg.clouds);
@@ -753,6 +846,9 @@ classdef SingleCell
             spotTable{:, 'yinit'} = uint16([fits.yinit]');
             spotTable{:, 'zinit'} = uint16([fits.zinit]');
             spotTable{:, 'dropout_thresh'} = uint16([spotArr.dropout_thresh]');
+
+            spotTable{:, 'uid'} = [1:1:alloc];
+            spotTable{:, 'likely_dup'} = uint32(zeros(alloc, 1));
 
             spotTable{:, 'xfit'} = single([fits.xfit]');
             spotTable{:, 'yfit'} = single([fits.yfit]');

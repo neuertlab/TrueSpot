@@ -1292,6 +1292,7 @@ classdef RNAQuant
         %%
         function quant_results = readResultsSavePackage(results_pkg)
             quant_results = results_pkg;
+
             if ~isempty(results_pkg.cellData)
                 myCells = arrayfun(@(mycell) SingleCell.readFromSavePackage(mycell), results_pkg.cellData);
                 quant_results.cell_rna_data = myCells;
