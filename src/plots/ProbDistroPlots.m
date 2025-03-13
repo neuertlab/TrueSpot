@@ -22,6 +22,8 @@ classdef ProbDistroPlots
         smoothWindowSize = 3;
         timeUnit = 'min';
 
+        inclReps = [];
+
         data = {}; %2D mtx of data point structs
 
     end
@@ -121,6 +123,12 @@ classdef ProbDistroPlots
                     if ~isempty(dataGroup)
                         repCount = size(dataGroup.reps, 2);
                         for r = 1:repCount
+                            if ~isempty(obj.inclReps)
+                                if ~ismember(r, obj.inclReps)
+                                    continue;
+                                end
+                            end
+
                             rcolor = trgInfo.colors(r,:);
                             lwidth = trgInfo.lineWidth(r);
                             lstyle = trgInfo.lineStyle{r};
@@ -145,6 +153,12 @@ classdef ProbDistroPlots
                         if x == tpCount
                             repCount = size(trgInfo.lineWidth, 2);
                             for r = 1:repCount
+                                if ~isempty(obj.inclReps)
+                                    if ~ismember(r, obj.inclReps)
+                                        continue;
+                                    end
+                                end
+
                                 rcolor = trgInfo.colors(r,:);
                                 lwidth = trgInfo.lineWidth(r);
                                 lstyle = trgInfo.lineStyle{r};
