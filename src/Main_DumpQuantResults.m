@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.02.05.00';
+BUILD_STRING = '2025.03.10.02';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -13,6 +13,8 @@ arg_debug = true; %CONSTANT used for debugging arg parser.
 input_dir = []; %Give a dir for a batch and it will look recursively through it for TS results.
 output_path = [];
 
+skipFlaggedDups = false;
+
 lastkey = [];
 for i = 1:nargin
     argval = varargin{i};
@@ -21,6 +23,12 @@ for i = 1:nargin
         if size(argval,2) >= 2
             lastkey = argval(2:end);
         else
+            lastkey = [];
+        end
+
+        if strcmp(lastkey, "skipdups")
+            skipFlaggedDups = true;
+            if arg_debug; fprintf("Skip Flagged Duplicates: On\n"); end
             lastkey = [];
         end
         
@@ -51,7 +59,11 @@ if isempty(input_dir)
 end
 
 if isempty(output_path)
-    output_path = [input_dir filesep 'cellCounts.tsv'];
+    if skipFlaggedDups
+        output_path = [input_dir filesep 'cellCounts_skipdups.tsv'];
+    else
+        output_path = [input_dir filesep 'cellCounts.tsv'];
+    end
 end
 
 fprintf('Main_DumpQuantResults\n');
@@ -62,7 +74,7 @@ fprintf('Input: %s\n', input_dir);
 fprintf('Output: %s\n', output_path);
 
 tableHandle = openOutTable(output_path);
-doDir(input_dir, tableHandle);
+doDir(input_dir, tableHandle, skipFlaggedDups);
 
 fclose(tableHandle);
 end
@@ -89,7 +101,7 @@ function tableHandle = openOutTable(tablePath)
     fprintf(tableHandle, '\n');
 end
 
-function doResultsSet(quantFilePath, tableHandle)
+function doResultsSet(quantFilePath, tableHandle, skipFlaggedDups)
     %Look for RNASpotsRun in same directory...
     [mydir, fname, ~] = fileparts(quantFilePath);
     fstem = replace(fname, '_quantData', '');
@@ -166,7 +178,7 @@ function doResultsSet(quantFilePath, tableHandle)
             else
                 fprintf(tableHandle, '\t(0,0,0)');
             end
-            myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt);
+            myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt, skipFlaggedDups);
 
             fprintf(tableHandle, '\t%d\t%d', c, nnz(myCell.mask_cell));
             fprintf(tableHandle, '\t%d', nnz(myCell.mask_nuc));
@@ -256,7 +268,7 @@ function doResultsSet(quantFilePath, tableHandle)
 
 end
 
-function doDir(dirPath, tableHandle)
+function doDir(dirPath, tableHandle, skipFlaggedDups)
     %Search for files ending with _quantData.mat
     %Then look for one in the same dir ending in _rnaspotsrun.mat
     fprintf('\tProcessing %s...\n', dirPath);
@@ -266,11 +278,11 @@ function doDir(dirPath, tableHandle)
         child = dirContents(c,1);
         if child.isdir
             if ~strcmp(child.name, '.') & ~strcmp(child.name, '..')
-                doDir([dirPath filesep child.name], tableHandle);
+                doDir([dirPath filesep child.name], tableHandle, skipFlaggedDups);
             end
         else
             if endsWith(child.name, '_quantData.mat')
-                doResultsSet([dirPath filesep child.name], tableHandle);
+                doResultsSet([dirPath filesep child.name], tableHandle, skipFlaggedDups);
             end
         end
     end

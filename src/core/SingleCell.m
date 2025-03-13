@@ -309,9 +309,10 @@ classdef SingleCell
         end
 
         %%
-        function obj = updateSpotAndSignalValues(obj, globalBrightTh, globalSingleInt)
+        function obj = updateSpotAndSignalValues(obj, globalBrightTh, globalSingleInt, removeLikelyDups)
             if nargin < 2; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
             if nargin < 3; globalSingleInt = 200.0; end
+            if nargin < 4; removeLikelyDups = true; end
 
             %Reset.
             obj.spotcount_nuc = 0;
@@ -364,7 +365,7 @@ classdef SingleCell
             obj.spotcount_total = obj.spotcount_nuc + obj.spotcount_cyto;
             obj.signal_total = obj.signal_nuc + obj.signal_cyto;
             
-            obj = obj.updateCountEstimates(2, globalBrightTh, globalSingleInt);
+            obj = obj.updateCountEstimates(2, globalBrightTh, globalSingleInt, removeLikelyDups);
         end
         
         %%
@@ -387,17 +388,22 @@ classdef SingleCell
             %Remove duplicates
             useSpotTable = obj.spotTable;
             
-            if removeLikelyDups
-                dup_flag = obj.spotTable{:, 'likely_dup'} > 0;
-                is_center = obj.spotTable{:, 'likely_dup'} == obj.spotTable{:, 'uid'};
-                is_dup = and(~is_center, dup_flag);
+            if ~isempty(useSpotTable)
+                if removeLikelyDups
+                    dup_flag = useSpotTable{:, 'likely_dup'} > 0;
+                    is_center = (useSpotTable{:, 'likely_dup'}) == (useSpotTable{:, 'uid'});
+                    is_dup = and(~is_center, dup_flag)';
 
-                useSpotTable = obj.spotTable{~is_dup, :};
-        
-                clear is_center dup_flag
+                    useSpotTable = useSpotTable(~is_dup, :);
+
+                    clear is_center dup_flag
+                else
+                    is_dup = false(1, size(obj.spotTable, 1));
+                end
             else
-                is_dup = false(1, size(obj.spotTable, 1));
+                is_dup = [];
             end
+            
 
             %Get "mature RNA" (single target) intensity
             %Collect spot intensities
@@ -499,6 +505,8 @@ classdef SingleCell
         function obj = clusterLikelyDuplicateSpots(obj, mergeRadXY, mergeRadZ)
             if nargin < 2; mergeRadXY = 2; end
             if nargin < 3; mergeRadZ = 1; end
+
+            if isempty(obj.spotTable); return; end
 
             spotCount = size(obj.spotTable, 1);
 
@@ -805,8 +813,10 @@ classdef SingleCell
             if pkg.version < 3
                 %Gen UIDs and add dup/uid table fields
                 spotcount = size(mycell.spotTable, 1);
-                mycell.spotTable{:, 'uid'} = [1:1:spotcount];
-                mycell.spotTable{:, 'likely_dup'} = uint32(zeros(spotcount, 1));
+                if spotcount > 0
+                    mycell.spotTable{:, 'uid'} = uint32([1:1:spotcount]');
+                    mycell.spotTable{:, 'likely_dup'} = uint32(zeros(spotcount, 1));
+                end
 
 %                 for i = 1:spotCount
 %                     %TODO
