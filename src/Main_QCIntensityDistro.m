@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.06.00';
+BUILD_STRING = '2025.03.19.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -69,6 +69,9 @@ for i = 1:nargin
         elseif strcmp(lastkey, "correctionmtx")
             opStruct.correctionmtx = argval;
             if arg_debug; fprintf("Correction matrix MAT path: %s\n", opStruct.correctionmtx); end
+        elseif strcmp(lastkey, "workers")
+            opStruct.workerCount = Force2Num(argval);
+            if arg_debug; fprintf("Requested parallel workers: %d\n", opStruct.workerCount); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -98,7 +101,18 @@ if ~isfolder(opStruct.output_dir); mkdir(opStruct.output_dir); end
 % ========================== Recursive Scan ==========================
 
 try
-    doDir(opStruct.input_dir, opStruct);
+    runList = scanDirRec(opStruct.input_dir, opStruct);
+    if ~isempty(runList)
+        if opStruct.workerCount > 1
+            processRuns_P(runList, opStruct);
+        else
+            processRuns_S(runList, opStruct);
+        end
+    else
+        fprintf('No valid runs found! Exiting...\n');
+    end
+
+    
 catch MEx
     fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', opStruct.input_dir);
     %disp(MEx.message);
@@ -123,6 +137,14 @@ function opStruct = genOptionsStruct()
     opStruct.nameincl = [];
     opStruct.forceNoProbe = false;
     opStruct.correctionmtx = [];
+
+    opStruct.workerCount = 1;
+end
+
+function runStruct = genRunCandidateStruct()
+    runStruct = struct();
+    runStruct.srPath = [];
+    runStruct.qdPath = [];
 end
 
 function [fieldNames, fieldTypes] = getSpotProfileTableFields()
@@ -155,9 +177,22 @@ function [fieldNames, fieldTypes] = getCellTableFields()
         'cell' 'cell' 'cell' 'cell'};
 end
 
-function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ)
+function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ, auto2D)
     if nargin < 4; localXY = 0; end
     if nargin < 5; localZ = 0; end
+    if nargin < 6; auto2D = false; end
+
+    if auto2D & (ndims(data) > 2)
+        %Make life easy and just recurse...
+        Z = size(data, 3);
+        data_maxproj = max(data, [], 3, 'omitnan');
+        mask_maxproj = max(mask, [], 3, 'omitnan');
+        statsStruct.maxproj = takeStats(data_maxproj, mask_maxproj, struct(), localXY, localZ, false);
+        statsStruct.slices = cell(1,Z);
+        for z = 1:Z
+            statsStruct.slices{z} = takeStats(data(:,:,z), mask(:,:,z), struct(), localXY, localZ, false);
+        end
+    end
 
 %Apply mask if nonempty
     if ~isempty(mask) & (nnz(~mask) > 0)
@@ -541,15 +576,14 @@ function spotProfile = getSpotProfileCall(spotsrun, imageData, call_table, gauss
     spotProfile.spotData = spTable;
 end
 
-function doDir(dirPath, opStruct)
-    %Look for a spotsrun (and quant, if available)
+function runList = scanDirRec(dirPath, opStruct)
     fprintf('Scanning %s ...\n', dirPath);
     dirContents = dir(dirPath);
     childCount = size(dirContents, 1);
 
-    srPath = [];
-    qdPath = [];
-
+    runsFound = 0;
+    rawList = cell(1, childCount);
+    runList = [];
     for i = 1:childCount
         fname = dirContents(i,1).name;
         isdir = dirContents(i,1).isdir;
@@ -557,7 +591,11 @@ function doDir(dirPath, opStruct)
             if ~strcmp(fname, '.') & ~strcmp(fname, '..')
                 subdirPath = [dirPath filesep fname];
                 try
-                    doDir(subdirPath, opStruct);
+                    subRuns = scanDirRec(subdirPath, opStruct);
+                    if ~isempty(subRuns)
+                        rawList{i} = subRuns;
+                        runsFound = runsFound + size(subRuns, 2);
+                    end
                 catch MEx
                     fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', subdirPath);
                     %disp(MEx.message);
@@ -582,259 +620,344 @@ function doDir(dirPath, opStruct)
             end
         end
     end
-    clear isdir fname dirContents childCount i
 
     if ~isempty(srPath)
-        try
-            intensityStats = struct();
-            spotsrun = RNASpotsRun.loadFrom(srPath, false);
-            fprintf('\tRun found: %s\n', spotsrun.img_name);
+        myRun = genRunCandidateStruct();
+        myRun.srPath = srPath;
+        myRun.qdPath = qdPath;
+        runsFound = runsFound + 1;
+    else
+        myRun = [];
+    end
 
-            %Update threshold stats
-            tres = [];
-            if ~isempty(spotsrun.threshold_results)
-                fprintf('\tUpdating threshold pool stats...\n');
-                spotsrun.threshold_results = RNAThreshold.scoreThresholdSuggestions(spotsrun.threshold_results);
-                tres = spotsrun.threshold_results;
-                spotsrun.saveMeTo(srPath);
-            end
+    %Condense raw list into list of valid run structs
+    if runsFound > 0
+        runList = cell(1,runsFound);
+        index = 1;
+        if ~isempty(myRun) 
+            runList{1} = myRun;
+            index = 2;
+        end
 
-            intensityStats.img_name = spotsrun.img_name;
-            intensityStats.channel = spotsrun.channels.rna_ch;
-            intensityStats.target = spotsrun.meta.type_target;
-            intensityStats.probe = spotsrun.meta.type_probe;
-            intensityStats.t_min = spotsrun.options.t_min;
-            intensityStats.t_max = spotsrun.options.t_max;
-            intensityStats.threshold = spotsrun.intensity_threshold;
-            intensityStats.gaussrad = spotsrun.options.dtune_gaussrad;
-            intensityStats.noprobe = false;
-            intensityStats.trim_z_min = opStruct.zmin;
-            intensityStats.trim_z_max = opStruct.zmax;
-            intensityStats.threshold_results = tres;
-            intensityStats.nodpc = opStruct.nodpc;
-
-            if opStruct.forceNoProbe
-                intensityStats.noprobe = true;
-            else
-                if isfield(spotsrun.meta, 'noProbe_flag')
-                    intensityStats.noprobe = spotsrun.meta.noProbe_flag;
-                end
-                if isfield(spotsrun.options, 'noProbe_flag')
-                    %From a bug in the Spots main. Overrides.
-                    intensityStats.noprobe = spotsrun.options.noProbe_flag;
+        for i = 1:childCount
+            rawRes = rawList{i};
+            if ~isempty(rawRes)
+                subList = rawRes;
+                subCount = size(subList, 2);
+                for j = 1:subCount
+                    runList{index} = subList{j};
+                    index = index + 1;
                 end
             end
-
-            %Load source image
-            tifPath = spotsrun.paths.img_path;
-            if isempty(tifPath) | ~isfile(tifPath)
-                fprintf('\t[ERROR] Spotsrun was found in directory, but TIF file could not be linked! Cannot calculate image stats...\n');
-                return;
-            end
-
-            [channels, ~] = LoadTif(tifPath, spotsrun.channels.total_ch, [spotsrun.channels.rna_ch], 1);
-            sampleCh = channels{spotsrun.channels.rna_ch, 1};
-            sampleCh = uint16(sampleCh); %Reduce memory size
-            clear channels;
-
-            if ~isempty(opStruct.correctionmtx)
-                fprintf('\tLoading intensity correction matrix from: %s\n', opStruct.correctionmtx);
-                load(opStruct.correctionmtx, 'BaseLineControl_ImageCorrectionFactor');
-
-                sampleCh = double(sampleCh);
-                sampleCh = sampleCh ./ BaseLineControl_ImageCorrectionFactor;
-                sampleCh = uint16(round(sampleCh));
-
-                clear BaseLineControl_ImageCorrectionFactor
-            end
-
-            if ~opStruct.nodpc
-                %Clean out dead pixels
-                dead_pix_path = [spotsrun.getFullOutStem() '_deadpix_idistro.mat'];
-                fprintf('\tCleaning dead pixels. Dead pixel annotation saving to: %s\n', dead_pix_path);
-                RNA_Threshold_Common.saveDeadPixels(sampleCh, dead_pix_path, true);
-                sampleCh = RNA_Threshold_Common.cleanDeadPixels(sampleCh, dead_pix_path, true);
-            end
-
-            zmin = opStruct.zmin;
-            zmax = opStruct.zmax;
-
-            Z = size(sampleCh, 3);
-            Y = size(sampleCh, 1);
-            X = size(sampleCh, 2);
-            if zmin < 1; zmin = 1; end
-            if zmax < 1; zmax = Z; end
-            doTrimmed = false;
-            if zmin > 1; doTrimmed = true; end
-            if zmax < Z; doTrimmed = true; end
-
-            intensityStats.statsRawFull = takeStats(sampleCh, [], struct(), 0, 0);
-
-            if(doTrimmed)
-                intensityStats.statsRawZTrim = takeStats(sampleCh(:,:,zmin:zmax), [], struct(), 0, 0);
-            end
-
-            %Load cellseg and quant
-            cspath = spotsrun.paths.cellseg_path;
-            cellMask = [];
-            nucMask = [];
-            if ~isempty(cspath)
-                if isfile(cspath)
-                    cellMask = CellSeg.openCellMask(cspath);
-                    nucMask = CellSeg.openNucMask(cspath);
-
-                    %Convert cellMask to 3D...
-                    if ndims(cellMask) < 3
-                        cellMask = repmat(cellMask, [1, 1, Z]);
-                    end
-                    cellMaskBool = (cellMask ~= 0);
-                    cellCount = max(cellMask, [], 'all', 'omitnan');
-                end
-            end
-
-            quant_results = [];
-            if ~intensityStats.noprobe
-                if ~isempty(qdPath)
-                    load(qdPath, 'quant_results');
-                    if ~isfield(quant_results, 'cell_rna_data')
-                        quant_results = RNAQuant.readResultsSavePackage(quant_results);
-                    end
-                end
-
-                if ~isempty(quant_results)
-                    [spotMask, indivSpotMasks] = genSpotMaskQuant(quant_results, size(sampleCh));
-                else
-                    [spotMask, call_table] = genSpotMaskCall(spotsrun, intensityStats.gaussrad);
-                    call_table = RNACoords.applyCellSegMask(call_table, cellMask);
-                end
-            else
-                spotMask = false(Y,X,Z);
-            end
-
-            fprintf('\t> Working on image background...\n');
-            currentMask = and(~cellMaskBool, ~spotMask);
-            intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
-            if(doTrimmed)
-                intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
-            end
-
-            fprintf('\t> Working on cell background...\n');
-            currentMask = and(cellMaskBool, ~spotMask);
-            intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
-            if(doTrimmed)
-                intensityStats.statsRawZTrim.cbkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
-            end
-
-            if ~intensityStats.noprobe
-                fprintf('\t> Working on overall spots...\n');
-                intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct(), opStruct.blockXY, opStruct.blockZ);
-                if(doTrimmed)
-                    intensityStats.statsRawZTrim.spotsTotal = takeStats(sampleCh(:,:,zmin:zmax), spotMask(:,:,zmin:zmax), struct(), 0, 0);
-                end
-
-                fprintf('\t> Working on spot profiles...\n');
-                if ~isempty(quant_results)
-                    intensityStats.spotProfile = getSpotProfileQuant(spotsrun, quant_results, sampleCh, spotMask, indivSpotMasks);
-                else
-                    intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, call_table, intensityStats.gaussrad);
-                end
-            end
-
-            fprintf('\t> Working on individual cells...\n');
-            [fieldNames, fieldTypes] = getCellTableFields();
-            table_size = [cellCount size(fieldNames,2)];
-            cellTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
-
-            for c = 1:cellCount
-                cellTable{c, 'cellNo'} = uint16(c);
-                oneCellMask = (cellMask == c);
-                rp3 = regionprops3(oneCellMask, 'BoundingBox', 'Centroid');
-                cellTable{c, 'centroid_x'} = single(rp3.Centroid(1));
-                cellTable{c, 'centroid_y'} = single(rp3.Centroid(2));
-
-                if ~isempty(quant_results)
-                    cobj = quant_results.cell_rna_data(c);
-                    cll = cell(1,1);
-                    cll{1} = cobj.cell_loc;
-                    cellTable{c, 'box'} = cll;
-                    cellTable{c, 'spot_count'} = size(cobj.spotTable, 1);
-
-                    x0 = max(cobj.cell_loc.left - 5,1);
-                    x1 = min(cobj.cell_loc.right + 5,X);
-                    y0 = max(cobj.cell_loc.top - 5, 1);
-                    y1 = min(cobj.cell_loc.bottom + 5,Y);
-                    z0 = max(cobj.cell_loc.z_bottom - 5,1);
-                    z1 = min(cobj.cell_loc.z_top + 5,Z);
-                else
-                    %Cell bounds from regionprops
-                    x0 = max(round(rp3.BoundingBox(1)),1);
-                    x1 = min(round(x0 + rp3.BoundingBox(4)),X);
-                    y0 = max(round(rp3.BoundingBox(2)),1);
-                    y1 = min(round(y0 + rp3.BoundingBox(5)),Y);
-                    z0 = max(round(rp3.BoundingBox(3)),1);
-                    z1 = min(round(z0 + rp3.BoundingBox(6)),Z);
-
-                    cll = cell(1,1);
-                    cll{1} = SingleCell.generateRecPrismStruct(x0, x1, y0, y1, z0, z1);
-                    cellTable{c, 'box'} = cll;
-
-                    x0 = max(x0 - 5,1);
-                    x1 = min(x1 + 5,X);
-                    y0 = max(y0 - 5, 1);
-                    y1 = min(y1 + 5,Y);
-                    z0 = max(z0 - 5,1);
-                    z1 = min(z1 + 5,Z);
-
-                    %spot count from call table
-                    if ~intensityStats.noprobe
-                        cellTable{c, 'spot_count'} = nnz(call_table{:,'cell'} == c);
-                    end
-                end
-
-                cellLocMask = false(Y,X,Z);
-                cellLocMask(y0:y1,x0:x1,z0:z1) = true;
-                cellLocMask = and(cellLocMask, ~oneCellMask);
-                cll = cell(1,1);
-                cll{1} = takeStats(sampleCh, cellLocMask, struct(), 0, 0);
-                cellTable{c, 'local_img_bkg'} = cll;
-                clear cellLocMask
-
-                cbkgMask = and(oneCellMask, ~spotMask);
-                cll{1} = takeStats(sampleCh, cbkgMask, struct(), 0, 0);
-                cellTable{c, 'cell_bkg'} = cll;
-
-                nucBkgMask = and(cbkgMask, nucMask);
-                cll{1} = takeStats(sampleCh, nucBkgMask, struct(), 0, 0);
-                cellTable{c, 'nuc_bkg'} = cll;
-                cytoBkgMask = and(cbkgMask, ~nucMask);
-                cll{1} = takeStats(sampleCh, cytoBkgMask, struct(), 0, 0);
-                cellTable{c, 'cyto_bkg'} = cll;
-
-                clear cbkgMask cytoBkgMask nucBkgMask
-
-            end
-
-            intensityStats.cellProfile = cellTable;
-
-            %Save
-            savepath = [opStruct.output_dir, filesep, spotsrun.img_name '_istats.mat'];
-            save(savepath, 'intensityStats');
-
-            if opStruct.outputSpotMasks & ~intensityStats.noprobe
-                savepath = [opStruct.output_dir, filesep, spotsrun.img_name '_spotmask.tif'];
-                tifop = struct('overwrite', true);
-                spotMask = uint8(spotMask);
-                saveastiff(spotMask, savepath, tifop);
-            end
-
-        catch MEx
-            fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', srPath);
-            %disp(MEx.message);
-            disp(MEx.getReport('extended'));
         end
     end
 
 end
 
+function processRuns_S(runList, opStruct)
+    if isempty(runList); return; end
+    runCount = size(runList, 2);
+    for r = 1:runCount
+        runStruct = runList{r};
+        processRun(runStruct, opStruct);
+    end
+end
 
+function initParallel(threads, workers, workdir)
+    mkdir(workdir);
+    local_cluster = parcluster();
+    local_cluster.NumThreads = threads;
+    local_cluster.NumWorkers = workers;
+    local_cluster.JobStorageLocation = workdir;
+    parpool(local_cluster);
+end
+
+function processRuns_P(runList, opStruct)
+    if isempty(runList); return; end
+
+    opStruct_clean.input_dir = opStruct.input_dir;
+    opStruct_clean.output_dir = opStruct.output_dir;
+    opStruct_clean.zmin = opStruct.zmin;
+    opStruct_clean.zmax = opStruct.zmax;
+    opStruct_clean.blockZ = opStruct.blockZ;
+    opStruct_clean.blockXY = opStruct.blockXY;
+    opStruct_clean.outputSpotMasks = opStruct.outputSpotMasks;
+    opStruct_clean.nodpc = opStruct.nodpc;
+    opStruct_clean.nameincl = opStruct.nameincl;
+    opStruct_clean.forceNoProbe = opStruct.forceNoProbe;
+    opStruct_clean.correctionmtx = opStruct.correctionmtx;
+
+    rlistDup = runList;
+    
+    fprintf("Now testing thresholds using %d workers...\n", opStruct.workerCount);
+    tic;
+    
+    %parpool(common_ctx.threads);
+    pardir_sfx = [];
+    if ~isempty(opstruct.nameincl)
+        pardir_sfx = ['_' replace(opStruct.workerCount, ' ', '_')];
+    end
+    pardir = [opStruct.output_dir filesep 'parallel' pardir_sfx];
+    initParallel(1, opStruct.workerCount, pardir);
+
+    runCount = size(runList, 2);
+    parfor r = 1:runCount
+        runStruct = rlistDup{r};
+        processRun(runStruct, opStruct_clean);
+    end
+    delete(gcp('nocreate'));
+    rmres = rmdir(pardir, 's');
+    toc;
+
+end
+
+function processRun(runStruct, opStruct)
+    try
+        intensityStats = struct();
+        spotsrun = RNASpotsRun.loadFrom(runStruct.srPath, false);
+        fprintf('\tRun found: %s\n', spotsrun.img_name);
+    
+        %Update threshold stats
+        tres = [];
+        if ~isempty(spotsrun.threshold_results)
+            fprintf('\tUpdating threshold pool stats...\n');
+            spotsrun.threshold_results = RNAThreshold.scoreThresholdSuggestions(spotsrun.threshold_results);
+            tres = spotsrun.threshold_results;
+            spotsrun.saveMeTo(runStruct.srPath);
+        end
+    
+        intensityStats.img_name = spotsrun.img_name;
+        intensityStats.channel = spotsrun.channels.rna_ch;
+        intensityStats.target = spotsrun.meta.type_target;
+        intensityStats.probe = spotsrun.meta.type_probe;
+        intensityStats.t_min = spotsrun.options.t_min;
+        intensityStats.t_max = spotsrun.options.t_max;
+        intensityStats.threshold = spotsrun.intensity_threshold;
+        intensityStats.gaussrad = spotsrun.options.dtune_gaussrad;
+        intensityStats.noprobe = false;
+        intensityStats.trim_z_min = opStruct.zmin;
+        intensityStats.trim_z_max = opStruct.zmax;
+        intensityStats.threshold_results = tres;
+        intensityStats.nodpc = opStruct.nodpc;
+    
+        if opStruct.forceNoProbe
+            intensityStats.noprobe = true;
+        else
+            if isfield(spotsrun.meta, 'noProbe_flag')
+                intensityStats.noprobe = spotsrun.meta.noProbe_flag;
+            end
+            if isfield(spotsrun.options, 'noProbe_flag')
+                %From a bug in the Spots main. Overrides.
+                intensityStats.noprobe = spotsrun.options.noProbe_flag;
+            end
+        end
+    
+        %Load source image
+        tifPath = spotsrun.paths.img_path;
+        if isempty(tifPath) | ~isfile(tifPath)
+            fprintf('\t[ERROR] Spotsrun was found in directory, but TIF file could not be linked! Cannot calculate image stats...\n');
+            return;
+        end
+    
+        [channels, ~] = LoadTif(tifPath, spotsrun.channels.total_ch, [spotsrun.channels.rna_ch], 1);
+        sampleCh = channels{spotsrun.channels.rna_ch, 1};
+        sampleCh = uint16(sampleCh); %Reduce memory size
+        clear channels;
+    
+        if ~isempty(opStruct.correctionmtx)
+            fprintf('\tLoading intensity correction matrix from: %s\n', opStruct.correctionmtx);
+            load(opStruct.correctionmtx, 'BaseLineControl_ImageCorrectionFactor');
+    
+            sampleCh = double(sampleCh);
+            sampleCh = sampleCh ./ BaseLineControl_ImageCorrectionFactor;
+            sampleCh = uint16(round(sampleCh));
+    
+            clear BaseLineControl_ImageCorrectionFactor
+        end
+    
+        if ~opStruct.nodpc
+            %Clean out dead pixels
+            dead_pix_path = [spotsrun.getFullOutStem() '_deadpix_idistro.mat'];
+            fprintf('\tCleaning dead pixels. Dead pixel annotation saving to: %s\n', dead_pix_path);
+            RNA_Threshold_Common.saveDeadPixels(sampleCh, dead_pix_path, true);
+            sampleCh = RNA_Threshold_Common.cleanDeadPixels(sampleCh, dead_pix_path, true);
+        end
+    
+        zmin = opStruct.zmin;
+        zmax = opStruct.zmax;
+    
+        Z = size(sampleCh, 3);
+        Y = size(sampleCh, 1);
+        X = size(sampleCh, 2);
+        if zmin < 1; zmin = 1; end
+        if zmax < 1; zmax = Z; end
+        doTrimmed = false;
+        if zmin > 1; doTrimmed = true; end
+        if zmax < Z; doTrimmed = true; end
+    
+        intensityStats.statsRawFull = takeStats(sampleCh, [], struct(), 0, 0);
+    
+        if(doTrimmed)
+            intensityStats.statsRawZTrim = takeStats(sampleCh(:,:,zmin:zmax), [], struct(), 0, 0);
+        end
+    
+        %Load cellseg and quant
+        cspath = spotsrun.paths.cellseg_path;
+        cellMask = [];
+        nucMask = [];
+        if ~isempty(cspath)
+            if isfile(cspath)
+                cellMask = CellSeg.openCellMask(cspath);
+                nucMask = CellSeg.openNucMask(cspath);
+    
+                %Convert cellMask to 3D...
+                if ndims(cellMask) < 3
+                    cellMask = repmat(cellMask, [1, 1, Z]);
+                end
+                cellMaskBool = (cellMask ~= 0);
+                cellCount = max(cellMask, [], 'all', 'omitnan');
+            end
+        end
+    
+        quant_results = [];
+        if ~intensityStats.noprobe
+            if ~isempty(runStruct.qdPath)
+                load(runStruct.qdPath, 'quant_results');
+                if ~isfield(quant_results, 'cell_rna_data')
+                    quant_results = RNAQuant.readResultsSavePackage(quant_results);
+                end
+            end
+    
+            if ~isempty(quant_results)
+                [spotMask, indivSpotMasks] = genSpotMaskQuant(quant_results, size(sampleCh));
+            else
+                [spotMask, call_table] = genSpotMaskCall(spotsrun, intensityStats.gaussrad);
+                call_table = RNACoords.applyCellSegMask(call_table, cellMask);
+            end
+        else
+            spotMask = false(Y,X,Z);
+        end
+    
+        fprintf('\t> Working on image background...\n');
+        currentMask = and(~cellMaskBool, ~spotMask);
+        intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
+        if(doTrimmed)
+            intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
+        end
+    
+        fprintf('\t> Working on cell background...\n');
+        currentMask = and(cellMaskBool, ~spotMask);
+        intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
+        if(doTrimmed)
+            intensityStats.statsRawZTrim.cbkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
+        end
+    
+        if ~intensityStats.noprobe
+            fprintf('\t> Working on overall spots...\n');
+            intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct(), opStruct.blockXY, opStruct.blockZ);
+            if(doTrimmed)
+                intensityStats.statsRawZTrim.spotsTotal = takeStats(sampleCh(:,:,zmin:zmax), spotMask(:,:,zmin:zmax), struct(), 0, 0);
+            end
+    
+            fprintf('\t> Working on spot profiles...\n');
+            if ~isempty(quant_results)
+                intensityStats.spotProfile = getSpotProfileQuant(spotsrun, quant_results, sampleCh, spotMask, indivSpotMasks);
+            else
+                intensityStats.spotProfile = getSpotProfileCall(spotsrun, sampleCh, call_table, intensityStats.gaussrad);
+            end
+        end
+    
+        fprintf('\t> Working on individual cells...\n');
+        [fieldNames, fieldTypes] = getCellTableFields();
+        table_size = [cellCount size(fieldNames,2)];
+        cellTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
+    
+        for c = 1:cellCount
+            cellTable{c, 'cellNo'} = uint16(c);
+            oneCellMask = (cellMask == c);
+            rp3 = regionprops3(oneCellMask, 'BoundingBox', 'Centroid');
+            cellTable{c, 'centroid_x'} = single(rp3.Centroid(1));
+            cellTable{c, 'centroid_y'} = single(rp3.Centroid(2));
+    
+            if ~isempty(quant_results)
+                cobj = quant_results.cell_rna_data(c);
+                cll = cell(1,1);
+                cll{1} = cobj.cell_loc;
+                cellTable{c, 'box'} = cll;
+                cellTable{c, 'spot_count'} = size(cobj.spotTable, 1);
+    
+                x0 = max(cobj.cell_loc.left - 5,1);
+                x1 = min(cobj.cell_loc.right + 5,X);
+                y0 = max(cobj.cell_loc.top - 5, 1);
+                y1 = min(cobj.cell_loc.bottom + 5,Y);
+                z0 = max(cobj.cell_loc.z_bottom - 5,1);
+                z1 = min(cobj.cell_loc.z_top + 5,Z);
+            else
+                %Cell bounds from regionprops
+                x0 = max(round(rp3.BoundingBox(1)),1);
+                x1 = min(round(x0 + rp3.BoundingBox(4)),X);
+                y0 = max(round(rp3.BoundingBox(2)),1);
+                y1 = min(round(y0 + rp3.BoundingBox(5)),Y);
+                z0 = max(round(rp3.BoundingBox(3)),1);
+                z1 = min(round(z0 + rp3.BoundingBox(6)),Z);
+    
+                cll = cell(1,1);
+                cll{1} = SingleCell.generateRecPrismStruct(x0, x1, y0, y1, z0, z1);
+                cellTable{c, 'box'} = cll;
+    
+                x0 = max(x0 - 5,1);
+                x1 = min(x1 + 5,X);
+                y0 = max(y0 - 5, 1);
+                y1 = min(y1 + 5,Y);
+                z0 = max(z0 - 5,1);
+                z1 = min(z1 + 5,Z);
+    
+                %spot count from call table
+                if ~intensityStats.noprobe
+                    cellTable{c, 'spot_count'} = nnz(call_table{:,'cell'} == c);
+                end
+            end
+    
+            cellLocMask = false(Y,X,Z);
+            cellLocMask(y0:y1,x0:x1,z0:z1) = true;
+            cellLocMask = and(cellLocMask, ~oneCellMask);
+            cll = cell(1,1);
+            cll{1} = takeStats(sampleCh, cellLocMask, struct(), 0, 0, true);
+            cellTable{c, 'local_img_bkg'} = cll;
+            clear cellLocMask
+    
+            cbkgMask = and(oneCellMask, ~spotMask);
+            cll{1} = takeStats(sampleCh, cbkgMask, struct(), 0, 0, true);
+            cellTable{c, 'cell_bkg'} = cll;
+    
+            nucBkgMask = and(cbkgMask, nucMask);
+            cll{1} = takeStats(sampleCh, nucBkgMask, struct(), 0, 0, true);
+            cellTable{c, 'nuc_bkg'} = cll;
+            cytoBkgMask = and(cbkgMask, ~nucMask);
+            cll{1} = takeStats(sampleCh, cytoBkgMask, struct(), 0, 0, true);
+            cellTable{c, 'cyto_bkg'} = cll;
+    
+            clear cbkgMask cytoBkgMask nucBkgMask
+    
+        end
+    
+        intensityStats.cellProfile = cellTable;
+    
+        %Save
+        savepath = [opStruct.output_dir, filesep, spotsrun.img_name '_istats.mat'];
+        save(savepath, 'intensityStats');
+    
+        if opStruct.outputSpotMasks & ~intensityStats.noprobe
+            savepath = [opStruct.output_dir, filesep, spotsrun.img_name '_spotmask.tif'];
+            tifop = struct('overwrite', true);
+            spotMask = uint8(spotMask);
+            saveastiff(spotMask, savepath, tifop);
+        end
+    
+    catch MEx
+        fprintf('There was an error processing %s. Skipped remainder. See below for details.\n', runStruct.srPath);
+        %disp(MEx.message);
+        disp(MEx.getReport('extended'));
+    end
+end
 
