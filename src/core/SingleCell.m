@@ -857,7 +857,7 @@ classdef SingleCell
             spotTable{:, 'zinit'} = uint16([fits.zinit]');
             spotTable{:, 'dropout_thresh'} = uint16([spotArr.dropout_thresh]');
 
-            spotTable{:, 'uid'} = [1:1:alloc];
+            spotTable{:, 'uid'} = [1:1:alloc]';
             spotTable{:, 'likely_dup'} = uint32(zeros(alloc, 1));
 
             spotTable{:, 'xfit'} = single([fits.xfit]');
