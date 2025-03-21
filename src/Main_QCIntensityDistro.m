@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.19.00';
+BUILD_STRING = '2025.03.21.01';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -581,6 +581,9 @@ function runList = scanDirRec(dirPath, opStruct)
     dirContents = dir(dirPath);
     childCount = size(dirContents, 1);
 
+    srPath = [];
+    qdPath = [];
+
     runsFound = 0;
     rawList = cell(1, childCount);
     runList = [];
@@ -694,8 +697,8 @@ function processRuns_P(runList, opStruct)
     
     %parpool(common_ctx.threads);
     pardir_sfx = [];
-    if ~isempty(opstruct.nameincl)
-        pardir_sfx = ['_' replace(opStruct.workerCount, ' ', '_')];
+    if ~isempty(opStruct.nameincl)
+        pardir_sfx = ['_' replace(opStruct.nameincl, ' ', '_')];
     end
     pardir = [opStruct.output_dir filesep 'parallel' pardir_sfx];
     initParallel(1, opStruct.workerCount, pardir);
