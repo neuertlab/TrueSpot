@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.21.01';
+BUILD_STRING = '2025.03.25.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -723,7 +723,7 @@ function processRun(runStruct, opStruct)
         %Update threshold stats
         tres = [];
         if ~isempty(spotsrun.threshold_results)
-            fprintf('\tUpdating threshold pool stats...\n');
+            fprintf('\t[%s] Updating threshold pool stats...\n', intensityStats.img_name);
             spotsrun.threshold_results = RNAThreshold.scoreThresholdSuggestions(spotsrun.threshold_results);
             tres = spotsrun.threshold_results;
             spotsrun.saveMeTo(runStruct.srPath);
@@ -758,7 +758,7 @@ function processRun(runStruct, opStruct)
         %Load source image
         tifPath = spotsrun.paths.img_path;
         if isempty(tifPath) | ~isfile(tifPath)
-            fprintf('\t[ERROR] Spotsrun was found in directory, but TIF file could not be linked! Cannot calculate image stats...\n');
+            fprintf('\t[%s] ERROR: Spotsrun was found in directory, but TIF file could not be linked! Cannot calculate image stats...\n', intensityStats.img_name);
             return;
         end
     
@@ -768,7 +768,7 @@ function processRun(runStruct, opStruct)
         clear channels;
     
         if ~isempty(opStruct.correctionmtx)
-            fprintf('\tLoading intensity correction matrix from: %s\n', opStruct.correctionmtx);
+            fprintf('\t[%s] Loading intensity correction matrix from: %s\n', intensityStats.img_name, opStruct.correctionmtx);
             load(opStruct.correctionmtx, 'BaseLineControl_ImageCorrectionFactor');
     
             sampleCh = double(sampleCh);
@@ -781,7 +781,7 @@ function processRun(runStruct, opStruct)
         if ~opStruct.nodpc
             %Clean out dead pixels
             dead_pix_path = [spotsrun.getFullOutStem() '_deadpix_idistro.mat'];
-            fprintf('\tCleaning dead pixels. Dead pixel annotation saving to: %s\n', dead_pix_path);
+            fprintf('\t[%s] Cleaning dead pixels. Dead pixel annotation saving to: %s\n', intensityStats.img_name, dead_pix_path);
             RNA_Threshold_Common.saveDeadPixels(sampleCh, dead_pix_path, true);
             sampleCh = RNA_Threshold_Common.cleanDeadPixels(sampleCh, dead_pix_path, true);
         end
@@ -841,14 +841,14 @@ function processRun(runStruct, opStruct)
             spotMask = false(Y,X,Z);
         end
     
-        fprintf('\t> Working on image background...\n');
+        fprintf('\t[%s] > Working on image background...\n', intensityStats.img_name);
         currentMask = and(~cellMaskBool, ~spotMask);
         intensityStats.statsRawFull.ibkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
         if(doTrimmed)
             intensityStats.statsRawZTrim.ibkg = takeStats(sampleCh(:,:,zmin:zmax), currentMask(:,:,zmin:zmax), struct(), 0, 0);
         end
     
-        fprintf('\t> Working on cell background...\n');
+        fprintf('\t[%s] > Working on cell background...\n', intensityStats.img_name);
         currentMask = and(cellMaskBool, ~spotMask);
         intensityStats.statsRawFull.cbkg = takeStats(sampleCh, currentMask, struct(), opStruct.blockXY, opStruct.blockZ);
         if(doTrimmed)
@@ -856,13 +856,13 @@ function processRun(runStruct, opStruct)
         end
     
         if ~intensityStats.noprobe
-            fprintf('\t> Working on overall spots...\n');
+            fprintf('\t[%s] > Working on overall spots...\n', intensityStats.img_name);
             intensityStats.statsRawFull.spotsTotal = takeStats(sampleCh, spotMask, struct(), opStruct.blockXY, opStruct.blockZ);
             if(doTrimmed)
                 intensityStats.statsRawZTrim.spotsTotal = takeStats(sampleCh(:,:,zmin:zmax), spotMask(:,:,zmin:zmax), struct(), 0, 0);
             end
     
-            fprintf('\t> Working on spot profiles...\n');
+            fprintf('\t[%s] > Working on spot profiles...\n', intensityStats.img_name);
             if ~isempty(quant_results)
                 intensityStats.spotProfile = getSpotProfileQuant(spotsrun, quant_results, sampleCh, spotMask, indivSpotMasks);
             else
@@ -870,7 +870,7 @@ function processRun(runStruct, opStruct)
             end
         end
     
-        fprintf('\t> Working on individual cells...\n');
+        fprintf('\t[%s] > Working on individual cells...\n', intensityStats.img_name);
         [fieldNames, fieldTypes] = getCellTableFields();
         table_size = [cellCount size(fieldNames,2)];
         cellTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
@@ -920,28 +920,32 @@ function processRun(runStruct, opStruct)
                     cellTable{c, 'spot_count'} = nnz(call_table{:,'cell'} == c);
                 end
             end
-    
-            cellLocMask = false(Y,X,Z);
-            cellLocMask(y0:y1,x0:x1,z0:z1) = true;
-            cellLocMask = and(cellLocMask, ~oneCellMask);
+        
+            cellData = sampleCh(y0:y1,x0:x1,z0:z1);
+            oneCellMask = oneCellMask(y0:y1,x0:x1,z0:z1);
+            cellLocMask = ~oneCellMask;
+
             cll = cell(1,1);
-            cll{1} = takeStats(sampleCh, cellLocMask, struct(), 0, 0, true);
+            cll{1} = takeStats(cellData, cellLocMask, struct(), 0, 0, true);
             cellTable{c, 'local_img_bkg'} = cll;
             clear cellLocMask
     
-            cbkgMask = and(oneCellMask, ~spotMask);
-            cll{1} = takeStats(sampleCh, cbkgMask, struct(), 0, 0, true);
+            cellSpotMask = spotMask(y0:y1,x0:x1,z0:z1);
+            cbkgMask = and(oneCellMask, ~cellSpotMask);
+            cll{1} = takeStats(cellData, cbkgMask, struct(), 0, 0, true);
             cellTable{c, 'cell_bkg'} = cll;
     
-            nucBkgMask = and(cbkgMask, nucMask);
-            cll{1} = takeStats(sampleCh, nucBkgMask, struct(), 0, 0, true);
+            cellNucMask = nucMask(y0:y1,x0:x1,z0:z1);
+            nucBkgMask = and(cbkgMask, cellNucMask);
+            cll{1} = takeStats(cellData, nucBkgMask, struct(), 0, 0, true);
             cellTable{c, 'nuc_bkg'} = cll;
-            cytoBkgMask = and(cbkgMask, ~nucMask);
-            cll{1} = takeStats(sampleCh, cytoBkgMask, struct(), 0, 0, true);
+
+            cytoBkgMask = and(cbkgMask, ~cellNucMask);
+            cll{1} = takeStats(cellData, cytoBkgMask, struct(), 0, 0, true);
             cellTable{c, 'cyto_bkg'} = cll;
     
+            clear cellData oneCellMask cellNucMask
             clear cbkgMask cytoBkgMask nucBkgMask
-    
         end
     
         intensityStats.cellProfile = cellTable;
