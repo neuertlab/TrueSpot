@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.25.00';
+BUILD_STRING = '2025.03.26.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -723,7 +723,7 @@ function processRun(runStruct, opStruct)
         %Update threshold stats
         tres = [];
         if ~isempty(spotsrun.threshold_results)
-            fprintf('\t[%s] Updating threshold pool stats...\n', intensityStats.img_name);
+            fprintf('\t[%s] Updating threshold pool stats...\n', spotsrun.img_name);
             spotsrun.threshold_results = RNAThreshold.scoreThresholdSuggestions(spotsrun.threshold_results);
             tres = spotsrun.threshold_results;
             spotsrun.saveMeTo(runStruct.srPath);
