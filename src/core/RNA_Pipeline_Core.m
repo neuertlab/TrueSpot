@@ -347,6 +347,30 @@ if spotsrun.threshold_results.lowNoiseFlag
 end
 spotsrun.intensity_threshold = spotsrun.threshold_results.threshold;
 
+%Run through all threshold presets
+RNA_Fisher_State.outputMessageLineStatic(sprintf("Testing all threshold presets..."), true);
+thpresets = RNAThreshold.loadPresets();
+thpreCount = size(thpresets, 2);
+spotsrun.th_alt.preset_count = thpreCount;
+spotsrun.th_alt.altThResults = cell(1, thpreCount);
+spotsrun.th_alt.thPresetSugg = NaN(thpreCount, 4);
+
+[spotsrun, sptTableSmpl] = spotsrun.loadSpotsTable();
+[spotsrun, sptTableCtrl] = spotsrun.loadControlSpotsTable();
+for thp = 1:thpreCount
+    thpreRes = RNAThreshold.runWithPreset(sptTableSmpl, sptTableCtrl, thp);
+    if ~isempty(thpreRes)
+        spotsrun.th_alt.altThResults{thp} = thpreRes;
+        spotsrun.th_alt.thPresetSugg(thp, 1) = thpreRes.threshold;
+        if isfield(thpreRes, 'median_w')
+            spotsrun.th_alt.thPresetSugg(thp, 2) = thpreRes.median_w - thpreRes.mad_w;
+            spotsrun.th_alt.thPresetSugg(thp, 3) = thpreRes.median_w;
+            spotsrun.th_alt.thPresetSugg(thp, 4) = thpreRes.median_w + thpreRes.mad_w;
+        end
+    end
+end
+clear thp thpresets thpreCount sptTableSmpl sptTableCtrl thpreRes
+
 %Print plots & image representation
     %Spot plots (log and linear scale) - w/ chosen threshold marked
     %Max projection of sample and control w circled spots (also max proj)

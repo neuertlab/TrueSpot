@@ -12,6 +12,7 @@ classdef RNASpotsRun
         paths;
         channels;
         th_params;
+        th_alt;
         dims;
         meta;
         options;
@@ -21,7 +22,7 @@ classdef RNASpotsRun
 
         function [obj, run_info] = bundleForSave(obj)
             obj.meta.modifiedDate = datetime;
-            run_info = struct('RNASpotsRunVersion', 3);
+            run_info = struct('RNASpotsRunVersion', 4);
 
             run_info.img_name = obj.img_name;
             run_info.intensity_threshold = obj.intensity_threshold;
@@ -29,6 +30,7 @@ classdef RNASpotsRun
             run_info.paths = obj.paths;
             run_info.channels = obj.channels;
             run_info.th_params = obj.th_params;
+            run_info.th_alt = obj.th_alt;
             run_info.dims = obj.dims;
             run_info.meta = obj.meta;
             run_info.options = obj.options;
@@ -456,6 +458,9 @@ classdef RNASpotsRun
             wmin = 3; wmax = 21; wincr = 3;
             rnaspots_run.th_params.window_sizes = [wmin:wincr:wmax];
 
+            rnaspots_run.th_alt = struct();
+            rnaspots_run.th_alt.preset_count = 0;
+
             rnaspots_run.options = struct('dtune_gaussrad', 7);
             rnaspots_run.options.overwrite_output = false;
             rnaspots_run.options.deadpix_detect = true;
@@ -490,7 +495,7 @@ classdef RNASpotsRun
             rnaspots_run.meta.idims_expspot = struct('x', -1, 'y', -1, 'z', -1);
             rnaspots_run.meta.creationDate = datetime;
             rnaspots_run.meta.modifiedDate = datetime;
-            rnaspots_run.meta.tsSpotsVersion = '2024.10.31.00 (v1.1.1)';
+            rnaspots_run.meta.tsSpotsVersion = '2025.03.27.00 (v1.2.0)';
         end
         
         function rnaspots_run = loadFrom(path, updateOutDir)
@@ -505,6 +510,8 @@ classdef RNASpotsRun
                 %load(path, 'rnaspots_run');
                 load(path, 'run_info');
 
+                fileVer = run_info.RNASpotsRunVersion;
+
                 rnaspots_run = RNASpotsRun;
                 rnaspots_run.img_name = run_info.img_name;
                 rnaspots_run.intensity_threshold = run_info.intensity_threshold;
@@ -515,6 +522,13 @@ classdef RNASpotsRun
                 rnaspots_run.dims = run_info.dims;
                 rnaspots_run.meta = run_info.meta;
                 rnaspots_run.options = run_info.options;
+
+                if fileVer >= 4
+                    rnaspots_run.th_alt = run_info.th_alt;
+                else
+                    rnaspots_run.th_alt = struct();
+                    rnaspots_run.th_alt.preset_count = 0;
+                end
 
                 %Change output dir
                 if updateOutDir

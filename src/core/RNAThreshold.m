@@ -174,6 +174,7 @@ classdef RNAThreshold
             thresh_res.thstats.mean_overall = mean(all_sugg, 'all', 'omitnan');
             thresh_res.thstats.med_overall = median(all_sugg, 'all', 'omitnan');
             thresh_res.thstats.std_overall = std(all_sugg, 0, 'all', 'omitnan');
+            thresh_res.thstats.mad_overall = mad(all_sugg, 1, 'all', 'omitnan');
             thresh_res.thstats.min_overall = min(all_sugg, [], 'all', 'omitnan');
             thresh_res.thstats.max_overall = max(all_sugg, [], 'all', 'omitnan');
 
@@ -690,27 +691,102 @@ classdef RNAThreshold
             iscores = RNAThreshold.getAllRightISectThresholds(threshold_results);
             allscores = [];
 
+            hasScoresCount = 3;
+            redistributeWeight = 0.0;
             if ~isempty(mscores)
-                mfac = mean(mscores, 'all', 'omitnan') + (std(mscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+                std_m = std(mscores, 0, 'all', 'omitnan');
+                median_m = median(mscores, 'all', 'omitnan');
+                mad_m = mad(mscores, 1, 'all', 'omitnan');
+                mean_m = mean(mscores, 'all', 'omitnan');
+
+                mfac = mean_m + (std_m * threshold_results.std_factor);
                 allscores = cat(2, allscores, mscores);
             else
+                std_m = 0.0;
+                median_m = 0;
+                mad_m = 0;
+                mean_m = 0.0;
                 mfac = 0.0;
+                hasScoresCount = hasScoresCount - 1;
+                redistributeWeight = redistributeWeight + mweight;
             end
 
             if ~isempty(fscores)
-                ffac = mean(fscores, 'all', 'omitnan') + (std(fscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+                std_f = std(fscores, 0, 'all', 'omitnan');
+                median_f = median(fscores, 'all', 'omitnan');
+                mad_f = mad(fscores, 1, 'all', 'omitnan');
+                mean_f = mean(fscores, 'all', 'omitnan');
+
+                ffac = mean_f + (std_f * threshold_results.std_factor);
                 allscores = cat(2, allscores, fscores);
             else
+                std_f = 0.0;
+                median_f = 0;
+                mad_f = 0;
+                mean_f = 0.0;
                 ffac = 0.0;
+                hasScoresCount = hasScoresCount - 1;
+                redistributeWeight = redistributeWeight + fweight;
             end
 
             if ~isempty(iscores)
-                ifac = mean(iscores, 'all', 'omitnan') + (std(iscores, 0, 'all', 'omitnan') * threshold_results.std_factor);
+                std_i = std(iscores, 0, 'all', 'omitnan');
+                median_i = median(iscores, 'all', 'omitnan');
+                mad_i = mad(iscores, 1, 'all', 'omitnan');
+                mean_i = mean(iscores, 'all', 'omitnan');
+
+                ifac = mean_i + (std_i * threshold_results.std_factor);
                 allscores = cat(2, allscores, iscores);
             else
                 ifac = 0.0;
+                std_i = 0.0;
+                median_i = 0;
+                mad_i = 0;
+                mean_i = 0.0;
+                hasScoresCount = hasScoresCount - 1;
+                redistributeWeight = redistributeWeight + iweight;
+            end
+
+            %Redistribute weight if any of the groups came up empty
+            if hasScoresCount < 3
+                if hasScoresCount > 1
+                    addWeight = redistributeWeight / hasScoresCount;
+                    if ~isempty(mscores) 
+                        mweight = mweight + addWeight; 
+                        threshold_results.use_mweight = mweight;
+                    else
+                        threshold_results.use_mweight = 0.0;
+                    end
+                    if ~isempty(fscores)
+                        fweight = fweight + addWeight; 
+                        threshold_results.use_fweight = fweight;
+                    else
+                        threshold_results.use_fweight = 0.0;
+                    end
+                    if ~isempty(iscores) 
+                        iweight = iweight + addWeight; 
+                        threshold_results.use_iweight = iweight;
+                    else
+                        threshold_results.use_iweight = 0.0;
+                    end
+                end
             end
             threshold_results.threshold = round((mfac * mweight) + (ffac * fweight) + (ifac * iweight));
+
+            %Toss in some stats that can be used by downstream tools
+%             threshold_results.mean_uw = mean(allscores, 'all', 'omitnan');
+%             threshold_results.median_uw = median(allscores, 'all', 'omitnan');
+%             threshold_results.std_uw = std(allscores, 0, 'all', 'omitnan');
+%             threshold_results.mad_uw = mad(allscores, 1, 'all', 'omitnan');
+
+            threshold_results.mean_w = round((mean_m * mweight) + (mean_f * fweight) + (mean_i * iweight));
+            threshold_results.median_w = round((median_m * mweight) + (median_f * fweight) + (median_i * iweight));
+            threshold_results.std_w = round((std_m * mweight) + (std_f * fweight) + (std_i * iweight));
+            threshold_results.mad_w = round((mad_m * mweight) + (mad_f * fweight) + (mad_i * iweight));
+            clear mean_m mean_f mean_i
+            clear median_m median_f median_i
+            clear std_m std_f std_i
+            clear mad_m mad_f mad_i
 
             sugg_min = threshold_results.suggestion(1);
             sugg_max = threshold_results.suggestion(2);
@@ -747,6 +823,8 @@ classdef RNAThreshold
                 end
                 threshold_results.threshold = threshold_results.control_floor;
             end
+
+            threshold_results = RNAThreshold.scoreThresholdSuggestions(threshold_results);
         end
 
         %------------ Thresholder Run Wrappers ------------
