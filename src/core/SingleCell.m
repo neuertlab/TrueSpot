@@ -309,10 +309,11 @@ classdef SingleCell
         end
 
         %%
-        function obj = updateSpotAndSignalValues(obj, globalBrightTh, globalSingleInt, removeLikelyDups)
+        function obj = updateSpotAndSignalValues(obj, globalBrightTh, globalSingleInt, removeLikelyDups, appliedThreshold)
             if nargin < 2; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
             if nargin < 3; globalSingleInt = 200.0; end
             if nargin < 4; removeLikelyDups = true; end
+            if nargin < 5; appliedThreshold = 0; end
 
             %Reset.
             obj.spotcount_nuc = 0;
@@ -332,6 +333,10 @@ classdef SingleCell
             
             %Count spots
             spot_count = obj.getSpotCount();
+            passTh = true(spot_count, 1);
+            if appliedThreshold > 0
+                passTh = obj.spotTable{:, 'dropout_thresh'} >= appliedThreshold;
+            end
             if spot_count > 0
                 nucFlag = obj.spotTable{:, 'nucRNA'};
                 obj.spotcount_nuc = nnz(nucFlag);
@@ -339,7 +344,9 @@ classdef SingleCell
 
                 cloudFlag = obj.spotTable{:, 'in_cloud'};
                 nucNoCloud = and(~cloudFlag, nucFlag);
+                nucNoCloud = and(nucNoCloud, passTh);
                 cytoNoCloud = and(~cloudFlag, ~nucFlag);
+                cytoNoCloud = and(cytoNoCloud, passTh);
                 ttfit = obj.spotTable{nucNoCloud, 'TotFitInt'};
                 obj.signal_nuc = sum(ttfit, 'all');
                 ttfit = obj.spotTable{cytoNoCloud, 'TotFitInt'};
@@ -365,15 +372,16 @@ classdef SingleCell
             obj.spotcount_total = obj.spotcount_nuc + obj.spotcount_cyto;
             obj.signal_total = obj.signal_nuc + obj.signal_cyto;
             
-            obj = obj.updateCountEstimates(2, globalBrightTh, globalSingleInt, removeLikelyDups);
+            obj = obj.updateCountEstimates(2, globalBrightTh, globalSingleInt, removeLikelyDups, appliedThreshold);
         end
         
         %%
-        function obj = updateCountEstimates(obj, brightStDevs, globalBrightTh, globalSingleInt, removeLikelyDups)
+        function obj = updateCountEstimates(obj, brightStDevs, globalBrightTh, globalSingleInt, removeLikelyDups, appliedThreshold)
             if nargin < 2; brightStDevs = 2; end
             if nargin < 3; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
             if nargin < 4; globalSingleInt = 200.0; end
             if nargin < 5; removeLikelyDups = true; end
+            if nargin < 6; appliedThreshold = 0; end
 
             %Munsky B, Li G, Fox ZR, Shepherd DP, Neuert G. Distribution shapes govern the discovery of predictive models for gene regulation. Proc Natl Acad Sci U S A. 2018;115(29). doi:10.1073/pnas.1804060115
             obj.nucCount = 0;
@@ -385,25 +393,27 @@ classdef SingleCell
                 obj = obj.convertSpotStorage();
             end
 
+            %Determine which spots to count
+            isCounted = true(1, size(obj.spotTable, 1));
+            if appliedThreshold > 0
+                passTh = obj.spotTable{:, 'dropout_thresh'} >= appliedThreshold;
+                isCounted(~passTh) = false;
+            end
+
             %Remove duplicates
-            useSpotTable = obj.spotTable;
-            
-            if ~isempty(useSpotTable)
+            if ~isempty(obj.spotTable)
                 if removeLikelyDups
-                    dup_flag = useSpotTable{:, 'likely_dup'} > 0;
-                    is_center = (useSpotTable{:, 'likely_dup'}) == (useSpotTable{:, 'uid'});
+                    dup_flag = obj.spotTable{:, 'likely_dup'} > 0;
+                    is_center = (obj.spotTable{:, 'likely_dup'}) == (obj.spotTable{:, 'uid'});
                     is_dup = and(~is_center, dup_flag)';
 
-                    useSpotTable = useSpotTable(~is_dup, :);
+                    isCounted(is_dup) = false;
 
                     clear is_center dup_flag
-                else
-                    is_dup = false(1, size(obj.spotTable, 1));
                 end
-            else
-                is_dup = [];
             end
             
+            useSpotTable = obj.spotTable(isCounted, :);
 
             %Get "mature RNA" (single target) intensity
             %Collect spot intensities
@@ -494,11 +504,7 @@ classdef SingleCell
             end
 
             %Update object table
-            if nnz(is_dup) > 1
-                obj.spotTable{~is_dup, 'nascent_flag'} = useSpotTable{:, 'nascent_flag'};
-            else
-                obj.spotTable = useSpotTable;
-            end
+            obj.spotTable{isCounted, 'nascent_flag'} = useSpotTable{:, 'nascent_flag'};
         end
 
         %%
