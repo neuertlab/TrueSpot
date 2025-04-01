@@ -5,7 +5,7 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.28.00';
+BUILD_STRING = '2025.04.01.00';
 VERSION_STRING = 'v1.2.0';
 
 DEFAULT_PRESET_INDEX = 6;
@@ -32,6 +32,7 @@ param_struct.use_nuc_mask = 2; %lbl_mid
 param_struct.workers = 1;
 
 param_struct.nocells = false; %If no cell seg data (ie. sim image)
+param_struct.incl_cell_zero = false;
 
 %Specs if don't provide run file
 param_struct.man_thresh = [];
@@ -92,6 +93,10 @@ for i = 1:nargin
         elseif strcmp(lastkey, "nocells")
             param_struct.nocells = true;
             if arg_debug; fprintf("Bypassing cell segmentation data.\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "cellzero")
+            param_struct.incl_cell_zero = true;
+            if arg_debug; fprintf("Including ""cell zero""\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "sensitive")
             if ~senspe_set

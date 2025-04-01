@@ -3,8 +3,8 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.10.02';
-VERSION_STRING = 'v1.1.2';
+BUILD_STRING = '2025.04.01.00';
+VERSION_STRING = 'v1.2.0';
 
 % ========================== Process args ==========================
 
@@ -12,8 +12,9 @@ arg_debug = true; %CONSTANT used for debugging arg parser.
 
 input_dir = []; %Give a dir for a batch and it will look recursively through it for TS results.
 output_path = [];
+xml_path = [];
 
-skipFlaggedDups = false;
+opsStruct = genOpsStruct();
 
 lastkey = [];
 for i = 1:nargin
@@ -27,7 +28,7 @@ for i = 1:nargin
         end
 
         if strcmp(lastkey, "skipdups")
-            skipFlaggedDups = true;
+            opsStruct.skipFlaggedDups = true;
             if arg_debug; fprintf("Skip Flagged Duplicates: On\n"); end
             lastkey = [];
         end
@@ -45,6 +46,16 @@ for i = 1:nargin
         elseif strcmp(lastkey, "output")
             output_path = argval;
             if arg_debug; fprintf("Output Path Set: %s\n", output_path); end
+        elseif strcmp(lastkey, "chdef")
+            xml_path = argval;
+            if arg_debug; fprintf("Channel/Sample Definition Doc Set: %s\n", xml_path); end
+        elseif strcmp(lastkey, "mthresh")
+            opsStruct.mThresh = parseNumberList(argval);
+            if arg_debug
+                fprintf("Manual threshold(s) set: ");
+                dbgPrintNumberList(opsStruct.mThresh);
+                fprintf("\n");
+            end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -59,7 +70,7 @@ if isempty(input_dir)
 end
 
 if isempty(output_path)
-    if skipFlaggedDups
+    if opsStruct.skipFlaggedDups
         output_path = [input_dir filesep 'cellCounts_skipdups.tsv'];
     else
         output_path = [input_dir filesep 'cellCounts.tsv'];
@@ -72,36 +83,87 @@ fprintf('TrueSpot Version: %s\n', VERSION_STRING);
 fprintf('Run Time: %s\n', datetime);
 fprintf('Input: %s\n', input_dir);
 fprintf('Output: %s\n', output_path);
+fprintf('XML Def: %s\n', xml_path);
 
-tableHandle = openOutTable(output_path);
-doDir(input_dir, tableHandle, skipFlaggedDups);
+%Determine threshold values
+thGroupNames = [];
+if ~isempty(opsStruct.mThresh)
+    thCount = size(opsStruct.mThresh, 2);
+    thGroupNames = cell(1, thCount);
+    for i = 1:thCount
+        thGroupNames{i} = num2str(opsStruct.mThresh(i));
+    end
+else
+    if ~isempty(xml_path)
+        opsStruct.channelDefs = MultichParams.readChannelDefXML(xml_path);
+        thGroupNames = {'MID' 'LO' 'HI'};
+    end
+end
+
+tableHandle = openOutTable(output_path, thGroupNames);
+doDir(input_dir, tableHandle, opsStruct);
 
 fclose(tableHandle);
 end
 
 % ========================== Additional Functions ==========================
 
-function tableHandle = openOutTable(tablePath)
+function opsStruct = genOpsStruct()
+    opsStruct = struct();
+    opsStruct.channelDefs = [];
+    opsStruct.skipFlaggedDups = false;
+    opsStruct.mThresh = [];
+end
+
+function tableHandle = openOutTable(tablePath, thNames)
     tableHandle = fopen(tablePath, 'w');
 
-    outfields = {'#SRCIMGNAME' 'TARGET' 'PROBE' 'VOXDIMS'...
-        'CELLNO' 'CELLAREA_PIX' 'NUCVOL_VOX'...
-        'SPOTS_NUC' 'SPOTS_CYTO' 'SIGNAL_NUC' 'SIGNAL_CYTO'...
-        'EST_COUNT_NUC' 'EST_NASCENT_COUNT_NUC' 'EST_COUNT_CYTO'...
-        'EST_COUNT_NUC_CLOUD' 'EST_NASCENT_COUNT_NUC_CLOUD' 'EST_COUNT_CYTO_CLOUD' ...
+    outfields_cellcmn = {'SRCIMGNAME' 'TARGET' 'PROBE' 'VOXDIMS'...
+        'CELLNO' 'CELLAREA_PIX' 'NUCVOL_VOX' ...
         'NUC_TOT_INT' 'NUC_MED_INT' 'NUC_INT_STDEV' ...
         'NUC_MAXPROJ_AREA' 'NUC_MAXPROJ_TOT_INT' 'NUC_MAXPROJ_MED_INT' 'NUC_MAXPROJ_INT_STDEV' ...
         'CYTOVOL_VOX' 'CYTO_TOT_INT' 'CYTO_MED_INT' 'CYTO_INT_STDEV' ...
         'CYTO_MAXPROJ_AREA' 'CYTO_MAXPROJ_TOT_INT' 'CYTO_MAXPROJ_MED_INT' 'CYTO_MAXPROJ_INT_STDEV'};
-    field_count = size(outfields, 2);
+
+    thfields = {'THVAL' 'EST_COUNT_NUC' 'EST_NASCENT_COUNT_NUC' 'EST_COUNT_CYTO' ...
+        'EST_COUNT_NUC_CLOUD' 'EST_NASCENT_COUNT_NUC_CLOUD' 'EST_COUNT_CYTO_CLOUD'};
+
+%     outfields = {'SRCIMGNAME' 'TARGET' 'PROBE' 'VOXDIMS'...
+%         'CELLNO' 'CELLAREA_PIX' 'NUCVOL_VOX'...
+%         'SPOTS_NUC' 'SPOTS_CYTO' 'SIGNAL_NUC' 'SIGNAL_CYTO'...
+%         'EST_COUNT_NUC' 'EST_NASCENT_COUNT_NUC' 'EST_COUNT_CYTO'...
+%         'EST_COUNT_NUC_CLOUD' 'EST_NASCENT_COUNT_NUC_CLOUD' 'EST_COUNT_CYTO_CLOUD' ...
+%         'NUC_TOT_INT' 'NUC_MED_INT' 'NUC_INT_STDEV' ...
+%         'NUC_MAXPROJ_AREA' 'NUC_MAXPROJ_TOT_INT' 'NUC_MAXPROJ_MED_INT' 'NUC_MAXPROJ_INT_STDEV' ...
+%         'CYTOVOL_VOX' 'CYTO_TOT_INT' 'CYTO_MED_INT' 'CYTO_INT_STDEV' ...
+%         'CYTO_MAXPROJ_AREA' 'CYTO_MAXPROJ_TOT_INT' 'CYTO_MAXPROJ_MED_INT' 'CYTO_MAXPROJ_INT_STDEV'};
+    field_count = size(outfields_cellcmn, 2);
     for ii = 1:field_count
         if ii > 1; fprintf(tableHandle, '\t'); end
-        fprintf(tableHandle, outfields{ii});
+        fprintf(tableHandle, outfields_cellcmn{ii});
     end
+
+    thfieldCount = size(thfields, 2);
+    if ~isempty(thNames)
+        thgroupCount = size(thNames, 2);
+        for gg = 1:thgroupCount
+            gName = thNames{gg};
+            for ii = 1:thfieldCount
+                if ii > 1; fprintf(tableHandle, '\t'); end
+                fprintf(tableHandle, [thfields{ii} '_' gName]);
+            end
+        end
+    else
+        for ii = 1:thfieldCount
+            if ii > 1; fprintf(tableHandle, '\t'); end
+            fprintf(tableHandle, thfields{ii});
+        end
+    end
+
     fprintf(tableHandle, '\n');
 end
 
-function doResultsSet(quantFilePath, tableHandle, skipFlaggedDups)
+function doResultsSet(quantFilePath, tableHandle, opsStruct)
     %Look for RNASpotsRun in same directory...
     [mydir, fname, ~] = fileparts(quantFilePath);
     fstem = replace(fname, '_quantData', '');
@@ -170,6 +232,9 @@ function doResultsSet(quantFilePath, tableHandle, skipFlaggedDups)
 
         CSTATS_COL_COUNT = 15;
 
+        %TODO
+        thList = [];
+
         for c = 1:cellCount
             myCell = cellDat(c);
             fprintf(tableHandle, '%s\t%s\t%s', iname, targetName, probeName);
@@ -178,21 +243,10 @@ function doResultsSet(quantFilePath, tableHandle, skipFlaggedDups)
             else
                 fprintf(tableHandle, '\t(0,0,0)');
             end
-            myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt, skipFlaggedDups);
-
             fprintf(tableHandle, '\t%d\t%d', c, nnz(myCell.mask_cell));
             fprintf(tableHandle, '\t%d', nnz(myCell.mask_nuc));
-            fprintf(tableHandle, '\t%d\t%d', myCell.spotcount_nuc, myCell.spotcount_cyto);
-            fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
-            %[nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
-            %myCell = myCell.updateCountEstimates();
-            fprintf(tableHandle, '\t%d\t%d', myCell.nucCount, myCell.nucNascentCount);
-            fprintf(tableHandle, '\t%d', myCell.cytoCount);
-            fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
-            fprintf(tableHandle, '\t%d', myCell.cytoCloud);
 
             if ~isempty(myCell.cell_stats)
-
                 suffixes = {'intensity_total' 'intensity_median' 'intensity_stdev'};
                 fmtwrite = {'\t%d' '\t%d' '\t%.3f'};
                 ifieldcount = size(suffixes, 2);
@@ -257,6 +311,22 @@ function doResultsSet(quantFilePath, tableHandle, skipFlaggedDups)
                 end
             end
 
+            %TODO_-------------------------------------------------
+
+            myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt, opsStruct.skipFlaggedDups);
+
+            
+            fprintf(tableHandle, '\t%d\t%d', myCell.spotcount_nuc, myCell.spotcount_cyto);
+            fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
+            %[nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
+            %myCell = myCell.updateCountEstimates();
+            fprintf(tableHandle, '\t%d\t%d', myCell.nucCount, myCell.nucNascentCount);
+            fprintf(tableHandle, '\t%d', myCell.cytoCount);
+            fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
+            fprintf(tableHandle, '\t%d', myCell.cytoCloud);
+
+            
+
             fprintf(tableHandle, '\n');
             clear myCell
         end
@@ -268,7 +338,7 @@ function doResultsSet(quantFilePath, tableHandle, skipFlaggedDups)
 
 end
 
-function doDir(dirPath, tableHandle, skipFlaggedDups)
+function doDir(dirPath, tableHandle, opsStruct)
     %Search for files ending with _quantData.mat
     %Then look for one in the same dir ending in _rnaspotsrun.mat
     fprintf('\tProcessing %s...\n', dirPath);
@@ -278,12 +348,40 @@ function doDir(dirPath, tableHandle, skipFlaggedDups)
         child = dirContents(c,1);
         if child.isdir
             if ~strcmp(child.name, '.') & ~strcmp(child.name, '..')
-                doDir([dirPath filesep child.name], tableHandle, skipFlaggedDups);
+                doDir([dirPath filesep child.name], tableHandle, opsStruct);
             end
         else
             if endsWith(child.name, '_quantData.mat')
-                doResultsSet([dirPath filesep child.name], tableHandle, skipFlaggedDups);
+                doResultsSet([dirPath filesep child.name], tableHandle, opsStruct);
             end
         end
+    end
+end
+
+function numberList = parseNumberList(inputString)
+    %Expects comma delimited decimal numbers - may or may not be surrounded
+    %by parentheses
+    inputString = replace(inputString, '(', '');
+    inputString = replace(inputString, ')', '');
+    rawList = split(inputString, ',');
+    count = size(rawList, 1);
+    numberList = zeros(1, count);
+    for i = 1:count
+        numberList(i) = str2double(rawList{i, 1});
+    end
+    numberList = int32(numberList);
+end
+
+function dbgPrintNumberList(numberList)
+    count = size(numberList, 2);
+    if count > 1
+        fprintf('(');
+    end
+    for i = 1:count
+        if i > 1; fprintf(','); end
+        fprintf('%d', numberList(i));
+    end
+    if count > 1
+        fprintf(')');
     end
 end

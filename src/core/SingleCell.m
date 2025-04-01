@@ -323,9 +323,20 @@ classdef SingleCell
             obj.signal_cyto = 0.0;
             obj.signal_total = 0.0;
 
+            obj.nucCount= 0;
+            obj.nucNascentCount = 0;
+            obj.nucCloud = 0;
+            obj.nucNascentCloud = 0;
+            obj.cytoCount = 0;
+            obj.cytoCloud = 0;
+
             %If not stored in table, convert to table
             if isempty(obj.spotTable) & ~isempty(obj.spots)
                 obj = obj.convertSpotStorage();
+            end
+
+            if isempty(obj.spotTable)
+                return;
             end
 
             %Cluster spots, if applicable
@@ -721,7 +732,7 @@ classdef SingleCell
         %%
         function pkg = packageForSave(obj)
             pkg = struct();
-            pkg.version = 3;
+            pkg.version = 4;
             pkg.cell_number = obj.cell_number;
             pkg.cell_loc = obj.cell_loc;
             pkg.dim_z = obj.dim_z;
@@ -739,6 +750,7 @@ classdef SingleCell
             pkg.nucNascentCloud = obj.nucNascentCloud;
             pkg.cytoCount = obj.cytoCount;
             pkg.cytoCloud = obj.cytoCloud;
+            pkg.cell_stats = obj.cell_stats;
 
             pkg.nuc_ellip = obj.nuc_ellip;
             
@@ -830,6 +842,9 @@ classdef SingleCell
 %                     %have to update anything accessing zfits though so do
 %                     %later.
 %                 end
+            end
+            if pkg.version >= 4
+                mycell.cell_stats = pkg.cell_stats;
             end
 
             if ~isempty(pkg.clouds)

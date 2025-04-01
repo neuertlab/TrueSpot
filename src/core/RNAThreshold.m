@@ -174,7 +174,7 @@ classdef RNAThreshold
             thresh_res.thstats.mean_overall = mean(all_sugg, 'all', 'omitnan');
             thresh_res.thstats.med_overall = median(all_sugg, 'all', 'omitnan');
             thresh_res.thstats.std_overall = std(all_sugg, 0, 'all', 'omitnan');
-            thresh_res.thstats.mad_overall = mad(all_sugg, 1, 'all', 'omitnan');
+            thresh_res.thstats.mad_overall = mad(all_sugg, 1, 'all');
             thresh_res.thstats.min_overall = min(all_sugg, [], 'all', 'omitnan');
             thresh_res.thstats.max_overall = max(all_sugg, [], 'all', 'omitnan');
 
@@ -696,7 +696,7 @@ classdef RNAThreshold
             if ~isempty(mscores)
                 std_m = std(mscores, 0, 'all', 'omitnan');
                 median_m = median(mscores, 'all', 'omitnan');
-                mad_m = mad(mscores, 1, 'all', 'omitnan');
+                mad_m = mad(mscores, 1, 'all');
                 mean_m = mean(mscores, 'all', 'omitnan');
 
                 mfac = mean_m + (std_m * threshold_results.std_factor);
@@ -714,7 +714,7 @@ classdef RNAThreshold
             if ~isempty(fscores)
                 std_f = std(fscores, 0, 'all', 'omitnan');
                 median_f = median(fscores, 'all', 'omitnan');
-                mad_f = mad(fscores, 1, 'all', 'omitnan');
+                mad_f = mad(fscores, 1, 'all');
                 mean_f = mean(fscores, 'all', 'omitnan');
 
                 ffac = mean_f + (std_f * threshold_results.std_factor);
@@ -732,7 +732,7 @@ classdef RNAThreshold
             if ~isempty(iscores)
                 std_i = std(iscores, 0, 'all', 'omitnan');
                 median_i = median(iscores, 'all', 'omitnan');
-                mad_i = mad(iscores, 1, 'all', 'omitnan');
+                mad_i = mad(iscores, 1, 'all');
                 mean_i = mean(iscores, 'all', 'omitnan');
 
                 ifac = mean_i + (std_i * threshold_results.std_factor);
@@ -774,10 +774,10 @@ classdef RNAThreshold
             threshold_results.threshold = round((mfac * mweight) + (ffac * fweight) + (ifac * iweight));
 
             %Toss in some stats that can be used by downstream tools
-%             threshold_results.mean_uw = mean(allscores, 'all', 'omitnan');
-%             threshold_results.median_uw = median(allscores, 'all', 'omitnan');
-%             threshold_results.std_uw = std(allscores, 0, 'all', 'omitnan');
-%             threshold_results.mad_uw = mad(allscores, 1, 'all', 'omitnan');
+            threshold_results.mean_uw = mean(allscores, 'all', 'omitnan');
+            threshold_results.median_uw = median(allscores, 'all', 'omitnan');
+            threshold_results.std_uw = std(allscores, 0, 'all', 'omitnan');
+            threshold_results.mad_uw = mad(allscores, 1, 'all');
 
             threshold_results.mean_w = round((mean_m * mweight) + (mean_f * fweight) + (mean_i * iweight));
             threshold_results.median_w = round((median_m * mweight) + (median_f * fweight) + (median_i * iweight));
@@ -883,9 +883,7 @@ classdef RNAThreshold
             if winmin == 0 & winmax == 0
                 param_struct.window_sizes = [];
             else
-                if winmin < 2; winmin = 2; end
                 winincr = rnaspots_run.options.winsize_incr;
-                if winincr < 1; winincr = 1; end
                 if winmax < winmin; winmax = winmin+winincr; end
                 param_struct.window_sizes = [winmin:winincr:winmax];
             end

@@ -300,7 +300,7 @@ for i = 1:nargin
             if arg_debug; fprintf("Requested Threads: %d\n", thread_request); end
         elseif strcmp(lastkey, "gaussrad")
             rna_spot_run.options.dtune_gaussrad = Force2Num(argval);
-            if arg_debug; fprintf("XY Gaussian Radius Set: %s\n", rna_spot_run.options.dtune_gaussrad); end
+            if arg_debug; fprintf("XY Gaussian Radius Set: %d\n", rna_spot_run.options.dtune_gaussrad); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end

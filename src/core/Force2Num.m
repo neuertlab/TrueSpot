@@ -11,5 +11,9 @@ function number = Force2Num(value)
     if ischar(value)
         number = str2double(value);
     end
+    if isstring(value)
+        cvalue = char(value);
+        number = str2double(cvalue);
+    end
 
 end

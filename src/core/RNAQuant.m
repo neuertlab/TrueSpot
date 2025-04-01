@@ -535,7 +535,7 @@ classdef RNAQuant
                 myCell.spotcount_cyto = rna_count_total - rna_count_nuc;
 
                 if rna_count_total > 0
-                    cell_rna_data(c) = myCell.preallocSpots(rna_count_total);
+                    myCell = myCell.preallocSpots(rna_count_total);
                     for i = 1:rna_count_total
                         myCell.spots(i).x = rna_in_cell(i,1);
                         myCell.spots(i).y = rna_in_cell(i,2);
@@ -1163,8 +1163,19 @@ classdef RNAQuant
             fprintf("[%s] RNAQuant.FitRNA_S -- Cells found: %d\n", datetime, cell_count);
             if quant_struct.do_gauss_fit
                 fprintf("[%s] RNAQuant.FitRNA_S -- Fitting Gaussians to spots...\n", datetime);
+                if ~isempty(quant_struct.cell_zero)
+                    fprintf("[%s] RNAQuant.FitRNA_S -- Working on cell zero...\n", datetime);
+                    my_cell = quant_struct.cell_zero;
+                    cell_nobkg = my_cell.isolateCellBox(img_use_dbl);
+                    
+                    my_cell = RNAQuant.FitGaussians3Cell(cell_nobkg, my_cell,...
+                        quant_struct.spotzoom_r_xy, quant_struct.spotzoom_r_z, b_filters);
+                    quant_struct.cell_zero = my_cell;
+                end
+
                 for c = 1:cell_count
                     if (quant_struct.dbgcell > 0) & (c ~= quant_struct.dbgcell); continue; end
+                    fprintf("[%s] RNAQuant.FitRNA_S -- Working on cell %d...\n", datetime, c);
                     my_cell = quant_struct.cell_rna_data(c);
                     cell_nobkg = my_cell.isolateCellBox(img_use_dbl);
                     

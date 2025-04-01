@@ -275,6 +275,7 @@ quant_results.z_adj = param_struct.z_adj;
 quant_results.workers = param_struct.workers;
 quant_results.dbgcell = param_struct.dbgcell;
 quant_results.no_bkg_subtract = param_struct.no_bkg_subtract;
+quant_results.incl_cell_zero = param_struct.incl_cell_zero;
 
 if ~isempty(quant_results.t_coord_table)
    quant_results.t_coord_table = int32(quant_results.t_coord_table);
@@ -353,7 +354,7 @@ function [thresh_set, use_thresh] = determineThRange(spotsRun, param_struct)
         return;
     end
 
-    thMan = param_struct.man_threshold;
+    thMan = param_struct.man_thresh;
     thMin = param_struct.th_range_min;
     thMax = param_struct.th_range_max;
 
@@ -361,7 +362,7 @@ function [thresh_set, use_thresh] = determineThRange(spotsRun, param_struct)
         use_thresh = median(thMan, 'all', 'omitnan');
         thresh_set = thMan;
         manMin = min(thMan, [], 'all', 'omitnan');
-        manMax = min(thMan, [], 'all', 'omitnan');
+        manMax = max(thMan, [], 'all', 'omitnan');
         if thMin > 0 & (thMin < manMin)
             %Extend down to minimum
             thresh_set = [(thMin:1:manMin) thresh_set];
