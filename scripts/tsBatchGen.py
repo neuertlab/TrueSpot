@@ -172,6 +172,10 @@ class ImageChannelInfo:
         self.quantSettings = None
         self.spotsJobSettings = None
         self.parentBatch = None
+        
+        self.dirName = None
+        self.scriptPath = None
+        self.quantResPath = None
     
     def fromXmlNode(self, element):
         if 'ChannelNumber' in element.attr:
@@ -456,36 +460,138 @@ def getdtstr():
     now = datetime.datetime.now()
     return "[" + str(now) + "]"
 
-def genChannelJobs(tifImage, channelInfo, tsDir, moduleName):
-    #TODO
+def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
     chStr = 'CH' + str(channelInfo.channelNumber)
+    channelInfo.dirName = chStr
     chDir = os.path.join(tifImage.resultsDir, chStr)
     os.makedirs(chDir, exist_ok=True)
     
     chName = tifImage.name + '_' + chStr
     outStemName = chName + '_spotCall'
+    fullOutStem = os.path.join(chDir, outStemName)
     spotScriptPath = os.path.join(chDir, chName + '_spotsJob.sh')
+    channelInfo.scriptPath = spotScriptPath
     
     scriptHandle = open(spotScriptPath, 'w')
     scriptHandle.write("#!/bin/bash\n\n")
     scriptHandle.write("module load " + moduleName + "\n")
     scriptHandle.write("if [ -s \"" + tifImage.csResPath + "\" ]; then\n")
-    scriptHandle.write("bash \"" + os.path.join(tsDir, "TrueSpot_RNASpots.sh") + "\"")
+    scriptHandle.write("\tbash \"" + os.path.join(tsDir, "TrueSpot_RNASpots.sh") + "\"")
     scriptHandle.write(" -input \"" + tifImage.tifPath + "\"")
-    scriptHandle.write(" -outstem \"" + outStemName + "\"")
+    scriptHandle.write(" -outstem \"" + fullOutStem + "\"")
     scriptHandle.write(" -imgname \"" + chName + "\"")
     scriptHandle.write(" -chtotal " + str(tifImage.batchInfo.channelCount))
     if tifImage.batchInfo.lightChannel > 0:
         scriptHandle.write(" -chtrans " + str(tifImage.batchInfo.lightChannel))
     scriptHandle.write(" -chsamp " + str(channelInfo.channelNumber))
     scriptHandle.write(" -cellseg \"" + tifImage.csResPath + "\"")
-    #TODO
+    if channelInfo.metaData is not None:
+        vxSz = channelInfo.metaData.voxelDims
+        scriptHandle.write(" -voxelsize \"(" + vxSz[0] + "," + vxSz[1] + "," + vxSz[2] + ")\"")
+        if channelInfo.metaData.probeName is not None:
+            scriptHandle.write(" -probetype \"" + channelInfo.metaData.probeName + "\"")
+        if channelInfo.metaData.targetName is not None:
+            scriptHandle.write(" -target \"" + channelInfo.metaData.targetName + "\"") 
+        if channelInfo.metaData.targetType is not None:
+            scriptHandle.write(" -targettype \"" + channelInfo.metaData.targetType + "\"")
+        if channelInfo.metaData.speciesName is not None:
+            scriptHandle.write(" -species \"" + channelInfo.metaData.speciesName + "\"")     
+        if channelInfo.metaData.cellType is not None:
+            scriptHandle.write(" -celltype \"" + channelInfo.metaData.cellType + "\"")  
+    if channelInfo.spotsSettings is not None:
+        if channelInfo.spotsSettings.gaussRad > 0:
+            scriptHandle.write(" -gaussrad " + str(channelInfo.spotsSettings.gaussRad))
+        if channelInfo.spotsSettings.thPreset > 0:
+            scriptHandle.write(" -sensitivity " + str(channelInfo.spotsSettings.thPreset))
+        if channelInfo.spotsSettings.thPreset < 0:
+            scriptHandle.write(" -precision " + str(channelInfo.spotsSettings.thPreset * -1))
+    scriptHandle.write(" -autominth -automaxth")
+    if channelInfo.spotsJobSettings is not None:
+        if channelInfo.spotsJobSettings.cpuCount > 0:
+            scriptHandle.write(" -threads " + str(channelInfo.spotsJobSettings.cpuCount))
+    scriptHandle.write(" -log \"" + os.path.join(chDir, chName + '_spots_mat.log') + "\"")
+    scriptHandle.write("\n")
+    scriptHandle.write("else\n")
+    scriptHandle.write("\techo -e \"Cellseg results not found! Terminating...\"\n")
+    scriptHandle.write("\texit 1\n")
+    scriptHandle.write("fi\n\n")
+    
+    #Quant
+    scriptHandle.write("if [ -s \"" + fullOutStem + "_callTable.mat\" ]; then\n")
+    scriptHandle.write("\tbash \"" + os.path.join(tsDir, "TrueSpot_RNAQuant.sh") + "\"")
+    scriptHandle.write(" -runinfo \"" + fullOutStem + "_rnaspotsrun.mat\"")
+    if channelInfo.quantSettings is not None:
+        if channelInfo.quantSettings.qNoClouds:
+            scriptHandle.write(" -noclouds")
+        if channelInfo.quantSettings.qCellZero:
+            scriptHandle.write(" -cellzero")        
+    scriptHandle.write(" -log \"" + os.path.join(chDir, chName + '_quant_mat.log') + "\"")
+    scriptHandle.write("\n")
+    scriptHandle.write("else\n")
+    scriptHandle.write("\techo -e \"Call table not found! Can't do quant! Terminating...\"\n")
+    scriptHandle.write("\texit 1\n")
+    scriptHandle.write("fi\n\n")
+    channelInfo.quantResPath = fullOutStem + "_quantData.mat"
+    
     close(scriptHandle)
+    return channelInfo
 
 def genImageJobs(tifImage, batchInfo):
-    #TODO
     os.makedirs(tifImage.resultsDir, exist_ok=True)
+    tifImage.csResPath = os.path.join(tifImage.resultsDir, "CellSeg_" + tifImage.name + ".mat")
+    tifImage.batchInfo = batchInfo
     
+    scriptHandle = open(tifImage.csResPath, 'w')
+    scriptHandle.write("#!/bin/bash\n\n")
+    scriptHandle.write("module load " + batchInfo.parentSet.moduleName + "\n")
+    scriptHandle.write("if [ ! -s \"" + tifImage.csResPath + "\" ]; then\n")
+    scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
+    scriptHandle.write(" -input \"" + tifImage.tifPath + "\"")
+    scriptHandle.write(" -outpath \"" + tifImage.resultsDir + "\"")
+    scriptHandle.write(" -imgname \"" + tifImage.name + "\"")
+    scriptHandle.write(" -chtotal " + str(batchInfo.channelCount))
+    scriptHandle.write(" -chlight " + str(batchInfo.lightChannel))
+    scriptHandle.write(" -chnuc " + str(batchInfo.nucChannel))
+    if batchInfo.lightChannel <= 0:
+        scriptHandle.write(" -nuconly")
+    if batchInfo.cellsegSettings is not None:
+        if batchInfo.cellsegSettings.templateName is not None:
+            scriptHandle.write(" -template \"" + batchInfo.cellsegSettings.templateName + "\"")
+        if batchInfo.cellsegSettings.lightZMin > 0:
+            scriptHandle.write(" -lightzmin " + str(batchInfo.cellsegSettings.lightZMin)) 
+        if batchInfo.cellsegSettings.lightZMax > 0:
+            scriptHandle.write(" -lightzmax " + str(batchInfo.cellsegSettings.lightZMax))     
+        if batchInfo.cellsegSettings.nucZMin > 0:
+            scriptHandle.write(" -nuczmin " + str(batchInfo.cellsegSettings.nucZMin)) 
+        if batchInfo.cellsegSettings.nucZMax > 0:
+            scriptHandle.write(" -nuczmax " + str(batchInfo.cellsegSettings.nucZMax))
+    scriptHandle.write(" -log \"" + os.path.join(tifImage.resultsDir, tifImage.name + '_cellseg_mat.log') + "\"")
+    scriptHandle.write("\n")
+    scriptHandle.write("else\n")
+    scriptHandle.write("\techo -e \"Cellseg results found! Skipping cell segmentation...\"\n")
+    scriptHandle.write("fi\n\n")
+    
+    #Submit jobs for channels
+    for chInfo in batchInfo.channels:
+        chInfo = genChannelJob(tifImage, chInfo, batchInfo.parentSet.tsDir, batchInfo.parentSet.moduleName)
+        chDir = os.path.join(tifImage.resultsDir, chInfo.dirName)
+        scriptHandle.write("if [ -s \"" + chInfo.quantResPath + "\" ]; then\n")
+        scriptHandle.write("\techo -e \"Quant data already found! Skipping...\"\n")
+        scriptHandle.write("else\n")
+        scriptHandle.write("\tchmod 775 \"" + chInfo.scriptPath + "\"\n")
+        scriptHandle.write("\tsbatch --job-name=\"TS_" + tifImage.name + "_" + chInfo.dirName + "\"")
+        if chInfo.spotsJobSettings is not None:
+            scriptHandle.write(" --cpus-per-task=" + str(chInfo.spotsJobSettings.cpuCount))
+            scriptHandle.write(" --mem=" + str(chInfo.spotsJobSettings.memGigs) + "g")
+            scriptHandle.write(" --time=" + str(chInfo.spotsJobSettings.timeString))
+        scriptHandle.write("- -error=\""  + os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsSlurm.err') + "\"")
+        scriptHandle.write(" --out=\""  + os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsSlurm.out') + "\"")
+        scriptHandle.write(" \"" + chInfo.scriptPath + "\"\n")
+        scriptHandle.write("fi\n\n")
+
+    close(scriptHandle)
+    
+    return tifImage
             
 def genBatch(myBatch):
     print(getdtstr(), "Working on batch", myBatch.name)
@@ -516,9 +622,21 @@ def genBatch(myBatch):
     batchScriptHandle.write("#!/bin/bash\n\n")
     
     for tifImage in tifList:
-        #TODO
-    
+        print(getdtstr(), "\tImage found:", tifImage.name)
+        tifImage = genImageJobs(tifImage, myBatch)
+        batchScriptHandle.write("chmod 775 \"" + tifImage.csScriptPath + "\"\n")
+        scriptHandle.write("\tsbatch --job-name=\"TSCS_" + tifImage.name + "\"")
+        if myBatch.cellsegJobSettings is not None:
+            scriptHandle.write(" --cpus-per-task=" + str(myBatch.cellsegJobSettings.cpuCount))
+            scriptHandle.write(" --mem=" + str(myBatch.cellsegJobSettings.memGigs) + "g")
+            scriptHandle.write(" --time=" + str(myBatch.cellsegJobSettings.timeString))
+        scriptHandle.write("- -error=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.err') + "\"")
+        scriptHandle.write(" --out=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.out') + "\"")
+        scriptHandle.write(" \"" + tifImage.csScriptPath + "\"\n\n")        
+
     close(batchScriptHandle)
+    
+    return myBatch
 
 def readBatchXml(xmlpath):
     xmlDoc = ETree.parse(xmlpath)
@@ -542,8 +660,13 @@ def main(args):
     
     print(getdtstr(), "Reading input xml...")
     batchSet = readBatchXml(args.xmlpath)
-   
-    
+      
+    for batchInfo in batchSet:
+        print(getdtstr(), "Working on", batchInfo.name, "...")
+        batchInfo = genBatch(batchInfo)
+        print('chmod 775 \"', batchInfo.batchScriptPath, '\"', sep='')
+        print('bash \"', batchInfo.batchScriptPath, '\"', sep='', flush=True)
+        
 if __name__ == "__main__":
     # Args
     parser = argparse.ArgumentParser(add_help=False)
