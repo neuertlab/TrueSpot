@@ -663,7 +663,6 @@ function runList = scanDirRec(dirPath, opStruct)
             end
         end
     end
-
 end
 
 function processRuns_S(runList, opStruct)

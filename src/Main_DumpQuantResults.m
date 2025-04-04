@@ -96,8 +96,8 @@ if ~isempty(opsStruct.mThresh)
 else
     if ~isempty(xml_path)
         opsStruct.channelDefs = MultichParams.readChannelDefXML(xml_path);
-        thGroupNames = {'MID' 'LO' 'HI'};
     end
+    thGroupNames = {'MID' 'LO' 'HI'};
 end
 
 tableHandle = openOutTable(output_path, thGroupNames);
@@ -216,8 +216,6 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
             voxDims = [];
         end
 
-        clear spotsRun
-
         load(quantFilePath, 'quant_results');
         if isfield(quant_results, 'cell_rna_data')
             cellDat = quant_results.cell_rna_data;
@@ -232,11 +230,43 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
 
         CSTATS_COL_COUNT = 15;
 
-        %TODO
         thList = [];
+        if ~isempty(opsStruct.mThresh)
+            thList = opsStruct.mThresh;
+        else
+            if ~isempty(opsStruct.channelDefs)
+                %Figure out which channel it belongs to.
+                sampleInfo = MultichParams.matchRunToChannel(spotsRun, opsStruct.channelDefs);
+                if ~isempty(sampleInfo)
+                    thList = [sampleInfo.thMid sampleInfo.thLow sampleInfo.thHigh];
+                end
+            end
+
+            %If no channel defs or couldn't match...
+            if isempty(thList)
+                %Pull from run
+                thMid = spotsRun.intensity_threshold;
+                if ~isempty(spotsRun.th_alt) & isfield(spotsRun.th_alt, 'thPresetSugg')
+                    preCount = size(spotsRun.th_alt.thPresetSugg);
+                    loI = max(floor(preCount/4), 1);
+                    hiI = max(floor(preCount * 0.75), 1);
+                    thLow = spotsRun.th_alt.thPresetSugg(loI, 1);
+                    thHigh = spotsRun.th_alt.thPresetSugg(hiI, 1);
+                    clear preCount loI hiI
+                else
+                    thLow = max(thMid - 20, 10);
+                    thHigh = thMid + 50;
+                end
+                thList = [thMid thLow thHigh];
+                clear thMid thLow thHigh
+            end
+        end
+        T = size(thList, 2);
 
         for c = 1:cellCount
             myCell = cellDat(c);
+
+            %Common to cell
             fprintf(tableHandle, '%s\t%s\t%s', iname, targetName, probeName);
             if ~isempty(voxDims)
                 fprintf(tableHandle, '\t(%d,%d,%d)', voxDims.x, voxDims.y, voxDims.z);
@@ -311,21 +341,20 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
                 end
             end
 
-            %TODO_-------------------------------------------------
+            %Counts per tested threshold
+            for t = 1:T
+                thVal = thList(t);
+                myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt, opsStruct.skipFlaggedDups, thVal);
 
-            myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt, opsStruct.skipFlaggedDups);
-
-            
-            fprintf(tableHandle, '\t%d\t%d', myCell.spotcount_nuc, myCell.spotcount_cyto);
-            fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
-            %[nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
-            %myCell = myCell.updateCountEstimates();
-            fprintf(tableHandle, '\t%d\t%d', myCell.nucCount, myCell.nucNascentCount);
-            fprintf(tableHandle, '\t%d', myCell.cytoCount);
-            fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
-            fprintf(tableHandle, '\t%d', myCell.cytoCloud);
-
-            
+                %fprintf(tableHandle, '\t%d\t%d\t%d', thVal, myCell.spotcount_nuc, myCell.spotcount_cyto);
+                %fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
+                %[nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
+                %myCell = myCell.updateCountEstimates();
+                fprintf(tableHandle, '\t%d\t%d', myCell.nucCount, myCell.nucNascentCount);
+                fprintf(tableHandle, '\t%d', myCell.cytoCount);
+                fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
+                fprintf(tableHandle, '\t%d', myCell.cytoCloud);
+            end
 
             fprintf(tableHandle, '\n');
             clear myCell

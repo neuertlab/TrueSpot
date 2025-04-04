@@ -4,6 +4,7 @@ import gc
 import pathlib
 import os
 import xml.etree.ElementTree as ETree
+import datetime
 
 class MetaSettings:
     def __init__(self):
@@ -17,28 +18,44 @@ class MetaSettings:
     def fromXmlNode(self, element):
         for child in element:
             if child.tag == 'Species':
-                self.speciesName = child.text
+                self.speciesName = cleanXmlValueString(child.text)
             elif child.tag == 'CellType':
-                self.cellType = child.text
+                self.cellType = cleanXmlValueString(child.text)
             elif child.tag == 'TargetName':
-                self.targetName = child.text
+                self.targetName = cleanXmlValueString(child.text)
             elif child.tag == 'ProbeName':
-                self.probeName = child.text
+                self.probeName = cleanXmlValueString(child.text)
             elif child.tag == 'TargetType':
-                self.targetType = child.text  
+                self.targetType = cleanXmlValueString(child.text)  
             elif child.tag == 'VoxelDimsNano':
                 vx = 0
                 vy = 0
                 vz = 0
-                if 'X' in child.attr:
-                    vx = int(child.attr['X'])
-                if 'Y' in child.attr:
-                    vy = int(child.attr['Y'])
-                if 'Z' in child.attr:
-                    vz = int(child.attr['Z'])
+                if 'X' in child.attrib:
+                    vx = int(child.attrib['X'])
+                if 'Y' in child.attrib:
+                    vy = int(child.attrib['Y'])
+                if 'Z' in child.attrib:
+                    vz = int(child.attrib['Z'])
                 self.voxelDims = (vx, vy, vz)
             else:
                 print("Tag \"", child.tag, "\" not recognized for Meta")
+                
+    def mergeVoxelDims(self, other):
+        newdims = [0,0,0]
+        if self.voxelDims[0] == 0:
+            newdims[0] = other.voxelDims[0]
+        else:
+            newdims[0] = self.voxelDims[0]
+        if self.voxelDims[1] == 0:
+            newdims[1] = other.voxelDims[1]
+        else:
+            newdims[1] = self.voxelDims[1]
+        if self.voxelDims[2] == 0:
+            newdims[2] = other.voxelDims[2]
+        else:
+            newdims[2] = self.voxelDims[2]
+        self.voxelDims = (newdims[0], newdims[1], newdims[2])
                 
     def copyDataFrom(self, other, overwrite):
         if other is None:
@@ -53,12 +70,10 @@ class MetaSettings:
             self.speciesName = other.speciesName
         if overwrite or (self.cellType is None):
             self.cellType = other.cellType
-        if overwrite or (self.voxelDims[0] <= 0):
-            self.voxelDims[0] = other.voxelDims[0]
-        if overwrite or (self.voxelDims[1] <= 0):
-            self.voxelDims[1] = other.voxelDims[1] 
-        if overwrite or (self.voxelDims[2] <= 0):
-            self.voxelDims[2] = other.voxelDims[2]         
+        if overwrite:
+            self.voxelDims = other.voxelDims
+        else:
+            self.mergeVoxelDims(other)
         
 class CellsegSettings:
     def __init__(self):
@@ -71,21 +86,21 @@ class CellsegSettings:
     def fromXmlNode(self, element):
         for child in element:
             if child.tag == 'PresetName':
-                self.templateName = child.text
+                self.templateName = cleanXmlValueString(child.text)
             elif child.tag == 'TransZTrim':
-                if 'Min' in child.attr:
-                    self.lightZMin = int(child.attr['Min'])
-                if 'Max' in child.attr:
-                    self.lightZMax = int(child.attr['Max'])
+                if 'Min' in child.attrib:
+                    self.lightZMin = int(child.attrib['Min'])
+                if 'Max' in child.attrib:
+                    self.lightZMax = int(child.attrib['Max'])
             elif child.tag == 'NucZTrim':
-                if 'Min' in child.attr:
-                    self.nucZMin = int(child.attr['Min'])
-                if 'Max' in child.attr:
-                    self.nucZMax = int(child.attr['Max'])            
+                if 'Min' in child.attrib:
+                    self.nucZMin = int(child.attrib['Min'])
+                if 'Max' in child.attrib:
+                    self.nucZMax = int(child.attrib['Max'])            
             else:
                 print("Tag \"", child.tag, "\" not recognized for cellseg settings")
                 
-    def copyDataFrom(self, other, override):
+    def copyDataFrom(self, other, overwrite):
         if other is None:
             return
         if overwrite or (self.templateName is None):
@@ -105,11 +120,12 @@ class SpotDetectSettings:
         self.gaussRad = 0
         
     def fromXmlNode(self, element):
-        self.gaussRad = int(child.attr['GaussRad'])
+        if 'GaussRad' in element.attrib:
+            self.gaussRad = int(element.attrib['GaussRad'])
         for child in element:
             if child.tag == 'ThresholdSettings':
-                if 'Preset' in child.attr:
-                    self.thPreset = int(child.attr['Preset'])  
+                if 'Preset' in child.attrib:
+                    self.thPreset = int(child.attrib['Preset'])  
             else:
                 print("Tag \"", child.tag, "\" not recognized for spot detect settings")        
                 
@@ -127,10 +143,10 @@ class QuantSettings:
         self.qCellZero = True
     
     def fromXmlNode(self, element):
-        if 'DoClouds' in element.attr:
-            self.qNoClouds = not bool(element.attr['DoClouds'])
-        if 'CellZero' in element.attr:
-            self.qCellZero = bool(element.attr['CellZero'])
+        if 'DoClouds' in element.attrib:
+            self.qNoClouds = not bool(element.attrib['DoClouds'])
+        if 'CellZero' in element.attrib:
+            self.qCellZero = bool(element.attrib['CellZero'])
                 
     def copyDataFrom(self, other, overwrite):
         if other is None:
@@ -147,12 +163,12 @@ class JobSettings:
         self.timeString = None
         
     def fromXmlNode(self, element):
-        if 'CpuCount' in element.attr:
-            self.cpuCount = int(element.attr['CpuCount'])
-        if 'RamGigs' in element.attr:
-            self.ramGigs = int(element.attr['RamGigs'])
-        if 'Time' in element.attr:
-            self.timeString = element.attr['Time']
+        if 'CpuCount' in element.attrib:
+            self.cpuCount = int(element.attrib['CpuCount'])
+        if 'RamGigs' in element.attrib:
+            self.ramGigs = int(element.attrib['RamGigs'])
+        if 'Time' in element.attrib:
+            self.timeString = element.attrib['Time']
                 
     def copyDataFrom(self, other, overwrite):
         if other is None:
@@ -161,7 +177,7 @@ class JobSettings:
             self.cpuCount = other.cpuCount
         if overwrite or (self.ramGigs <= 0):
             self.ramGigs = other.ramGigs
-        if overwrite or (self.templateName is None):
+        if overwrite or (self.timeString is None):
             self.timeString = other.timeString    
 
 class ImageChannelInfo:
@@ -178,35 +194,35 @@ class ImageChannelInfo:
         self.quantResPath = None
     
     def fromXmlNode(self, element):
-        if 'ChannelNumber' in element.attr:
-            self.channelNumber = int(element.attr['ChannelNumber'])
+        if 'ChannelNumber' in element.attrib:
+            self.channelNumber = int(element.attrib['ChannelNumber'])
         for child in element:
             if child.tag == 'Meta':
                 metanode = MetaSettings()
                 metanode.fromXmlNode(child)
                 if self.metaData is not None:
-                    self.metaData.copyDataFrom(metanode, true)
+                    self.metaData.copyDataFrom(metanode, True)
                 else:
                     self.metaData = metanode
             elif child.tag == 'SpotDetectSettings':
                 childnode = SpotDetectSettings()
                 childnode.fromXmlNode(child)
                 if self.spotsSettings is not None:
-                    self.spotsSettings.copyDataFrom(childnode, true)
+                    self.spotsSettings.copyDataFrom(childnode, True)
                 else:
                     self.spotsSettings = childnode    
             elif child.tag == 'QuantSettings':
                 childnode = QuantSettings()
                 childnode.fromXmlNode(child)
                 if self.quantSettings is not None:
-                    self.quantSettings.copyDataFrom(childnode, true)
+                    self.quantSettings.copyDataFrom(childnode, True)
                 else:
                     self.quantSettings = childnode
             elif child.tag == 'SpotJob':
                 childnode = JobSettings()
                 childnode.fromXmlNode(child)
                 if self.spotsJobSettings is not None:
-                    self.spotsJobSettings.copyDataFrom(childnode, true)
+                    self.spotsJobSettings.copyDataFrom(childnode, True)
                 else:
                     self.spotsJobSettings = childnode              
             else:
@@ -251,74 +267,75 @@ class ImageBatchInfo:
         self.spotsJobSettings = None
         
         self.batchScriptPath = None
+        self.postResScriptPath = None
         
         self.parentSet = None
         self.channels = list()
         
     def fromXmlNode(self, element):
-        if 'Name' in element.attr:
-            self.name = element.attr['ChannelNumber']
+        if 'Name' in element.attrib:
+            self.name = element.attrib['Name']
             
         for child in element:
             if (child.tag == 'CommonMeta') or (child.tag == 'Meta'):
                 metanode = MetaSettings()
                 metanode.fromXmlNode(child)
                 if self.metaData is not None:
-                    self.metaData.copyDataFrom(metanode, true)
+                    self.metaData.copyDataFrom(metanode, True)
                 else:
                     self.metaData = metanode
             elif child.tag == 'CellSegSettings':
                 childnode = CellsegSettings()
                 childnode.fromXmlNode(child)
                 if self.cellsegSettings is not None:
-                    self.cellsegSettings.copyDataFrom(childnode, true)
+                    self.cellsegSettings.copyDataFrom(childnode, True)
                 else:
                     self.cellsegSettings = childnode             
             elif child.tag == 'SpotDetectSettings':
                 childnode = SpotDetectSettings()
                 childnode.fromXmlNode(child)
                 if self.spotsSettings is not None:
-                    self.spotsSettings.copyDataFrom(childnode, true)
+                    self.spotsSettings.copyDataFrom(childnode, True)
                 else:
                     self.spotsSettings = childnode    
             elif child.tag == 'QuantSettings':
                 childnode = QuantSettings()
                 childnode.fromXmlNode(child)
                 if self.quantSettings is not None:
-                    self.quantSettings.copyDataFrom(childnode, true)
+                    self.quantSettings.copyDataFrom(childnode, True)
                 else:
                     self.quantSettings = childnode
             elif child.tag == 'SpotJob':
                 childnode = JobSettings()
                 childnode.fromXmlNode(child)
                 if self.spotsJobSettings is not None:
-                    self.spotsJobSettings.copyDataFrom(childnode, true)
+                    self.spotsJobSettings.copyDataFrom(childnode, True)
                 else:
                     self.spotsJobSettings = childnode  
             elif child.tag == 'CellSegJob':
                 childnode = JobSettings()
                 childnode.fromXmlNode(child)
                 if self.cellsegJobSettings is not None:
-                    self.cellsegJobSettings.copyDataFrom(childnode, true)
+                    self.cellsegJobSettings.copyDataFrom(childnode, True)
                 else:
                     self.cellsegJobSettings = childnode
             elif child.tag == 'Paths':
                 for gchild in child:
                     if gchild.tag == 'ImageDir':
-                        self.inputDir = gchild.text
+                        self.inputDir = cleanXmlValueString(gchild.text)
                     elif gchild.tag == 'OutputDir':
-                        self.outputDir = gchild.text
+                        self.outputDir = cleanXmlValueString(gchild.text)
             elif child.tag == 'ChannelInfo':
-                if 'ChannelCount' in child.attr:
-                    self.channelCount = int(child.attr['ChannelCount'])   
-                if 'NucChannel' in child.attr:
-                    self.nucChannel = int(child.attr['NucChannel']) 
-                if 'TransChannel' in child.attr:
-                    self.lightChannel = int(child.attr['TransChannel'])
+                if 'ChannelCount' in child.attrib:
+                    self.channelCount = int(child.attrib['ChannelCount'])   
+                if 'NucChannel' in child.attrib:
+                    self.nucChannel = int(child.attrib['NucChannel']) 
+                if 'TransChannel' in child.attrib:
+                    self.lightChannel = int(child.attrib['TransChannel'])
                 for gchild in child:
                     if gchild.tag == 'ImageChannel':
                         chinfo = ImageChannelInfo()
-                        chinfo.copyFromParent(self, false)
+                        chinfo.copyFromParent(self, False)
                         chinfo.fromXmlNode(gchild)
                         chinfo.parentBatch = self
                         self.channels.append(chinfo)
@@ -366,7 +383,7 @@ class ImageBatchInfo:
         
     def updateOverrides(self):
         for chinfo in self.channels:
-            chinfo.copyFromParent(self, false)
+            chinfo.copyFromParent(self, False)
 
 class ImageBatchSet:
     def __init__(self):
@@ -388,28 +405,28 @@ class ImageBatchSet:
                 metanode = MetaSettings()
                 metanode.fromXmlNode(child)
                 if self.metaData is not None:
-                    self.metaData.copyDataFrom(metanode, true)
+                    self.metaData.copyDataFrom(metanode, True)
                 else:
                     self.metaData = metanode
             elif child.tag == 'CellSegSettings':
                 childnode = CellsegSettings()
                 childnode.fromXmlNode(child)
                 if self.cellsegSettings is not None:
-                    self.cellsegSettings.copyDataFrom(childnode, true)
+                    self.cellsegSettings.copyDataFrom(childnode, True)
                 else:
                     self.cellsegSettings = childnode             
             elif child.tag == 'SpotDetectSettings':
                 childnode = SpotDetectSettings()
                 childnode.fromXmlNode(child)
                 if self.spotsSettings is not None:
-                    self.spotsSettings.copyDataFrom(childnode, true)
+                    self.spotsSettings.copyDataFrom(childnode, True)
                 else:
                     self.spotsSettings = childnode    
             elif child.tag == 'QuantSettings':
                 childnode = QuantSettings()
                 childnode.fromXmlNode(child)
                 if self.quantSettings is not None:
-                    self.quantSettings.copyDataFrom(childnode, true)
+                    self.quantSettings.copyDataFrom(childnode, True)
                 else:
                     self.quantSettings = childnode
             elif child.tag == 'JobSettings':
@@ -418,23 +435,23 @@ class ImageBatchSet:
                         childnode = JobSettings()
                         childnode.fromXmlNode(gchild)
                         if self.spotsJobSettings is not None:
-                            self.spotsJobSettings.copyDataFrom(childnode, true)
+                            self.spotsJobSettings.copyDataFrom(childnode, True)
                         else:
                             self.spotsJobSettings = childnode  
                     elif gchild.tag == 'CellSegJob':
                         childnode = JobSettings()
                         childnode.fromXmlNode(gchild)
                         if self.cellsegJobSettings is not None:
-                            self.cellsegJobSettings.copyDataFrom(childnode, true)
+                            self.cellsegJobSettings.copyDataFrom(childnode, True)
                         else:
                             self.cellsegJobSettings = childnode
                     elif gchild.tag == 'TrueSpotDir':
-                        self.tsDir = gchild.text
+                        self.tsDir = cleanXmlValueString(gchild.text)
                     elif gchild.tag == 'MatlabModuleName':
-                        self.moduleName = gchild.text                    
+                        self.moduleName = cleanXmlValueString(gchild.text)                   
             elif child.tag == 'ImageBatch':
                 childnode = ImageBatchInfo()
-                childnode.copyFromParent(self, false)
+                childnode.copyFromParent(self, False)
                 childnode.fromXmlNode(child)
                 childnode.parentSet = self
                 self.batches.append(childnode)
@@ -443,7 +460,7 @@ class ImageBatchSet:
                 
     def updateOverrides(self):
         for imgbatch in self.batches:
-            imgbatch.copyFromParent(self, false)
+            imgbatch.copyFromParent(self, False)
             imgbatch.updateOverrides()
    
 class SingleImage:
@@ -456,6 +473,14 @@ class SingleImage:
         
         self.batchInfo = None
         
+def cleanXmlValueString(inputStr):
+    #Removes quotes from start and end if present
+    if inputStr.startswith("\""):
+        inputStr = inputStr[1:]
+    if inputStr.endswith("\""):
+        inputStr = inputStr[:-1]   
+    return inputStr
+
 def getdtstr():
     now = datetime.datetime.now()
     return "[" + str(now) + "]"
@@ -487,7 +512,7 @@ def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
     scriptHandle.write(" -cellseg \"" + tifImage.csResPath + "\"")
     if channelInfo.metaData is not None:
         vxSz = channelInfo.metaData.voxelDims
-        scriptHandle.write(" -voxelsize \"(" + vxSz[0] + "," + vxSz[1] + "," + vxSz[2] + ")\"")
+        scriptHandle.write(" -voxelsize \"(" + str(vxSz[0]) + "," + str(vxSz[1]) + "," + str(vxSz[2]) + ")\"")
         if channelInfo.metaData.probeName is not None:
             scriptHandle.write(" -probetype \"" + channelInfo.metaData.probeName + "\"")
         if channelInfo.metaData.targetName is not None:
@@ -503,7 +528,9 @@ def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
             scriptHandle.write(" -gaussrad " + str(channelInfo.spotsSettings.gaussRad))
         if channelInfo.spotsSettings.thPreset > 0:
             scriptHandle.write(" -sensitivity " + str(channelInfo.spotsSettings.thPreset))
-        if channelInfo.spotsSettings.thPreset < 0:
+        elif channelInfo.spotsSettings.thPreset == 0:
+            scriptHandle.write(" -sensitivity 0")        
+        elif channelInfo.spotsSettings.thPreset < 0:
             scriptHandle.write(" -precision " + str(channelInfo.spotsSettings.thPreset * -1))
     scriptHandle.write(" -autominth -automaxth")
     if channelInfo.spotsJobSettings is not None:
@@ -525,6 +552,7 @@ def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
             scriptHandle.write(" -noclouds")
         if channelInfo.quantSettings.qCellZero:
             scriptHandle.write(" -cellzero")        
+    scriptHandle.write(" -norefilter") 
     scriptHandle.write(" -log \"" + os.path.join(chDir, chName + '_quant_mat.log') + "\"")
     scriptHandle.write("\n")
     scriptHandle.write("else\n")
@@ -533,7 +561,7 @@ def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
     scriptHandle.write("fi\n\n")
     channelInfo.quantResPath = fullOutStem + "_quantData.mat"
     
-    close(scriptHandle)
+    scriptHandle.close()
     return channelInfo
 
 def genImageJobs(tifImage, batchInfo):
@@ -541,7 +569,7 @@ def genImageJobs(tifImage, batchInfo):
     tifImage.csResPath = os.path.join(tifImage.resultsDir, "CellSeg_" + tifImage.name + ".mat")
     tifImage.batchInfo = batchInfo
     
-    scriptHandle = open(tifImage.csResPath, 'w')
+    scriptHandle = open(tifImage.csScriptPath, 'w')
     scriptHandle.write("#!/bin/bash\n\n")
     scriptHandle.write("module load " + batchInfo.parentSet.moduleName + "\n")
     scriptHandle.write("if [ ! -s \"" + tifImage.csResPath + "\" ]; then\n")
@@ -578,18 +606,18 @@ def genImageJobs(tifImage, batchInfo):
         scriptHandle.write("if [ -s \"" + chInfo.quantResPath + "\" ]; then\n")
         scriptHandle.write("\techo -e \"Quant data already found! Skipping...\"\n")
         scriptHandle.write("else\n")
-        scriptHandle.write("\tchmod 775 \"" + chInfo.scriptPath + "\"\n")
+        scriptHandle.write("\tchmod 774 \"" + chInfo.scriptPath + "\"\n")
         scriptHandle.write("\tsbatch --job-name=\"TS_" + tifImage.name + "_" + chInfo.dirName + "\"")
         if chInfo.spotsJobSettings is not None:
             scriptHandle.write(" --cpus-per-task=" + str(chInfo.spotsJobSettings.cpuCount))
-            scriptHandle.write(" --mem=" + str(chInfo.spotsJobSettings.memGigs) + "g")
+            scriptHandle.write(" --mem=" + str(chInfo.spotsJobSettings.ramGigs) + "g")
             scriptHandle.write(" --time=" + str(chInfo.spotsJobSettings.timeString))
-        scriptHandle.write("- -error=\""  + os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsSlurm.err') + "\"")
+        scriptHandle.write(" --error=\""  + os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsSlurm.err') + "\"")
         scriptHandle.write(" --out=\""  + os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsSlurm.out') + "\"")
         scriptHandle.write(" \"" + chInfo.scriptPath + "\"\n")
         scriptHandle.write("fi\n\n")
 
-    close(scriptHandle)
+    scriptHandle.close()
     
     return tifImage
             
@@ -624,17 +652,116 @@ def genBatch(myBatch):
     for tifImage in tifList:
         print(getdtstr(), "\tImage found:", tifImage.name)
         tifImage = genImageJobs(tifImage, myBatch)
-        batchScriptHandle.write("chmod 775 \"" + tifImage.csScriptPath + "\"\n")
-        scriptHandle.write("\tsbatch --job-name=\"TSCS_" + tifImage.name + "\"")
+        batchScriptHandle.write("chmod 774 \"" + tifImage.csScriptPath + "\"\n")
+        batchScriptHandle.write("sbatch --job-name=\"TSCS_" + tifImage.name + "\"")
         if myBatch.cellsegJobSettings is not None:
-            scriptHandle.write(" --cpus-per-task=" + str(myBatch.cellsegJobSettings.cpuCount))
-            scriptHandle.write(" --mem=" + str(myBatch.cellsegJobSettings.memGigs) + "g")
-            scriptHandle.write(" --time=" + str(myBatch.cellsegJobSettings.timeString))
-        scriptHandle.write("- -error=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.err') + "\"")
-        scriptHandle.write(" --out=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.out') + "\"")
-        scriptHandle.write(" \"" + tifImage.csScriptPath + "\"\n\n")        
+            batchScriptHandle.write(" --cpus-per-task=" + str(myBatch.cellsegJobSettings.cpuCount))
+            batchScriptHandle.write(" --mem=" + str(myBatch.cellsegJobSettings.ramGigs) + "g")
+            batchScriptHandle.write(" --time=" + str(myBatch.cellsegJobSettings.timeString))
+        batchScriptHandle.write(" --error=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.err') + "\"")
+        batchScriptHandle.write(" --out=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.out') + "\"")
+        batchScriptHandle.write(" \"" + tifImage.csScriptPath + "\"\n\n")        
 
-    close(batchScriptHandle)
+    batchScriptHandle.close()
+    return myBatch
+
+def genPostJobs(myBatch):
+    #XML for count dump
+    xmlPath = os.path.join(myBatch.outputDir, 'countInfo.xml')
+    outHandle = open(xmlPath, 'w')
+    outHandle.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    outHandle.write("<BatchSamples>\n")
+    for channelInfo in myBatch.channels:
+        outHandle.write("\t<SampleChannel")
+        outHandle.write(" Name=\"CH" + str(channelInfo.channelNumber) + "\"")
+        outHandle.write(" ChannelIndex=\"" + str(channelInfo.channelNumber) + "\"")
+        outHandle.write(">\n")
+        outHandle.write("\t\t<QueryParams>\n")
+        outHandle.write("\t\t\t<QueryParam Key=\"ChannelNo\" Value=\"" + str(channelInfo.channelNumber) + "\"/>\n")
+        outHandle.write("\t\t\t<QueryParam Key=\"INameContains\" Value=\"_CH" + str(channelInfo.channelNumber) + "\"/>\n")
+        if channelInfo.metaData is not None:
+            if channelInfo.metaData.targetName is not None:
+                outHandle.write("\t\t\t<QueryParam Key=\"TargetName\" Value=\"" + channelInfo.metaData.targetName + "\"/>\n")
+            if channelInfo.metaData.probeName is not None:
+                outHandle.write("\t\t\t<QueryParam Key=\"ProbeName\" Value=\"" + channelInfo.metaData.probeName + "\"/>\n")
+        outHandle.write("\t\t</QueryParams>\n")
+        outHandle.write("\t\t<CountThresholds ThMid=\"0\" ThLow=\"0\" ThHigh=\"0\"/>\n")
+        outHandle.write("\t</SampleChannel>\n")
+    outHandle.write("</BatchSamples>\n")
+    outHandle.close()
+    
+    #Standard QC
+    stem1 = os.path.join(myBatch.outputDir, 'procResQC')
+    scriptPath1 = stem1 + ".sh"
+    outHandle = open(scriptPath1, 'w')
+    outHandle.write("#!/bin/bash\n\n")
+    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    outHandle.write("matlab -nodisplay -nosplash -logfile \"")
+    outHandle.write(os.path.join(myBatch.outputDir, 'procResMATQC.log') + "\"")
+    outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
+    outHandle.write(" Main_QCSummary('-input', '" + myBatch.outputDir + "'); quit;\"\n")
+    outHandle.close()  
+    
+    #Threshold assessment
+    stem2 = os.path.join(myBatch.outputDir, 'procResThreshAssess')
+    scriptPath2 = stem2 + ".sh"
+    outHandle = open(scriptPath2, 'w')
+    outHandle.write("#!/bin/bash\n\n")
+    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    outHandle.write("matlab -nodisplay -nosplash -logfile \"")
+    outHandle.write(os.path.join(myBatch.outputDir, 'procResThreshAssess.log') + "\"")
+    outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
+    outHandle.write(" Main_AnalyzeBatchThresholds('-input', '" + myBatch.outputDir + "'); quit;\"\n")
+    outHandle.close()      
+    
+    #Count dump (no XML)
+    stem3 = os.path.join(myBatch.outputDir, 'procResQuantDumpAuto')
+    scriptPath3 = stem3 + ".sh"
+    outHandle = open(scriptPath3, 'w')
+    outHandle.write("#!/bin/bash\n\n")
+    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    outHandle.write("matlab -nodisplay -nosplash -logfile \"")
+    outHandle.write(os.path.join(myBatch.outputDir, 'procResQuantDumpAuto.log') + "\"")
+    outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
+    outHandle.write(" Main_DumpQuantResults('-input', '" + myBatch.outputDir + "'); quit;\"\n")
+    outHandle.close()    
+    
+    #Count dump (with XML, no autorun)
+    stem4 = os.path.join(myBatch.outputDir, 'procResQuantDumpXML')
+    scriptPath4 = stem4 + ".sh"
+    outHandle = open(scriptPath4, 'w')
+    outHandle.write("#!/bin/bash\n\n")
+    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    outHandle.write("matlab -nodisplay -nosplash -logfile \"")
+    outHandle.write(os.path.join(myBatch.outputDir, 'procResQuantDumpXML.log') + "\"")
+    outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
+    outHandle.write(" Main_DumpQuantResults('-input', '" + myBatch.outputDir + "',")
+    outHandle.write(" '-chdef', '" + xmlPath + "'); quit;\"\n")
+    outHandle.close()    
+    
+    #Master script
+    scriptPath = os.path.join(myBatch.outputDir, 'doProcRes.sh')
+    myBatch.postResScriptPath = scriptPath
+    outHandle = open(scriptPath, 'w')
+    outHandle.write("#!/bin/bash\n\n")
+    outHandle.write("chmod 774 \"" + scriptPath1 + "\"\n")
+    outHandle.write("sbatch --job-name=\"TSQC_ " + myBatch.name + "\" --cpus-per-task=2 --time=8:00:00 --mem=16g")
+    outHandle.write(" --error=\"" + stem1 + ".err\"")
+    outHandle.write(" --out=\"" + stem1 + ".out\"")
+    outHandle.write(" \"" + scriptPath1 + "\"\n")
+    
+    outHandle.write("chmod 774 \"" + scriptPath2 + "\"\n")
+    outHandle.write("sbatch --job-name=\"TSThA_ " + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=4g")
+    outHandle.write(" --error=\"" + stem2 + ".err\"")
+    outHandle.write(" --out=\"" + stem2 + ".out\"")
+    outHandle.write(" \"" + scriptPath2 + "\"\n")    
+    
+    outHandle.write("chmod 774 \"" + scriptPath3 + "\"\n")
+    outHandle.write("sbatch --job-name=\"TSQDA_ " + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=8g")
+    outHandle.write(" --error=\"" + stem3 + ".err\"")
+    outHandle.write(" --out=\"" + stem3 + ".out\"")
+    outHandle.write(" \"" + scriptPath3 + "\"\n")    
+    outHandle.close()        
     
     return myBatch
 
@@ -648,12 +775,13 @@ def readBatchXml(xmlpath):
     
     batchSet = ImageBatchSet()
     batchSet.fromXmlNode(treeRoot)
+    batchSet.updateOverrides()
     
     del(treeRoot)
     del(xmlDoc)
     gc.collect()
     return batchSet
-
+    
 def main(args):
     print("TS Batch Job Generated initiated! Version 25.04.02.00")
     print("Input Specification:", args.xmlpath)
@@ -661,11 +789,15 @@ def main(args):
     print(getdtstr(), "Reading input xml...")
     batchSet = readBatchXml(args.xmlpath)
       
-    for batchInfo in batchSet:
+    for batchInfo in batchSet.batches:
         print(getdtstr(), "Working on", batchInfo.name, "...")
         batchInfo = genBatch(batchInfo)
-        print('chmod 775 \"', batchInfo.batchScriptPath, '\"', sep='')
+        batchInfo = genPostJobs(batchInfo)
+        print()
+        print('chmod 774 \"', batchInfo.batchScriptPath, '\"', sep='')
+        print('chmod 774 \"', batchInfo.postResScriptPath, '\"', sep='')
         print('bash \"', batchInfo.batchScriptPath, '\"', sep='', flush=True)
+        print()
         
 if __name__ == "__main__":
     # Args
