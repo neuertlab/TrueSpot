@@ -1,5 +1,7 @@
 %
 %%
+
+%Last build updated: 2025.04.06.01 (v.1.2.0)
 function quant_results = RNAQuantPipe(param_struct, guimode)
 
 use_nuc_mask = param_struct.use_nuc_mask; %0 = 2d, 1 = lo, 2 = mid, 3 = hi
@@ -47,11 +49,18 @@ if ~isempty(param_struct.runpath)
         rnaspots_run.threshold_results = RNAThreshold.runSavedParameters(rnaspots_run, 0);
         rnaspots_run.intensity_threshold = rnaspots_run.threshold_results.threshold;
         rnaspots_run = rnaspots_run.saveMeTo(param_struct.runpath);
-        RNA_Fisher_State.outputMessageLineStatic(sprintf("Rethresholding complete. New threshold: %d", use_thresh), true);
+        %RNA_Fisher_State.outputMessageLineStatic(sprintf("Rethresholding complete. New threshold: %d", use_thresh), true);
     end
     
     [thresh_set, use_thresh] = determineThRange(rnaspots_run, param_struct);
-    
+    minTh = min(thresh_set, [], 'all', 'omitnan');
+    if minTh > use_thresh
+        minTh = max(use_thresh - 20, 15);
+        thresh_set = [minTh thresh_set];
+    end
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Minimum threshold selected: %d", minTh), true);
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Count save threshold selected: %d", use_thresh), true);
+
     %Update z_adj and load coords
     if ~isempty(rnaspots_run.meta.idims_voxel)
         if rnaspots_run.meta.idims_voxel.z > 0
@@ -338,8 +347,9 @@ function [thresh_set, use_thresh] = determineThRange(spotsRun, param_struct)
         thMax = spotsRun.options.t_max;
         if ~isempty(spotsRun.th_alt)
             if isfield(spotsRun.th_alt, 'thPresetSugg')
-                thMin = min(spotsRun.th_alt.thPresetSugg(:, 1), [], 'all', 'omitnan');
-                thMax = max(spotsRun.th_alt.thPresetSugg(:, 1), [], 'all', 'omitnan');
+                allAltTh = spotsRun.th_alt.thPresetSugg(:, 1)';
+                thMin = floor(prctile(allAltTh, 25));
+                thMax = max(allAltTh, [], 'all', 'omitnan');
             end
         end
 
@@ -348,6 +358,10 @@ function [thresh_set, use_thresh] = determineThRange(spotsRun, param_struct)
         end
         if param_struct.th_range_max > 0
             thMax = param_struct.th_range_max;
+        end
+
+        if thMin > use_thresh
+            thMin = max(use_thresh - 20, 15);
         end
 
         thresh_set = uint32(thMin:1:thMax);
