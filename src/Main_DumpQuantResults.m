@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.04.01.00';
+BUILD_STRING = '2025.04.07.00';
 VERSION_STRING = 'v1.2.0';
 
 % ========================== Process args ==========================
@@ -247,12 +247,10 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
                 %Pull from run
                 thMid = spotsRun.intensity_threshold;
                 if ~isempty(spotsRun.th_alt) & isfield(spotsRun.th_alt, 'thPresetSugg')
-                    preCount = size(spotsRun.th_alt.thPresetSugg);
-                    loI = max(floor(preCount/4), 1);
-                    hiI = max(floor(preCount * 0.75), 1);
-                    thLow = spotsRun.th_alt.thPresetSugg(loI, 1);
-                    thHigh = spotsRun.th_alt.thPresetSugg(hiI, 1);
-                    clear preCount loI hiI
+                    spool = spotsRun.th_alt.thPresetSugg(:, 1);
+                    thLow = round(prctile(spool, 25, 'all'));
+                    thHigh = round(prctile(spool, 75, 'all'));
+                    clear spool
                 else
                     thLow = max(thMid - 20, 10);
                     thHigh = thMid + 50;
