@@ -1347,7 +1347,14 @@ classdef RNAQuant
                 end
 
                 if ~isempty(myCell.spotTable)
-                    sCount = sCount + nnz(~myCell.spotTable{:, 'in_cloud'});
+                    notCloud = ~myCell.spotTable{:, 'in_cloud'};
+                    passTh = true(size(myCell.spotTable, 1), 1);
+                    if useThreshold > 0
+                        if ismember('dropout_thresh', myCell.spotTable.Properties.VariableNames)
+                            passTh = myCell.spotTable{:, 'dropout_thresh'} >= useThreshold;
+                        end
+                    end
+                    sCount = sCount + nnz(and(notCloud, passTh));
                 end
                 quant_struct.cell_rna_data(c) = myCell;
             end
@@ -1359,7 +1366,13 @@ classdef RNAQuant
 
                 if ~isempty(myCell.spotTable)
                     notCloud = ~myCell.spotTable{:, 'in_cloud'};
-                    cellInts = myCell.spotTable{notCloud, 'TotFitInt'};
+                    passTh = true(size(myCell.spotTable, 1), 1);
+                    if useThreshold > 0
+                        if ismember('dropout_thresh', myCell.spotTable.Properties.VariableNames)
+                            passTh = myCell.spotTable{:, 'dropout_thresh'} >= useThreshold;
+                        end
+                    end
+                    cellInts = myCell.spotTable{and(notCloud, passTh), 'TotFitInt'};
                     edRow = nowRow + size(cellInts, 1) - 1;
 
                     allInt(nowRow:edRow) = cellInts';
@@ -1385,6 +1398,8 @@ classdef RNAQuant
 
             quant_struct.globalBrightTh = globalBrightTh;
             quant_struct.globalSingleInt = globalSingleInt;
+
+            quant_struct.lastGlobalTestThreshold = useThreshold;
         end
         
         %%

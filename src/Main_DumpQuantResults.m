@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.04.07.00';
+BUILD_STRING = '2025.04.10.00';
 VERSION_STRING = 'v1.2.0';
 
 % ========================== Process args ==========================
@@ -15,6 +15,7 @@ output_path = [];
 xml_path = [];
 
 opsStruct = genOpsStruct();
+opsStruct.buildString = BUILD_STRING;
 
 lastkey = [];
 for i = 1:nargin
@@ -113,6 +114,7 @@ function opsStruct = genOpsStruct()
     opsStruct.channelDefs = [];
     opsStruct.skipFlaggedDups = false;
     opsStruct.mThresh = [];
+    opsStruct.buildString = [];
 end
 
 function tableHandle = openOutTable(tablePath, thNames)
@@ -216,7 +218,7 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
             voxDims = [];
         end
 
-        load(quantFilePath, 'quant_results');
+        load(quantFilePath, 'quant_results', 'runMeta');
         if isfield(quant_results, 'cell_rna_data')
             cellDat = quant_results.cell_rna_data;
         elseif isfield(quant_results, 'cellData')
@@ -225,8 +227,8 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
         end
         cellCount = size(cellDat, 2);
 
-        globalBrightTh = quant_results.globalBrightTh;
-        globalSingleInt = quant_results.globalSingleInt;
+        %globalBrightTh = quant_results.globalBrightTh;
+        %globalSingleInt = quant_results.globalSingleInt;
 
         CSTATS_COL_COUNT = 15;
 
@@ -260,6 +262,19 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
             end
         end
         T = size(thList, 2);
+
+        globalBrightTh = NaN(1, T);
+        globalSingleInt = NaN(1, T);
+        for t = 1:T
+            quant_results = RNAQuant.updateQuantCounts(quant_results, opsStruct.skipFlaggedDups, thList(t));
+            globalBrightTh(t) = quant_results.globalBrightTh;
+            globalSingleInt(t) = quant_results.globalSingleInt;
+        end
+        quant_results = RNAQuant.results2SavePackage(quant_results);
+        runMeta.modifiedDate = datetime;
+        runMeta.tsDumpCountsBuild = opsStruct.buildString;
+        save(quantFilePath, 'quant_results', 'runMeta');
+        clear quant_results
 
         for c = 1:cellCount
             myCell = cellDat(c);
@@ -342,7 +357,7 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
             %Counts per tested threshold
             for t = 1:T
                 thVal = thList(t);
-                myCell = myCell.updateSpotAndSignalValues(globalBrightTh, globalSingleInt, opsStruct.skipFlaggedDups, thVal);
+                myCell = myCell.updateSpotAndSignalValues(globalBrightTh(t), globalSingleInt(t), opsStruct.skipFlaggedDups, thVal);
 
                 %fprintf(tableHandle, '\t%d\t%d\t%d', thVal, myCell.spotcount_nuc, myCell.spotcount_cyto);
                 %fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
@@ -358,7 +373,7 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
             clear myCell
         end
 
-        clear quant_results cellDat
+        clear cellDat
     else
         fprintf('\t\tQuant data found for %s, but run summary could not be found!\n', fname);
     end
