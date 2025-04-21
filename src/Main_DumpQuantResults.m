@@ -3,7 +3,7 @@ function Main_DumpQuantResults(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.04.10.00';
+BUILD_STRING = '2025.04.21.00';
 VERSION_STRING = 'v1.2.0';
 
 % ========================== Process args ==========================
@@ -122,10 +122,10 @@ function tableHandle = openOutTable(tablePath, thNames)
 
     outfields_cellcmn = {'SRCIMGNAME' 'TARGET' 'PROBE' 'VOXDIMS'...
         'CELLNO' 'CELLAREA_PIX' 'NUCVOL_VOX' ...
-        'NUC_TOT_INT' 'NUC_MED_INT' 'NUC_INT_STDEV' ...
-        'NUC_MAXPROJ_AREA' 'NUC_MAXPROJ_TOT_INT' 'NUC_MAXPROJ_MED_INT' 'NUC_MAXPROJ_INT_STDEV' ...
-        'CYTOVOL_VOX' 'CYTO_TOT_INT' 'CYTO_MED_INT' 'CYTO_INT_STDEV' ...
-        'CYTO_MAXPROJ_AREA' 'CYTO_MAXPROJ_TOT_INT' 'CYTO_MAXPROJ_MED_INT' 'CYTO_MAXPROJ_INT_STDEV'};
+        'NUC_TOT_INT' 'NUC_MEAN_INT' 'NUC_INT_STDEV' ...
+        'NUC_MAXPROJ_AREA' 'NUC_MAXPROJ_TOT_INT' 'NUC_MAXPROJ_MEAN_INT' 'NUC_MAXPROJ_INT_STDEV' ...
+        'CYTOVOL_VOX' 'CYTO_TOT_INT' 'CYTO_MEAN_INT' 'CYTO_INT_STDEV' ...
+        'CYTO_MAXPROJ_AREA' 'CYTO_MAXPROJ_TOT_INT' 'CYTO_MAXPROJ_MEAN_INT' 'CYTO_MAXPROJ_INT_STDEV'};
 
     thfields = {'THVAL' 'EST_COUNT_NUC' 'EST_NASCENT_COUNT_NUC' 'EST_COUNT_CYTO' ...
         'EST_COUNT_NUC_CLOUD' 'EST_NASCENT_COUNT_NUC_CLOUD' 'EST_COUNT_CYTO_CLOUD'};
@@ -151,13 +151,13 @@ function tableHandle = openOutTable(tablePath, thNames)
         for gg = 1:thgroupCount
             gName = thNames{gg};
             for ii = 1:thfieldCount
-                if ii > 1; fprintf(tableHandle, '\t'); end
+                fprintf(tableHandle, '\t');
                 fprintf(tableHandle, [thfields{ii} '_' gName]);
             end
         end
     else
         for ii = 1:thfieldCount
-            if ii > 1; fprintf(tableHandle, '\t'); end
+            fprintf(tableHandle, '\t');
             fprintf(tableHandle, thfields{ii});
         end
     end
@@ -290,7 +290,8 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
             fprintf(tableHandle, '\t%d', nnz(myCell.mask_nuc));
 
             if ~isempty(myCell.cell_stats)
-                suffixes = {'intensity_total' 'intensity_median' 'intensity_stdev'};
+                %suffixes = {'intensity_total' 'intensity_median' 'intensity_stdev'};
+                suffixes = {'intensity_total' 'intensity_mean' 'intensity_stdev'};
                 fmtwrite = {'\t%d' '\t%d' '\t%.3f'};
                 ifieldcount = size(suffixes, 2);
 
@@ -362,7 +363,8 @@ function doResultsSet(quantFilePath, tableHandle, opsStruct)
                 %fprintf(tableHandle, '\t%d\t%d\t%d', thVal, myCell.spotcount_nuc, myCell.spotcount_cyto);
                 %fprintf(tableHandle, '\t%.3f\t%.3f', myCell.signal_nuc, myCell.signal_cyto);
                 %[nucCount, nucNascentCount, nucCloud, nucNascentCloud, cytoCount, cytoCloud] = estimateTargetCounts(myCell);
-                %myCell = myCell.updateCountEstimates();
+                %myCell = myCell.updateCountEstimates();\
+                fprintf(tableHandle, '\t%d', thVal);
                 fprintf(tableHandle, '\t%d\t%d', myCell.nucCount, myCell.nucNascentCount);
                 fprintf(tableHandle, '\t%d', myCell.cytoCount);
                 fprintf(tableHandle, '\t%d\t%d', myCell.nucCloud, myCell.nucNascentCloud);
