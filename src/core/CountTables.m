@@ -65,7 +65,7 @@ classdef CountTables
 
             cStatFmtStr = [repmat('%d', 1, 3) '%f' ];
             fmtStr = [repmat('%s', 1, 4) repmat('%d', 1, 2) repmat(cStatFmtStr, 1, 4) ...
-                repmat('%d', 1, 7*5)];
+                repmat('%d', 1, 7*3)];
             rawTable = readtable(path, 'FileType', 'text', 'Delimiter', '\t', 'Format', fmtStr);
 
             rawTable = timeColFunc(rawTable, 'TIME', timeUnit);
@@ -96,10 +96,10 @@ classdef CountTables
                     timeStr.thVals = timeData{:,['THVAL' '_' thSuffix]}';
                     timeStr.cyto = timeData{:,['EST_COUNT_CYTO' '_' thSuffix]}';
                     timeStr.nuc = timeData{:,['EST_COUNT_NUC' '_' thSuffix]}';
-                    timeStr.nucCalls = timeData{:,['SPOTS_NUC' '_' thSuffix]}';
+                    %timeStr.nucCalls = timeData{:,['SPOTS_NUC' '_' thSuffix]}';
                     timeStr.nascent = timeData{:,['EST_NASCENT_COUNT_NUC' '_' thSuffix]}';
-                    timeStr.cytoSignal = timeData{:,['SIGNAL_CYTO' '_' thSuffix]}';
-                    timeStr.nucSignal = timeData{:,['SIGNAL_NUC' '_' thSuffix]}';
+                    %timeStr.cytoSignal = timeData{:,['SIGNAL_CYTO' '_' thSuffix]}';
+                    %timeStr.nucSignal = timeData{:,['SIGNAL_NUC' '_' thSuffix]}';
                     timeStr.cellAreaPix = timeData{:,'CELLAREA_PIX'}';
                     timeStr.nucVolVox = timeData{:,'NUCVOL_VOX'}';
                     timeStr.voxelDimsString = timeData{:,'VOXDIMS'}';
@@ -156,19 +156,19 @@ classdef CountTables
                     timeStr.loThreshold.thVals = timeData{:,['THVAL' '_' thSuffLo]}';
                     timeStr.loThreshold.cyto = timeData{:,['EST_COUNT_CYTO' '_' thSuffLo]}';
                     timeStr.loThreshold.nuc = timeData{:,['EST_COUNT_NUC' '_' thSuffLo]}';
-                    timeStr.loThreshold.nucCalls = timeData{:,['SPOTS_NUC' '_' thSuffLo]}';
+                    %timeStr.loThreshold.nucCalls = timeData{:,['SPOTS_NUC' '_' thSuffLo]}';
                     timeStr.loThreshold.nascent = timeData{:,['EST_NASCENT_COUNT_NUC' '_' thSuffLo]}';
-                    timeStr.loThreshold.cytoSignal = timeData{:,['SIGNAL_CYTO' '_' thSuffLo]}';
-                    timeStr.loThreshold.nucSignal = timeData{:,['SIGNAL_NUC' '_' thSuffLo]}';
+                    %timeStr.loThreshold.cytoSignal = timeData{:,['SIGNAL_CYTO' '_' thSuffLo]}';
+                    %timeStr.loThreshold.nucSignal = timeData{:,['SIGNAL_NUC' '_' thSuffLo]}';
 
                     timeStr.hiThreshold = struct();
                     timeStr.hiThreshold.thVals = timeData{:,['THVAL' '_' thSuffHi]}';
                     timeStr.hiThreshold.cyto = timeData{:,['EST_COUNT_CYTO' '_' thSuffHi]}';
                     timeStr.hiThreshold.nuc = timeData{:,['EST_COUNT_NUC' '_' thSuffHi]}';
-                    timeStr.hiThreshold.nucCalls = timeData{:,['SPOTS_NUC' '_' thSuffHi]}';
+                    %timeStr.hiThreshold.nucCalls = timeData{:,['SPOTS_NUC' '_' thSuffHi]}';
                     timeStr.hiThreshold.nascent = timeData{:,['EST_NASCENT_COUNT_NUC' '_' thSuffHi]}';
-                    timeStr.hiThreshold.cytoSignal = timeData{:,['SIGNAL_CYTO' '_' thSuffHi]}';
-                    timeStr.hiThreshold.nucSignal = timeData{:,['SIGNAL_NUC' '_' thSuffHi]}';
+                    %timeStr.hiThreshold.cytoSignal = timeData{:,['SIGNAL_CYTO' '_' thSuffHi]}';
+                    %timeStr.hiThreshold.nucSignal = timeData{:,['SIGNAL_NUC' '_' thSuffHi]}';
 
                     trgStr.(tpName) = timeStr;
                 end
