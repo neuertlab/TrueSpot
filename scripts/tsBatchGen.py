@@ -154,7 +154,7 @@ class QuantSettings:
         if overwrite or self.qNoClouds:
             self.qNoClouds = other.qNoClouds  
         if overwrite or self.qNoClouds:
-            self.qCellZero = other.qCellZero         
+            self.qCellZero = other.qCellZero     
         
 class JobSettings:
     def __init__(self):
@@ -178,8 +178,63 @@ class JobSettings:
         if overwrite or (self.ramGigs <= 0):
             self.ramGigs = other.ramGigs
         if overwrite or (self.timeString is None):
-            self.timeString = other.timeString    
-
+            self.timeString = other.timeString
+            
+class IDistroSettings:
+    def __init__(self):
+        self.correctionMtxPath = None
+        self.forceNoProbe = False
+        self.forceNoDPC = True
+        self.zTrimMin = 0
+        self.zTrimMax = 0
+        
+        self.jobSettings = JobSettings()
+        self.jobSettings.cpuCount = 4
+        self.jobSettings.ramGigs = 128
+        self.jobSettings.timeString = "12:00:00"
+        
+    def fromXmlNode(self, element):
+        if 'CorrectionMtx' in element.attrib:
+            self.correctionMtxPath = element.attrib['CorrectionMtx']
+        if 'ForceNoProbe' in element.attrib:
+            self.forceNoProbe = bool(element.attrib['ForceNoProbe'])
+        if 'ForceNoDPC' in element.attrib:
+            self.forceNoDPC = bool(element.attrib['ForceNoDPC'])  
+        if 'TrimZMin' in element.attrib:
+            self.zTrimMin = int(element.attrib['TrimZMin'])         
+        if 'TrimZMax' in element.attrib:
+            self.zTrimMax = int(element.attrib['TrimZMax'])         
+        for child in element:
+            if child.tag == 'JobSettings':
+                childnode = JobSettings()
+                childnode.fromXmlNode(child)
+                if self.jobSettings is not None:
+                    self.jobSettings.copyDataFrom(childnode, True)
+                else:
+                    self.jobSettings = childnode                 
+            else:
+                print("Tag \"", child.tag, "\" not recognized for idistro settings")        
+                
+    def copyDataFrom(self, other, overwrite):
+        if other is None:
+            return
+        if overwrite or (not self.forceNoProbe):
+            self.forceNoProbe = other.forceNoProbe
+        if overwrite or self.forceNoDPC:
+            self.forceNoDPC = other.forceNoDPC
+        if overwrite or (self.correctionMtxPath is None):
+            self.correctionMtxPath = other.correctionMtxPath
+        if overwrite or (self.zTrimMin <= 0):
+            self.zTrimMin = other.zTrimMin 
+        if overwrite or (self.zTrimMax <= 0):
+            self.zTrimMax = other.zTrimMax 
+        if self.jobSettings is None:
+            self.jobSettings = JobSettings()
+            self.jobSettings.copyDataFrom(other.jobSettings, True)
+        else:
+            self.jobSettings.copyDataFrom(other.jobSettings, overwrite)
+        
+        
 class ImageChannelInfo:
     def __init__(self):
         self.channelNumber = 0
@@ -265,6 +320,7 @@ class ImageBatchInfo:
         self.quantSettings = None
         self.cellsegJobSettings = None
         self.spotsJobSettings = None
+        self.idistroSettings = None
         
         self.batchScriptPath = None
         self.postResScriptPath = None
@@ -339,6 +395,13 @@ class ImageBatchInfo:
                         chinfo.fromXmlNode(gchild)
                         chinfo.parentBatch = self
                         self.channels.append(chinfo)
+            elif child.tag == 'IntensityDistroSettings':
+                childnode = IDistroSettings()
+                childnode.fromXmlNode(child)
+                if self.idistroSettings is not None:
+                    self.idistroSettings.copyDataFrom(childnode, True)
+                else:
+                    self.idistroSettings = childnode            
             else:
                 print("Tag \"", child.tag, "\" not recognized for batch settings")
                 
@@ -362,7 +425,10 @@ class ImageBatchInfo:
         self.spotsJobSettings.copyDataFrom(parent.spotsJobSettings, overwrite)
         if self.cellsegSettings is None:
             self.cellsegSettings = CellsegSettings()         
-        self.cellsegSettings.copyDataFrom(parent.cellsegSettings, overwrite)         
+        self.cellsegSettings.copyDataFrom(parent.cellsegSettings, overwrite)
+        if self.idistroSettings is None:
+            self.idistroSettings = IDistroSettings()         
+        self.idistroSettings.copyDataFrom(parent.idistroSettings, overwrite)    
       
     def copyDataFrom(self, other, overwrite):
         if other is None:
@@ -393,6 +459,7 @@ class ImageBatchSet:
         self.quantSettings = None
         self.cellsegJobSettings = None
         self.spotsJobSettings = None
+        self.idistroSettings = None
         
         self.tsDir = None
         self.moduleName = None
@@ -448,7 +515,14 @@ class ImageBatchSet:
                     elif gchild.tag == 'TrueSpotDir':
                         self.tsDir = cleanXmlValueString(gchild.text)
                     elif gchild.tag == 'MatlabModuleName':
-                        self.moduleName = cleanXmlValueString(gchild.text)                   
+                        self.moduleName = cleanXmlValueString(gchild.text)   
+            elif child.tag == 'IntensityDistroSettings':
+                childnode = IDistroSettings()
+                childnode.fromXmlNode(child)
+                if self.idistroSettings is not None:
+                    self.idistroSettings.copyDataFrom(childnode, True)
+                else:
+                    self.idistroSettings = childnode               
             elif child.tag == 'ImageBatch':
                 childnode = ImageBatchInfo()
                 childnode.copyFromParent(self, False)
@@ -620,9 +694,39 @@ def genImageJobs(tifImage, batchInfo):
     scriptHandle.close()
     
     return tifImage
-            
+
+def genIDistro(idisSettings, trgDir, tsDir, moduleName):
+    idistroScriptPath = os.path.join(trgDir, 'idistroRun.sh');
+    os.makedirs(trgDir, exist_ok=True)
+    
+    scriptHandle = open(idistroScriptPath, 'w')
+    scriptHandle.write("#!/bin/bash\n\n")
+    scriptHandle.write("module load " +  moduleName + "\n")
+    
+    scriptHandle.write("matlab -nodisplay -nosplash -logfile \"")
+    scriptHandle.write(os.path.join(trgDir, 'idistroDump.log') + "\"")
+    scriptHandle.write(" -r \"cd '" + tsDir + "/src';")
+    scriptHandle.write(" Main_QCIntensityDistro('-input', '" + trgDir + "'")
+    if idisSettings.zTrimMin > 0:
+        scriptHandle.write(", '-zmin', '" + str(idisSettings.zTrimMin) + "'")
+    if idisSettings.zTrimMax > 0:
+        scriptHandle.write(", '-zmax', '" + str(idisSettings.zTrimMax) + "'")
+    if idisSettings.forceNoProbe:
+        scriptHandle.write(", '-noprobe'")
+    if idisSettings.forceNoDPC:
+        scriptHandle.write(", '-nodpc'")
+    if (idisSettings.jobSettings is not None) and (idisSettings.jobSettings.cpuCount > 1):
+        scriptHandle.write(", '-workers', '" + str(idisSettings.jobSettings.cpuCount) + "'")
+    if idisSettings.correctionMtxPath is not None:
+        scriptHandle.write(", '-correctionmtx', '" + idisSettings.correctionMtxPath + "'")
+        
+    scriptHandle.write("); quit;\"\n")    
+    scriptHandle.close()
+    
+    return idistroScriptPath
+
 def genBatch(myBatch):
-    print(getdtstr(), "Working on batch", myBatch.name)
+    print(getdtstr(), "Working on batch " + myBatch.name)
     
     #Get list of tif images
     #https://realpython.com/get-all-files-in-directory-python/
@@ -737,7 +841,14 @@ def genPostJobs(myBatch):
     outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
     outHandle.write(" Main_DumpQuantResults('-input', '" + myBatch.outputDir + "',")
     outHandle.write(" '-chdef', '" + xmlPath + "'); quit;\"\n")
-    outHandle.close()    
+    outHandle.close()
+    
+    #Intensity distribution analysis
+    stem5 = os.path.join(myBatch.outputDir, 'idistroJob')
+    if myBatch.idistroSettings is not None:
+        idistroScriptPath = genIDistro(myBatch.idistroSettings, myBatch.outputDir, myBatch.parentSet.tsDir, myBatch.parentSet.moduleName)
+    else:
+        idistroScriptPath = None
     
     #Master script
     scriptPath = os.path.join(myBatch.outputDir, 'doProcRes.sh')
@@ -745,22 +856,36 @@ def genPostJobs(myBatch):
     outHandle = open(scriptPath, 'w')
     outHandle.write("#!/bin/bash\n\n")
     outHandle.write("chmod 774 \"" + scriptPath1 + "\"\n")
-    outHandle.write("sbatch --job-name=\"TSQC_ " + myBatch.name + "\" --cpus-per-task=2 --time=8:00:00 --mem=16g")
+    outHandle.write("sbatch --job-name=\"TSQC_" + myBatch.name + "\" --cpus-per-task=2 --time=8:00:00 --mem=16g")
     outHandle.write(" --error=\"" + stem1 + ".err\"")
     outHandle.write(" --out=\"" + stem1 + ".out\"")
     outHandle.write(" \"" + scriptPath1 + "\"\n")
     
     outHandle.write("chmod 774 \"" + scriptPath2 + "\"\n")
-    outHandle.write("sbatch --job-name=\"TSThA_ " + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=4g")
+    outHandle.write("sbatch --job-name=\"TSThA_" + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=4g")
     outHandle.write(" --error=\"" + stem2 + ".err\"")
     outHandle.write(" --out=\"" + stem2 + ".out\"")
     outHandle.write(" \"" + scriptPath2 + "\"\n")    
     
     outHandle.write("chmod 774 \"" + scriptPath3 + "\"\n")
-    outHandle.write("sbatch --job-name=\"TSQDA_ " + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=8g")
+    outHandle.write("sbatch --job-name=\"TSQDA_" + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=8g")
     outHandle.write(" --error=\"" + stem3 + ".err\"")
     outHandle.write(" --out=\"" + stem3 + ".out\"")
-    outHandle.write(" \"" + scriptPath3 + "\"\n")    
+    outHandle.write(" \"" + scriptPath3 + "\"\n")
+    
+    if idistroScriptPath is not None:
+        outHandle.write("chmod 774 \"" + idistroScriptPath + "\"\n")
+        outHandle.write("sbatch --job-name=\"TSIDis_" + myBatch.name + "\"")
+        if myBatch.idistroSettings.jobSettings is not None:
+            outHandle.write(" --cpus-per-task=" + str(myBatch.idistroSettings.jobSettings.cpuCount))
+            outHandle.write(" --mem=" + str(myBatch.idistroSettings.jobSettings.ramGigs) + "g")
+            outHandle.write(" --time=" + myBatch.idistroSettings.jobSettings.timeString)
+        else:
+            outHandle.write(" --cpus-per-task=2 --time=2:00:00 --mem=8g") 
+        outHandle.write(" --error=\"" + stem5 + ".err\"")
+        outHandle.write(" --out=\"" + stem5 + ".out\"")
+        outHandle.write(" \"" + idistroScriptPath + "\"\n")    
+    
     outHandle.close()        
     
     return myBatch
@@ -783,7 +908,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generated initiated! Version 25.04.02.00")
+    print("TS Batch Job Generator initiated! Version 25.06.09.02")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
