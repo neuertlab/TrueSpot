@@ -110,13 +110,21 @@ if spotsrun.options.use_max_proj
 else
     strat = 'all_3d'; 
 end
-%outdir = [spotsrun.out_dir filesep strat];
-mkdir(spotsrun.paths.out_dir);
-%spotsrun.out_stem = [spotsrun.paths.out_dir filesep spotsrun.img_name '_' strat];
+
+if ~isfolder(spotsrun.paths.out_dir)
+    mkdir(spotsrun.paths.out_dir);
+end
 if isempty(spotsrun.paths.out_namestem)
     spotsrun.paths.out_namestem = [spotsrun.img_name '_' strat];
 end
 sample_outstem = spotsrun.getFullOutStem();
+
+%Check for existing spotsrun file to copy over some params
+spotsrun_path = [sample_outstem '_rnaspotsrun.mat'];
+old_spotsrun = [];
+if isfile(spotsrun_path)
+    old_spotsrun = RNASpotsRun.loadFrom(spotsrun_path);
+end
 
 runme = true;
 if ~spotsrun.options.overwrite_output
@@ -226,6 +234,19 @@ if runme
     end
 
     clear img_f;
+else
+    %Copy over params from old run, if available.
+    if ~isempty(old_spotsrun)
+        fprintf('Previous run was found. Copying back spot detection parameters!\n');
+        spotsrun.channels = old_spotsrun.channels;
+        spotsrun.options.dtune_gaussrad = old_spotsrun.options.dtune_gaussrad;
+        spotsrun.options.deadpix_detect = old_spotsrun.options.deadpix_detect;
+        spotsrun.options.use_max_proj = old_spotsrun.options.use_max_proj;
+        spotsrun.options.t_min = old_spotsrun.options.t_min;
+        spotsrun.options.t_max = old_spotsrun.options.t_max;
+        spotsrun.dims.idims_sample = old_spotsrun.dims.idims_sample;
+        spotsrun.dims.idims_ctrl = old_spotsrun.dims.idims_ctrl;
+    end
 end
 
 %Run spot detect on control (if a tif path was provided)
@@ -346,6 +367,35 @@ if spotsrun.threshold_results.lowNoiseFlag
     spotsrun.threshold_results.threshold = 1;
 end
 spotsrun.intensity_threshold = spotsrun.threshold_results.threshold;
+
+%Run through all threshold presets
+RNA_Fisher_State.outputMessageLineStatic(sprintf("Testing all threshold presets..."), true);
+thpresets = RNAThreshold.loadPresets();
+thpreCount = size(thpresets, 2);
+spotsrun.th_alt.preset_count = thpreCount;
+spotsrun.th_alt.altThResults = cell(1, thpreCount);
+spotsrun.th_alt.thPresetSugg = NaN(thpreCount, 7);
+
+[spotsrun, sptTableSmpl] = spotsrun.loadSpotsTable();
+[spotsrun, sptTableCtrl] = spotsrun.loadControlSpotsTable();
+for thp = 1:thpreCount
+    thpreRes = RNAThreshold.runWithPreset(sptTableSmpl, sptTableCtrl, thp);
+    if ~isempty(thpreRes)
+        spotsrun.th_alt.altThResults{thp} = thpreRes;
+        spotsrun.th_alt.thPresetSugg(thp, 1) = thpreRes.threshold;
+        if isfield(thpreRes, 'mean_w')
+            spotsrun.th_alt.thPresetSugg(thp, 2) = thpreRes.mean_w - thpreRes.std_w;
+            spotsrun.th_alt.thPresetSugg(thp, 3) = thpreRes.mean_w;
+            spotsrun.th_alt.thPresetSugg(thp, 4) = thpreRes.mean_w + thpreRes.std_w;
+        end
+        if isfield(thpreRes, 'median_w')
+            spotsrun.th_alt.thPresetSugg(thp, 5) = thpreRes.median_w - thpreRes.mad_w;
+            spotsrun.th_alt.thPresetSugg(thp, 6) = thpreRes.median_w;
+            spotsrun.th_alt.thPresetSugg(thp, 7) = thpreRes.median_w + thpreRes.mad_w;
+        end
+    end
+end
+clear thp thpresets thpreCount sptTableSmpl sptTableCtrl thpreRes
 
 %Print plots & image representation
     %Spot plots (log and linear scale) - w/ chosen threshold marked

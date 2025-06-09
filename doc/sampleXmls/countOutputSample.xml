@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BatchSamples>
+	<SampleChannel Name="STL1-TMR" ChannelIndex="3">
+		<QueryParams>
+			<QueryParam Key="ChannelNo" Value="3"/>
+			<QueryParam Key="INameContains" Value="_CH3_"/>
+			<QueryParam Key="ProbeName" Value="TMR"/>
+			<QueryParam Key="TargetName" Value="STL1"/>
+		</QueryParams>
+		<CountThresholds ThMid="0" ThLow="0" ThHigh="0"/>
+	</SampleChannel>
+	<SampleChannel Name="CTT1-CY5" ChannelIndex="4">
+		<QueryParams>
+			<QueryParam Key="ChannelNo" Value="4"/>
+			<QueryParam Key="INameContains" Value="_CH4_"/>
+			<QueryParam Key="ProbeName" Value="CY5"/>
+			<QueryParam Key="TargetName" Value="CTT1"/>
+		</QueryParams>
+		<CountThresholds ThMid="0" ThLow="0" ThHigh="0"/>
+	</SampleChannel>
+	<SampleChannel Name="HSP12-AF594" ChannelIndex="5">
+		<QueryParams>
+			<QueryParam Key="ChannelNo" Value="5"/>
+			<QueryParam Key="INameContains" Value="_CH5_"/>
+			<QueryParam Key="ProbeName" Value="AF594"/>
+			<QueryParam Key="TargetName" Value="HSP12"/>
+		</QueryParams>
+		<CountThresholds ThMid="0" ThLow="0" ThHigh="0"/>
+	</SampleChannel>
+</BatchSamples>

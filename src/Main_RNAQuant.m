@@ -5,8 +5,8 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.07.00';
-VERSION_STRING = 'v1.1.2';
+BUILD_STRING = '2025.04.10.00';
+VERSION_STRING = 'v1.2.0';
 
 DEFAULT_PRESET_INDEX = 6;
 MAX_TH_PRESET_LEVEL = 5;
@@ -32,9 +32,12 @@ param_struct.use_nuc_mask = 2; %lbl_mid
 param_struct.workers = 1;
 
 param_struct.nocells = false; %If no cell seg data (ie. sim image)
+param_struct.incl_cell_zero = false;
 
 %Specs if don't provide run file
-param_struct.man_thresh = 0;
+param_struct.man_thresh = [];
+param_struct.th_range_min = 0;
+param_struct.th_range_max = 0;
 param_struct.rna_channel = 1;
 param_struct.channel_count = 1;
 param_struct.z_adj = 1.0;
@@ -91,6 +94,10 @@ for i = 1:nargin
             param_struct.nocells = true;
             if arg_debug; fprintf("Bypassing cell segmentation data.\n"); end
             lastkey = [];
+        elseif strcmp(lastkey, "cellzero")
+            param_struct.incl_cell_zero = true;
+            if arg_debug; fprintf("Including ""cell zero""\n"); end
+            lastkey = [];
         elseif strcmp(lastkey, "sensitive")
             if ~senspe_set
                 if arg_debug; fprintf("Rethreshold tuning Preset: Sensitivity\n"); end
@@ -139,8 +146,18 @@ for i = 1:nargin
             param_struct.nucsegpath = argval;
             if arg_debug; fprintf("NucSeg Path Set: %s\n", param_struct.nucsegpath); end
         elseif strcmp(lastkey, "mthresh")
-            param_struct.man_thresh = Force2Num(argval);
-            if arg_debug; fprintf("Manual threshold set: %d\n", param_struct.man_thresh); end
+            param_struct.man_thresh = parseNumberList(argval);
+            if arg_debug 
+                fprintf("Manual threshold(s) set: "); 
+                dbgPrintNumberList(param_struct.man_thresh);
+                fprintf("\n");
+            end
+        elseif strcmp(lastkey, "thmin")
+            param_struct.th_range_min = Force2Num(argval);
+            if arg_debug; fprintf("Minimum threshold to include: %d\n", param_struct.th_range_min); end
+        elseif strcmp(lastkey, "thmax")
+            param_struct.th_range_max = Force2Num(argval);
+            if arg_debug; fprintf("Maximum threshold to include: %d\n", param_struct.th_range_max); end
         elseif strcmp(lastkey, "coordtable")
             param_struct.coord_tbl_path = argval;
             if arg_debug; fprintf("Manual coord table path set: %s\n", param_struct.coord_tbl_path); end
@@ -253,4 +270,32 @@ function iname = guessImageName(param_struct)
     end
     
     iname = 'my_image';
+end
+
+function numberList = parseNumberList(inputString)
+    %Expects comma delimited decimal numbers - may or may not be surrounded
+    %by parentheses
+    inputString = replace(inputString, '(', '');
+    inputString = replace(inputString, ')', '');
+    rawList = split(inputString, ',');
+    count = size(rawList, 1);
+    numberList = zeros(1, count);
+    for i = 1:count
+        numberList(i) = str2double(rawList{i, 1});
+    end
+    numberList = int32(numberList);
+end
+
+function dbgPrintNumberList(numberList)
+    count = size(numberList, 2);
+    if count > 1
+        fprintf('(');
+    end
+    for i = 1:count
+        if i > 1; fprintf(','); end
+        fprintf('%d', numberList(i));
+    end
+    if count > 1
+        fprintf(')');
+    end
 end

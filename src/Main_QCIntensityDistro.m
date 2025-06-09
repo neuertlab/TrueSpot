@@ -5,7 +5,7 @@ function Main_QCIntensityDistro(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.03.25.00';
+BUILD_STRING = '2025.03.27.00';
 VERSION_STRING = 'v1.1.2';
 
 % ========================== Process args ==========================
@@ -169,18 +169,25 @@ function [fieldNames, fieldTypes] = getLocalRegionStatsFields()
         'cell' 'cell'};
 end
 
-function [fieldNames, fieldTypes] = getCellTableFields()
-    fieldNames = {'cellNo' 'centroid_x' 'centroid_y' 'box' 'spot_count' ...
+function [fieldNames, fieldTypes] = getCellTableFields(includeZtrim)
+    fieldNames = {'cellNo' 'centroid_x' 'centroid_y' 'box' 'spot_count' 'z0' ...
         'local_img_bkg' 'cell_bkg' 'nuc_bkg' 'cyto_bkg'};
     
-    fieldTypes = {'uint16' 'single' 'single' 'cell' 'int32' ...
+    fieldTypes = {'uint16' 'single' 'single' 'cell' 'int32' 'int16' ...
         'cell' 'cell' 'cell' 'cell'};
+
+    if includeZtrim
+        fieldNames = [fieldNames 'local_img_bkg_ztrim' 'cell_bkg_ztrim' ...
+            'nuc_bkg_ztrim' 'cyto_bkg_ztrim'];
+        fieldTypes = [fieldTypes 'cell' 'cell' 'cell' 'cell'];
+    end
 end
 
-function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ, auto2D)
+function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ, auto2D, mpOnly)
     if nargin < 4; localXY = 0; end
     if nargin < 5; localZ = 0; end
     if nargin < 6; auto2D = false; end
+    if nargin < 7; mpOnly = false; end
 
     if auto2D & (ndims(data) > 2)
         %Make life easy and just recurse...
@@ -188,9 +195,11 @@ function statsStruct = takeStats(data, mask, statsStruct, localXY, localZ, auto2
         data_maxproj = max(data, [], 3, 'omitnan');
         mask_maxproj = max(mask, [], 3, 'omitnan');
         statsStruct.maxproj = takeStats(data_maxproj, mask_maxproj, struct(), localXY, localZ, false);
-        statsStruct.slices = cell(1,Z);
-        for z = 1:Z
-            statsStruct.slices{z} = takeStats(data(:,:,z), mask(:,:,z), struct(), localXY, localZ, false);
+        if ~mpOnly
+            statsStruct.slices = cell(1,Z);
+            for z = 1:Z
+                statsStruct.slices{z} = takeStats(data(:,:,z), mask(:,:,z), struct(), localXY, localZ, false);
+            end
         end
     end
 
@@ -654,7 +663,6 @@ function runList = scanDirRec(dirPath, opStruct)
             end
         end
     end
-
 end
 
 function processRuns_S(runList, opStruct)
@@ -723,7 +731,7 @@ function processRun(runStruct, opStruct)
         %Update threshold stats
         tres = [];
         if ~isempty(spotsrun.threshold_results)
-            fprintf('\t[%s] Updating threshold pool stats...\n', intensityStats.img_name);
+            fprintf('\t[%s] Updating threshold pool stats...\n', spotsrun.img_name);
             spotsrun.threshold_results = RNAThreshold.scoreThresholdSuggestions(spotsrun.threshold_results);
             tres = spotsrun.threshold_results;
             spotsrun.saveMeTo(runStruct.srPath);
@@ -871,11 +879,12 @@ function processRun(runStruct, opStruct)
         end
     
         fprintf('\t[%s] > Working on individual cells...\n', intensityStats.img_name);
-        [fieldNames, fieldTypes] = getCellTableFields();
+        [fieldNames, fieldTypes] = getCellTableFields(doTrimmed);
         table_size = [cellCount size(fieldNames,2)];
         cellTable = table('Size', table_size, 'VariableTypes',fieldTypes, 'VariableNames',fieldNames);
     
         for c = 1:cellCount
+            fprintf('\t\t[%s] > Working on cell %d of %d...\n', intensityStats.img_name, uint16(c), cellCount);
             cellTable{c, 'cellNo'} = uint16(c);
             oneCellMask = (cellMask == c);
             rp3 = regionprops3(oneCellMask, 'BoundingBox', 'Centroid');
@@ -920,30 +929,51 @@ function processRun(runStruct, opStruct)
                     cellTable{c, 'spot_count'} = nnz(call_table{:,'cell'} == c);
                 end
             end
+
+            cZ = z1 - z0 + 1;
+            czmin = max((zmin - z0 + 1), 1);
+            czmax = min((zmax - z0 + 1), cZ);
+            cellTable{c, 'z0'} = z0;
         
             cellData = sampleCh(y0:y1,x0:x1,z0:z1);
             oneCellMask = oneCellMask(y0:y1,x0:x1,z0:z1);
             cellLocMask = ~oneCellMask;
 
             cll = cell(1,1);
-            cll{1} = takeStats(cellData, cellLocMask, struct(), 0, 0, true);
+            cll{1} = takeStats(cellData, cellLocMask, struct(), 0, 0, true, doTrimmed);
             cellTable{c, 'local_img_bkg'} = cll;
+            if doTrimmed
+                cll{1} = takeStats(cellData(:,:,czmin:czmax), cellLocMask(:,:,czmin:czmax), struct(), 0, 0, true, false);
+                cellTable{c, 'local_img_bkg_ztrim'} = cll;
+            end
             clear cellLocMask
     
             cellSpotMask = spotMask(y0:y1,x0:x1,z0:z1);
             cbkgMask = and(oneCellMask, ~cellSpotMask);
-            cll{1} = takeStats(cellData, cbkgMask, struct(), 0, 0, true);
+            cll{1} = takeStats(cellData, cbkgMask, struct(), 0, 0, true, doTrimmed);
             cellTable{c, 'cell_bkg'} = cll;
+            if doTrimmed
+                cll{1} = takeStats(cellData(:,:,czmin:czmax), cbkgMask(:,:,czmin:czmax), struct(), 0, 0, true, false);
+                cellTable{c, 'cell_bkg_ztrim'} = cll;
+            end
     
             cellNucMask = nucMask(y0:y1,x0:x1,z0:z1);
             nucBkgMask = and(cbkgMask, cellNucMask);
-            cll{1} = takeStats(cellData, nucBkgMask, struct(), 0, 0, true);
+            cll{1} = takeStats(cellData, nucBkgMask, struct(), 0, 0, true, doTrimmed);
             cellTable{c, 'nuc_bkg'} = cll;
+            if doTrimmed
+                cll{1} = takeStats(cellData(:,:,czmin:czmax), nucBkgMask(:,:,czmin:czmax), struct(), 0, 0, true, false);
+                cellTable{c, 'nuc_bkg_ztrim'} = cll;
+            end
 
             cytoBkgMask = and(cbkgMask, ~cellNucMask);
-            cll{1} = takeStats(cellData, cytoBkgMask, struct(), 0, 0, true);
+            cll{1} = takeStats(cellData, cytoBkgMask, struct(), 0, 0, true, doTrimmed);
             cellTable{c, 'cyto_bkg'} = cll;
-    
+            if doTrimmed
+                cll{1} = takeStats(cellData(:,:,czmin:czmax), cytoBkgMask(:,:,czmin:czmax), struct(), 0, 0, true, false);
+                cellTable{c, 'cyto_bkg_ztrim'} = cll;
+            end
+
             clear cellData oneCellMask cellNucMask
             clear cbkgMask cytoBkgMask nucBkgMask
         end

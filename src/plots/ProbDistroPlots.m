@@ -22,6 +22,11 @@ classdef ProbDistroPlots
         smoothWindowSize = 3;
         timeUnit = 'min';
 
+        yRangeStyle = 'area';
+        yRangeBorderLineStyle = ':';
+        yRangeBorderLineWidth = 1;
+        yRangeAreaAlpha = 0.1;
+
         inclReps = [];
 
         data = {}; %2D mtx of data point structs
@@ -30,6 +35,16 @@ classdef ProbDistroPlots
 
     %%
     methods
+
+        %%
+        function obj = setRangeRenderType_Area(obj)
+            obj.yRangeStyle = 'area';
+        end
+
+        %%
+        function obj = setRangeRenderType_Line(obj)
+            obj.yRangeStyle = 'line';
+        end
 
         %%
         function obj = reallocateDataMtx(obj)
@@ -122,6 +137,19 @@ classdef ProbDistroPlots
                     dataGroup = obj.data{y, x};
                     if ~isempty(dataGroup)
                         repCount = size(dataGroup.reps, 2);
+                        %Draw ranges, if applicable
+                        for r = 1:repCount
+                            if ~isempty(obj.inclReps)
+                                if ~ismember(r, obj.inclReps)
+                                    continue;
+                                end
+                            end
+
+                            rcolor = trgInfo.colors(r,:);
+                            [obj, figHandle, resHisto] = obj.renderBoundRange(figHandle, dataGroup.reps(r), rcolor);
+                            dataGroup.reps(r) = resHisto;
+                        end
+
                         for r = 1:repCount
                             if ~isempty(obj.inclReps)
                                 if ~ismember(r, obj.inclReps)
@@ -141,14 +169,16 @@ classdef ProbDistroPlots
                                     yData = smoothdata(yData, 'movmean', obj.smoothWindowSize);
                                 end
 
-                                plot(xData, yData,...
+                                dataGroup.reps(r).plotHandle = plot(xData, yData,...
                                     'Color', rcolor, 'LineWidth', lwidth, 'LineStyle', lstyle);
                             else
-                                plot(0, 0,...
+                                dataGroup.reps(r).plotHandle = plot(0, 0,...
                                     'Color', rcolor, 'LineWidth', lwidth, 'LineStyle', lstyle);
                             end
                             clear rcolor lwidth lstyle
                         end
+
+                        obj.data{y, x} = dataGroup;
                     else
                         if x == tpCount
                             repCount = size(trgInfo.lineWidth, 2);
@@ -219,7 +249,34 @@ classdef ProbDistroPlots
 
                     if x == tpCount
                         %Legend
-                        legend(trgInfo.repNames);
+                        %Get handles
+                        dataGroup = obj.data{y, x};
+                        if ~isempty(dataGroup)
+                            repCount = size(dataGroup.reps, 2);
+                            legendHandles = [];
+                            legendNames = [];
+                            for r = 1:repCount
+                                repHist = dataGroup.reps(r);
+                                if ~isempty(repHist.plotHandle)
+                                    lName = trgInfo.repNames{r};
+                                    if isempty(legendHandles)
+                                        legendHandles = repHist.plotHandle;
+                                    else
+                                        legendHandles = [legendHandles; repHist.plotHandle];
+                                    end
+                                    if isempty(legendNames)
+                                        legendNames = {lName};
+                                    else
+                                        legendNames = [legendNames; lName];
+                                    end
+                                end
+                            end
+                            if ~isempty(legendHandles)
+                                legend(legendHandles, legendNames);
+                            end
+                        else
+                            legend(trgInfo.repNames);
+                        end
                     end
 
                     %n = n+1;
@@ -529,6 +586,46 @@ classdef ProbDistroPlots
         end
 
         %%
+        function [obj, figHandle, parentHisto] = renderBoundRange(obj, figHandle, parentHisto, baseColor)
+            if isempty(parentHisto); return; end
+            if isempty(parentHisto.upper) & isempty(parentHisto.lower)
+                return;
+            end
+
+            if strcmp(obj.yRangeStyle, 'area')
+                if ~isempty(parentHisto.lower)
+                    xlo = parentHisto.lower.x;
+                    ylo = parentHisto.lower.y;
+                else
+                    xlo = parentHisto.x;
+                    ylo = parentHisto.y;
+                end
+
+                if ~isempty(parentHisto.upper)
+                    xhi = parentHisto.upper.x;
+                    yhi = parentHisto.upper.y;
+                else
+                    xhi = parentHisto.x;
+                    yhi = parentHisto.y;
+                end
+
+                [figHandle, ~, ~] = ProbDistroPlots.rawShadedArea(figHandle, xlo, xhi, ylo, yhi, baseColor, obj.yRangeAreaAlpha);
+            elseif strcmp(obj.yRangeStyle, 'line')
+                if ~isempty(parentHisto.lower)
+                    [figHandle, parentHisto.lower.plotHandle, ~] = ProbDistroPlots.drawLine(figHandle,...
+                        parentHisto.lower.x, parentHisto.lower.y, baseColor, ...
+                        obj.yRangeBorderLineWidth, obj.yRangeBorderLineStyle);
+                end
+
+                if ~isempty(parentHisto.upper)
+                    [figHandle, parentHisto.upper.plotHandle, ~] = ProbDistroPlots.drawLine(figHandle,...
+                        parentHisto.upper.x, parentHisto.upper.y, baseColor, ...
+                        obj.yRangeBorderLineWidth, obj.yRangeBorderLineStyle);
+                end
+            end
+        end
+        
+        %%
         %Removes all existing data!
         function obj = setTimePoints(obj, val)
             obj.timePoints = val;
@@ -559,6 +656,51 @@ classdef ProbDistroPlots
             myhisto.y = myhisto.y ./ cellCount;
             myhisto.x = myhisto.x(1:size(myhisto.y, 2));
             myhisto.rawCounts = rawCounts;
+
+            dataGroup.reps(replicate) = myhisto;
+            obj.data{targetIndex, timepointIndex} = dataGroup;
+        end
+
+        %%
+        function obj = loadRawBoundaryData(obj, rawCountsUpper, rawCountsLower, targetIndex, timepointIndex, replicate)
+            dataGroup = obj.data{targetIndex, timepointIndex};
+            if isempty(dataGroup)
+                dataGroup = ProbDistroPlots.genDataPointStruct(replicate);
+            end
+
+            trgInfo = obj.targets{targetIndex};
+            xMaxUse = obj.xMax;
+            binSizeUse = obj.binSize;
+            if ~isnan(trgInfo.xMaxOverride)
+                xMaxUse = trgInfo.xMaxOverride;
+            end
+            if ~isnan(trgInfo.binSizeOverride)
+                binSizeUse = trgInfo.binSizeOverride;
+            end
+
+            myhisto = dataGroup.reps(replicate);
+            binEdges = [0:binSizeUse:xMaxUse];
+            if ~isempty(rawCountsUpper)
+                if isempty(myhisto.upper)
+                    myhisto.upper = ProbDistroPlots.genHistStruct();
+                end
+                cellCount = size(rawCountsUpper, 2);
+                [myhisto.upper.y, myhisto.upper.x] = histcounts(rawCountsUpper, binEdges);
+                myhisto.upper.y = myhisto.upper.y ./ cellCount;
+                myhisto.upper.x = myhisto.upper.x(1:size(myhisto.upper.y, 2));
+                myhisto.upper.rawCounts = rawCountsUpper;
+            end
+
+            if ~isempty(rawCountsLower)
+                if isempty(myhisto.lower)
+                    myhisto.lower = ProbDistroPlots.genHistStruct();
+                end
+                cellCount = size(rawCountsLower, 2);
+                [myhisto.lower.y, myhisto.lower.x] = histcounts(rawCountsLower, binEdges);
+                myhisto.lower.y = myhisto.lower.y ./ cellCount;
+                myhisto.lower.x = myhisto.lower.x(1:size(myhisto.upper.y, 2));
+                myhisto.lower.rawCounts = rawCountsLower;
+            end
 
             dataGroup.reps(replicate) = myhisto;
             obj.data{targetIndex, timepointIndex} = dataGroup;
@@ -623,6 +765,10 @@ classdef ProbDistroPlots
             dstruct.x = [];
             dstruct.y = [];
             dstruct.rawCounts = [];
+            dstruct.plotHandle = [];
+
+            dstruct.upper = [];
+            dstruct.lower = [];
         end
 
         %%
@@ -678,6 +824,61 @@ classdef ProbDistroPlots
                 hmBins = hmBins ./ cellCount;
             end
             okay = true;
+        end
+
+        %%
+        function [figHandle, p, bool] = drawShadedArea(figHandle, x_lo, x_hi, y_lo, y_hi, color, alpha)
+            figure(figHandle);
+
+            %Remove any dataless points
+            ynan = isnan(y_lo);
+            xnan = isnan(x_lo);
+            isokay = and(~xnan, ~ynan);
+            if nnz(isokay) < 3
+                p = [];
+                return;
+            end
+
+            x_lo = x_lo(isokay);
+            y_lo = y_lo(isokay);
+
+            ynan = isnan(y_hi);
+            xnan = isnan(x_hi);
+            isokay = and(~xnan, ~ynan);
+            if nnz(isokay) < 3
+                p = [];
+                return;
+            end
+
+            x_hi = x_hi(isokay);
+            y_hi = y_hi(isokay);
+
+
+            polyx = [x_hi flip(x_lo)];
+            polyy = [y_hi flip(y_lo)];
+
+            p = fill(polyx, polyy, color, 'FaceAlpha', alpha, 'EdgeColor', 'none');
+            bool = true;
+        end
+
+        %%
+        function [figHandle, plotHandle, bool] = drawLine(figHandle, x, y, color, lineWidth, lineStyle)
+            figure(figHandle);
+
+            ynan = isnan(y);
+            xnan = isnan(x);
+            isokay = and(~xnan, ~ynan);
+            bool = false;
+            if nnz(isokay) < 3
+                plotHandle = [];
+                return;
+            end
+
+            x = x(isokay);
+            y = y(isokay);
+
+            plotHandle = plot(x,y, 'Color', color, 'LineStyle', lineStyle, 'LineWidth', lineWidth);
+            bool = true;
         end
 
     end
