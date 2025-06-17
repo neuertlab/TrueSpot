@@ -62,6 +62,9 @@ classdef VisInteractive
         currentThresh = 0;
         otherThresh = 100;
 
+        %TODO Add ability to set view region
+        viewTrim = struct('x0', NaN, 'x1', NaN, 'y0', NaN, 'y1', NaN);
+
         %Renderers/data containers
         visCommon = VisCommon;
         scVis = SpotCallVisualization;
@@ -177,6 +180,71 @@ classdef VisInteractive
             obj.currentThresh = spotsrun.intensity_threshold;
             obj.currentSlice = round(spotsrun.dims.idims_sample.z ./ 2);
             obj.spotsRun = spotsrun;
+        end
+
+        %
+        function [obj, resultsStruct, cellMask] = initCommonRetro(obj, tifPath, ch_total, ch_sample, resultsPath, cellsegStem)
+            if nargin < 3; ch_total = 1; end
+            if nargin < 4; ch_sample = 1; end
+            if nargin < 5; resultsPath = []; end
+            if nargin < 6; cellsegStem = []; end
+
+            fprintf('[VisInteractive.initCommonRetro] Loading source image...\n');
+            if isfile(tifPath)
+                [channels, idims] = LoadTif(tifPath, ch_total, ch_sample, 0);
+            else
+                fprintf('[VisInteractive.initCommonRetro] WARNING: Source image file "%s" not found. Cannot load source image.\n', tifPath);
+                return;
+            end
+
+            obj.visCommon = obj.visCommon.initializeMe(idims);
+            obj.imageCh = channels{ch_sample, 1};
+            clear channels idims
+            [obj.imageChFilt] = RNA_Threshold_SpotDetector.run_spot_detection_pre(...
+                        obj.imageCh, '.', true, 7, false);
+
+            %Load cellseg data, if provided.
+            obj.csVis = obj.csVis.initializeMe();
+            obj.csVis.useMaxProj = obj.maxProj;
+            cellMask = [];
+            if ~isempty(cellsegStem)
+                fprintf('[VisInteractive.initCommonRetro] Loading cell segmentation data...\n');
+                cellmaskPath = replace(cellsegStem, '*', 'Lab');
+                nucmaskPath = replace(cellsegStem, '*', 'nuclei');
+                if isfile(cellmaskPath)
+                    cellMask = CellSeg.openCellMask(cellmaskPath);
+                    obj.csVis.cell_mask = (cellMask > 0);
+                else
+                    fprintf('[VisInteractive.initCommonRetro] Cell mask at "%s" not found! Skipping...\n', cellmaskPath);
+                end
+                if isfile(nucmaskPath)
+                    obj.csVis.nuc_mask = CellSeg.openNucMask(nucmaskPath);
+                else
+                    fprintf('[VisInteractive.initCommonRetro] Nuc mask at "%s" not found! Skipping...\n', nucmaskPath);
+                end
+            else
+                fprintf('[VisInteractive.initCommonRetro] Cellseg path not provided. Cellseg data not loaded.\n');
+            end
+
+            %Load spot call data, if provided.
+            resultsStruct = [];
+            obj.scVis = obj.scVis.initializeMe();
+            obj.scVis.visCommon = obj.visCommon;
+            obj.scVis.zMode = 2;
+            if obj.maxProj; obj.scVis.zMode = 1; end
+            if isfile(resultsPath)
+                fprintf('[VisInteractive.initCommonRetro] Loading results data...\n');
+                load(resultsPath, 'analysis');
+                resultsStruct = analysis;
+                clear analysis;
+
+                obj.scVis.callTable = resultsStruct.results_hb.callset;
+                if isempty(obj.scVis.callTable)
+                    fprintf('[VisInteractive.initCommonRetro] WARNING: Call table from "%s" could not be loaded!\n', resultsPath);
+                end
+            else
+                fprintf('[VisInteractive.initCommonRetro] Results path not provided. Results data not loaded.\n');
+            end
         end
 
         %
@@ -341,17 +409,9 @@ classdef VisInteractive
         end
 
         %
-        function obj = updateRender(obj)
-            if isempty(obj.figHandle)
-                obj.figHandle = figure(obj.figNo);
-            else
-                figure(obj.figHandle);
-            end
-
+        function obj = updateRenderToCurrent(obj)
             Y = size(obj.imageCh,1);
             X = size(obj.imageCh,2);
-
-            clf;
 
             if obj.imageLayerOn
                 [obj, irender] = obj.render2dBase();
@@ -360,7 +420,7 @@ classdef VisInteractive
             end
 
             % ----- DEBUG
-            imshow(irender);
+            %imshow(irender);
 
             %Outputs a uint8
             if obj.cellLayerOn
@@ -383,16 +443,16 @@ classdef VisInteractive
             end
 
             % ----- DEBUG
-            clf;
-            imshow(irender);
+            % clf;
+            % imshow(irender);
 
             if obj.nucLayerOn
                 irender = obj.csVis.applyNucMask(irender, obj.currentSlice);
             end
 
             % ----- DEBUG
-            clf;
-            imshow(irender);
+            % clf;
+            % imshow(irender);
 
             %Quant?
             %RGB8 in, 0-1 double out
@@ -403,16 +463,16 @@ classdef VisInteractive
             end
 
             % ----- DEBUG
-            figure(obj.figHandle);
-            clf;
-            imshow(irender);
+            % figure(obj.figHandle);
+            % clf;
+            % imshow(irender);
 
             %Apply workarea mask
             [obj, irender] = obj.applyWorkAreaMask(irender);
 
             % ----- DEBUG
-            clf;
-            imshow(irender);
+            % clf;
+            % imshow(irender);
 
             %Rescale to uint8
             rgb = uint8(zeros(Y, X, 3));
@@ -426,15 +486,27 @@ classdef VisInteractive
             %Spots
             if obj.spotCircleLayerOn
                 if obj.callViewMode == 1
-                    [obj.figHandle, ~] = obj.scVis.drawResultsBasic(obj.figHandle, obj.currentThresh, obj.currentSlice);
+                    obj.scVis.drawResultsBasic([], obj.currentThresh, obj.currentSlice);
                 elseif obj.callViewMode == 2
-                    [obj.figHandle, ~] = obj.scVis.drawReferenceSet(obj.figHandle, obj.currentSlice);
+                    obj.scVis.drawReferenceSet([], obj.currentSlice);
                 elseif obj.callViewMode == 3
-                    [obj.figHandle, ~] = obj.scVis.drawResultsTTCompare(obj.figHandle, obj.currentThresh, obj.otherThresh, obj.currentSlice);
+                    obj.scVis.drawResultsTTCompare([], obj.currentThresh, obj.otherThresh, obj.currentSlice);
                 elseif obj.callViewMode == 4
-                    [obj.figHandle, ~] = obj.scVis.drawResultsTRCompare(obj.figHandle, obj.currentThresh, obj.currentSlice);
+                    obj.scVis.drawResultsTRCompare([], obj.currentThresh, obj.currentSlice);
                 end
             end
+        end
+
+        %
+        function obj = updateRender(obj)
+            if isempty(obj.figHandle)
+                obj.figHandle = figure(obj.figNo);
+            else
+                figure(obj.figHandle);
+            end
+
+            clf;
+            obj = obj.updateRenderToCurrent(obj);
 
             if ~obj.maxProj
                 title(['z = ' num2str(obj.currentSlice)]);

@@ -101,7 +101,7 @@ classdef SpotCallVisualization
             if nargin < 4; z = 0; end
             okay = false;
             if isempty(obj); return; end
-            if isempty(figHandle); return; end
+            %if isempty(figHandle); return; end
 
             if obj.zMode == 1
                 %MaxProj
@@ -110,7 +110,7 @@ classdef SpotCallVisualization
                     xx = obj.callTable{rowBool, 'isnap_x'};
                     yy = obj.callTable{rowBool, 'isnap_y'};
 
-                    figure(figHandle);
+                    if ~isempty(figHandle); figure(figHandle); end
                     hold on;
                     
                     if obj.zMIPColor & ~isempty(obj.visCommon) & obj.visCommon.isInitialized
@@ -155,7 +155,7 @@ classdef SpotCallVisualization
                         brightGreen = obj.visCommon.colorAboveNear;
                     end
 
-                    figure(figHandle);
+                    if ~isempty(figHandle); figure(figHandle); end
                     hold on;
 
                     groupBool = and(rowBool, obj.callTable{:, 'isnap_z'} < (z - obj.zNearRad));
@@ -197,7 +197,7 @@ classdef SpotCallVisualization
         function [figHandle, okay] = drawResultsTTCompare(obj, figHandle, thValA, thValB, z)
             okay = false;
             if isempty(obj); return; end
-            if isempty(figHandle); return; end
+            %if isempty(figHandle); return; end
             if isempty(obj.callTable); return; end
             if isempty(obj.callTableCompare); return; end
             if isempty(obj.callTableCompare.callTable); return; end
@@ -221,7 +221,7 @@ classdef SpotCallVisualization
                 return;
             end
 
-            figure(figHandle);
+            if ~isempty(figHandle); figure(figHandle); end
             hold on;
             groupBool = and(rowBool2, obj.callTableCompare.boolBOnly);
             if nnz(groupBool) > 0
@@ -252,7 +252,7 @@ classdef SpotCallVisualization
         function [figHandle, okay] = drawResultsTRCompare(obj, figHandle, thVal, z)
             okay = false;
             if isempty(obj); return; end
-            if isempty(figHandle); return; end
+            %if isempty(figHandle); return; end
             if isempty(obj.callTable); return; end
             if isempty(obj.referenceTable); return; end
             if isempty(obj.referenceTable.data); return; end
@@ -274,7 +274,7 @@ classdef SpotCallVisualization
                 return;
             end
 
-            figure(figHandle);
+            if ~isempty(figHandle); figure(figHandle); end
             hold on;
 
             %True positives
@@ -304,7 +304,7 @@ classdef SpotCallVisualization
         function [figHandle, okay] = drawReferenceSet(obj, figHandle, z)
             okay = false;
             if isempty(obj); return; end
-            if isempty(figHandle); return; end
+            %if isempty(figHandle); return; end
             if isempty(obj.referenceTable); return; end
             if isempty(obj.referenceTable.data); return; end
 
@@ -314,7 +314,7 @@ classdef SpotCallVisualization
                 rowBoolRef = SpotCallVisualization.filterCallsToValidRangeMtx(tableR, obj.workRegion, 0, 0);
 
                 if nnz(rowBoolRef) > 0
-                    figure(figHandle);
+                    if ~isempty(figHandle); figure(figHandle); end
                     hold on;
                     plot(tableR(rowBoolRef, 1), tableR(rowBoolRef, 2),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
                 end
@@ -336,7 +336,7 @@ classdef SpotCallVisualization
                         brightGreen = obj.visCommon.colorAboveNear;
                     end
 
-                    figure(figHandle);
+                    if ~isempty(figHandle); figure(figHandle); end
                     hold on;
 
                     groupBool = and(rowBoolRef, tableR(:, 3) < (z - obj.zNearRad));
