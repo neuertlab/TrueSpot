@@ -1,11 +1,14 @@
 %
 %%
+
+%Last build updated: 2025.04.06.01 (v.1.2.0)
 function quant_results = RNAQuantPipe(param_struct, guimode)
 
 use_nuc_mask = param_struct.use_nuc_mask; %0 = 2d, 1 = lo, 2 = mid, 3 = hi
 gaussrad = param_struct.gaussian_radius;
 
 quant_results = [];
+thresh_set = [];
 RNA_Fisher_State.setGUIMode(guimode);
 workdir = param_struct.outdir;
 if isempty(workdir)
@@ -46,43 +49,29 @@ if ~isempty(param_struct.runpath)
         rnaspots_run.threshold_results = RNAThreshold.runSavedParameters(rnaspots_run, 0);
         rnaspots_run.intensity_threshold = rnaspots_run.threshold_results.threshold;
         rnaspots_run = rnaspots_run.saveMeTo(param_struct.runpath);
-        use_thresh = rnaspots_run.threshold_results.threshold;
-        RNA_Fisher_State.outputMessageLineStatic(sprintf("Rethresholding complete. New threshold: %d", use_thresh), true);
-    else
-        use_thresh = rnaspots_run.threshold_results.threshold;
+        %RNA_Fisher_State.outputMessageLineStatic(sprintf("Rethresholding complete. New threshold: %d", use_thresh), true);
     end
     
-    if param_struct.man_thresh > 0
-        %Manual override
-        use_thresh = param_struct.man_thresh;
+    [thresh_set, use_thresh] = determineThRange(rnaspots_run, param_struct);
+    minTh = min(thresh_set, [], 'all', 'omitnan');
+    if minTh > use_thresh
+        minTh = max(use_thresh - 20, 15);
+        thresh_set = [minTh thresh_set];
     end
-    
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Minimum threshold selected: %d", minTh), true);
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Count save threshold selected: %d", use_thresh), true);
+
     %Update z_adj and load coords
     if ~isempty(rnaspots_run.meta.idims_voxel)
         if rnaspots_run.meta.idims_voxel.z > 0
             param_struct.z_adj = rnaspots_run.meta.idims_voxel.z / rnaspots_run.meta.idims_voxel.x;
         end
     end
-    
-    %TODO handle new call_table structure
-%     [~, coord_table] = rnaspots_run.loadCoordinateTable();
-%     if ~isempty(coord_table)
-%         th_idx = find(rnaspots_run.threshold_results.x(:,1) == use_thresh, 1);
-%         if ~isempty(th_idx)
-%             param_struct.coords = coord_table{th_idx,1};
-%         else
-%             param_struct.noclouds = true;
-%             param_struct.no_refilter = false;
-%         end
-%     else 
-%         param_struct.noclouds = true;
-%         param_struct.no_refilter = false;
-%     end
-%     clear coord_table
 
     [~, call_table] = rnaspots_run.loadCallTable();
     if ~isempty(call_table)
-        param_struct.coords = RNACoords.getThresholdCalls(call_table, use_thresh, true);
+        min_thresh = min(thresh_set, [], 'all', 'omitnan');
+        param_struct.coords = RNACoords.getThresholdCalls(call_table, min_thresh, true);
         if isempty(param_struct.coords)
             param_struct.noclouds = true;
             param_struct.no_refilter = false;
@@ -104,14 +93,15 @@ else
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Channel count is required for TIF loading!"), true);
         return;
     end
-    if param_struct.man_thresh < 1
-        RNA_Fisher_State.outputMessageLineStatic(sprintf("If run file is not provided, manual threshold value must be specified."), true);
-        return;
-    end
     trgch = param_struct.rna_channel;
     totch = param_struct.channel_count;
-    use_thresh = param_struct.man_thresh;
-    %param_struct.noclouds = true; %Not supported w/o coord table (for now)
+
+    %Determine threshold range from manual overrides
+    [thresh_set, use_thresh] = determineThRange([], param_struct);
+    if isempty(thresh_set)
+        RNA_Fisher_State.outputMessageLineStatic(sprintf("If run file is not provided, manual threshold range must be specified."), true);
+        return;
+    end
 end
 
 %Try to load the image (if not preloaded)
@@ -240,14 +230,15 @@ if param_struct.no_refilter
                                 %We have to find the right threshold...
                                 %Check for a spot table...
                                 spot_table_path = replace(param_struct.coord_tbl_path, 'coordTable', 'spotTable');
+                                min_thresh = min(thresh_set, [], 'all', 'omitnan');
                                 if isfile(spot_table_path)
                                     load(spot_table_path, 'spot_table');
-                                    thidx = RNAUtils.findThresholdIndex(use_thresh, transpose(spot_table(:,1)));
+                                    thidx = RNAUtils.findThresholdIndex(min_thresh, transpose(spot_table(:,1)));
                                     param_struct.coords = coord_table{thidx,1};
                                     clear spot_table;
                                 else
                                     %Just use as index...
-                                    param_struct.coords = coord_table{use_thresh,1};
+                                    param_struct.coords = coord_table{min_thresh,1};
                                 end
                             else
                                 param_struct.coords = coord_table;
@@ -256,7 +247,8 @@ if param_struct.no_refilter
                         end
                     elseif ~isempty(find(ismember(finfo, 'call_table'),1))
                         load(param_struct.coord_tbl_path, 'call_table');
-                        param_struct.coords = RNACoords.getThresholdCalls(call_table, use_thresh, true);
+                        min_thresh = min(thresh_set, [], 'all', 'omitnan');
+                        param_struct.coords = RNACoords.getThresholdCalls(call_table, min_thresh, true);
                         clear call_table 
                     else
                         RNA_Fisher_State.outputMessageLineStatic(sprintf("Refilter skip requested, but coord table file not recognized! Doing refilter..."), true);
@@ -281,6 +273,7 @@ end
 quant_results = RNAQuant.genRNAQuantInfoStruct();
 quant_results.img_raw = image_raw;
 quant_results.threshold = use_thresh;
+quant_results.thresholds = thresh_set;
 quant_results.t_coord_table = param_struct.coords;
 quant_results.workdir = workdir;
 quant_results.cell_mask = cellmask;
@@ -291,6 +284,7 @@ quant_results.z_adj = param_struct.z_adj;
 quant_results.workers = param_struct.workers;
 quant_results.dbgcell = param_struct.dbgcell;
 quant_results.no_bkg_subtract = param_struct.no_bkg_subtract;
+quant_results.incl_cell_zero = param_struct.incl_cell_zero;
 
 if ~isempty(quant_results.t_coord_table)
    quant_results.t_coord_table = int32(quant_results.t_coord_table);
@@ -313,4 +307,90 @@ end
 %Run
 quant_results = RNAQuant.FitRNA(quant_results);
 
+end
+
+function boolRes = hasManualThOverride(param_struct)
+    boolRes = false;
+%     if param_struct.th_range_min > 0
+%         boolRes = true;
+%         return;
+%     end
+%     if param_struct.th_range_max > 0
+%         boolRes = true;
+%         return;
+%     end
+
+    if ~isempty(param_struct.man_thresh)
+        sz = size(param_struct.man_thresh, 2);
+        if sz > 1
+            boolRes = true;
+            return;
+        end
+
+        if param_struct.man_thresh(1) > 0
+            boolRes = true;
+            return;
+        end
+    end
+end
+
+function [thresh_set, use_thresh] = determineThRange(spotsRun, param_struct)
+    thresh_set = [];
+    use_thresh = 0;
+
+    hasManTh = hasManualThOverride(param_struct);
+
+    %If no manual overrides, check spotsRun
+    if ~hasManTh
+        use_thresh = spotsRun.threshold_results.threshold;
+        thMin = spotsRun.options.t_min;
+        thMax = spotsRun.options.t_max;
+        if ~isempty(spotsRun.th_alt)
+            if isfield(spotsRun.th_alt, 'thPresetSugg')
+                allAltTh = spotsRun.th_alt.thPresetSugg(:, 1)';
+                thMin = floor(prctile(allAltTh, 25));
+                thMax = max(allAltTh, [], 'all', 'omitnan');
+            end
+        end
+
+        if param_struct.th_range_min > 0
+            thMin = param_struct.th_range_min;
+        end
+        if param_struct.th_range_max > 0
+            thMax = param_struct.th_range_max;
+        end
+
+        if thMin > use_thresh
+            thMin = max(use_thresh - 20, 15);
+        end
+
+        thresh_set = uint32(thMin:1:thMax);
+        return;
+    end
+
+    thMan = param_struct.man_thresh;
+    thMin = param_struct.th_range_min;
+    thMax = param_struct.th_range_max;
+
+    if ~isempty(thMan)
+        use_thresh = median(thMan, 'all', 'omitnan');
+        thresh_set = thMan;
+        manMin = min(thMan, [], 'all', 'omitnan');
+        manMax = max(thMan, [], 'all', 'omitnan');
+        if thMin > 0 & (thMin < manMin)
+            %Extend down to minimum
+            thresh_set = [(thMin:1:manMin) thresh_set];
+        end
+        if thMax > 0 & (thMax < manMax)
+            %Extend down to minimum
+            thresh_set = [(manMax:1:thMax) thresh_set];
+        end
+
+        return;
+    end
+
+    if thMin < 1; thMin = 20; end
+    if thMax < 1; thMax = 1000; end
+    thresh_set = uint32(thMin:1:thMax);
+    use_thresh = median(thresh_set, 'all', 'omitnan');
 end
