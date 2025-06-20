@@ -30,12 +30,28 @@ classdef CellsegDrawer
         end
 
         %%
-        function imgOut = preprocessInputImage(obj, imgIn, z)
+        function [imgOut, xyView] = preprocessInputImage(obj, imgIn, z, xyView)
+            if nargin < 4; xyView = []; end
 
             %If stack, collapse. But don't collapse if RGB.
             %Also need to adjust range.
 
             imgOut = imgIn;
+            %XYTrim
+            if ~isempty(xyView)
+                x0 = 1; x1 = size(imgIn, 2);
+                y0 = 1; y1 = size(imgIn, 1);
+                if ~isnan(xyView.x0); x0 = xyView.x0; end
+                if ~isnan(xyView.x1); x1 = xyView.x1; end
+                if ~isnan(xyView.y0); y0 = xyView.y0; end
+                if ~isnan(xyView.y1); y1 = xyView.y1; end
+
+                imgOut = imgOut(y0:y1,x0:x1,:);
+                xyView = struct('x0', x0, 'x1', x1, 'y0', y0, 'y1', y1);
+            else
+                xyView = struct('x0', 1, 'x1', size(imgIn, 2), 'y0', 1, 'y1', size(imgIn, 1));
+            end
+
             if ndims(imgIn) > 2
                 %See if it's already RGB
                 if isa(imgIn, 'uint8') & (size(imgIn, 3) == 3)
@@ -61,26 +77,32 @@ classdef CellsegDrawer
         end
 
         %%
-        function imgOut = applyCellMask(obj, imgIn, z)
+        function imgOut = applyCellMask(obj, imgIn, z, xyView)
             if nargin < 3; z = 0; end
+            if nargin < 4; xyView = []; end
             if isempty(imgIn)
                 imgOut = [];
                 return;
             end
 
-            imgIn = obj.preprocessInputImage(imgIn, z);
+            [imgIn, xyView] = obj.preprocessInputImage(imgIn, z, xyView);
 
             if isempty(obj.cell_mask)
                 imgOut = imgIn;
                 return;
             end
 
+            x0 = xyView.x0;
+            x1 = xyView.x1;
+            y0 = xyView.y0;
+            y1 = xyView.y1;
+
             mm = obj.cell_mask;
             if ndims(obj.cell_mask) > 2
                 if obj.useMaxProj | (z < 1)
-                    mm = max(obj.cell_mask, [], 3);
+                    mm = max(obj.cell_mask(y0:y1,x0:x1,:), [], 3);
                 else
-                    mm = obj.cell_mask(:,:,z);
+                    mm = obj.cell_mask(y0:y1,x0:x1,z);
                 end
             end
 
@@ -88,26 +110,32 @@ classdef CellsegDrawer
         end
 
         %%
-        function imgOut = applyNucMask(obj, imgIn, z)
+        function imgOut = applyNucMask(obj, imgIn, z, xyView)
             if nargin < 3; z = 0; end
+            if nargin < 4; xyView = []; end
             if isempty(imgIn)
                 imgOut = [];
                 return;
             end
 
-            imgIn = obj.preprocessInputImage(imgIn, z);
+            [imgIn, xyView] = obj.preprocessInputImage(imgIn, z, xyView);
 
             if isempty(obj.nuc_mask)
                 imgOut = imgIn;
                 return;
             end
 
+            x0 = xyView.x0;
+            x1 = xyView.x1;
+            y0 = xyView.y0;
+            y1 = xyView.y1;
+
             mm = obj.nuc_mask;
             if ndims(obj.nuc_mask) > 2
                 if obj.useMaxProj | (z < 1)
-                    mm = max(obj.nuc_mask, [], 3);
+                    mm = max(obj.nuc_mask(y0:y1,x0:x1,:), [], 3);
                 else
-                    mm = obj.nuc_mask(:,:,z);
+                    mm = obj.nuc_mask(y0:y1,x0:x1,z);
                 end
             end
 

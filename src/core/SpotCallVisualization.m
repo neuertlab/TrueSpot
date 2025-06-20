@@ -48,6 +48,11 @@ classdef SpotCallVisualization
         matchRad_xy;
         matchRad_z;
         matchMinTh;
+        lastRenderedCount = 0;
+
+        %Amount to add to coords to match view
+        xOffset = 0;
+        yOffset = 0;
 
         visCommon; %Instance of VisCommon to get color tables from
 
@@ -97,18 +102,38 @@ classdef SpotCallVisualization
             obj.visCommon = VisCommon; %Don't initialize.
         end
 
-        function [figHandle, okay] = drawResultsBasic(obj, figHandle, thVal, z)
+        function [obj, figHandle, okay] = drawResultsBasic(obj, figHandle, thVal, z, xyView)
             if nargin < 4; z = 0; end
+            if nargin < 5; xyView = []; end
             okay = false;
             if isempty(obj); return; end
             %if isempty(figHandle); return; end
+            obj.lastRenderedCount = 0;
 
+            viewRegion = SpotCallVisualization.xyView2WorkregionStruct(xyView, obj.visCommon.idims);
             if obj.zMode == 1
                 %MaxProj
                 rowBool = SpotCallVisualization.filterCallsToValidRange(obj.callTable, obj.workRegion, 0, 0, thVal);
+                if ~isempty(xyView)
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(obj.callTable, viewRegion, 0, 0, thVal);
+                    rowBool = and(rowBool, rowBoolV);
+                    clear rowBoolV
+                end
                 if nnz(rowBool) > 0
                     xx = obj.callTable{rowBool, 'isnap_x'};
                     yy = obj.callTable{rowBool, 'isnap_y'};
+
+                    %Shift if there is a view window
+                    if ~isempty(xyView)
+                        if ~isnan(xyView.x0)
+                            obj.xOffset = xyView.x0 - 1;
+                            xx = xx - obj.xOffset;
+                        end
+                        if ~isnan(xyView.y0)
+                            obj.yOffset = xyView.y0 - 1;
+                            yy = yy - obj.yOffset;
+                        end
+                    end
 
                     if ~isempty(figHandle); figure(figHandle); end
                     hold on;
@@ -118,7 +143,7 @@ classdef SpotCallVisualization
                         zMax = max(zz, [], 'all', 'omitnan');
                         obj.visCommon.idims.z = max(obj.visCommon.idims.z, zMax);
                         if size(obj.visCommon.colortbl_red, 1) < zMax
-                            obj = obj.generateColorTables(obj.visCommon.idims.z + 1);
+                            obj = obj.visCommon.generateColorTables(obj.visCommon.idims.z + 1);
                         end
                         clear zMax
                         zc = obj.visCommon.idims.z/2;
@@ -130,17 +155,27 @@ classdef SpotCallVisualization
                                 plot(xx(rowBoolz), yy(rowBoolz),...
                                 'LineStyle','none','Marker','o',...
                                 'MarkerEdgeColor',obj.visCommon.colortbl_red(zdist, :),'markersize',10);
+                                obj.lastRenderedCount = obj.lastRenderedCount + nnz(rowBoolz);
                             end
                         end
 
                     else
                         plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                        obj.lastRenderedCount = obj.lastRenderedCount + size(xx,1);
                     end
                 end
                 okay = true;
             elseif obj.zMode == 2
+                filter_z_min = max((z - obj.zShowRad), 1);
+                filter_z_max = z + obj.zShowRad;
                 rowBool = SpotCallVisualization.filterCallsToValidRange(obj.callTable,...
-                    obj.workRegion, max((z - obj.zShowRad), 1), z + obj.zShowRad, thVal);
+                    obj.workRegion, filter_z_min, filter_z_max, thVal);
+                if ~isempty(xyView)
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(obj.callTable, ...
+                        viewRegion, filter_z_min, filter_z_max, thVal);
+                    rowBool = and(rowBool, rowBoolV);
+                    clear rowBoolV
+                end
 
                 if nnz(rowBool) > 0
                     darkYellow = [0.60, 0.50, 0.0];
@@ -158,43 +193,59 @@ classdef SpotCallVisualization
                     if ~isempty(figHandle); figure(figHandle); end
                     hold on;
 
-                    groupBool = and(rowBool, obj.callTable{:, 'isnap_z'} < (z - obj.zNearRad));
-                    if nnz(groupBool) > 0
-                        plot(obj.callTable{groupBool, 'isnap_x'}, obj.callTable{groupBool, 'isnap_y'},...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',darkYellow,'markersize',10);
+                    %Shift if there is a view window
+                    xx = obj.callTable{:, 'isnap_x'};
+                    yy = obj.callTable{:, 'isnap_y'};
+                    zz = obj.callTable{:, 'isnap_z'};
+                    if ~isempty(xyView)
+                        if ~isnan(xyView.x0)
+                            obj.xOffset = xyView.x0 - 1;
+                            xx = xx - obj.xOffset;
+                        end
+                        if ~isnan(xyView.y0)
+                            obj.yOffset = xyView.y0 - 1;
+                            yy = yy - obj.yOffset;
+                        end
                     end
 
-                    groupBool = and(rowBool, obj.callTable{:, 'isnap_z'} > (z + obj.zNearRad));
+                    groupBool = and(rowBool, zz < (z - obj.zNearRad));
                     if nnz(groupBool) > 0
-                        plot(obj.callTable{groupBool, 'isnap_x'}, obj.callTable{groupBool, 'isnap_y'},...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',darkYellow,'markersize',10);
+                        obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
 
-                    groupBool = and(rowBool, obj.callTable{:, 'isnap_z'} >= (z - obj.zNearRad));
-                    groupBool = and(groupBool, obj.callTable{:, 'isnap_z'} < z);
+                    groupBool = and(rowBool, zz > (z + obj.zNearRad));
                     if nnz(groupBool) > 0
-                        plot(obj.callTable{groupBool, 'isnap_x'}, obj.callTable{groupBool, 'isnap_y'},...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',10);
+                        obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
 
-                    groupBool = and(rowBool, obj.callTable{:, 'isnap_z'} <= (z + obj.zNearRad));
-                    groupBool = and(groupBool, obj.callTable{:, 'isnap_z'} > z);
+                    groupBool = and(rowBool, zz >= (z - obj.zNearRad));
+                    groupBool = and(groupBool, zz < z);
                     if nnz(groupBool) > 0
-                        plot(obj.callTable{groupBool, 'isnap_x'}, obj.callTable{groupBool, 'isnap_y'},...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',10);
+                        obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
 
-                    groupBool = and(rowBool, obj.callTable{:, 'isnap_z'} == z);
+                    groupBool = and(rowBool, zz <= (z + obj.zNearRad));
+                    groupBool = and(groupBool, zz > z);
                     if nnz(groupBool) > 0
-                        plot(obj.callTable{groupBool, 'isnap_x'}, obj.callTable{groupBool, 'isnap_y'},...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',10);
+                        obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
+                    end
+
+                    groupBool = and(rowBool, zz == z);
+                    if nnz(groupBool) > 0
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                        obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
                 end
                 okay = true;
             end
         end
 
-        function [figHandle, okay] = drawResultsTTCompare(obj, figHandle, thValA, thValB, z)
+        function [obj, figHandle, okay] = drawResultsTTCompare(obj, figHandle, thValA, thValB, z, xyView)
+            if nargin < 6; xyView = []; end
             okay = false;
             if isempty(obj); return; end
             %if isempty(figHandle); return; end
@@ -209,47 +260,84 @@ classdef SpotCallVisualization
             tableA = obj.callTable;
             tableB = obj.callTableCompare.callTable;
 
+            viewRegion = SpotCallVisualization.xyView2WorkregionStruct(xyView, obj.visCommon.idims);
+
             if obj.zMode == 1
                 %Draw all.
                 rowBool1 = SpotCallVisualization.filterCallsToValidRange(tableA, obj.workRegion, 0, 0, thValA);
                 rowBool2 = SpotCallVisualization.filterCallsToValidRange(tableB, obj.workRegion, 0, 0, thValB);
+
+                if ~isempty(xyView)
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(tableA, viewRegion, 0, 0, thValA);
+                    rowBool1 = and(rowBool1, rowBoolV);
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(tableB, viewRegion, 0, 0, thValB);
+                    rowBool2 = and(rowBool2, rowBoolV);
+                    clear rowBoolV
+                end
             elseif obj.zMode == 2
                 %Only draw for this slice.
                 rowBool1 = SpotCallVisualization.filterCallsToValidRange(tableA, obj.workRegion, z, z, thValA);
                 rowBool2 = SpotCallVisualization.filterCallsToValidRange(tableB, obj.workRegion, z, z, thValB);
+
+                if ~isempty(xyView)
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(tableA, viewRegion, z, z, thValA);
+                    rowBool1 = and(rowBool1, rowBoolV);
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(tableB, viewRegion, z, z, thValB);
+                    rowBool2 = and(rowBool2, rowBoolV);
+                    clear rowBoolV
+                end
             else
                 return;
+            end
+            
+            xxA = tableA{:, 'isnap_x'};
+            yyA = tableA{:, 'isnap_y'};
+            xxB = tableB{:, 'isnap_x'};
+            yyB = tableB{:, 'isnap_y'};
+
+            if ~isempty(xyView)
+                if ~isnan(xyView.x0)
+                    obj.xOffset = xyView.x0 - 1;
+                    xxA = xxA - obj.xOffset;
+                    xxB = xxB - obj.xOffset;
+                end
+                if ~isnan(xyView.y0)
+                    obj.yOffset = xyView.y0 - 1;
+                    yyA = yyA - obj.yOffset;
+                    yyB = yyB - obj.yOffset;
+                end
             end
 
             if ~isempty(figHandle); figure(figHandle); end
             hold on;
             groupBool = and(rowBool2, obj.callTableCompare.boolBOnly);
             if nnz(groupBool) > 0
-                plot(tableB{groupBool, 'isnap_x'}, tableB{groupBool, 'isnap_y'},...
+                plot(xxB(groupBool), yyB(groupBool),...
                     'LineStyle','none','Marker','o','MarkerEdgeColor','blue','markersize',10);
             end
 
             groupBool = and(rowBool1, obj.callTableCompare.boolAOnly);
             if nnz(groupBool) > 0
-                plot(tableA{groupBool, 'isnap_x'}, tableA{groupBool, 'isnap_y'},...
+                plot(xxA(groupBool), yyA(groupBool),...
                     'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',10);
             end
 
             groupBool = and(rowBool1, obj.callTableCompare.boolXYMatchA);
             if nnz(groupBool) > 0
-                plot(tableA{groupBool, 'isnap_x'}, tableA{groupBool, 'isnap_y'},...
+                plot(xxA(groupBool), yyA(groupBool),...
                     'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
             end
 
             groupBool = and(rowBool1, obj.callTableCompare.boolFullMatchA);
             if nnz(groupBool) > 0
-                plot(tableA{groupBool, 'isnap_x'}, tableA{groupBool, 'isnap_y'},...
+                plot(xxA(groupBool), yyA(groupBool),...
                     'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
             end
             okay = true;
         end
 
-        function [figHandle, okay] = drawResultsTRCompare(obj, figHandle, thVal, z)
+        function [obj, figHandle, okay] = drawResultsTRCompare(obj, figHandle, thVal, z, xyView)
+            if nargin < 5; xyView = []; end
             okay = false;
             if isempty(obj); return; end
             %if isempty(figHandle); return; end
@@ -260,18 +348,49 @@ classdef SpotCallVisualization
             if ~obj.referenceTable.checkedVs
                 obj = obj.matchReferenceSpots();
             end
+            viewRegion = SpotCallVisualization.xyView2WorkregionStruct(xyView, obj.visCommon.idims);
 
             tableC = obj.callTable;
             tableR = obj.referenceTable.data(1:obj.referenceTable.used,:);
 
             if obj.zMode == 1
                 rowBoolCall = SpotCallVisualization.filterCallsToValidRange(tableC, obj.workRegion, 0, 0, thVal);
+                rowBoolV = SpotCallVisualization.filterCallsToValidRange(tableC, viewRegion, 0, 0, thVal);
+                rowBoolCall = and(rowBoolCall, rowBoolV);
+
                 rowBoolRef = SpotCallVisualization.filterCallsToValidRangeMtx(tableR, obj.workRegion, 0, 0);
+                rowBoolV = SpotCallVisualization.filterCallsToValidRangeMtx(tableR, viewRegion, 0, 0);
+                rowBoolRef = and(rowBoolRef, rowBoolV);
             elseif obj.zMode == 2
-                rowBoolCall = SpotCallVisualization.filterCallsToValidRange(obj.callTable, obj.workRegion, z, z, thVal);
+                rowBoolCall = SpotCallVisualization.filterCallsToValidRange(tableC, obj.workRegion, z, z, thVal);
+                rowBoolV = SpotCallVisualization.filterCallsToValidRange(tableC, viewRegion, z, z, thVal);
+                rowBoolCall = and(rowBoolCall, rowBoolV);
+
                 rowBoolRef = SpotCallVisualization.filterCallsToValidRangeMtx(tableR, obj.workRegion, z, z);
+                rowBoolV = SpotCallVisualization.filterCallsToValidRangeMtx(tableR, viewRegion, z, z);
+                rowBoolRef = and(rowBoolRef, rowBoolV);
             else
                 return;
+            end
+            clear rowBoolV
+
+            xxC = tableC{:, 'isnap_x'};
+            yyC = tableC{:, 'isnap_y'};
+            xxR = tableR(:, 1);
+            yyR = tableR(:, 2);
+            clear tableC tableR
+
+            if ~isempty(xyView)
+                if ~isnan(xyView.x0)
+                    obj.xOffset = xyView.x0 - 1;
+                    xxC = xxC - obj.xOffset;
+                    xxR = xxR - obj.xOffset;
+                end
+                if ~isnan(xyView.y0)
+                    obj.yOffset = xyView.y0 - 1;
+                    yyC = yyC - obj.yOffset;
+                    yyR = yyR - obj.yOffset;
+                end
             end
 
             if ~isempty(figHandle); figure(figHandle); end
@@ -280,28 +399,29 @@ classdef SpotCallVisualization
             %True positives
             groupBool = and(rowBoolCall, obj.referenceTable.truePos);
             if nnz(groupBool) > 0
-                plot(tableC{groupBool, 'isnap_x'}, tableC{groupBool, 'isnap_y'},...
+                plot(xxC(groupBool), yyC(groupBool),...
                     'LineStyle','none','Marker','o','MarkerEdgeColor','green','markersize',10);
             end
 
             %False positives
             groupBool = and(rowBoolCall, ~obj.referenceTable.truePos);
             if nnz(groupBool) > 0
-                plot(tableC{groupBool, 'isnap_x'}, tableC{groupBool, 'isnap_y'},...
+                plot(xxC(groupBool), yyC(groupBool),...
                     'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',10);
             end
 
             %False negatives
             groupBool = and(rowBoolRef, obj.referenceTable.falseNeg);
             if nnz(groupBool) > 0
-                plot(tableR(groupBool, 1), tableR(groupBool, 2),...
+                plot(xxR(groupBool), yyR(groupBool),...
                     'LineStyle','none','Marker','o','MarkerEdgeColor','yellow','markersize',10);
             end
 
             okay = true;
         end
 
-        function [figHandle, okay] = drawReferenceSet(obj, figHandle, z)
+        function [obj, figHandle, okay] = drawReferenceSet(obj, figHandle, z, xyView)
+            if nargin < 4; xyView = []; end
             okay = false;
             if isempty(obj); return; end
             %if isempty(figHandle); return; end
@@ -309,19 +429,42 @@ classdef SpotCallVisualization
             if isempty(obj.referenceTable.data); return; end
 
             tableR = obj.referenceTable.data(1:obj.referenceTable.used,:);
+            viewRegion = SpotCallVisualization.xyView2WorkregionStruct(xyView, obj.visCommon.idims);
 
             if obj.zMode == 1
                 rowBoolRef = SpotCallVisualization.filterCallsToValidRangeMtx(tableR, obj.workRegion, 0, 0);
+                rowBoolV = SpotCallVisualization.filterCallsToValidRangeMtx(tableR, viewRegion, 0, 0);
+                rowBoolRef = and(rowBoolRef, rowBoolV);
+                clear rowBoolV
+
+                xx = tableR(:, 1);
+                yy = tableR(:, 2);
+                if ~isempty(xyView)
+                    if ~isnan(xyView.x0)
+                        obj.xOffset = xyView.x0 - 1;
+                        xx = xx - obj.xOffset;
+                    end
+                    if ~isnan(xyView.y0)
+                        obj.yOffset = xyView.y0 - 1;
+                        yy = yy - obj.yOffset;
+                    end
+                end
 
                 if nnz(rowBoolRef) > 0
                     if ~isempty(figHandle); figure(figHandle); end
                     hold on;
-                    plot(tableR(rowBoolRef, 1), tableR(rowBoolRef, 2),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                    plot(xx(rowBoolRef), yy(rowBoolRef),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
                 end
             elseif obj.zMode == 2
                 %Draw neighboring slice calls as with call only
+                filtz_min = max((z - obj.zShowRad), 1);
+                filtz_max = obj.zShowRad;
                 rowBoolRef = SpotCallVisualization.filterCallsToValidRangeMtx(tableR,...
-                    obj.workRegion, max((z - obj.zShowRad), 1), z + obj.zShowRad);
+                    obj.workRegion, filtz_min, filtz_max);
+                rowBoolV = SpotCallVisualization.filterCallsToValidRangeMtx(tableR,...
+                    viewRegion, filtz_min, filtz_max);
+                rowBoolRef = and(rowBoolRef, rowBoolV);
+                clear rowBoolV
 
                 if nnz(rowBoolRef) > 0
                     darkYellow = [0.60, 0.50, 0.0];
@@ -336,38 +479,51 @@ classdef SpotCallVisualization
                         brightGreen = obj.visCommon.colorAboveNear;
                     end
 
+                    xx = tableR(:, 1);
+                    yy = tableR(:, 2);
+                    if ~isempty(xyView)
+                        if ~isnan(xyView.x0)
+                            obj.xOffset = xyView.x0 - 1;
+                            xx = xx - obj.xOffset;
+                        end
+                        if ~isnan(xyView.y0)
+                            obj.yOffset = xyView.y0 - 1;
+                            yy = yy - obj.yOffset;
+                        end
+                    end
+
                     if ~isempty(figHandle); figure(figHandle); end
                     hold on;
 
                     groupBool = and(rowBoolRef, tableR(:, 3) < (z - obj.zNearRad));
                     if nnz(groupBool) > 0
-                        plot(tableR(groupBool, 1), tableR(groupBool, 2),...
+                        plot(xx(groupBool), yy(groupBool),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor',darkYellow,'markersize',10);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) > (z + obj.zNearRad));
                     if nnz(groupBool) > 0
-                        plot(tableR(groupBool, 1), tableR(groupBool, 2),...
+                        plot(xx(groupBool), yy(groupBool),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',10);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) >= (z - obj.zNearRad));
                     groupBool = and(groupBool, tableR(:, 3) < z);
                     if nnz(groupBool) > 0
-                        plot(tableR(groupBool, 1), tableR(groupBool, 2),...
+                        plot(xx(groupBool), yy(groupBool),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',10);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) <= (z + obj.zNearRad));
                     groupBool = and(groupBool, tableR(:, 3) > z);
                     if nnz(groupBool) > 0
-                        plot(tableR(groupBool, 1), tableR(groupBool, 2),...
+                        plot(xx(groupBool), yy(groupBool),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',10);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) == z);
                     if nnz(groupBool) > 0
-                        plot(tableR(groupBool, 1), tableR(groupBool, 2),...
+                        plot(xx(groupBool), yy(groupBool),...
                             'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',10);
                     end
                 end
@@ -444,6 +600,8 @@ classdef SpotCallVisualization
 
             %Click radius, based on figure scale
             cRad = SpotCallVisualization.calculateClickRadius(figHandle, X, Y);
+            x = x + obj.xOffset;
+            y = y + obj.yOffset;
             
             %Find existing spots within that radius - both in queues and in
             %ref table
@@ -775,10 +933,78 @@ classdef SpotCallVisualization
             %TODO
         end
 
+        function [th_min, th_max, th_incr] = getThresholdRangeMainCallset(obj)
+            th_min = 0; th_max = 0; th_incr = 0;
+            if isempty(obj.callTable); return; end
+            all_thresh = obj.callTable{:, 'dropout_thresh'};
+            all_thresh = all_thresh(all_thresh > 0);
+            th_min = min(all_thresh, [], 'all', 'omitnan');
+            th_max = max(all_thresh, [], 'all', 'omitnan');
+            all_thresh = unique(all_thresh);
+            all_thresh_diff = diff(all_thresh);
+            th_incr = min(all_thresh_diff, [], 'all', 'omitnan');
+        end
+
+        function [th_min, th_max, th_incr] = getThresholdRangeSecondaryCallset(obj)
+            th_min = 0; th_max = 0; th_incr = 0;
+            if isempty(obj.callTableCompare); return; end
+            all_thresh = obj.callTableCompare{:, 'dropout_thresh'};
+            all_thresh = all_thresh(all_thresh > 0);
+            th_min = min(all_thresh, [], 'all', 'omitnan');
+            th_max = max(all_thresh, [], 'all', 'omitnan');
+            all_thresh = unique(all_thresh);
+            all_thresh_diff = diff(all_thresh);
+            th_incr = min(all_thresh_diff, [], 'all', 'omitnan');
+        end
+
+        function spotCount = getSpotCountMainCallset(obj, xyView, z, thVal)
+            spotCount = 0;
+            if isempty(obj.callTable); return; end
+            viewRegion = SpotCallVisualization.xyView2WorkregionStruct(xyView, obj.visCommon.idims);
+            if (obj.zMode == 1) | (z < 1)
+                %MaxProj
+                rowBool = SpotCallVisualization.filterCallsToValidRange(obj.callTable, obj.workRegion, 0, 0, thVal);
+                if ~isempty(xyView)
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(obj.callTable, viewRegion, 0, 0, thVal);
+                    rowBool = and(rowBool, rowBoolV);
+                end
+                spotCount = nnz(rowBool);
+            else
+                rowBool = SpotCallVisualization.filterCallsToValidRange(obj.callTable, obj.workRegion, z, z, thVal);
+                if ~isempty(xyView)
+                    rowBoolV = SpotCallVisualization.filterCallsToValidRange(obj.callTable, viewRegion, z, z, thVal);
+                    rowBool = and(rowBool, rowBoolV);
+                end
+                spotCount = nnz(rowBool);
+            end
+        end
+
     end
 
      %%
     methods(Static)
+
+        function validRegion = xyView2WorkregionStruct(xyView, idims)
+            validRegion = struct();
+            validRegion.x_min = 1;
+            validRegion.x_max = idims.x;
+            validRegion.y_min = 1;
+            validRegion.y_max = idims.y;
+            if ~isempty(xyView)
+                if ~isnan(xyView.x0)
+                    validRegion.x_min = xyView.x0;
+                end
+                if ~isnan(xyView.x1)
+                    validRegion.x_max = xyView.x1;
+                end
+                if ~isnan(xyView.y0)
+                    validRegion.y_min = xyView.y0;
+                end
+                if ~isnan(xyView.x1)
+                    validRegion.y_max = xyView.y1;
+                end
+            end
+        end
 
         function rowBool = filterCallsToValidRangeMtx(callMtx, validRegion, zMin, zMax)
             if nargin < 3; zMin = 0; end

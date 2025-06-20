@@ -278,6 +278,46 @@ classdef VisInteractive
             obj.callViewMode = 4;
         end
 
+        %% ================== Auto Interface ===============================
+
+        %
+        function [th_min, th_max, th_incr] = getThresholdInfo(obj)
+            %TODO
+        end
+
+        %
+        function setThresholdValue(obj, value)
+            %TODO
+        end
+
+        %
+        function Z = getZSliceCount(obj)
+            %TODO
+        end
+
+        %
+        function spotCount = getCurrentCallCount(obj)
+            %TODO
+        end
+
+        %
+        function [x0, x1, y0, y1] = getViewWindow(obj)
+            %TODO
+        end
+
+        %
+        function obj = setMaxProj(obj, bool)
+            obj.maxProj = bool;
+            obj.csVis.useMaxProj = obj.maxProj;
+            if obj.maxProj
+                obj.scVis.zMode = 1;
+            else
+                obj.scVis.zMode = 2;
+            end
+            obj.qnVis.maxProj = obj.maxProj;
+        end
+
+
         %% ================== Save/Load ===============================
         %
         function path = getRefSavePath(obj)
@@ -576,14 +616,7 @@ classdef VisInteractive
                 fprintf('Filter toggle set: %d\n', obj.useFilt);
                 obj = obj.updateRender();
             elseif btn == 'm' %toggle max projection
-                obj.maxProj = ~obj.maxProj;
-                obj.csVis.useMaxProj = obj.maxProj;
-                if obj.maxProj
-                    obj.scVis.zMode = 1;
-                else
-                    obj.scVis.zMode = 2;
-                end
-                obj.qnVis.maxProj = obj.maxProj;
+                obj = obj.setMaxProj(~obj.maxProj);
                 fprintf('Max projection toggle set: %d\n', obj.maxProj);
                 obj = obj.updateRender();
             elseif btn == 'g' %toggle global contrast scale
@@ -842,6 +875,29 @@ classdef VisInteractive
 
     %%
     methods(Static)
+
+        %
+        function boolres = xyViewInUse(xyView)
+            boolres = false;
+            if isempty(xyView); return; end
+            if ~isnan(xyView.x0)
+                boolres = true;
+                return;
+            end
+            if ~isnan(xyView.x1)
+                boolres = true;
+                return;
+            end
+            if ~isnan(xyView.y0)
+                boolres = true;
+                return;
+            end
+            if ~isnan(xyView.y1)
+                boolres = true;
+                return;
+            end
+        end
+        
     end
 
 end
