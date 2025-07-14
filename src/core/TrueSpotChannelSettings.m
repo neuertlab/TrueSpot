@@ -40,52 +40,67 @@ classdef TrueSpotChannelSettings
     %%
     methods (Static)
 
+        %% ========================== Inner Structs ==========================
+
+        function metaInfo = genMetadataStruct()
+            metaInfo = struct();
+            metaInfo.targetName = [];
+            metaInfo.probeName = [];
+            metaInfo.targetMolType = [];
+            metaInfo.pointSize = struct('x', 0, 'y', 0, 'z', 0);
+        end
+
+        function spotCountSettings = genCountSettingsStruct()
+            spotCountSettings = struct();
+            spotCountSettings.gaussRad = 7;
+            spotCountSettings.zMin = 0;
+            spotCountSettings.zMax = 0;
+            spotCountSettings.useDPC = true;
+            spotCountSettings.spotDetectThreads = 1;
+            spotCountSettings.quantThreads = 1;
+            spotCountSettings.controlImageChannel = 0;
+            spotCountSettings.zAdj = NaN;
+            spotCountSettings.fitRadXY = 4;
+            spotCountSettings.fitRadZ = 2;
+            spotCountSettings.quantNoRefilter = true;
+            spotCountSettings.quantNoClouds = true;
+            spotCountSettings.quantNoCells = false;
+            spotCountSettings.quantCellZero = true;
+            spotCountSettings.nucMaskLevel = 2; %2 is medium. 0 is 2D.
+        end
+
+        function thresholdSettings = genThresholdSettingsStruct()
+            thresholdSettings = struct();
+            thresholdSettings.thMin = 0; %Auto
+            thresholdSettings.thMax = 0; %Auto
+            thresholdSettings.preset = NaN;
+            thresholdSettings.thParams = RNAThreshold.genEmptyThresholdParamStruct();
+            thresholdSettings.manualTh = 0; %Picked by user in GUI
+            thresholdSettings.manualThRangeMin = 0; %Picked by user in GUI
+            thresholdSettings.manualThRangeMax = 0; %Picked by user in GUI
+            thresholdSettings.autoBatchThMid = 0; %Derived from batch statistics
+            thresholdSettings.autoBatchThLo = 0;
+            thresholdSettings.autoBatchThHi = 0;
+        end
+
+        function optionsStruct = genOptionsStruct()
+            optionsStruct = struct();
+            optionsStruct.csvzero = false;
+            optionsStruct.csvrange = false;
+            optionsStruct.csvthonly = false;
+            optionsStruct.csvfull = false;
+            optionsStruct.runparamtxt = false;
+            optionsStruct.overwrite = true;
+        end
+
         %% ========================== I/O ==========================
         function chSettings = newChannelSettings()
             chSettings = TrueSpotChannelSettings;
 
-            chSettings.metadata = struct();
-            chSettings.metadata.targetName = [];
-            chSettings.metadata.probeName = [];
-            chSettings.metadata.targetMolType = [];
-            chSettings.metadata.pointSize = struct('x', 0, 'y', 0, 'z', 0);
-
-            chSettings.spotCountSettings = struct();
-            chSettings.spotCountSettings.gaussRad = 7;
-            chSettings.spotCountSettings.zMin = 0;
-            chSettings.spotCountSettings.zMax = 0;
-            chSettings.spotCountSettings.useDPC = true;
-            chSettings.spotCountSettings.spotDetectThreads = 1;
-            chSettings.spotCountSettings.quantThreads = 1;
-            chSettings.spotCountSettings.controlImageChannel = 0;
-            chSettings.spotCountSettings.zAdj = NaN;
-            chSettings.spotCountSettings.fitRadXY = 4;
-            chSettings.spotCountSettings.fitRadZ = 2;
-            chSettings.spotCountSettings.quantNoRefilter = true;
-            chSettings.spotCountSettings.quantNoClouds = true;
-            chSettings.spotCountSettings.quantNoCells = false;
-            chSettings.spotCountSettings.quantCellZero = true;
-            chSettings.spotCountSettings.nucMaskLevel = 2; %2 is medium. 0 is 2D.
-
-            chSettings.thresholdSettings = struct();
-            chSettings.thresholdSettings.thMin = 0; %Auto
-            chSettings.thresholdSettings.thMax = 0; %Auto
-            chSettings.thresholdSettings.preset = 0;
-            chSettings.thresholdSettings.thParams = RNAThreshold.genEmptyThresholdParamStruct();
-            chSettings.thresholdSettings.manualTh = 0; %Picked by user in GUI
-            chSettings.thresholdSettings.manualThRangeMin = 0; %Picked by user in GUI
-            chSettings.thresholdSettings.manualThRangeMax = 0; %Picked by user in GUI
-            chSettings.thresholdSettings.autoBatchThMid = 0; %Derived from batch statistics
-            chSettings.thresholdSettings.autoBatchThLo = 0;
-            chSettings.thresholdSettings.autoBatchThHi = 0;
-
-            chSettings.options = struct();
-            chSettings.options.csvzero = false;
-            chSettings.options.csvrange = false;
-            chSettings.options.csvthonly = false;
-            chSettings.options.csvfull = false;
-            chSettings.options.runparamtxt = false;
-            chSettings.options.overwrite = true;
+            chSettings.metadata = TrueSpotChannelSettings.genMetadataStruct();
+            chSettings.spotCountSettings = TrueSpotChannelSettings.genCountSettingsStruct();
+            chSettings.thresholdSettings = TrueSpotChannelSettings.genThresholdSettingsStruct();
+            chSettings.options = TrueSpotChannelSettings.genOptionsStruct();
 
             chSettings.previewState = struct();
             chSettings.previewState.workRegion = RNAUtils.genCoordRangeStruct(true);
