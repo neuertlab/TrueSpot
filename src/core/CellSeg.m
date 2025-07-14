@@ -1074,17 +1074,23 @@ classdef CellSeg
                             nuc_mask = nuclei;
                             clear nuclei;
                         case 1
-                            load(path, 'Label_low');
-                            nuc_mask = Label_low;
-                            clear Label_low;
+                            if ~isempty(find(ismember(finfo, 'Label_low'),1))
+                                load(path, 'Label_low');
+                                nuc_mask = Label_low;
+                                clear Label_low;
+                            end
                         case 2
-                            load(path, 'Label_mid');
-                            nuc_mask = Label_mid;
-                            clear Label_mid;
+                            if ~isempty(find(ismember(finfo, 'Label_mid'),1))
+                                load(path, 'Label_mid');
+                                nuc_mask = Label_mid;
+                                clear Label_mid;
+                            end
                         case 3
-                            load(path, 'Label_hi');
-                            nuc_mask = Label_hi;
-                            clear Label_hi;
+                            if ~isempty(find(ismember(finfo, 'Label_hi'),1))
+                                load(path, 'Label_hi');
+                                nuc_mask = Label_hi;
+                                clear Label_hi;
+                            end
                     end
                 end
             elseif endsWith(path, '.tif') | endsWith(path, '.tiff')

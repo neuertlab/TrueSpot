@@ -6,6 +6,19 @@ classdef RNAUtils
     methods (Static)
         
         %%
+        function rangeStruct = genCoordRangeStruct(includeZ)
+            rangeStruct = struct();
+            rangeStruct.x_min = NaN;
+            rangeStruct.x_max = NaN;
+            rangeStruct.y_min = NaN;
+            rangeStruct.y_max = NaN;
+            if includeZ
+                rangeStruct.z_min = NaN;
+                rangeStruct.z_max = NaN;
+            end
+        end
+
+        %%
         function bool = isTableVariable(myTable, varName)
             varNames = myTable.Properties.VariableNames;
             bool = ismember(varName, varNames);
