@@ -546,7 +546,7 @@ classdef VisInteractive
             end
 
             clf;
-            obj = obj.updateRenderToCurrent(obj);
+            obj = obj.updateRenderToCurrent();
 
             if ~obj.maxProj
                 title(['z = ' num2str(obj.currentSlice)]);
