@@ -130,6 +130,12 @@ classdef TrueSpotChannelSettings
             chSettings.previewState = previewState;
         end
 
+        %% ========================== Run ==========================
+
+        function runSpotDetect(parentProject, imgName, imgPath, ctrlPath)
+            %TODO
+        end
+
 
     end
 

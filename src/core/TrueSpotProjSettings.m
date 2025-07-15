@@ -14,6 +14,8 @@ classdef TrueSpotProjSettings
         cellsegSettings;
         metadata;
         previewState;
+
+        inputTable; %Held in memory only, not saved.
     end
 
     methods
@@ -32,11 +34,136 @@ classdef TrueSpotProjSettings
                 'cellsegSettings', 'metadata', 'previewState');
         end
 
+        function obj = loadInputTable(obj, filePath)
+            %A csv or tsv table
+
+            delim = '\t';
+            if endsWith(filePath, '.csv'); delim = ','; end
+
+            [varNames, ~] = TrueSpotProjSettings.getInputTableFields();
+            temp_table = readtable(filePath,'Delimiter',delim,'ReadVariableNames',true);
+
+            %Fill in missing variables with empty columns
+            isVar = RNAUtils.isTableVariable(temp_table, varNames);
+            varCount = size(varNames, 2);
+            for i = 1:varCount
+                if ~isVar(i)
+                    temp_table{:, varNames{i}} = "";
+                end
+            end
+
+            obj.inputTable = temp_table;
+
+        end
+
+        function obj = scanInputDir(obj, dirPath)
+            [varNames, varTypes] = TrueSpotProjSettings.getInputTableFields();
+
+            dirList = dir(dirPath);
+            dirTable = struct2table(dirList);
+            dirTable = convertvars(dirTable, 'name', 'string');
+
+            fileBool = ~dirTable{:,'isdir'};
+            fNames = dirTable{:, 'name'};
+            tifBool = endsWith(fNames, '.tif');
+            passBool = and(fileBool, tifBool);
+            iCount = nnz(passBool);
+            clear fileBool tifBool fNames dirList
+
+            table_size = [iCount size(varNames,2)];
+            obj.inputTable = table('Size', table_size, 'VariableTypes', varTypes, 'VariableNames', varNames);
+            obj.inputTable{:, 'ImageFilePath'} = dirTable{passBool, 'name'};
+            obj.inputTable{:, 'ImageName'} = replace(dirTable{passBool, 'name'}, '.tif', '');
+            obj.inputTable{:, 'ControlFilePath'} = "";
+            obj.inputTable{:, 'NucDataFilePath'} = "";
+            obj.inputTable{:, 'LightDataFilePath'} = "";
+        end
+
+        function exportInputTable(obj, filePath)
+            if ~isempty(obj.inputTable); return; end
+
+            delim = '\t';
+            if endsWith(filePath, '.csv'); delim = ','; end
+            writetable(obj.inputTable, filePath, 'Delimiter',delim)
+        end
+
+        %% ========================== Run ==========================
+
+        function obj = initializeForRun(obj)
+            %Loads and fills in input table (ie. if common control)
+            if isfolder(obj.paths.inputPath)
+                obj = obj.scanInputDir(obj.paths.inputPath);
+                if ~isempty(obj.paths.controlPath)
+                    obj.inputTable{:, 'ControlFilePath'} = obj.paths.controlPath;
+                end
+            else
+                %Tif image or table
+                if endsWith(obj.paths.inputPath, '.tif')
+                    [varNames, varTypes] = TrueSpotProjSettings.getInputTableFields();
+                    table_size = [1 size(varNames,2)];
+                    obj.inputTable = table('Size', table_size, 'VariableTypes', varTypes, 'VariableNames', varNames);
+                    if ~isempty(obj.paths.controlPath)
+                        obj.inputTable{:, 'ControlFilePath'} = obj.paths.controlPath;
+                    end
+                else
+                    %Try to read as table
+                    obj = obj.loadInputTable(obj.paths.inputPath);
+                end
+            end
+
+            %Prepare output. Export the inputtable as well for user.
+            if ~isfolder(obj.paths.outputPath)
+                mkdir(obj.paths.outputPath);
+            end
+            obj.exportInputTable([obj.paths.outputPath filesep 'tsInput.csv']);
+        end
+
+        function obj = runCellSeg(obj, listener)
+            %TODO
+            if ~isempty(obj.inputTable)
+                if ~isempty(listener)
+                    listener.sendMessage('[TrueSpotProjSettings.runCellSeg] ERROR: Batch has not been initialized.');
+                end
+                return;
+            end
+
+            if ~isempty(listener)
+                listener.sendMessage('[TrueSpotProjSettings.runCellSeg] Starting cell segmentation...');
+            end
+
+            %TODO
+
+        end
+
+        function obj = runSpotDetect(obj, channels, listener)
+            %TODO
+        end
+
+        function obj = runQuant(obj, channels, listener)
+            %TODO
+            %Remember to dump a count dump xml
+        end
+
+        function obj = runQC(obj, listener)
+            %TODO
+        end
+
+        function obj = runCountDump(obj, listener)
+            %TODO
+        end
+
     end
 
     %%
     methods (Static)
 
+        %% ========================== Utility ==========================
+
+        function [varNames, varTypes] = getInputTableFields()
+            varNames = {'ImageName' 'ImageFilePath' 'ControlFilePath' 'NucDataFilePath' 'LightDataFilePath'};
+            varTypes = {'string' 'string' 'string' 'string' 'string'};
+        end
+        
         %% ========================== Inner Structs ==========================
 
         function pathsInfo = genPathsStruct()
@@ -136,9 +263,7 @@ classdef TrueSpotProjSettings
             batchSettings.metadata = metadata;
             batchSettings.previewState = previewState;
         end
-
-        
-
+ 
     end
 
 
