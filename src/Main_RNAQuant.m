@@ -11,6 +11,8 @@ VERSION_STRING = 'v1.2.0';
 DEFAULT_PRESET_INDEX = 6;
 MAX_TH_PRESET_LEVEL = 5;
 
+%TODO Add option to dump the subtracted background
+
 % ========================== Process args ==========================
 
 arg_debug = true; %CONSTANT used for debugging arg parser.

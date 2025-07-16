@@ -1101,9 +1101,58 @@ classdef CellSeg
             elseif endsWith(path, '.tsv') | endsWith(path, '.csv')
                 nuc_mask = readmatrix(path);
             end
+        end
 
+        %%
+        function importCellSegData(cellMaskPath, nucMaskPath, outputPath)
+            runMeta = [];
+            cellSeg = [];
+            nucleiSeg = [];
 
-            
+            if isfile(outputPath)
+                load(outputPath);
+
+                if isempty(cellSeg)
+                    cellSeg = struct();
+                end
+                if isempty(nucleiSeg)
+                    nucleiSeg = struct();
+                    nucleiSeg.results = CellSeg.genNucSegResultsStruct();
+                end
+                if isempty(runMeta)
+                    runMeta = struct();
+                end
+            else
+                runMeta = struct();
+                runMeta.tsCellSegBuild = 'CellSeg.importCellSegData_25071600';
+                runMeta.tsCellSegVersion = 'v1.3.0';
+
+                cellSeg = struct();
+                nucleiSeg = struct();
+                nucleiSeg.results = CellSeg.genNucSegResultsStruct();
+            end
+            runMeta.modifiedDate = datetime;
+
+            if isfile(cellMaskPath)
+                cell_mask = CellSeg.openCellMask(cellMaskPath);
+                cellSeg.cell_mask = cell_mask;
+                clear cell_mask
+                runMeta.extCellSegSource = cellMaskPath;
+                runMeta.extImportDate = datetime;
+            end
+            if isfile(nucMaskPath)
+                nuc_mask = CellSeg.openNucMask(nucMaskPath);
+                nucleiSeg.results.lbl_mid = nuc_mask;
+                nucleiSeg.results.lbl_lo = nuc_mask;
+                nucleiSeg.results.lbl_hi = nuc_mask;
+                nucleiSeg.results.nuc_label = nuc_mask;
+                clear nuc_mask
+                runMeta.extNucSegSource = nucMaskPath;
+                runMeta.extImportDate = datetime;
+            end
+
+            save(outputPath, 'cellSeg', 'nucleiSeg', 'runMeta');
+
         end
 
     end

@@ -135,15 +135,15 @@ classdef TrueSpotXML
                         cellsegSettings.nszmin = TrueSpotXML.getNumberAttribute(sChild, 'Min', 0);
                         cellsegSettings.nszmax = TrueSpotXML.getNumberAttribute(sChild, 'Max', 0);
                     elseif strcmp(sChildName, 'XTrim')
-                        cellsegSettings.xtrim = TrueSpotXML.getElementTextAsNumber(sChild, 4);
+                        cellsegSettings.xtrim = TrueSpotXML.getElementTextAsNumber(sChild, 0);
                     elseif strcmp(sChildName, 'YTrim')
-                        cellsegSettings.ytrim = TrueSpotXML.getElementTextAsNumber(sChild, 4);
+                        cellsegSettings.ytrim = TrueSpotXML.getElementTextAsNumber(sChild, 0);
                     elseif strcmp(sChildName, 'NucZRange')
-                        cellsegSettings.nzrange = TrueSpotXML.getElementTextAsNumber(sChild, 3);
+                        cellsegSettings.nzrange = TrueSpotXML.getElementTextAsNumber(sChild, 0);
                     elseif strcmp(sChildName, 'NucThSample')
-                        cellsegSettings.nthsmpl = TrueSpotXML.getElementTextAsNumber(sChild, 200);
+                        cellsegSettings.nthsmpl = TrueSpotXML.getElementTextAsNumber(sChild, 0);
                     elseif strcmp(sChildName, 'NucCutoff')
-                        cellsegSettings.ncutoff = TrueSpotXML.getElementTextAsNumber(sChild, 0.05);
+                        cellsegSettings.ncutoff = TrueSpotXML.getElementTextAsNumber(sChild, 0);
                     elseif strcmp(sChildName, 'NucDXY')
                         cellsegSettings.ndxy = TrueSpotXML.getElementTextAsNumber(sChild);
                     elseif strcmp(sChildName, 'Options')

@@ -119,29 +119,240 @@ classdef TrueSpotProjSettings
         end
 
         function obj = runCellSeg(obj, listener)
-            %TODO
+            if nargin < 2; listener = []; end
+
+            funcTag = 'TrueSpotProjSettings.runCellSeg';
+
             if ~isempty(obj.inputTable)
-                if ~isempty(listener)
-                    listener.sendMessage('[TrueSpotProjSettings.runCellSeg] ERROR: Batch has not been initialized.');
-                end
+                GUIUtils.sendMessage(listener, funcTag, 'ERROR: Batch has not been initialized.');
                 return;
             end
 
-            if ~isempty(listener)
-                listener.sendMessage('[TrueSpotProjSettings.runCellSeg] Starting cell segmentation...');
+            GUIUtils.sendMessage(listener, funcTag, 'Starting cell segmentation...');
+
+            TUNING_PARAMS = {'cszmin' 'cszmax' 'nszmin' 'nszmax' 'xtrim' 'ytrim' ...
+                'nzrange' 'nthsmpl' 'ncutoff' 'ndxy'};
+            tuningParamCount = size(TUNING_PARAMS, 2);
+
+            stackCount = size(obj.inputTable, 1);
+            scratchList = cell(1, 128);
+            for i = 1:stackCount
+                GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d ...', i, stackCount));
+
+                iname = obj.inputTable{i, 'ImageName'};
+
+                argPos = 1;
+                scratchList{argPos} = '-input'; argPos = argPos + 1;
+                if ~isempty(obj.inputTable{i, 'LightDataFilePath'})
+                    scratchList{argPos} = obj.inputTable{i, 'LightDataFilePath'}; argPos = argPos + 1;
+                    scratchList{argPos} = '-chtotal'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.channelInfo.lightStackChannelCount); argPos = argPos + 1;
+                    
+                else
+                    scratchList{argPos} = obj.inputTable{i, 'ImageFilePath'}; argPos = argPos + 1;
+                    scratchList{argPos} = '-chtotal'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.channelInfo.channelCount); argPos = argPos + 1;
+                end
+
+                if ~isempty(obj.inputTable{i, 'NucDataFilePath'})
+                    scratchList{argPos} = '-innuc'; argPos = argPos + 1;
+                    scratchList{argPos} = obj.inputTable{i, 'NucDataFilePath'}; argPos = argPos + 1;
+                    scratchList{argPos} = '-chtotnuc'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.channelInfo.nucStackChannelCount); argPos = argPos + 1;
+                end
+
+                scratchList{argPos} = '-chlight'; argPos = argPos + 1;
+                scratchList{argPos} = num2str(obj.channelInfo.lightChannel); argPos = argPos + 1;
+                scratchList{argPos} = '-chnuc'; argPos = argPos + 1;
+                scratchList{argPos} = num2str(obj.channelInfo.nucMarkerChannel); argPos = argPos + 1;
+
+                outdirPath = [obj.paths.outputPath filesep iname];
+                scratchList{argPos} = '-outpath'; argPos = argPos + 1;
+                scratchList{argPos} = outdirPath; argPos = argPos + 1;
+
+                scratchList{argPos} = '-imgname'; argPos = argPos + 1;
+                scratchList{argPos} = iname; argPos = argPos + 1;
+
+                if (obj.cellsegSettings.cszmin > 0)
+                    scratchList{argPos} = '-lightzmin'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.cszmin); argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.cszmax > 0)
+                    scratchList{argPos} = '-lightzmin'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.cszmax); argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.nszmin > 0)
+                    scratchList{argPos} = '-nuczmin'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.nszmin); argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.nszmax > 0)
+                    scratchList{argPos} = '-nuczmin'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.nszmax); argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.outputCellMaskPNG)
+                    scratchList{argPos} = '-ocellmask'; argPos = argPos + 1;
+                    scratchList{argPos} = [outdirPath filesep 'CellMask_' iname '.png']; argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.outputCellMaskTIF)
+                    scratchList{argPos} = '-ocellmask'; argPos = argPos + 1;
+                    scratchList{argPos} = [outdirPath filesep 'CellMask_' iname '.tif']; argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.outputNucMaskPNG)
+                    scratchList{argPos} = '-onucmask'; argPos = argPos + 1;
+                    scratchList{argPos} = [outdirPath filesep 'NucMask_' iname '.png']; argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.outputNucMaskTIF)
+                    scratchList{argPos} = '-oonucmask'; argPos = argPos + 1;
+                    scratchList{argPos} = [outdirPath filesep 'NucMask_' iname '.tif']; argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.dumpSettings)
+                    scratchList{argPos} = '-dumpsummary'; argPos = argPos + 1;
+                end
+                if (obj.cellsegSettings.overwrite)
+                    scratchList{argPos} = '-ovrw'; argPos = argPos + 1;
+                end
+
+                checkTuningParams = true;
+                if ~isempty(obj.cellsegSettings.presetName)
+                    %Check if preset exists
+                    if isfile(['.' filesep 'cellsegTemplates' filesep obj.cellsegSettings.presetName '.mat'])
+                        checkTuningParams = false;
+                        scratchList{argPos} = '-template'; argPos = argPos + 1;
+                        scratchList{argPos} = obj.cellsegSettings.presetName; argPos = argPos + 1;
+                    end
+                    %Otherwise save the template
+                end
+
+                if(checkTuningParams)
+                    for j = 1:tuningParamCount
+                        paramName = TUNING_PARAMS{j};
+                        if (obj.cellsegSettings.(paramName) > 0)
+                            scratchList{argPos} = ['-' paramName]; argPos = argPos + 1;
+                            scratchList{argPos} = num2str(obj.cellsegSettings.(paramName)); argPos = argPos + 1;
+                        end
+                    end
+
+                    if ~isempty(obj.cellsegSettings.presetName)
+                        scratchList{argPos} = '-savetmpl'; argPos = argPos + 1;
+                        scratchList{argPos} = obj.cellsegSettings.presetName; argPos = argPos + 1;
+                    end
+                end
+
+                %Call the cellseg main
+                myArgs = scratchList{1:(argPos-1)};
+                Main_CellSegConsole(myArgs);
             end
-
-            %TODO
-
         end
 
         function obj = runSpotDetect(obj, channels, listener)
-            %TODO
+            if nargin < 3; listener = []; end
+
+            funcTag = 'TrueSpotProjSettings.runSpotDetect';
+
+            if ~isempty(obj.inputTable)
+                GUIUtils.sendMessage(listener, funcTag, 'ERROR: Batch has not been initialized.');
+                return;
+            end
+
+            GUIUtils.sendMessage(listener, funcTag, 'Starting spot detection...');
+            stackCount = size(obj.inputTable, 1);
+            channelCount = size(channels, 2);
+            for i = 1:stackCount
+                GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d...', i, stackCount));
+                iname = obj.inputTable{i, 'ImageName'};
+                ipath = obj.inputTable{i, 'ImageFilePath'};
+                ctrlpath = obj.inputTable{i, 'ControlFilePath'};
+
+                iOutDir = [obj.paths.outputPath filesep iname];
+
+                %Import cellseg, if needed
+                cellSegPath = [iOutDir filesep 'CellSeg_' iname '.mat'];
+                cellMaskPath = obj.inputTable{i, 'ExtCellSegPath'};
+                nucMaskPath = obj.inputTable{i, 'ExtNucSegPath'};
+                if ~isempty(cellMaskPath) | ~isempty(nucMaskPath)
+                    if ~isempty(listener)
+                        listener.logMessage(['[' funcTag '] External cell or nuc mask provided! Converting...']);
+                    end
+
+                    CellSeg.importCellSegData(cellMaskPath, nucMaskPath, cellSegPath);
+                end
+
+                for c = 1:channelCount
+                    GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d (Channel %d of %d)...', i, stackCount, c, channelCount));
+                    if iscell(channels)
+                        channelSpecs = channels{c};
+                    else
+                        channelSpecs = channels(c);
+                    end
+
+                    channelSpecs.runSpotDetect(obj, iname, ipath, ctrlpath, listener);
+                end
+            end
+
+            %Generate an xml for quant dumps
+            xmlpath = [obj.paths.outputPath filesep 'countInfo.xml'];
+            fhandle = fopen(xmlpath, 'w');
+            fprintf(fhandle, '<?xml version="1.0" encoding="UTF-8"?>\n');
+            fprintf(fhandle, '<BatchSamples>\n');
+            for c = 1:channelCount
+                if iscell(channels)
+                    channelSpecs = channels{c};
+                else
+                    channelSpecs = channels(c);
+                end
+                if ~isempty(channelSpecs)
+                    fprintf(fhandle, '\t<SampleChannel Name="CH%d" ChannelIndex="%d">\n', ...
+                        channelSpecs.channelIndex, channelSpecs.channelIndex);
+                    fprintf(fhandle, '\t<QueryParams>\n');
+                    fprintf(fhandle, '\t\t<QueryParam Key="ChannelNo" Value="%d"/>\n', channelSpecs.channelIndex);
+                    fprintf(fhandle, '\t\t<QueryParam Key="INameContains" Value="_CH%d"/>\n', channelSpecs.channelIndex);
+                    if ~isempty(channelSpecs.metadata.targetName)
+                        fprintf(fhandle, '\t\t<QueryParam Key="TargetName" Value="%s"/>\n', channelSpecs.metadata.targetName);
+                    end
+                    if ~isempty(channelSpecs.metadata.probeName)
+                        fprintf(fhandle, '\t\t<QueryParam Key="ProbeName" Value="%s"/>\n', channelSpecs.metadata.probeName);
+                    end
+                    fprintf(fhandle, '\t</QueryParams>\n');
+                    fprintf(fhandle, '\t\t<CountThresholds ThMid="0" ThLow="0" ThHigh="0"/>\n');
+                    fprintf(fhandle, '\t</SampleChannel>\n');
+                end
+            end
+            fprintf(fhandle, '</BatchSamples>\n');
+            fclose(fhandle);
+
+            %Call Main_AnalyzeBatchThresholds after all run as well!
+            Main_AnalyzeBatchThresholds('-input', obj.paths.outputPath);
         end
 
         function obj = runQuant(obj, channels, listener)
-            %TODO
-            %Remember to dump a count dump xml
+            if nargin < 3; listener = []; end
+
+            funcTag = 'TrueSpotProjSettings.runQuant';
+
+            if ~isempty(obj.inputTable)
+                GUIUtils.sendMessage(listener, funcTag, 'ERROR: Batch has not been initialized.');
+                return;
+            end
+
+            GUIUtils.sendMessage(listener, funcTag, 'Starting fit/quantification...');
+            stackCount = size(obj.inputTable, 1);
+            channelCount = size(channels, 2);
+            for i = 1:stackCount
+                GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d...', i, stackCount));
+                iname = obj.inputTable{i, 'ImageName'};
+                for c = 1:channelCount
+                    GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d (Channel %d of %d)...', i, stackCount, c, channelCount));
+                    if iscell(channels)
+                        channelSpecs = channels{c};
+                    else
+                        channelSpecs = channels(c);
+                    end
+
+                    channelSpecs.runQuant(obj, iname, [], [], listener);
+                end
+            end
+
+            %TODO Quant counts?
         end
 
         function obj = runQC(obj, listener)
@@ -160,8 +371,9 @@ classdef TrueSpotProjSettings
         %% ========================== Utility ==========================
 
         function [varNames, varTypes] = getInputTableFields()
-            varNames = {'ImageName' 'ImageFilePath' 'ControlFilePath' 'NucDataFilePath' 'LightDataFilePath'};
-            varTypes = {'string' 'string' 'string' 'string' 'string'};
+            varNames = {'ImageName' 'ImageFilePath' 'ControlFilePath' ...
+                'NucDataFilePath' 'LightDataFilePath' 'ExtCellSegPath' 'ExtNucSegPath'};
+            varTypes = {'string' 'string' 'string' 'string' 'string' 'string' 'string'};
         end
         
         %% ========================== Inner Structs ==========================
@@ -191,6 +403,8 @@ classdef TrueSpotProjSettings
             channelInfo.channelCount = 0;
             channelInfo.nucMarkerChannel = 0;
             channelInfo.lightChannel = 0;
+            channelInfo.nucStackChannelCount = 0; %If separate file
+            channelInfo.lightStackChannelCount = 0; %If separate file
             channelInfo.controlChannelCount = 0;
             channelInfo.controlNucMarkerChannel = 0;
             channelInfo.controlLightChannel = 0;

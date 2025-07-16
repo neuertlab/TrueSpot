@@ -248,8 +248,18 @@ for i = 1:nargin
             rna_spot_run.th_params.fit_ri_weight = round(Force2Num(argval));
             if arg_debug; fprintf("Fit Intersect Thresholding Weight Set: %f\n", rna_spot_run.th_params.fit_ri_weight); end
         elseif strcmp(lastkey, "fitlog")
+            %DEPRECATED use logproj instead
             rna_spot_run.th_params.fit_to_log = Force2Bool(argval);
             if arg_debug; fprintf("Fit Piecewise to Log Plot: %d\n", rna_spot_run.th_params.fit_to_log); end
+        elseif strcmp(lastkey, "logproj")
+            if strcmp(argval, 'None')
+                rna_spot_run.th_params.log_proj_mode = 0;
+            elseif strcmp(argval, 'All')
+                rna_spot_run.th_params.log_proj_mode = 1;
+            elseif strcmp(argval, 'FitOnly')
+                rna_spot_run.th_params.log_proj_mode = 2;
+            end
+            if arg_debug; fprintf("Threhsolding Log Projection Mode: %d\n", rna_spot_run.th_params.log_proj_mode); end
         elseif strcmp(lastkey, "stdfac")
             rna_spot_run.th_params.std_factor = Force2Num(argval);
             if arg_debug; fprintf("StDev Add Factor Set: %f\n", rna_spot_run.th_params.std_factor); end
