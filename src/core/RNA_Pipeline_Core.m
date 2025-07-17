@@ -84,7 +84,9 @@ if (~bPreloaded & isempty(spotsrun.paths.ctrl_img_path)) | (bPreloaded & isempty
                     [spotsrun, sample_tif] = spotsrun.loadSampleTif(tif_v);
                     sample_light_ch = sample_tif{spotsrun.channels.light_ch,1};
                 end
-                mkdir(bkg_mask_dir);
+                if ~isfolder(bkg_mask_dir)
+                    mkdir(bkg_mask_dir);
+                end
 
                 Bkg_Mask_Core(sample_light_ch, spotsrun.paths.cellseg_path, spotsrun.paths.bkg_mask_path, debug_lvl > 1);
                 %Main_BackgroundMask(spotsrun.tif_path, spotsrun.cellseg_path, spotsrun.bkg_path, spotsrun.total_ch, spotsrun.light_ch, true);

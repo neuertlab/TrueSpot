@@ -585,15 +585,16 @@ classdef Background_Extractor
             %like one of my cats had a good time...
             
             %Smooth
-            sm = smooth(histo_counts);
+            sm = smooth(histo_counts');
             sm = smooth(sm);
             
             %floor to 0
-            for i=1:size(sm)
-                if sm(i) < 0
-                    sm(i) = 0;
-                end
-            end
+            sm(sm < 0) = 0;
+            % for i=1:size(sm,1)
+            %     if sm(i) < 0
+            %         sm(i) = 0;
+            %     end
+            % end
             %transpose(1:size(histo_counts))
             %smgauss = fit(transpose(1:size(histo_counts)), smooth, 'gauss2');
             
@@ -625,7 +626,7 @@ classdef Background_Extractor
             max2 = -1;
             min1 = -1;
             
-            ptcount = size(deriv);
+            ptcount = size(deriv,2);
             for i=2:ptcount
                 if (deriv(i-1) > 0) && (deriv(i) < 0)
                     %Maximum
@@ -694,15 +695,11 @@ classdef Background_Extractor
             [histo_counts] = imhist(stdev16, binct);
             
             %Smooth
-            sm = smooth(histo_counts);
+            sm = smooth(histo_counts');
             sm = smooth(sm);
             
             %floor to 0
-            for i=1:size(sm)
-                if sm(i) < 0
-                    sm(i) = 0;
-                end
-            end
+            sm(sm < 0) = 0;
             
             %Deriv
             deriv1 = smooth(diff(sm));
@@ -726,7 +723,7 @@ classdef Background_Extractor
             pttarg = 0.0;
             mypt = -1;
             
-            ptcount = size(deriv1);
+            ptcount = size(deriv1,2);
             for i=2:ptcount
                 if (deriv1(i-1) > 0) && (deriv1(i) <= 0)
                     %Maximum

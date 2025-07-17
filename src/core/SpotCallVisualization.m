@@ -55,6 +55,7 @@ classdef SpotCallVisualization
         yOffset = 0;
 
         visCommon; %Instance of VisCommon to get color tables from
+        markerSize = 10;
 
         %%Internal scratch
         refAddQueue;
@@ -154,13 +155,13 @@ classdef SpotCallVisualization
                                 zdist = min(size(obj.visCommon.colortbl_red, 1), (abs(zc - z) * 2) + 1);
                                 plot(xx(rowBoolz), yy(rowBoolz),...
                                 'LineStyle','none','Marker','o',...
-                                'MarkerEdgeColor',obj.visCommon.colortbl_red(zdist, :),'markersize',10);
+                                'MarkerEdgeColor',obj.visCommon.colortbl_red(zdist, :),'markersize',obj.markerSize);
                                 obj.lastRenderedCount = obj.lastRenderedCount + nnz(rowBoolz);
                             end
                         end
 
                     else
-                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',obj.markerSize);
                         obj.lastRenderedCount = obj.lastRenderedCount + size(xx,1);
                     end
                 end
@@ -210,33 +211,33 @@ classdef SpotCallVisualization
 
                     groupBool = and(rowBool, zz < (z - obj.zNearRad));
                     if nnz(groupBool) > 0
-                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',darkYellow,'markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',darkYellow,'markersize',obj.markerSize);
                         obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
 
                     groupBool = and(rowBool, zz > (z + obj.zNearRad));
                     if nnz(groupBool) > 0
-                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',obj.markerSize);
                         obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
 
                     groupBool = and(rowBool, zz >= (z - obj.zNearRad));
                     groupBool = and(groupBool, zz < z);
                     if nnz(groupBool) > 0
-                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',obj.markerSize);
                         obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
 
                     groupBool = and(rowBool, zz <= (z + obj.zNearRad));
                     groupBool = and(groupBool, zz > z);
                     if nnz(groupBool) > 0
-                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',obj.markerSize);
                         obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
 
                     groupBool = and(rowBool, zz == z);
                     if nnz(groupBool) > 0
-                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                        plot(xx(groupBool), yy(groupBool),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',obj.markerSize);
                         obj.lastRenderedCount = obj.lastRenderedCount + nnz(groupBool);
                     end
                 end
@@ -313,25 +314,25 @@ classdef SpotCallVisualization
             groupBool = and(rowBool2, obj.callTableCompare.boolBOnly);
             if nnz(groupBool) > 0
                 plot(xxB(groupBool), yyB(groupBool),...
-                    'LineStyle','none','Marker','o','MarkerEdgeColor','blue','markersize',10);
+                    'LineStyle','none','Marker','o','MarkerEdgeColor','blue','markersize',obj.markerSize);
             end
 
             groupBool = and(rowBool1, obj.callTableCompare.boolAOnly);
             if nnz(groupBool) > 0
                 plot(xxA(groupBool), yyA(groupBool),...
-                    'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',10);
+                    'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',obj.markerSize);
             end
 
             groupBool = and(rowBool1, obj.callTableCompare.boolXYMatchA);
             if nnz(groupBool) > 0
                 plot(xxA(groupBool), yyA(groupBool),...
-                    'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
+                    'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',obj.markerSize);
             end
 
             groupBool = and(rowBool1, obj.callTableCompare.boolFullMatchA);
             if nnz(groupBool) > 0
                 plot(xxA(groupBool), yyA(groupBool),...
-                    'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
+                    'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',obj.markerSize);
             end
             okay = true;
         end
@@ -400,21 +401,21 @@ classdef SpotCallVisualization
             groupBool = and(rowBoolCall, obj.referenceTable.truePos);
             if nnz(groupBool) > 0
                 plot(xxC(groupBool), yyC(groupBool),...
-                    'LineStyle','none','Marker','o','MarkerEdgeColor','green','markersize',10);
+                    'LineStyle','none','Marker','o','MarkerEdgeColor','green','markersize',obj.markerSize);
             end
 
             %False positives
             groupBool = and(rowBoolCall, ~obj.referenceTable.truePos);
             if nnz(groupBool) > 0
                 plot(xxC(groupBool), yyC(groupBool),...
-                    'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',10);
+                    'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',obj.markerSize);
             end
 
             %False negatives
             groupBool = and(rowBoolRef, obj.referenceTable.falseNeg);
             if nnz(groupBool) > 0
                 plot(xxR(groupBool), yyR(groupBool),...
-                    'LineStyle','none','Marker','o','MarkerEdgeColor','yellow','markersize',10);
+                    'LineStyle','none','Marker','o','MarkerEdgeColor','yellow','markersize',obj.markerSize);
             end
 
             okay = true;
@@ -453,7 +454,7 @@ classdef SpotCallVisualization
                 if nnz(rowBoolRef) > 0
                     if ~isempty(figHandle); figure(figHandle); end
                     hold on;
-                    plot(xx(rowBoolRef), yy(rowBoolRef),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',10);
+                    plot(xx(rowBoolRef), yy(rowBoolRef),'LineStyle','none','Marker','o','MarkerEdgeColor','r','markersize',obj.markerSize);
                 end
             elseif obj.zMode == 2
                 %Draw neighboring slice calls as with call only
@@ -498,33 +499,33 @@ classdef SpotCallVisualization
                     groupBool = and(rowBoolRef, tableR(:, 3) < (z - obj.zNearRad));
                     if nnz(groupBool) > 0
                         plot(xx(groupBool), yy(groupBool),...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',darkYellow,'markersize',10);
+                            'LineStyle','none','Marker','o','MarkerEdgeColor',darkYellow,'markersize',obj.markerSize);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) > (z + obj.zNearRad));
                     if nnz(groupBool) > 0
                         plot(xx(groupBool), yy(groupBool),...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',10);
+                            'LineStyle','none','Marker','o','MarkerEdgeColor',darkGreen,'markersize',obj.markerSize);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) >= (z - obj.zNearRad));
                     groupBool = and(groupBool, tableR(:, 3) < z);
                     if nnz(groupBool) > 0
                         plot(xx(groupBool), yy(groupBool),...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',10);
+                            'LineStyle','none','Marker','o','MarkerEdgeColor',brightYellow,'markersize',obj.markerSize);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) <= (z + obj.zNearRad));
                     groupBool = and(groupBool, tableR(:, 3) > z);
                     if nnz(groupBool) > 0
                         plot(xx(groupBool), yy(groupBool),...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',10);
+                            'LineStyle','none','Marker','o','MarkerEdgeColor',brightGreen,'markersize',obj.markerSize);
                     end
 
                     groupBool = and(rowBoolRef, tableR(:, 3) == z);
                     if nnz(groupBool) > 0
                         plot(xx(groupBool), yy(groupBool),...
-                            'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',10);
+                            'LineStyle','none','Marker','o','MarkerEdgeColor','red','markersize',obj.markerSize);
                     end
                 end
                 okay = true;
@@ -662,7 +663,7 @@ classdef SpotCallVisualization
                         if nnz(drawBool) > 0
                             xx = obj.referenceTable.data(drawBool, 1);
                             yy = obj.referenceTable.data(drawBool, 2);
-                            plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',10);
+                            plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','magenta','markersize',obj.markerSize);
                         end
 
                         %Draw white
@@ -670,7 +671,7 @@ classdef SpotCallVisualization
                         if nnz(drawBool) > 0
                             xx = obj.referenceTable.data(drawBool, 1);
                             yy = obj.referenceTable.data(drawBool, 2);
-                            plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                            plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',obj.markerSize);
                         end
                     end
                 end
@@ -691,7 +692,7 @@ classdef SpotCallVisualization
                     if nnz(drawBool) > 0
                         xx = obj.referenceTable.data(drawBool, 1);
                         yy = obj.referenceTable.data(drawBool, 2);
-                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',obj.markerSize);
                     end
 
                     %Draw white
@@ -699,7 +700,7 @@ classdef SpotCallVisualization
                     if nnz(drawBool) > 0
                         xx = obj.referenceTable.data(drawBool, 1);
                         yy = obj.referenceTable.data(drawBool, 2);
-                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',10);
+                        plot(xx, yy,'LineStyle','none','Marker','o','MarkerEdgeColor','white','markersize',obj.markerSize);
                     end
                 end
             end
@@ -726,7 +727,7 @@ classdef SpotCallVisualization
                 obj.refAddQueue.queue(newIndex, 4) = true;
                 obj.refAddQueue.used = newIndex;
 
-                plot(x, y,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',10);
+                plot(x, y,'LineStyle','none','Marker','o','MarkerEdgeColor','cyan','markersize',obj.markerSize);
             end
 
         end

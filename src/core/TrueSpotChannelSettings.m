@@ -222,6 +222,7 @@ classdef TrueSpotChannelSettings
                 scratchList{argPos} = '-celltype'; argPos = argPos + 1;
                 scratchList{argPos} = parentProject.metadata.cellType; argPos = argPos + 1;
             end
+            scratchList{argPos} = '-verbose'; argPos = argPos + 1;
 
             myArgs = scratchList(1:(argPos-1));
             if ~isempty(listener)
