@@ -61,6 +61,10 @@ classdef VisInteractive
         currentSlice = 1;
         currentThresh = 0;
         otherThresh = 100;
+        maxThresh = 0;
+        minThresh = 0;
+        minIntensityOverride = NaN;
+        maxIntensityOverride = NaN;
 
         %TODO Add ability to set view region
         viewTrim = struct('x0', NaN, 'x1', NaN, 'y0', NaN, 'y1', NaN);
@@ -178,6 +182,8 @@ classdef VisInteractive
 
             %
             obj.currentThresh = spotsrun.intensity_threshold;
+            obj.minThresh = spotsrun.options.t_min;
+            obj.maxThresh = spotsrun.options.t_max;
             obj.currentSlice = round(spotsrun.dims.idims_sample.z ./ 2);
             obj.spotsRun = spotsrun;
         end
@@ -405,14 +411,16 @@ classdef VisInteractive
         %
         function [obj, irender] = render2dBase(obj)
             %Generate z projection.
+            cScaleMin = obj.minIntensityOverride;
+            cScaleMax = obj.maxIntensityOverride;
             if obj.maxProj
                 if obj.useFilt
                     irender = double(max(obj.imageChFilt,[],3));
                 else
                     irender = double(max(obj.imageCh,[],3));
                 end
-                cScaleMin = min(irender(:));
-                cScaleMax = median(irender(:)) + round(10 * std(irender(:)));
+                if isnan(cScaleMin); cScaleMin = min(irender(:)); end
+                if isnan(cScaleMax); cScaleMax = median(irender(:)) + round(10 * std(irender(:))); end
             else
                 if obj.useFilt
                     irender = double(obj.imageChFilt(:,:,obj.currentSlice));
@@ -423,18 +431,18 @@ classdef VisInteractive
                 if obj.globalContrast
                     if obj.useFilt
                         allvals = double(obj.imageChFilt(:));
-                        cScaleMin = min(allvals);
-                        cScaleMax = median(allvals) + round(10 * std(allvals));
+                        if isnan(cScaleMin); cScaleMin = min(allvals); end
+                        if isnan(cScaleMax); cScaleMax = median(allvals) + round(10 * std(allvals)); end
                         clear allvals
                     else
                         allvals = double(obj.imageCh(:));
-                        cScaleMin = min(allvals);
-                        cScaleMax = median(allvals) + round(10 * std(allvals));
+                        if isnan(cScaleMin); cScaleMin = min(allvals); end
+                        if isnan(cScaleMax); cScaleMax = median(allvals) + round(10 * std(allvals)); end
                         clear allvals
                     end
                 else
-                    cScaleMin = min(irender(:));
-                    cScaleMax = median(irender(:)) + round(10 * std(irender(:)));
+                    if isnan(cScaleMin); cScaleMin = min(irender(:)); end
+                    if isnan(cScaleMax); cScaleMax = median(irender(:)) + round(10 * std(irender(:))); end
                 end
             end
 
@@ -549,9 +557,9 @@ classdef VisInteractive
             obj = obj.updateRenderToCurrent();
 
             if ~obj.maxProj
-                title(['z = ' num2str(obj.currentSlice)]);
+                title(['z = ' num2str(obj.currentSlice) '; th = ' num2str(obj.currentThresh)]);
             else
-                title('');
+                title(['th = ' num2str(obj.currentThresh)]);
             end
 
         end
@@ -573,7 +581,6 @@ classdef VisInteractive
 
         %
         function obj = onReadyKey(obj)
-            %TODO
             [x,y,btn] = ginput_color(1, obj.crosshairColor);
 
             if btn == 1 %Mouse click
@@ -751,13 +758,37 @@ classdef VisInteractive
                     obj = obj.updateRender();
                 end
             elseif btn == '<' %Decrease threshold by 1
-                %TODO
+                if obj.currentThresh > obj.minThresh
+                    obj.currentThresh = obj.currentThresh - 1;
+                else
+                    obj.currentThresh = obj.minThresh;
+                end
+                fprintf('Threshold set to: %d\n', obj.currentThresh);
+                obj = obj.updateRender();
             elseif btn == '>' %Increase threshold by 1
-                %TODO
+                if obj.currentThresh < obj.maxThresh
+                    obj.currentThresh = obj.currentThresh + 1;
+                else
+                    obj.currentThresh = obj.maxThresh;
+                end
+                fprintf('Threshold set to: %d\n', obj.currentThresh);
+                obj = obj.updateRender();
             elseif btn == '[' %Decrease threshold by 10
-                %TODO
+                newTh = obj.currentThresh - 10;
+                if newTh < obj.minThresh
+                    newTh = obj.minThresh;
+                end
+                obj.currentThresh = newTh;
+                fprintf('Threshold set to: %d\n', obj.currentThresh);
+                obj = obj.updateRender();
             elseif btn == ']' %Increase threshold by 10
-                %TODO
+                newTh = obj.currentThresh + 10;
+                if newTh > obj.maxThresh
+                    newTh = obj.maxThresh;
+                end
+                obj.currentThresh = newTh;
+                fprintf('Threshold set to: %d\n', obj.currentThresh);
+                obj = obj.updateRender();
             elseif btn == 'R' %Increase xy snap radius by 1
                 obj.scVis.matchRad_xy = obj.scVis.matchRad_xy + 1;
                 fprintf('XY snap radius set to: %d\n', obj.scVis.matchRad_xy);

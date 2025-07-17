@@ -226,10 +226,10 @@ classdef TrueSpotXML
                 spotSettings = TrueSpotChannelSettings.genCountSettingsStruct();
             end
             if isempty(thresholdSettings)
-                spotSettings = TrueSpotChannelSettings.genThresholdSettingsStruct();
+                thresholdSettings = TrueSpotChannelSettings.genThresholdSettingsStruct();
             end
             if isempty(optionsStruct)
-                spotSettings = TrueSpotChannelSettings.genOptionsStruct();
+                optionsStruct = TrueSpotChannelSettings.genOptionsStruct();
             end
 
             spotSettings.gaussRad = TrueSpotXML.getNumberAttribute(xmlNode, 'GaussRad', 7);

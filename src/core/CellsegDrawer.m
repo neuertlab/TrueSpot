@@ -13,6 +13,12 @@ classdef CellsegDrawer
         nuc_mask;
 
         useMaxProj;
+        drawCellMaskAsOutline = true;
+        drawNucMaskAsOutline = true;
+        cellOutlineDiskSize = 3;
+        nucOutlineDiskSize = 3;
+
+        greyscaleLUT = [];
     end
     
     %%
@@ -21,12 +27,13 @@ classdef CellsegDrawer
         %%
         function obj = initializeMe(obj)
             obj.cell_color = [0.8 0.0 0.8];
-            obj.cell_alpha = 0.25;
+            obj.cell_alpha = 0.5;
             obj.nuc_color = [0.369 0.510 0.788];
-            obj.nuc_alpha = 0.25;
+            obj.nuc_alpha = 0.5;
             obj.cell_mask = [];
             obj.nuc_mask = [];
             obj.useMaxProj = true;
+            obj.greyscaleLUT = VisCommon.genGreyscaleLUT();
         end
 
         %%
@@ -64,6 +71,8 @@ classdef CellsegDrawer
                     imgOut = imgIn(:,:,z);
                 end
             end
+
+            imgOut = VisCommon.bw2rgb(imgOut, obj.greyscaleLUT, false);
 
 %             if isa(imgIn, 'double')
 %                 inMax = max(imgIn, [], 'all', 'omitnan');
@@ -106,7 +115,8 @@ classdef CellsegDrawer
                 end
             end
 
-            imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.cell_color, 'Transparency', 1.0 - obj.cell_alpha);
+            %imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.cell_color, 'Transparency', 1.0 - obj.cell_alpha);
+            imgOut = VisCommon.compositeMaskOverlay(imgIn, mm, obj.cell_color, obj.cell_alpha, obj.drawCellMaskAsOutline, obj.cellOutlineDiskSize);
         end
 
         %%
@@ -139,7 +149,8 @@ classdef CellsegDrawer
                 end
             end
 
-            imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.nuc_color, 'Transparency', 1.0 - obj.nuc_alpha);
+            %imgOut = labeloverlay(imgIn, mm, 'Colormap', obj.nuc_color, 'Transparency', 1.0 - obj.nuc_alpha);
+            imgOut = VisCommon.compositeMaskOverlay(imgIn, mm, obj.nuc_color, obj.nuc_alpha, obj.drawNucMaskAsOutline, obj.nucOutlineDiskSize);
         end
 
     end

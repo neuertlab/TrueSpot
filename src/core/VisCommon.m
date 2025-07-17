@@ -135,5 +135,80 @@ classdef VisCommon
 
         end
 
+        %%
+        function rgbImage = bw2rgb(bwImage, lut, doRescale)
+            if nargin < 3; doRescale = true; end
+            X = size(bwImage, 2);
+            Y = size(bwImage, 1);
+            rgbImage = zeros(Y,X,3);
+
+            if doRescale
+                bwImage = double(bwImage);
+                bwMin = min(bwImage, [], 'all', 'omitnan');
+                bwImage = bwImage - bwMin;
+                bwMed = median(bwImage, 'all', 'omitnan');
+                bwStd = std(bwImage, 0, 'all', 'omitnan');
+                bwMax = bwMed + round(10 * bwStd);
+                %bwMax = max(bwImage, [], 'all', 'omitnan');
+                bwImage = bwImage ./ bwMax;
+            end
+
+            bwImage = round(bwImage .* 255.0);
+            bwImage = bwImage + 1;
+            bwImage = min(bwImage, 256);
+            bwImage = max(bwImage, 1);
+
+            for c = 1:3
+                cmult = lut(bwImage, c);
+                rgbImage(:,:,c) = reshape(cmult, Y, X);
+            end
+
+            rgbImage = rgbImage .* 255.0;
+            rgbImage = uint8(rgbImage);
+        end
+
+        %%
+        function compImg = compositeNewChannel(baseImageRGB, overlayImageBW, overlayLUT, rescaleOverlay)
+            if nargin < 4; rescaleOverlay = true; end
+            rgbOverlay = VisCommon.bw2rgb(overlayImageBW, overlayLUT, rescaleOverlay);
+            rgbOverlay = double(rgbOverlay) ./ 255.0;
+            baseDbl = double(baseImageRGB) ./ 255.0;
+            baseDbl = baseDbl .* (1.0 - rgbOverlay);
+            baseDbl = baseDbl + rgbOverlay;
+            compImg = uint8(round(baseDbl .* 255.0));
+        end
+
+        %%
+        function compImg = compositeMaskOverlay(baseImageRGB, mask, color, alpha, doOutline, outlineDiskSize)
+            if nargin < 6; outlineDiskSize = 3; end
+            
+            compImg = baseImageRGB;
+            if isempty(mask); return; end
+            if nnz(mask) < 1; return; end
+            baseDbl = double(baseImageRGB) ./ 255.0;
+            if doOutline
+                mask = bwperim(mask, 8);
+                se = strel('disk',outlineDiskSize);
+                mask = imdilate(mask,se);
+                clear se
+            end
+            Y = size(mask, 1);
+            X = size(mask, 2);
+            maskrgb = zeros(Y,X,3);
+            maskrgb(:,:,1) = double(mask) .* color(1);
+            maskrgb(:,:,2) = double(mask) .* color(2);
+            maskrgb(:,:,3) = double(mask) .* color(3);
+            maskrgb = maskrgb .* alpha;
+            baseDbl = baseDbl .* (1.0 - maskrgb);
+            baseDbl = baseDbl + maskrgb;
+            compImg = uint8(round(baseDbl .* 255.0));
+        end
+
+        %%
+        function lut = genGreyscaleLUT()
+            [~, lut] = meshgrid(1:3, 1:256);
+            lut = lut - 1;
+            lut = lut ./ 255.0;
+        end
     end
 end

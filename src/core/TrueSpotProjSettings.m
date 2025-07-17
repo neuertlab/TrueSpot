@@ -72,19 +72,32 @@ classdef TrueSpotProjSettings
 
             table_size = [iCount size(varNames,2)];
             obj.inputTable = table('Size', table_size, 'VariableTypes', varTypes, 'VariableNames', varNames);
-            obj.inputTable{:, 'ImageFilePath'} = dirTable{passBool, 'name'};
+            %obj.inputTable{:, 'ImageFilePath'} = dirTable{passBool, 'name'};
             obj.inputTable{:, 'ImageName'} = replace(dirTable{passBool, 'name'}, '.tif', '');
+            obj.inputTable{:, 'ImageFilePath'} = arrayfun(@(tifFileName) strjoin([dirPath filesep tifFileName], ''), dirTable{passBool, 'name'});
             obj.inputTable{:, 'ControlFilePath'} = "";
             obj.inputTable{:, 'NucDataFilePath'} = "";
-            obj.inputTable{:, 'LightDataFilePath'} = "";
+            obj.inputTable{:, 'ExtCellSegPath'} = "";
+            obj.inputTable{:, 'ExtNucSegPath'} = "";
         end
 
         function exportInputTable(obj, filePath)
-            if ~isempty(obj.inputTable); return; end
+            if isempty(obj.inputTable); return; end
 
             delim = '\t';
             if endsWith(filePath, '.csv'); delim = ','; end
             writetable(obj.inputTable, filePath, 'Delimiter',delim)
+        end
+
+        %% ========================== Utils ==========================
+
+        function value = getInputTableValue(obj, row, fieldName)
+            value = [];
+            rawVal = obj.inputTable{row, fieldName};
+            if isempty(rawVal); return; end
+            if ismissing(rawVal); return; end
+            if (rawVal == ""); return; end
+            value = char(rawVal);
         end
 
         %% ========================== Run ==========================
@@ -123,7 +136,7 @@ classdef TrueSpotProjSettings
 
             funcTag = 'TrueSpotProjSettings.runCellSeg';
 
-            if ~isempty(obj.inputTable)
+            if isempty(obj.inputTable)
                 GUIUtils.sendMessage(listener, funcTag, 'ERROR: Batch has not been initialized.');
                 return;
             end
@@ -139,24 +152,25 @@ classdef TrueSpotProjSettings
             for i = 1:stackCount
                 GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d ...', i, stackCount));
 
-                iname = obj.inputTable{i, 'ImageName'};
-
+                iname = obj.getInputTableValue(i, 'ImageName');
+                altLightPath = obj.getInputTableValue(i, 'LightDataFilePath');
+                
                 argPos = 1;
                 scratchList{argPos} = '-input'; argPos = argPos + 1;
-                if ~isempty(obj.inputTable{i, 'LightDataFilePath'})
-                    scratchList{argPos} = obj.inputTable{i, 'LightDataFilePath'}; argPos = argPos + 1;
+                if ~isempty(altLightPath)
+                    scratchList{argPos} = altLightPath; argPos = argPos + 1;
                     scratchList{argPos} = '-chtotal'; argPos = argPos + 1;
                     scratchList{argPos} = num2str(obj.channelInfo.lightStackChannelCount); argPos = argPos + 1;
-                    
                 else
-                    scratchList{argPos} = obj.inputTable{i, 'ImageFilePath'}; argPos = argPos + 1;
+                    scratchList{argPos} = obj.getInputTableValue(i, 'ImageFilePath'); argPos = argPos + 1;
                     scratchList{argPos} = '-chtotal'; argPos = argPos + 1;
                     scratchList{argPos} = num2str(obj.channelInfo.channelCount); argPos = argPos + 1;
                 end
 
-                if ~isempty(obj.inputTable{i, 'NucDataFilePath'})
+                altNucPath = obj.getInputTableValue(i, 'NucDataFilePath');
+                if ~isempty(altNucPath)
                     scratchList{argPos} = '-innuc'; argPos = argPos + 1;
-                    scratchList{argPos} = obj.inputTable{i, 'NucDataFilePath'}; argPos = argPos + 1;
+                    scratchList{argPos} = altNucPath; argPos = argPos + 1;
                     scratchList{argPos} = '-chtotnuc'; argPos = argPos + 1;
                     scratchList{argPos} = num2str(obj.channelInfo.nucStackChannelCount); argPos = argPos + 1;
                 end
@@ -173,21 +187,21 @@ classdef TrueSpotProjSettings
                 scratchList{argPos} = '-imgname'; argPos = argPos + 1;
                 scratchList{argPos} = iname; argPos = argPos + 1;
 
-                if (obj.cellsegSettings.cszmin > 0)
+                if (obj.cellsegSettings.lightZMin > 0)
                     scratchList{argPos} = '-lightzmin'; argPos = argPos + 1;
-                    scratchList{argPos} = num2str(obj.cellsegSettings.cszmin); argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.lightZMin); argPos = argPos + 1;
                 end
-                if (obj.cellsegSettings.cszmax > 0)
-                    scratchList{argPos} = '-lightzmin'; argPos = argPos + 1;
-                    scratchList{argPos} = num2str(obj.cellsegSettings.cszmax); argPos = argPos + 1;
+                if (obj.cellsegSettings.lightZMax > 0)
+                    scratchList{argPos} = '-lightzmax'; argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.lightZMax); argPos = argPos + 1;
                 end
-                if (obj.cellsegSettings.nszmin > 0)
+                if (obj.cellsegSettings.nucZMin > 0)
                     scratchList{argPos} = '-nuczmin'; argPos = argPos + 1;
-                    scratchList{argPos} = num2str(obj.cellsegSettings.nszmin); argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.nucZMin); argPos = argPos + 1;
                 end
-                if (obj.cellsegSettings.nszmax > 0)
+                if (obj.cellsegSettings.nucZMax > 0)
                     scratchList{argPos} = '-nuczmin'; argPos = argPos + 1;
-                    scratchList{argPos} = num2str(obj.cellsegSettings.nszmax); argPos = argPos + 1;
+                    scratchList{argPos} = num2str(obj.cellsegSettings.nucZMax); argPos = argPos + 1;
                 end
                 if (obj.cellsegSettings.outputCellMaskPNG)
                     scratchList{argPos} = '-ocellmask'; argPos = argPos + 1;
@@ -239,8 +253,8 @@ classdef TrueSpotProjSettings
                 end
 
                 %Call the cellseg main
-                myArgs = scratchList{1:(argPos-1)};
-                Main_CellSegConsole(myArgs);
+                myArgs = scratchList(1:(argPos-1));
+                Main_CellSegConsole(myArgs{:});
             end
         end
 
@@ -249,7 +263,7 @@ classdef TrueSpotProjSettings
 
             funcTag = 'TrueSpotProjSettings.runSpotDetect';
 
-            if ~isempty(obj.inputTable)
+            if isempty(obj.inputTable)
                 GUIUtils.sendMessage(listener, funcTag, 'ERROR: Batch has not been initialized.');
                 return;
             end
@@ -259,16 +273,16 @@ classdef TrueSpotProjSettings
             channelCount = size(channels, 2);
             for i = 1:stackCount
                 GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d...', i, stackCount));
-                iname = obj.inputTable{i, 'ImageName'};
-                ipath = obj.inputTable{i, 'ImageFilePath'};
-                ctrlpath = obj.inputTable{i, 'ControlFilePath'};
+                iname = obj.getInputTableValue(i, 'ImageName');
+                ipath = obj.getInputTableValue(i, 'ImageFilePath');
+                ctrlpath = obj.getInputTableValue(i, 'ControlFilePath');
 
                 iOutDir = [obj.paths.outputPath filesep iname];
 
                 %Import cellseg, if needed
                 cellSegPath = [iOutDir filesep 'CellSeg_' iname '.mat'];
-                cellMaskPath = obj.inputTable{i, 'ExtCellSegPath'};
-                nucMaskPath = obj.inputTable{i, 'ExtNucSegPath'};
+                cellMaskPath = obj.getInputTableValue(i, 'ExtCellSegPath');
+                nucMaskPath = obj.getInputTableValue(i, 'ExtNucSegPath');
                 if ~isempty(cellMaskPath) | ~isempty(nucMaskPath)
                     if ~isempty(listener)
                         listener.logMessage(['[' funcTag '] External cell or nuc mask provided! Converting...']);
@@ -329,7 +343,7 @@ classdef TrueSpotProjSettings
 
             funcTag = 'TrueSpotProjSettings.runQuant';
 
-            if ~isempty(obj.inputTable)
+            if isempty(obj.inputTable)
                 GUIUtils.sendMessage(listener, funcTag, 'ERROR: Batch has not been initialized.');
                 return;
             end
@@ -339,7 +353,7 @@ classdef TrueSpotProjSettings
             channelCount = size(channels, 2);
             for i = 1:stackCount
                 GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d...', i, stackCount));
-                iname = obj.inputTable{i, 'ImageName'};
+                iname = obj.getInputTableValue(i, 'ImageName');
                 for c = 1:channelCount
                     GUIUtils.sendMessage(listener, funcTag, sprintf('Working on image %d of %d (Channel %d of %d)...', i, stackCount, c, channelCount));
                     if iscell(channels)

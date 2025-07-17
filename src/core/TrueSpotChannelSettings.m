@@ -163,34 +163,34 @@ classdef TrueSpotChannelSettings
                 end
             end
 
-            if (obj.optionsStruct.spotDetectThreads > 0)
+            if (obj.spotCountSettings.spotDetectThreads > 0)
                 scratchList{argPos} = '-threads'; argPos = argPos + 1;
-                scratchList{argPos} = num2str(obj.optionsStruct.spotDetectThreads); argPos = argPos + 1;
+                scratchList{argPos} = num2str(obj.spotCountSettings.spotDetectThreads); argPos = argPos + 1;
             end
 
             %Output options
-            if obj.optionsStruct.csvzero | obj.optionsStruct.csvrange | obj.optionsStruct.csvthonly | obj.optionsStruct.csvfull
+            if obj.options.csvzero | obj.options.csvrange | obj.options.csvthonly | obj.options.csvfull
                 scratchList{argPos} = '-csvout'; argPos = argPos + 1;
                 scratchList{argPos} = [chDir filesep 'LocalMaxCalls_' imgName '.csv']; argPos = argPos + 1;
             end
 
-            if obj.optionsStruct.runparamtxt
+            if obj.options.runparamtxt
                 scratchList{argPos} = '-runparamout'; argPos = argPos + 1;
                 scratchList{argPos} = [chDir filesep 'SpotDetectRunParams_' imgName '.txt']; argPos = argPos + 1;
             end
-            if obj.optionsStruct.overwrite
+            if obj.options.overwrite
                 scratchList{argPos} = '-ovrw'; argPos = argPos + 1;
             end
-            if obj.optionsStruct.csvzero
+            if obj.options.csvzero
                 scratchList{argPos} = '-csvzero'; argPos = argPos + 1;
             end
-            if obj.optionsStruct.csvrange
+            if obj.options.csvrange
                 scratchList{argPos} = '-csvrange'; argPos = argPos + 1;
             end
-            if obj.optionsStruct.csvthonly
+            if obj.options.csvthonly
                 scratchList{argPos} = '-csvthonly'; argPos = argPos + 1;
             end
-            if obj.optionsStruct.csvfull
+            if obj.options.csvfull
                 scratchList{argPos} = '-csvfull'; argPos = argPos + 1;
             end
 
@@ -230,7 +230,7 @@ classdef TrueSpotChannelSettings
                 listener.logMessage(['[' funcTag ']' 'Generated argument list: ' cmdString]);
             end
 
-            Main_RNASpots(myArgs);
+            Main_RNASpots(myArgs{:});
         end
 
         function obj = runQuant(obj, parentProject, imgName, explicitImagePath, explicitCellSegPath, listener)
@@ -320,7 +320,7 @@ classdef TrueSpotChannelSettings
                 listener.logMessage(['[' funcTag ']' 'Generated argument list: ' cmdString]);
             end
 
-            Main_RNAQuant(myArgs);
+            Main_RNAQuant(myArgs{:});
         end
 
     end
