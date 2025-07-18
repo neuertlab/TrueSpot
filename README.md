@@ -6,7 +6,7 @@ A MATLAB pipeline for automatically processing TIFF image stacks. Functions incl
 ## Citations
 **Cell Segmentation:** [View Paper](https://doi.org/10.1038/s41598-019-46689-5) | [Standalone](https://www.dropbox.com/sh/egb27tsgk6fpixf/AADaJ8DSjab_c0gU7N7ZF0Zba?dl=0)
 
-Kesler, B.K., Li, G., Thiemicke, A., Venkat, R., & Neuert, G. (2019). Automated cell boundary and 3D nuclear segmentation of cells in suspension. *Scientific Reports*, **9**(1).
+Kesler, B.K., Li, G., Thiemicke, A., Venkat, R., Neuert, G. (2019). Automated cell boundary and 3D nuclear segmentation of cells in suspension. *Scientific Reports*, **9**(1).
 
 **Local Maxima Detection:**
 
@@ -19,9 +19,7 @@ Kesler, B.K., Adams, J., Neuert, G. (2025). Transcriptional stochasticity reveal
 ## Dependencies
 [MATLAB 2022a (or higher)](https://www.mathworks.com/products/get-matlab.html?s_tid=gn_getml)
 
-[MATLAB Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html)
-[MATLAB Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
-[MATLAB Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
+[MATLAB Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html) | [MATLAB Signal Processing Toolbox](https://www.mathworks.com/products/signal.html) | [MATLAB Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
 
 [Java JRE 8 (or higher)](https://www.java.com/en/download/manual.jsp)
 
@@ -37,7 +35,7 @@ Two interfaces require XML inputs instead of shell commands:
 
 Example XMLs can be found in `doc/sampleXmls`, and documentation detailing recognized XML fields and structure can be found [here](./doc/pages/spec_xml_doc.md).
 
-**XMLs are text files and thus can be viewed or edited using any text editing program such as Sublime or Notepad++.**
+*XMLs are text files and thus can be viewed or edited using any text editing program such as Sublime or Notepad++*
 
 ## Usage - TrueSpot Lite GUI
 As of version 1.3.0, TrueSpot provides a rudimentary GUI called **TrueSpot Lite** for desktop use.
