@@ -17,12 +17,14 @@ No single options are required, but some form of input (ie. image path or spots 
 | `-coordtable` | *Path* - Path to maxima coordinate table  | File containing xyz coordinates of maxima calls made by a spot detector. Accepts call tables output by spot detect module or headerless text tables (csv or tsv) with columns ordered x,y,z. (Default: Path referenced by spotsrun, if provided) |
 | `-ch` | *Int* - Channel Index (1-based)  | The channel in the input image stack to process as sample. (Default: 1, or value stored in spotsrun) |
 | `-chcount` | *Int* - Channel Count | The total number of channels in the input image stack. (Default: 1, or value stored in spotsrun) |
+| `-cellzero` | - | **Flag** - If set, treat region outside of cell mask as a single cell with index 0. |
 
 ## Threshold
 
 | Name | Parameter | Description |
 | ----- | ----- | ----- |
-| `-mthresh` | *Int* - Threshold value  | Threshold value to use to obtain starting calls (Default: Value stored in spotsrun) |
+| `-mthresh` | *Int[]* - Threshold values  | Comma delimited list of manually specified threshold values (formatted "(1,2,6)" etc.) to use to obtain starting calls (Override) |
+| `-thmin` | *Int* - Threshold value | Threshold seed spots must be above for fitting (Default: Derived from spotsrun) |
 | `-rethresh` | - | **Flag** - Rerun automatic thresholding using default parameters or parameters stored in spotsrun. |
 
 ## Thresholding Tuning

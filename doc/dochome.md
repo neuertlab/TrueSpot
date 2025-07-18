@@ -1,6 +1,11 @@
 # TrueSpot Documentation
 Detailed documentation for TrueSpot usage, functionality, and known bugs.
 
+## Specification XMLs
+Documentation for creating and interpreting batch parameter specification XML files to use as input for TrueSpot Lite or `tsBatchGen.py`.
+
+* [XML Info](./pages/spec_xml_doc.md)
+
 ## Spot Detection
 The module for detection and filtering of local intensity maxima. Wrapped by `Main_RNASpots.m`.
 

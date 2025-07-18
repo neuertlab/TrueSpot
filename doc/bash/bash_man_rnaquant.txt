@@ -1,5 +1,5 @@
 TrueSpot Signal Quantification Bash Wrapper
-Usage Manual
+Usage Manual (Updated July 18, 2025)
 
 --- Input/Output Options ---
 -runinfo [Path]				MAT file (generally ending in "_rnaspotsrun.mat") produced by the Spot Detection module. Contains links and run parameters.
@@ -10,9 +10,11 @@ Usage Manual
 -coordtable [Path]			File containing xyz coordinates of maxima calls made by a spot detector. Accepts call tables output by spot detect module or headerless text tables (csv or tsv) with columns ordered x,y,z. (Default: Path referenced by spotsrun, if provided)
 -ch [Int]					The channel in the input image stack to process as sample. 1-based coordinates. (Default: 1, or value stored in spotsrun)
 -chcount [Int]				The total number of channels in the input image stack. (Default: 1, or value stored in spotsrun)
+-cellzero					(Flag) If set, treat region outside of cell mask as a single cell with index 0.
 
 --- Threshold Options ---
--mthresh [Int]				Threshold value to use to obtain starting calls (Default: Value stored in spotsrun)
+-mthresh [Int[]]			Comma delimited list of manually specified threshold values (formatted "(1,2,6)" etc.) to use to obtain starting calls (Override)
+-thmin [Int]				Threshold seed spots must be above for fitting (Default: Derived from spotsrun)
 -rethresh					(Flag) Rerun automatic thresholding using default parameters or parameters stored in spotsrun.
 
 --- Tuning Options ---

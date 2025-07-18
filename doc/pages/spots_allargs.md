@@ -86,7 +86,7 @@ This page lists all arguments recognized by `Main_RNASpots.m`. Some additional a
 | `-thmw` | *Float* - Weight | Weight factor for inclusion of median/MAD derived threshold candidates in final call (Default: 0.25) |
 | `-thfw` | *Float* - Weight | Weight factor for inclusion of two-piece fit knot threshold candidates in final call (Default: 0.0) |
 | `-thiw` | *Float* - Weight | Weight factor for inclusion of two-piece fit right intercept threshold candidates in final call (Default: 0.75) |
-| `-fitlog` | *Boolean* - True/False | Whether to use log10 transformations of spot count derived curves for threshold determination (Default: true) |
+| `-logproj` | *String* - 'None', 'All', 'FitOnly' | When to apply log10 projection to spot count curve. (Default: 'FitOnly') |
 | `-stdfac` | *Float* - Standard deviations | Brute-force shift threshold selection by this many standard deviations of the threshold candidate pool (Default: 0.0) |
 | `-usespc` | - | **Flag** - Include spot count curve directly in threshold seletion |
 | `-usedfc` | - | **Flag** - Include absolute value of first deriv. approximate transformation directly in threshold seletion. |

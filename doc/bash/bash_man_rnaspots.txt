@@ -1,5 +1,5 @@
 TrueSpot Spot Detection Bash Wrapper
-Usage Manual
+Usage Manual (Updated July 18, 2025)
 
 --- Required Arguments ---
 -input [Path]			The input image or image stack. This parameter may be substituted with -tif for TIFF images, or -matimg and -matvar for MATLAB save files.
@@ -66,7 +66,7 @@ Usage Manual
 -thmw [Float]			Weight factor for inclusion of median/MAD derived threshold candidates in final call (Default: 0.25)
 -thfw [Float]			Weight factor for inclusion of two-piece fit knot threshold candidates in final call (Default: 0.0)
 -thiw [Float]			Weight factor for inclusion of two-piece fit right intercept threshold candidates in final call (Default: 0.75)
--fitlog [Boolean]		Whether to use log10 transformations of spot count derived curves for threshold determination (Default: true)
+-logproj [String]		When to apply log10 projection to spot count curve. Values: 'None', 'All', 'FitOnly' (Default: 'FitOnly')
 -stdfac [Float]			Brute-force shift threshold selection by this many standard deviations of the threshold candidate pool (Default: 0.0)
 -usespc					(Flag) Include spot count curve directly in threshold seletion
 -usedfc					(Flag) Include absolute value of first deriv. approximate transformation directly in threshold seletion.

@@ -1,7 +1,7 @@
 # TrueSpot
 A MATLAB pipeline for automatically processing TIFF image stacks. Functions include cell segmentation, RNA/marker spot detection (with automatic thresholding), and RNA/marker quantification.
 
-[Detailed Documentation](./doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/TrueSpot-ReferenceData)
+[Detailed Documentation](./doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/TrueSpot-ReferenceData) | [Zenodo Repository](https://zenodo.org/records/13345321)
 
 ## Citations
 **Cell Segmentation:** [View Paper](https://doi.org/10.1038/s41598-019-46689-5) | [Standalone](https://www.dropbox.com/sh/egb27tsgk6fpixf/AADaJ8DSjab_c0gU7N7ZF0Zba?dl=0)
@@ -10,23 +10,82 @@ Kesler, B.K., Li, G., Thiemicke, A., Venkat, R., & Neuert, G. (2019). Automated 
 
 **Local Maxima Detection:**
 
-Hospelhorn, B.G., Kesler, B.K., Jashnsaz, H., Neuert, G. (2024). TrueSpot: A robust automated tool for quantifying signal puncta in fluorescent imaging. In preparation.
+Hospelhorn, B.G., Kesler, B.K., Jashnsaz, H., Neuert, G. (2025). TrueSpot: A robust automated tool for quantifying signal puncta in fluorescent imaging. *Genome Biology*, In Revision.
 
-**Spot & Cloud Quantification:**
+**Spot & Cloud Quantification:** [View Paper](https://pubmed.ncbi.nlm.nih.gov/40328749/)
 
-Kesler, B.K. & Neuert, G. (2024). Transcriptional stocahsticity reveals multiple mechanisms of long non-coding RNA regulation at the Xist-Tsix locus. *Nature Communications*, in revision.
+Kesler, B.K., Adams, J., Neuert, G. (2025). Transcriptional stochasticity reveals multiple mechanisms of long non-coding RNA regulation at the Xist-Tsix locus. *Nature Communications*, **16**(1):4223.
 
 ## Dependencies
 [MATLAB 2022a (or higher)](https://www.mathworks.com/products/get-matlab.html?s_tid=gn_getml)
 
-[MATLAB Image Processing Toolkit](https://www.mathworks.com/solutions/image-video-processing.html)
+[MATLAB Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html)
+[MATLAB Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
+[MATLAB Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
 
 [Java JRE 8 (or higher)](https://www.java.com/en/download/manual.jsp)
 
 ## Compatibility
-Scripts should run on any system with compatible versions of MATLAB and Java.
+Scripts/GUIs should run on any system with compatible versions of MATLAB and Java.
 
-## Usage
+## Specification XMLs
+As of version 1.2.0, paths and parameters may be specified using XML files instead of long command line options in some cases.
+
+Two interfaces require XML inputs instead of shell commands:
+* The TrueSpot Lite GUI
+* The slurm batch generator script `scripts/tsBatchGen.py`
+
+Example XMLs can be found in `doc/sampleXmls`, and documentation detailing recognized XML fields and structure can be found [here](./doc/pages/spec_xml_doc.md).
+
+**XMLs are text files and thus can be viewed or edited using any text editing program such as Sublime or Notepad++.**
+
+## Usage - TrueSpot Lite GUI
+As of version 1.3.0, TrueSpot provides a rudimentary GUI called **TrueSpot Lite** for desktop use.
+
+![Screen capture of simple graphical user interface](./doc/images/tslite_screencap.png)
+
+### How to Run TrueSpot Lite
+If there is no prebuilt release executable for your target system, simply double clicking on the `.sh` or `.bat` file appropriate for your OS should launch the GUI.
+
+* Windows: `TrueSpotLite_Win.bat`
+* MacOS: `TrueSpotLite_Mac.sh`
+* Linux: `TrueSpotLite_Linux.sh`
+
+The above TrueSpot Lite wrapper scripts invoke MATLAB via the command line, thus a valid installation of MATLAB and the Toolbox dependencies is required to run TrueSpot Lite in this way.
+
+Alternatively, TrueSpot Lite can be launched directly from its MATLAB app file (`./src/gui/TrueSpotMinimal.mlapp`), either by double clicking the file from the system explorer or from inside the MATLAB desktop IDE. This method also requires a pre-existing MATLAB installation.
+
+### Input
+The TrueSpot Lite interface only accepts XML specifications as input. Full documentation for the XML structure and options can be found [here](./doc/pages/spec_xml_doc.md). 
+
+### Test Example
+A simple example input XML specifically designed for testing TrueSpot Lite can be found at `./doc/sampleXmls/TSLite_Test.xml`. To run this example as-is, the referenced test image must be downloaded and placed in `./testdata/Input` (you will need to make these folders in the repository base directory). Alternatively, the input test image path and TrueSpot output target can be changed by editing the `ImageDir` and `OutputDir` values in the sample XML directly.
+
+### Use Cases
+TrueSpot Lite is primarily intended for relatively small stacks and/or batches that can be processed on a common desktop workstation. There are two factors that must be considered when deciding whether to run TrueSpot locally or on a computing cluster.
+
+* TrueSpot holds the stack it's working on in memory as a 3D matrix of `double` (ie. 8 bytes per voxel). Thus it can get very RAM hungry.
+* The time required for spot detection to run is highly dependent on the size of the input stack and the number of thresholds scanned due to the poor performance scaling of `imregionalmax` - ranging from seconds to hours. 
+
+This is due to the application of threshold filtering *before* regional maximum detection, requiring `imregionalmax` to be called for every tested threshold. The easiest way to speed up this process is to request more "threads" (though MATLAB appears to implement this via multiple separate processes) using the `Workers` attribute for a `SpotDetectSettings` element in the input specification. The test thresholds are distributed between the workers and the coordinate calls are saved to disk and recombined into a single table at the end. Therefore, 2 workers will effectively halve the processing time and 4 workers will quarter it. 
+The flip side is that this time reduction will only occur if the system running TrueSpot has enough cores to run enough workers at the same time. It also increases memory usage as each worker makes temporary (smaller) copies of the stack to process. As such only relatively beefy computers will be able to take full advantage of this feature.
+
+## Usage - Slurm Batch Generator Script
+TrueSpot was originally designed to be deployed on a computing cluster to run large batches of large image stacks in parallel. Thus, we provide a python wrapper script (`./scripts/tsBatchGen.py`) that reads a TrueSpot parameter specification XML and generates the slurm commands and bash scripts to run one or more batches of tif stacks through TrueSpot.
+
+`tsBatchGen.py` requires only one position argument - the XML path. It should be run on the filesystem that TrueSpot will be accessing as it scans the input directory for tifs and all paths it generates will be relative to what it is given.
+
+```
+python3 ${TRUESPOT_BASE_DIR}/scripts/tsBatchGen.py "${XMLPATH}"
+```
+
+There is an optional XML block called `JobSettings` that is recognized by `tsBatchGen.py` and ignored by TrueSpot Lite (see `,.doc/sampleXmls/batchSettings.xml`). This is used to specify memory, core count, and wall time. It is also used to give `tsBatchGen.py` the path to TrueSpot's repository root and pass a MATLAB module name for the `module load` command typically found on clusters.
+
+If your cluster does not use slurm (sbatch) or module load, the output of `tsBatchGen.py` may not be compatible.
+
+Notaby, `tsBatchGen.py` also requires python 3 to run.
+
+## Usage - Command Line
 This section covers basic usage commands for each module. Additional usage options are detailed in the documentation [here](./doc/dochome.md). We recommend using the wrapper bash scripts for Linux command line usage just to keep things clean, but direct usage for the MATLAB scripts will be outlined here as well.
 
 You do not need to build anything - MATLAB is an interpreter/JIT compiling virtual environment. All you need to use these scripts is MATLAB.
@@ -122,6 +181,8 @@ Bash Wrapper Script: `TrueSpot_RNAQuant.sh`
 
 There are no individually required arguments, but some form of input (either an image or a spotsrun generated by the Spot Detect module) is required. See [documentation](./doc/pages/quant_allargs.md) for full argument list.
 
+In most cases, as TrueSpot quant is typically run after TrueSpot spot detection, only `runinfo` is required.
+
 **Common Arguments**
 | Name | Parameter | Description |
 | ----- | ----- | ----- |
@@ -135,7 +196,9 @@ There are no individually required arguments, but some form of input (either an 
 | `-norefilter` | - | **Flag** - Skip refiltering to rederive maxima list. If this flag is set, a coordinate table path is expected either directly or via the spotsrun. |
 | `-nocells` | - | **Flag** - Evaluate input image as a whole instead of cell-by-cell. If this flag is set, cell segmentation paths are ignored. |
 | `-noclouds` | - | **Flag** - Skip cloud detection and only do gaussian fitting. |
-| `-workers` | *Int* - Thread number  | Number of threads to request from MATLAB. As many threads may run in parallel as there are available cores. When there is more than one worker thread, fitting/quantification can be done on multiple cells at once. (Default: 1) |
+
+## Additional Scripts
+TODO: idistro, QC, batch thresholds, and quant dump
 
 ## Contact
 

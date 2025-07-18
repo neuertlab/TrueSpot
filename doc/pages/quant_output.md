@@ -20,7 +20,7 @@ The quantData file contains a single struct called `quant_results`. This is the 
 
 Unlike with other TrueSpot result files, the relevant class definitions (`SingleCell`, `RNASpot`, and `RNACloud` - all can be found in the `core` directory) are required to load and read `cell_rna_data`. `cell_rna_data` is an array of `SingleCell`s, each representing a cell as marked by the input cell mask. The `SingleCell` contains the coordinates of the box encapsulating the cell, the masks for the individual cells, their nucleus and cytoplasm, signal calculations, per z-slice nucleus statistics, and details information for each fit spot and cloud.
 
-![Contents of a SingleCell record](./quant_results_singlecell.png)
+![Contents of a SingleCell record](../images/quant_results_singlecell.png)
 
 `spots` contains an array of `RNASpot` objects - one for each gaussian fitted spot found in the cell. An `RNASpot` lists the seed coordinates (from the local maximum) and estimated fit volume on the top level, with fit details in `gauss_fit`. `gfit_slices` also contains the details of the 2D fit for each slice looked at for this spot (due to anisotropy and focus variability, xy gaussian fits are performed in 2D on individual slices and the z fit is done using another approach). Most coordinates are relative to the *cell* box boundaries though there are some z coordinates relative to the box drawn around the spot for fitting (generally the seed slice will be at the center of the box - so if the z radius is 2, then the seed slice will have an index of 3).
 

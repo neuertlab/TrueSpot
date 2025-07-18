@@ -3,7 +3,7 @@ This page provides a brief overview of the modules within the spot calling modul
 
 [Back](../dochome.md)
 
-![General diagram of spot detection module flow](./main_rnaspots_modules_240305.png)
+![General diagram of spot detection module flow](../images/main_rnaspots_modules_240305.png)
 
 ## Node Summaries
 Below is a short description of each node in the general flow chart shown above. Classes are generally used as namespaces rather than instantiatable object definitions, with some exceptions.

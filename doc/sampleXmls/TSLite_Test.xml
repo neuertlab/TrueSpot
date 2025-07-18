@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ImageSet>
+	<CommonMeta>
+		<Species>"Saccharomyces cerevisiae"</Species>
+		<CellType>"BY4741 Haploid"</CellType>
+		<VoxelDimsNano X="65" Y="65" Z="200"/>
+	</CommonMeta>
+	<ImageBatch Name="TSLiteTest">
+		<Paths>
+			<ImageDir>"../testdata/Input"</ImageDir>
+			<OutputDir>"../testdata/Output"</OutputDir>
+		</Paths>
+		<CellSegSettings>
+			<PresetName>"sacCer_100x"</PresetName>
+			<TransZTrim Min="5" Max="16"/>
+			<NucZTrim Min="1" Max="6"/>
+			<Options ExportCellMaskToFormat="png" ExportNucMaskToFormat="tif" Overwrite="True" DumpSettingsToText="True"/>
+		</CellSegSettings>
+		<SpotDetectSettings GaussRad="7" Workers="4">
+			<Options DumpRunParamsToText="True" Overwrite="True"/>
+		</SpotDetectSettings>
+		<QuantSettings DoClouds="False" CellZero="False" DoRefilter="False"/>
+		<ChannelInfo ChannelCount="4" NucChannel="3" TransChannel="4">
+			<ImageChannel ChannelNumber="1">
+				<Meta>
+					<TargetName>"CTT1"</TargetName>
+					<ProbeName>"CY5"</ProbeName>
+					<TargetType>"mRNA"</TargetType>
+				</Meta>
+				<SpotDetectSettings>
+					<ThresholdSettings Preset="0"/>
+				</SpotDetectSettings>
+			</ImageChannel>
+			<ImageChannel ChannelNumber="2">
+				<Meta>
+					<TargetName>"STL1"</TargetName>
+					<ProbeName>"TMR"</ProbeName>
+					<TargetType>"mRNA"</TargetType>
+				</Meta>
+				<SpotDetectSettings>
+					<ThresholdSettings Preset="-2"/>
+				</SpotDetectSettings>
+			</ImageChannel>
+		</ChannelInfo>
+	</ImageBatch>
+</ImageSet>
