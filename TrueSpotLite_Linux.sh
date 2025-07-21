@@ -16,4 +16,4 @@ get_script_dir(){
 get_script_dir
 MLAPP_PATH="${MY_DIR}/src/gui/TrueSpotMinimal.mlapp"
 
-matlab -nosplash -sd "${${MY_DIR}/src}" -r "${MLAPP_PATH};"
+matlab -nosplash -sd "${${MY_DIR}/src}" -r "addpath('./src'); TrueSpotMinimal;"

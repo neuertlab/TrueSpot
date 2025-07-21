@@ -3,7 +3,8 @@
 
 @echo off
 
-setlocal MYDIR=%~dp0
-setlocal MLAPP_PATH=%MY_DIR%\src\gui\TrueSpotMinimal.mlapp
+set MYDIR=%~dp0
+:: echo %MYDIR%
+set MLAPP_PATH=%MYDIR%src\gui\TrueSpotMinimal.mlapp
 
-matlab -minimize -nosplash -sd "%MY_DIR%\src" -r "%MLAPP_PATH%;"
+matlab -minimize -nosplash -sd "%MYDIR%src" -r "addpath('./gui'); TrueSpotMinimal;"

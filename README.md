@@ -196,7 +196,7 @@ In most cases, as TrueSpot quant is typically run after TrueSpot spot detection,
 | `-noclouds` | - | **Flag** - Skip cloud detection and only do gaussian fitting. |
 
 ## Additional Scripts
-TODO: idistro, QC, batch thresholds, and quant dump
+There are additional scripts for QC and results analysis. These will be documented in the future.
 
 ## Contact
 
