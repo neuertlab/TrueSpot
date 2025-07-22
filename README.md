@@ -1,7 +1,7 @@
 # TrueSpot
 A MATLAB pipeline for automatically processing TIFF image stacks. Functions include cell segmentation, RNA/marker spot detection (with automatic thresholding), and RNA/marker quantification.
 
-[Detailed Documentation](./doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/TrueSpot-ReferenceData) | [Zenodo Repository](https://zenodo.org/records/13345321)
+[Detailed Documentation](./doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/TrueSpot-ReferenceData) | [Zenodo Repository](https://zenodo.org/records/16286377)
 
 ## Citations
 **Cell Segmentation:** [View Paper](https://doi.org/10.1038/s41598-019-46689-5) | [Standalone](https://www.dropbox.com/sh/egb27tsgk6fpixf/AADaJ8DSjab_c0gU7N7ZF0Zba?dl=0)
@@ -57,7 +57,7 @@ Alternatively, TrueSpot Lite can be launched directly from its MATLAB app file (
 The TrueSpot Lite interface only accepts XML specifications as input. Full documentation for the XML structure and options can be found [here](./doc/pages/spec_xml_doc.md). 
 
 ### Test Example
-A simple example input XML specifically designed for testing TrueSpot Lite can be found at `./doc/sampleXmls/TSLite_Test.xml`. To run this example as-is, the referenced test image must be downloaded and placed in `./testdata/Input` (you will need to make these folders in the repository base directory). Alternatively, the input test image path and TrueSpot output target can be changed by editing the `ImageDir` and `OutputDir` values in the sample XML directly.
+A simple example input XML specifically designed for testing TrueSpot Lite can be found at `./doc/sampleXmls/TSLite_Test.xml`. To run this example as-is, the referenced test image must be [downloaded](https://zenodo.org/records/16286377/files/E2R210mI3.zip?download=1) and placed in `./testdata/Input` (you will need to make these folders in the repository base directory). Alternatively, the input test image path and TrueSpot output target can be changed by editing the `ImageDir` and `OutputDir` values in the sample XML directly.
 
 ### Use Cases
 TrueSpot Lite is primarily intended for relatively small stacks and/or batches that can be processed on a common desktop workstation. There are two factors that must be considered when deciding whether to run TrueSpot locally or on a computing cluster.
