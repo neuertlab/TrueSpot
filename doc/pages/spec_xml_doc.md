@@ -7,6 +7,15 @@ An example input XML for TrueSpot Lite can be found [here](../sampleXmls/TSLite_
 
 Parameters are organized into blocks. The outermost block has the tag `ImageSet`. An `ImageSet` can contain any number of batches (`ImageBatch`) and blocks specifying parameters common to all batches. TrueSpot Lite will only read the first `ImageSet` in the file and it will process ALL batches within that set. Having multiple `ImageSet`s in one file is not recommended anyway since XML parsers tend to balk at files that don't have a single defined root element. 
 
+## Variable Substitution
+
+TrueSpot can do variable substitution for certain field values (namely file paths). This allows for the specification of image-specific parameters on the batch level such as different control images for each image to analyze - provided that the control image file names follow a particular naming scheme.
+
+Fields to substitute with a variable are specified using `${VARIABLE NAME}` (akin to bash).
+
+The variables recognized by TrueSpot are currently:
+* `IMAGE_NAME` - Substitutes name of individual image (ie. tif file name without extension)
+
 ## ImageBatch
 An image batch is a group of images (specified by input table or directory) to run together. It is assumed that all images in a batch are of the same target and have the same channel settings.
 
@@ -24,13 +33,15 @@ The `ImageBatch` block has two mandatory child blocks: `Paths` and `ChannelInfo`
 ```
 
 ### ImageBatch: Paths
-`Paths` has no attributes, two mandatory children (`Input` or `ImageDir` - these are synonymous, and `OutputDir`), and one optional child (`ControlPath`).
+`Paths` has no attributes, two mandatory children (`Input` or `ImageDir` - these are synonymous, and `OutputDir`), and three optional children (`ControlPath`, `ExtCellMask`, and `ExtNucMask`).
 
 ```
 <Paths>
 	<Input>"{INPUT FILE/DIR PATH}"</Input>
 	<OutputDir>"{OUTPUT DIR PATH}"</OutputDir>
 	<ControlPath>"{CONTROL IMAGE PATH}"</ControlPath>
+	<ExtCellMask>"{EXTERNAL CELL MASK PATH STEM}"</ExtCellMask>
+	<ExtNucMask ZMin="{INTEGER}">"{EXTERNAL CELL MASK PATH STEM}"</ExtNucMask>
 </Paths>
 ```
 
@@ -38,7 +49,19 @@ The `ImageBatch` block has two mandatory child blocks: `Paths` and `ChannelInfo`
 
 `Output` specifies the output directory. Individual inner directory and file names are generated from the image file names, so only a place to put this output needs to be specified. If the specified output folder does not exist at run time, TrueSpot Lite will create it.
 
-At this time, `ControlPath` only interprets a single path to a single control image.
+`ControlPath` takes a path stem string to one or more control images. As with `Input`, all control images must have the same channel settings as each other.
+
+`ExtCellMask` takes a path stem string to one or more external (non TrueSpot) cell mask files. At this time, single channel TIFs and csvs can be read as cell masks. Cell masks are typically expected to be 2D and should have the same x and y dimensions as their target images.
+
+`ExtNucMask` takes a path stem string to one or more external (non TrueSpot) nuclear mask files. At this time, single channel TIFs and csvs can be read as nuclear masks. Nuclear masks are typically expected to be 3D and should have the same x and y dimensions as their target images. A Z offset can be specified for a nuclear mask that only covers a subset of slices using the `ZMin` attribute. `ZMin` is the 1-based index of the bottom slice of the nuclear mask as it appears in the original stack. `ZMin` defaults to 1.
+
+`ControlPath`, `ExtCellMask`, and `ExtNucMask` can interpret the `${IMAGE_NAME}` variable in their values. This allows for different control stacks or mask files to be used for different images provided there is a consistent naming pattern outside of the analysis stack file name. In other words, if you have a directory containing the cell masks for a batch of tif files run in an external tool and each cell mask file is named "{OG TIF file name}_CellMask.tif", then you could use:
+
+```
+<ExtCellMask>"Your Cell Mask Directory/${IMAGE_NAME}_CellMask.tif"</ExtCellMask>
+```
+
+to apply these cell masks instead of CellDissect's output.
 
 ### ImageBatch: ChannelInfo
 The `ChannelInfo` block contains information about the channels in the input images. It is also the block containing sample channel specific parameters in the form of `ImageChannel` blocks.

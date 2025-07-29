@@ -103,6 +103,11 @@ classdef TrueSpotXML
                         pathInfo.inputPath = TrueSpotXML.getElementText(sChild);
                     elseif strcmp(sChildName, 'ControlPath')
                         pathInfo.controlPath = TrueSpotXML.getElementText(sChild);
+                    elseif strcmp(sChildName, 'ExtCellMask')
+                        pathInfo.extCellMaskStem = TrueSpotXML.getElementText(sChild);
+                    elseif strcmp(sChildName, 'ExtNucMask')
+                        pathInfo.extNucMaskStem = TrueSpotXML.getElementText(sChild);
+                        pathInfo.extNucMaskZMin = TrueSpotXML.getNumberAttribute(sChild, 'ZMin', 1);
                     end
                 end
                 sChild = getNextSibling(sChild);

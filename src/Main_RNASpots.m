@@ -123,14 +123,14 @@ for i = 1:nargin
             if ~senspe_set
                 if arg_debug; fprintf("Tuning Preset: Sensitivity\n"); end
                 senspe_set = true;
-                setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, 3);
+                rna_spot_run = setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, 3);
                 lastkey = [];
             end
         elseif strcmp(lastkey, "precise")
             if ~senspe_set
                 if arg_debug; fprintf("Tuning Preset: Precise\n"); end
                 senspe_set = true;
-                setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, -3);
+                rna_spot_run = setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, -3);
                 lastkey = [];
             end
         elseif strcmp(lastkey, "noprobe")
@@ -266,12 +266,12 @@ for i = 1:nargin
         elseif strcmp(lastkey, "sensitivity")
             specval = Force2Num(argval);
             if specval > MAX_TH_PRESET_LEVEL; specval = MAX_TH_PRESET_LEVEL; end
-            setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, specval);
+            rna_spot_run = setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, specval);
             if arg_debug; fprintf("Sensitivity Preset Level Set: %d\n", specval); end
         elseif strcmp(lastkey, "precision")
             specval = Force2Num(argval);
             if specval > MAX_TH_PRESET_LEVEL; specval = MAX_TH_PRESET_LEVEL; end
-            setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, specval * -1);
+            rna_spot_run = setThPreset(rna_spot_run, DEFAULT_PRESET_INDEX, specval * -1);
             if arg_debug; fprintf("Precision Preset Level Set: %d\n", specval); end
         elseif strcmp(lastkey, "voxelsize") | strcmp(lastkey, "pixelsize")
             rna_spot_run.meta.idims_voxel = parseDimsTo(argval, rna_spot_run.meta.idims_voxel);

@@ -1094,17 +1094,19 @@ classdef CellSeg
                     end
                 end
             elseif endsWith(path, '.tif') | endsWith(path, '.tiff')
-                %Assumes one channel, one plane.
+                %Assumes one channel
                 [channels, ~] = LoadTif(path, 1, [1], 0);
                 nuc_mask = channels{1,1};
                 clear channels;
             elseif endsWith(path, '.tsv') | endsWith(path, '.csv')
+                %Assumes one channel, one plane.
                 nuc_mask = readmatrix(path);
             end
         end
 
         %%
-        function importCellSegData(cellMaskPath, nucMaskPath, outputPath)
+        function importCellSegData(cellMaskPath, nucMaskPath, outputPath, nucZMin)
+            if nargin < 4; nucZMin = 1; end
             runMeta = [];
             cellSeg = [];
             nucleiSeg = [];
@@ -1124,8 +1126,8 @@ classdef CellSeg
                 end
             else
                 runMeta = struct();
-                runMeta.tsCellSegBuild = 'CellSeg.importCellSegData_25071600';
-                runMeta.tsCellSegVersion = 'v1.3.0';
+                runMeta.tsCellSegBuild = 'CellSeg.importCellSegData_25072900';
+                runMeta.tsCellSegVersion = 'v1.3.1';
 
                 cellSeg = struct();
                 nucleiSeg = struct();
@@ -1142,12 +1144,24 @@ classdef CellSeg
             end
             if isfile(nucMaskPath)
                 nuc_mask = CellSeg.openNucMask(nucMaskPath);
+                is3D = (ndims(nuc_mask) > 2);
+                Z = 1;
+                if is3D
+                    Z = size(nuc_mask, 3);
+                end
                 nucleiSeg.results.lbl_mid = nuc_mask;
                 nucleiSeg.results.lbl_lo = nuc_mask;
                 nucleiSeg.results.lbl_hi = nuc_mask;
                 nucleiSeg.results.nuc_label = nuc_mask;
                 clear nuc_mask
                 runMeta.extNucSegSource = nucMaskPath;
+                if is3D
+                    runMeta.extNucSegZMin = nucZMin;
+                    nucleiSeg.params.z_min = nucZMin;
+                    nucleiSeg.params.z_max = nucZMin + Z - 1;
+                else
+                    runMeta.extNucSegZMin = 0;
+                end
                 runMeta.extImportDate = datetime;
             end
 

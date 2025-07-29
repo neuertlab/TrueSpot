@@ -74,7 +74,7 @@ classdef TrueSpotProjSettings
             obj.inputTable = table('Size', table_size, 'VariableTypes', varTypes, 'VariableNames', varNames);
             %obj.inputTable{:, 'ImageFilePath'} = dirTable{passBool, 'name'};
             obj.inputTable{:, 'ImageName'} = replace(dirTable{passBool, 'name'}, '.tif', '');
-            obj.inputTable{:, 'ImageFilePath'} = arrayfun(@(tifFileName) strjoin([dirPath filesep tifFileName], ''), dirTable{passBool, 'name'});
+            obj.inputTable{:, 'ImageFilePath'} = arrayfun(@(tifFileName) strjoin([dirPath filesep tifFileName], ''), dirTable{passBool, 'name'}, 'UniformOutput', false);
             obj.inputTable{:, 'ControlFilePath'} = "";
             obj.inputTable{:, 'NucDataFilePath'} = "";
             obj.inputTable{:, 'ExtCellSegPath'} = "";
@@ -107,7 +107,41 @@ classdef TrueSpotProjSettings
             if isfolder(obj.paths.inputPath)
                 obj = obj.scanInputDir(obj.paths.inputPath);
                 if ~isempty(obj.paths.controlPath)
-                    obj.inputTable{:, 'ControlFilePath'} = obj.paths.controlPath;
+                    if contains(obj.paths.controlPath, '${')
+                        if contains(obj.paths.controlPath, '${IMAGE_NAME}')
+                            obj.inputTable{:, 'ControlFilePath'} = arrayfun(@(iName) replace(obj.paths.controlPath, '${IMAGE_NAME}', iName), obj.inputTable{:, 'ImageName'}, 'UniformOutput', false);
+                        else
+                            %Variable name not recognized.
+                            obj.inputTable{:, 'ControlFilePath'} = obj.paths.controlPath;
+                        end
+                    else
+                        obj.inputTable{:, 'ControlFilePath'} = obj.paths.controlPath;
+                    end
+                end
+
+                if ~isempty(obj.paths.extCellMaskStem)
+                    if contains(obj.paths.extCellMaskStem, '${')
+                        if contains(obj.paths.extCellMaskStem, '${IMAGE_NAME}')
+                            obj.inputTable{:, 'ExtCellSegPath'} = arrayfun(@(iName) replace(obj.paths.extCellMaskStem, '${IMAGE_NAME}', iName), obj.inputTable{:, 'ImageName'}, 'UniformOutput', false);
+                        else
+                            %Variable name not recognized.
+                            obj.inputTable{:, 'ExtCellSegPath'} = obj.paths.extCellMaskStem;
+                        end
+                    else
+                        obj.inputTable{:, 'ExtCellSegPath'} = obj.paths.extCellMaskStem;
+                    end
+                end
+                if ~isempty(obj.paths.extNucMaskStem)
+                    if contains(obj.paths.extNucMaskStem, '${')
+                        if contains(obj.paths.extNucMaskStem, '${IMAGE_NAME}')
+                            obj.inputTable{:, 'ExtNucSegPath'} = arrayfun(@(iName) replace(obj.paths.extNucMaskStem, '${IMAGE_NAME}', iName), obj.inputTable{:, 'ImageName'}, 'UniformOutput', false);
+                        else
+                            %Variable name not recognized.
+                            obj.inputTable{:, 'ExtNucSegPath'} = obj.paths.extNucMaskStem;
+                        end
+                    else
+                        obj.inputTable{:, 'ExtNucSegPath'} = obj.paths.extNucMaskStem;
+                    end
                 end
             else
                 %Tif image or table
@@ -399,9 +433,9 @@ classdef TrueSpotProjSettings
             pathsInfo.outputPath = []; %Directory
 
             %External cellseg
-            %No since these are per file, they'd have to be tabled...
-%             pathsInfo.extCellMask = []; %2D or 3D image file
-%             pathsInfo.extNucMask = []; %2D or 3D image file
+            pathsInfo.extCellMaskStem = []; %Expects string it can sub in imagename
+            pathsInfo.extNucMaskStem = []; %Expects string it can sub in imagename
+            pathsInfo.extNucMaskZMin = 1; %For partial stack nuc mask
         end
 
         function metaInfo = genMetadataStruct()
