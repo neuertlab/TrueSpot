@@ -82,8 +82,12 @@ class CellsegSettings:
         self.lightZMax = 0
         self.nucZMin = 0
         self.nucZMax = 0
+        self.useCellpose = False
         
     def fromXmlNode(self, element):
+        if 'UseCellpose' in element.attrib:
+            self.useCellpos = bool(element.attrib['UseCellpose'])
+            
         for child in element:
             if child.tag == 'PresetName':
                 self.templateName = cleanXmlValueString(child.text)
@@ -113,6 +117,8 @@ class CellsegSettings:
             self.nucZMin = other.nucZMin
         if overwrite or (self.nucZMax <= 0):
             self.nucZMax = other.nucZMax
+        if overwrite or not self.useCellpose:
+            self.useCellpose = other.useCellpose        
         
 class SpotDetectSettings:
     def __init__(self):
@@ -311,6 +317,10 @@ class ImageBatchInfo:
         self.name = None
         self.inputDir = None
         self.outputDir = None
+        self.controlStem = None
+        self.extCellsegStem = None
+        self.extNucsegStem = None
+        self.extNucZMin = 0
         self.channelCount = 0
         self.lightChannel = 0
         self.nucChannel = 0
@@ -381,6 +391,16 @@ class ImageBatchInfo:
                         self.inputDir = cleanXmlValueString(gchild.text)
                     elif gchild.tag == 'OutputDir':
                         self.outputDir = cleanXmlValueString(gchild.text)
+                    elif gchild.tag == 'ControlPath':
+                        self.controlStem = cleanXmlValueString(gchild.text) 
+                    elif gchild.tag == 'ExtCellMask':
+                        self.extCellsegStem = cleanXmlValueString(gchild.text)
+                    elif gchild.tag == 'ExtNucMask':
+                        self.extNucsegStem = cleanXmlValueString(gchild.text)
+                        if 'ZMin' in gchild.attrib:
+                            self.extNucZMin = int(gchild.attrib['ZMin'])
+                        else:
+                            self.extNucZMin = 1
             elif child.tag == 'ChannelInfo':
                 if 'ChannelCount' in child.attrib:
                     self.channelCount = int(child.attrib['ChannelCount'])   
@@ -439,6 +459,14 @@ class ImageBatchInfo:
             self.inputDir = other.inputDir
         if overwrite or (self.outputDir is None):
             self.outputDir = other.outputDir
+        if overwrite or (self.controlStem is None):
+            self.controlStem = other.controlStem
+        if overwrite or (self.extCellsegStem is None):
+            self.extCellsegStem = other.extCellsegStem
+        if overwrite or (self.extNucsegStem is None):
+            self.extNucsegStem = other.extNucsegStem
+        if overwrite or (self.extNucZMin < 2):
+            self.extNucZMin = other.extNucZMin                    
         if overwrite or (self.channelCount <= 0):
             self.channelCount = other.channelCount
         if overwrite or (self.lightChannel <= 0):
@@ -643,6 +671,7 @@ def genImageJobs(tifImage, batchInfo):
     tifImage.csResPath = os.path.join(tifImage.resultsDir, "CellSeg_" + tifImage.name + ".mat")
     tifImage.batchInfo = batchInfo
     
+    #Cell Segmentation
     scriptHandle = open(tifImage.csScriptPath, 'w')
     scriptHandle.write("#!/bin/bash\n\n")
     scriptHandle.write("module load " + batchInfo.parentSet.moduleName + "\n")
@@ -908,7 +937,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 25.06.09.02")
+    print("TS Batch Job Generator initiated! Version 25.07.31.00")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")

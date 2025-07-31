@@ -778,6 +778,48 @@ classdef CellSeg
             nucSegRes.nuc_axis_minor = Min_axis;
         end
 
+        
+        %%
+        function cell_info = getCellInfo(cell_mask, nuc_label)
+            nucmax = uint16(max(nuc_label, [], 3, 'omitnan'));
+            mm = max(cell_mask, [], 'all', 'omitnan');
+            cell_info(mm) = struct('Centroid', NaN, 'MajorAxisLength', NaN, 'MinorAxisLength', NaN, 'FilledArea', NaN, 'Image', []);
+            for j = 1 : mm                                                            % organise cell information
+                this_cell_mask = uint16(cell_mask == j);  %sieve out dots in cell j
+
+                % Try to cleanup edge to include full nucleus
+                this_nuc_mask = immultiply(nucmax, this_cell_mask);
+                %most common nonzero value
+                all_nuc_nums = this_nuc_mask(:);
+                all_nuc_nums = all_nuc_nums(all_nuc_nums ~= 0);
+                if ~isempty(all_nuc_nums)
+                    nuc_lbl_num = mode(all_nuc_nums, 'all');
+                    trg_nuc_mask = uint16(nucmax == nuc_lbl_num);
+                    not_in_cell = immultiply(trg_nuc_mask, ~this_nuc_mask);
+                    total_nuc_pix = nnz(trg_nuc_mask);
+                    outside_cell_pix = nnz(not_in_cell);
+                    if outside_cell_pix > 0
+                        if (outside_cell_pix <= (total_nuc_pix * 0.2))
+                            cell_mask(outside_cell_pix) = j;
+                            this_cell_mask = uint16(cell_mask == j);
+                        end
+                    end
+                end
+
+                % Determine cell properties
+                try
+                    cell_reg = regionprops(this_cell_mask,'Centroid','MajorAxisLength','MinorAxisLength','FilledArea','Image');
+                    cell_info(j).Centroid = cell_reg.Centroid;
+                    cell_info(j).MajorAxisLength = cell_reg.MajorAxisLength;
+                    cell_info(j).MinorAxisLength = cell_reg.MinorAxisLength;
+                    cell_info(j).FilledArea = cell_reg.FilledArea;
+                    cell_info(j).Image = cell_reg.Image;
+                catch
+                end
+                clear this_cell_mask cell_reg
+            end
+        end
+
         %%
         %Derived from B2_autosegment_cells_new &
         %B2_autosegment_cells_new_yeast
@@ -788,7 +830,7 @@ classdef CellSeg
             Y = size(light_ch_data, 1);
             Z = size(light_ch_data, 3);
 
-            nucmax = uint16(max(nuc_label, [], 3, 'omitnan'));
+            %nucmax = uint16(max(nuc_label, [], 3, 'omitnan'));
 
 %             figure(6);
 %             clf;
@@ -912,42 +954,7 @@ classdef CellSeg
             end
 
             %Analyze cell shape for further analysis
-            cell_info(mm) = struct('Centroid', NaN, 'MajorAxisLength', NaN, 'MinorAxisLength', NaN, 'FilledArea', NaN, 'Image', []);
-            for j = 1 : mm                                                            % organise cell information
-                this_cell_mask = uint16(Lab == j);  %sieve out dots in cell j
-                
-                % Try to cleanup edge to include full nucleus
-                this_nuc_mask = immultiply(nucmax, this_cell_mask);
-                %most common nonzero value
-                all_nuc_nums = this_nuc_mask(:);
-                all_nuc_nums = all_nuc_nums(all_nuc_nums ~= 0);
-                if ~isempty(all_nuc_nums)
-                    nuc_lbl_num = mode(all_nuc_nums, 'all');
-                    trg_nuc_mask = uint16(nucmax == nuc_lbl_num);
-                    not_in_cell = immultiply(trg_nuc_mask, ~this_nuc_mask);
-                    total_nuc_pix = nnz(trg_nuc_mask);
-                    outside_cell_pix = nnz(not_in_cell);
-                    if outside_cell_pix > 0
-                        if (outside_cell_pix <= (total_nuc_pix * 0.2))
-                            Lab(outside_cell_pix) = j;
-                            this_cell_mask = uint16(Lab == j);
-                        end
-                    end
-                end
-
-                % Determine cell properties
-                try
-                    cell_reg = regionprops(this_cell_mask,'Centroid','MajorAxisLength','MinorAxisLength','FilledArea','Image');
-                    cell_info(j).Centroid = cell_reg.Centroid;
-                    cell_info(j).MajorAxisLength = cell_reg.MajorAxisLength;
-                    cell_info(j).MinorAxisLength = cell_reg.MinorAxisLength;
-                    cell_info(j).FilledArea = cell_reg.FilledArea;
-                    cell_info(j).Image = cell_reg.Image;
-                catch
-                end
-                clear this_cell_mask cell_reg
-            end
-
+            cell_info = CellSeg.getCellInfo(Lab, nuc_label);
         end
 
         %%

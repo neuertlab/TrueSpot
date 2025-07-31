@@ -5,13 +5,11 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.04.10.00';
-VERSION_STRING = 'v1.2.0';
+BUILD_STRING = '2025.07.31.00';
+VERSION_STRING = 'v1.3.1';
 
 DEFAULT_PRESET_INDEX = 6;
 MAX_TH_PRESET_LEVEL = 5;
-
-%TODO Add option to dump the subtracted background
 
 % ========================== Process args ==========================
 
@@ -31,6 +29,7 @@ param_struct.no_refilter = false;
 param_struct.dbgcell = 0;
 param_struct.no_bkg_subtract = false;
 param_struct.use_nuc_mask = 2; %lbl_mid
+param_struct.dump_nobkg_path = [];
 param_struct.workers = 1;
 
 param_struct.nocells = false; %If no cell seg data (ie. sim image)
@@ -200,6 +199,9 @@ for i = 1:nargin
             if specval > MAX_TH_PRESET_LEVEL; specval = MAX_TH_PRESET_LEVEL; end
             param_struct.rethreshPreset = DEFAULT_PRESET_INDEX - specval;
             if arg_debug; fprintf("Rethreshold precision Preset Level Set: %d\n", specval); end
+        elseif strcmp(lastkey, "dumpbkgsub")
+            param_struct.dump_nobkg_path = argval;
+            if arg_debug; fprintf("Background subtracted cell image data dump path: %s\n", param_struct.dump_nobkg_path); end
         end
     end
 end %End of argin for loop
@@ -250,6 +252,86 @@ outpath = [param_struct.outdir filesep imgname '_quantData.mat'];
 quant_results = RNAQuant.results2SavePackage(quant_results);
 save(outpath, 'quant_results', 'runMeta');
 %save(outpath, 'quant_results', 'runMeta', '-v7.3');
+
+%Save background subtracted images, if applicable
+if ~isempty(param_struct.dump_nobkg_path)
+    cellCount = size(quant_results.cell_rna_data, 2);
+    savebkg_file_stem = 'RNAQuant_savebkg_temp_cell_'; %Temps. For loading.
+    wd = quant_results.workdir;
+
+    if endsWith(param_struct.dump_nobkg_path, '.mat')
+        if contains(param_struct.dump_nobkg_path, '{CELLNO}')
+            %TODO
+            %Per cell
+            for c = 0:cellCount
+                tempPath = sprintf('%s%04d.mat', [wd filesep savebkg_file_stem c]);
+                if isfile(tempPath)
+                    load(tempPath, 'cell_nobkg');
+                    delete tempPath;
+                    cell_nobkg = int32(cell_nobkg); %Difference of 2 uint16s stored as doubles. This halves the size.
+                    ioutpath = replace(param_struct.dump_nobkg_path, '{CELLNO}', sprintf('%04d', c));
+                    save(ioutpath, 'cell_nobkg');
+                    clear cell_nobkg ioutpath
+                end
+            end
+        else
+            %Single mat file
+            clear quant_results %Free some memory
+            cells_nobkg = cell(1, cellCount);
+            cellzero_nobkg = [];
+            for c = 0:cellCount
+                tempPath = sprintf('%s%04d.mat', [wd filesep savebkg_file_stem c]);
+                if isfile(tempPath)
+                    load(tempPath, 'cell_nobkg');
+                    delete tempPath;
+                    cell_nobkg = int32(cell_nobkg); %Difference of 2 uint16s stored as doubles. This halves the size.
+                    if c > 0
+                        cellzero_nobkg = cell_nobkg;
+                    else
+                        cells_nobkg{c} = cell_nobkg;
+                    end
+                    clear cell_nobkg
+                end
+            end
+
+            if ~isempty(cellzero_nobkg)
+                save(param_struct.dump_nobkg_path, 'cells_nobkg', 'cellzero_nobkg', 'runMeta', '-v7.3');
+            else
+                save(param_struct.dump_nobkg_path, 'cells_nobkg', 'runMeta', '-v7.3');
+            end
+        end
+    elseif endsWith(param_struct.dump_nobkg_path, '.tif')
+        if ~contains(param_struct.dump_nobkg_path, '{CELLNO}')
+            fprintf("WARNING: Cannot save multiple cells to single tif. Writing tifs per cell instead.\n");
+            [dd, fn, ext] = fileparts(param_struct.dump_nobkg_path);
+            param_struct.dump_nobkg_path = [dd filesep fn '_CELL{CELLNO}.' ext];
+        end
+
+        tifop = struct();
+        tifop.overwrite = true;
+        for c = 0:cellCount
+            tempPath = sprintf('%s%04d.mat', [wd filesep savebkg_file_stem c]);
+            if isfile(tempPath)
+                load(tempPath, 'cell_nobkg');
+                delete tempPath;
+                cell_nobkg = int32(cell_nobkg); %Difference of 2 uint16s stored as doubles. This halves the size.
+                tifpath = replace(param_struct.dump_nobkg_path, '{CELLNO}', sprintf('%04d', c));
+                saveastiff(cell_nobkg, tifpath, tifop);
+            end
+        end
+    end
+
+    %If wd is empty, delete it.
+    wdContent = dir(wd);
+    fileCount = size(wdContent,1);
+    if fileCount < 3
+        %ie. only contents are '.' and '..'
+        [delOkay, ~, ~] = rmdir(wd);
+        if delOkay
+            fprintf("Deleted temporary directory %s\n", wd);
+        end
+    end
+end
 
 end %end of Main function
 
