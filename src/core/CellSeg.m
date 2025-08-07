@@ -783,6 +783,10 @@ classdef CellSeg
         function cell_info = getCellInfo(cell_mask, nuc_label)
             nucmax = uint16(max(nuc_label, [], 3, 'omitnan'));
             mm = max(cell_mask, [], 'all', 'omitnan');
+            if mm < 1
+                cell_info = [];
+                return;
+            end
             cell_info(mm) = struct('Centroid', NaN, 'MajorAxisLength', NaN, 'MinorAxisLength', NaN, 'FilledArea', NaN, 'Image', []);
             for j = 1 : mm                                                            % organise cell information
                 this_cell_mask = uint16(cell_mask == j);  %sieve out dots in cell j

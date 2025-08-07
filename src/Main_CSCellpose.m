@@ -6,7 +6,7 @@ function Main_CSCellpose(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.07.31.00';
+BUILD_STRING = '2025.08.04.00';
 VERSION_STRING = 'v1.3.1';
 
 % ========================== Process args ==========================
@@ -118,10 +118,10 @@ for i = 1:nargin
             if arg_debug; fprintf("Output Path Set: %s\n", cellpose_options.output_path); end
         elseif strcmp(lastkey, "ocellmask")
             cellpose_options.outpath_cell_mask = argval;
-            if arg_debug; fprintf("Cell Mask TIF Output Path Set: %s\n", cellpose_options.outpath_cell_mask); end
+            if arg_debug; fprintf("Cell Mask Dump Output Path Set: %s\n", cellpose_options.outpath_cell_mask); end
         elseif strcmp(lastkey, "onucmask")
             cellpose_options.outpath_nuc_mask = argval;
-            if arg_debug; fprintf("Nucleus Mask TIF Output Path Set: %s\n", cellpose_options.outpath_nuc_mask); end
+            if arg_debug; fprintf("Nucleus Mask Dump Output Path Set: %s\n", cellpose_options.outpath_nuc_mask); end
         elseif strcmp(lastkey, "osettings")
             cellpose_options.outpath_settings = argval;
             cellpose_options.dump_summary = true;
@@ -139,7 +139,7 @@ for i = 1:nargin
             cellpose_options.ch_nuc = Force2Num(argval);
             if arg_debug; fprintf("Nuc Channel Index Set: %d\n", cellpose_options.ch_nuc); end
         elseif strcmp(lastkey, "voxelsize")
-            idims_voxel = parseDimsTo(argval, cellpose_options.idims_voxel);
+            idims_voxel = parseDimsTo(argval, []);
             if idims_voxel.z > 0
                 cellpose_settings.z2xy = idims_voxel.z / idims_voxel.x;
                 if arg_debug; fprintf("Z to XY Anisotropy Ratio Set: %.3f\n", cellpose_settings.z2xy); end
@@ -233,14 +233,14 @@ if isempty(cellpose_options.imgname)
     fprintf("Image name not specified. Set to %s\n", cellpose_options.imgname);
 end
 
-if isempty(cellpose_options.outpath)
+if isempty(cellpose_options.output_path)
     [indir, ~, ~] = fileparts(cellpose_options.input_path);
-    cellpose_options.outpath = [indir filesep 'TSCP_' cellpose_options.imgname '.mat'];
-    fprintf("Output path not specified. Set to %s\n", cellpose_options.outpath);
+    cellpose_options.output_path = [indir filesep 'TSCP_' cellpose_options.imgname '.mat'];
+    fprintf("Output path not specified. Set to %s\n", cellpose_options.output_path);
 end
 
-if ~cellpose_options.overwrite_output & isfile(cellpose_options.outpath)
-    fprintf("Output file %s already exists! Exiting...\n", cellpose_options.outpath);
+if ~cellpose_options.overwrite_output & isfile(cellpose_options.output_path)
+    fprintf("Output file %s already exists! Exiting...\n", cellpose_options.output_path);
     return;
 end
 
@@ -291,8 +291,8 @@ fprintf("[%s] Segmentation attempt completed. Saving...\n", datetime);
 
 runMeta = struct();
 runMeta.modifiedDate = datetime;
-runMeta.tsCellSegBuild = buildString;
-runMeta.tsCellSegVersion = versionString;
+runMeta.tsCellSegBuild = BUILD_STRING;
+runMeta.tsCellSegVersion = VERSION_STRING;
 
 runMeta.srcImage = cellpose_options.input_path;
 runMeta.srcImageChTotal = cellpose_options.total_ch;
@@ -332,19 +332,34 @@ if cellpose_options.dump_summary
     printSummary(cellpose_options, cellpose_settings);
 end
 
-%TODO Masks as tif or png
-
+%Masks as tif or png
+if ~isempty(cellpose_options.outpath_cell_mask)
+    dumpMaskToImageFile(cellpose_options.outpath_cell_mask, cell_lbl);
+end
+if ~isempty(cellpose_options.outpath_nuc_mask)
+    dumpMaskToImageFile(cellpose_options.outpath_nuc_mask, nuc_lbl);
+end
 
 end %--- END MAIN
 
 function dumpMaskToImageFile(outpath, maskdata)
-%TODO
-if endsWith(outpath, '.png')
-    %TODO
-elseif endsWith(outpath, '.tif')
-    %TODO
-end
-
+    [wdir, ~, ~] = fileparts(outpath);
+    if ~isfolder(wdir)
+        mkdir(wdir);
+    end
+    if endsWith(outpath, '.png')
+        if ndims(maskdata) > 2
+            maskdata = max(maxdata, [], 3, 'omitnan');
+        end
+        fh = figure(1);
+        imshow(maskdata, []);
+        saveas(fh, outpath);
+        close(fh);
+    elseif endsWith(outpath, '.tif')
+        tiffops = struct('overwrite', true);
+        saveastiff(maskdata, outpath, tiffops);
+        clear tiffops
+    end
 end
 
 function printSummary(options, cellpose_settings)

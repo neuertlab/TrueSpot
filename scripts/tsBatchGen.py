@@ -86,7 +86,7 @@ class CellsegSettings:
         
     def fromXmlNode(self, element):
         if 'UseCellpose' in element.attrib:
-            self.useCellpos = bool(element.attrib['UseCellpose'])
+            self.useCellpose = bool(element.attrib['UseCellpose'])
             
         for child in element:
             if child.tag == 'PresetName':
