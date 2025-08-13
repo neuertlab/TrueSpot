@@ -6,13 +6,15 @@ function Main_CSCellpose(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.08.04.00';
+BUILD_STRING = '2025.08.13.05';
 VERSION_STRING = 'v1.3.1';
 
 % ========================== Process args ==========================
 
 arg_debug = true; %CONSTANT used for debugging arg parser.
 cellpose_options = struct();
+cellpose_options.hybrid_nuc = false;
+cellpose_options.skip_nuc = false;
 cellpose_options.overwrite_output = false;
 cellpose_options.dump_summary = false;
 cellpose_options.input_path = [];
@@ -94,6 +96,14 @@ for i = 1:nargin
             if arg_debug; fprintf("Ensemble Model for Cell & Nuc Analysis: On\n"); end
             override_checklist.censemble = true;
             override_checklist.nensemble = true;
+            lastkey = [];
+        elseif strcmp(lastkey, "skipnuc")
+            cellpose_options.skip_nuc = true;
+            if arg_debug; fprintf("Do nuclear segmentation: Off\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "hybridnuc")
+            cellpose_options.hybrid_nuc = true;
+            if arg_debug; fprintf("Use hybrid approach to nuclear segmentation: On\n"); end
             lastkey = [];
         end
         
@@ -182,9 +192,17 @@ for i = 1:nargin
             cellpose_settings.cyto_params.min_size = Force2Num(argval);
             if arg_debug; fprintf("Min Cell Size Set: %d\n", cellpose_settings.cyto_params.min_size); end
             override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "cszmax")
+            cellpose_settings.cyto_params.max_size = Force2Num(argval);
+            if arg_debug; fprintf("Max Cell Size Set: %d\n", cellpose_settings.cyto_params.max_size); end
+            override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "nszmin")
             cellpose_settings.nuc_params.min_size = Force2Num(argval);
             if arg_debug; fprintf("Min Nuc Size Set: %d\n", cellpose_settings.nuc_params.min_size); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "nszmax")
+            cellpose_settings.nuc_params.max_size = Force2Num(argval);
+            if arg_debug; fprintf("Max Nuc Size Set: %d\n", cellpose_settings.nuc_params.max_size); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "czmin")
             cellpose_settings.czmin = Force2Num(argval);
@@ -257,6 +275,8 @@ end
 %--- Run Cellpose
 nuc_channel = [];
 nuc_lbl = [];
+nuc_stats = [];
+nuc_bkg_stats = [];
 if cellpose_options.ch_nuc > 0
     fprintf("[%s] Attempting nuclear segmentation...\n", datetime);
     fprintf("[%s] Loading nuclear marker channel...\n", datetime);
@@ -271,7 +291,16 @@ if cellpose_options.ch_nuc > 0
     nuc_channel = channels{cellpose_options.ch_nuc, 1};
     clear channels
 
-    nuc_lbl = CellPoseTS.runNuclearSegmentation(nuc_channel, cellpose_settings);
+    if ~cellpose_options.skip_nuc
+        fprintf("[%s] Prediciting nuclei...\n", datetime);
+        if cellpose_options.hybrid_nuc
+            [nuc_lbl, nuc_stats, nuc_bkg_stats] = CellPoseTS.runHybrid3DNuclearSegmentation(nuc_channel, cellpose_settings, true);
+        else
+            [nuc_lbl, ~] = CellPoseTS.runNuclearSegmentation(nuc_channel, cellpose_settings, true);
+        end
+    else
+        nuc_lbl = uint16(zeros(size(nuc_channel)));
+    end
 end
 
 cell_lbl = [];
@@ -283,9 +312,13 @@ if cellpose_options.ch_light > 0
     cyto_channel = channels{cellpose_options.ch_light, 1};
     clear channels
 
-    cell_lbl = CellPoseTS.runCytoSegmentation(cyto_channel, nuc_channel, cellpose_settings);
+    fprintf("[%s] Prediciting cell boundaries...\n", datetime);
+    [cell_lbl, ~] = CellPoseTS.runCytoSegmentation(cyto_channel, nuc_channel, cellpose_settings, true);
+
+    if isempty(nuc_lbl); nuc_lbl = zeros(size(cyto_channel)); end
 end
 fprintf("[%s] Segmentation attempt completed. Saving...\n", datetime);
+clear cyto_channel nuc_channel
 
 %--- Save Results
 
@@ -314,6 +347,15 @@ else
     outpath = cellpose_options.output_path;
 end
 
+
+fprintf("[%s] Nucleus count: %d\n", datetime, max(nuc_lbl, [], 'all', 'omitnan'));
+fprintf("[%s] Cell count: %d\n", datetime, max(cell_lbl, [], 'all', 'omitnan'));
+
+if ~isempty(cell_lbl) & ~isempty(nuc_lbl)
+    fprintf("[%s] Updating nuclear mask to match cell mask...\n", datetime);
+    [cell_lbl, nuc_lbl] = CellPoseTS.matchCellNucLabels(cell_lbl, nuc_lbl, nuc_bkg_stats);
+end
+
 cellSeg = struct('cell_mask', cell_lbl);
 cellSeg.cell_info = CellSeg.getCellInfo(cell_lbl, nuc_lbl);
 nucleiSeg = struct();
@@ -321,11 +363,10 @@ nucleiSeg.results = CellSeg.genNucSegResultsStruct();
 nucleiSeg.results.nuc_label = max(double(nuc_lbl), [], 3, 'omitnan');
 nucleiSeg.results.nuclei = uint16(nucleiSeg.results.nuc_label);
 nucleiSeg.results.lbl_mid = (nuc_lbl ~= 0);
+nucleiSeg.results.nuc_stats = nuc_stats;
 save(outpath, 'cellSeg', 'nucleiSeg', 'runMeta', 'cellpose_settings', '-v7.3');
 
 clear cellSeg nucleiSeg
-
-
 
 %--- Output Extra Stuff
 if cellpose_options.dump_summary
@@ -349,7 +390,7 @@ function dumpMaskToImageFile(outpath, maskdata)
     end
     if endsWith(outpath, '.png')
         if ndims(maskdata) > 2
-            maskdata = max(maxdata, [], 3, 'omitnan');
+            maskdata = max(maskdata, [], 3, 'omitnan');
         end
         fh = figure(1);
         imshow(maskdata, []);
@@ -385,6 +426,8 @@ function printSummary(options, cellpose_settings)
     fprintf(fileHandle, 'ch_light=%d\n', options.ch_light);
     fprintf(fileHandle, 'overwrite_output=%d\n', options.overwrite_output);
     fprintf(fileHandle, 'dump_summary=%d\n', options.dump_summary);
+    fprintf(fileHandle, 'skip_nuc=%d\n', options.skip_nuc);
+    fprintf(fileHandle, 'hybrid_nuc=%d\n', options.hybrid_nuc);
     fprintf(fileHandle, 'save_template_as=%s\n', options.save_template_as);
     fprintf(fileHandle, 'use_template=%s\n', options.use_template);
 

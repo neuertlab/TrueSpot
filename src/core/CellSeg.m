@@ -65,6 +65,14 @@ classdef CellSeg
         end
 
         %%
+        function lbl_mask = removeObjectsAboveSize(lbl_mask, max_size)
+            lbl_oversize = bwareaopen(lbl_mask, max_size);
+            lbl_filt = lbl_mask - lbl_oversize;
+            lbl_mask = bwlabeln(lbl_filt);
+            lbl_mask = uint16(lbl_mask);
+        end
+
+        %%
         %Derived from C1_find_dapi_threshold
         function best_threshold = FindDAPIThreshold(dapi_max, strict_min_size, strict_max_size, step_size, step_count, min_dapi)
             %I had to dig back to 2014 to find these functions, so I will
