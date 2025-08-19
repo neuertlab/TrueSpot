@@ -60,6 +60,7 @@ classdef RNAQuant
             quant_info_struct.workers = 1;
             quant_info_struct.dbgcell = 0;
             quant_info_struct.incl_cell_zero = false;
+            quant_info_struct.dump_bkg_subtracted_images = false;
             
             %Results
             quant_info_struct.plane_stats = [];
@@ -958,6 +959,15 @@ classdef RNAQuant
         end
         
         %% ========================== Parallelization ==========================
+
+        %%
+        function workdir = generateRandomWorkdir(workdir_parent)
+            rn = rand();
+            rn = round(rn * 2000000000);
+            subdir_name = sprintf("quantjob_%08x", rn);
+            workdir = strjoin([workdir_parent filesep subdir_name],'');
+            if ~isfolder(workdir); mkdir(workdir); end
+        end
         
         %%
         function rmres = removeParInternalDir(pardir)
@@ -967,11 +977,7 @@ classdef RNAQuant
         
         %%
         function workdir = initParallel(threads, workers, workdir)
-            rn = rand();
-            rn = round(rn * 2000000000);
-            subdir_name = sprintf("quantjob_%08x", rn);
-            workdir = strjoin([workdir filesep subdir_name],'');
-            mkdir(workdir);
+            workdir = RNAQuant.generateRandomWorkdir(workdir);
             
             pardir = strjoin([workdir filesep 'mlinternal'], '');
             mkdir(pardir);
@@ -1153,6 +1159,12 @@ classdef RNAQuant
             else
                 img_bkg_dbl = double(img_bkg);
                 img_use_dbl = img_raw_dbl - img_bkg_dbl;
+
+                if quant_struct.dump_bkg_subtracted_images
+                    if isempty(quant_struct.workdir)
+                        quant_struct.workdir = generateRandomWorkdir('.');
+                    end
+                end
             end
             clear img_bkg_dbl;
             b_filters = RNAQuant.generateGaussianBFilters(xydim);
@@ -1160,6 +1172,7 @@ classdef RNAQuant
             %We can just do these cell by cell.
             cell_count = size(quant_struct.cell_rna_data,2);
             min_cloud_vol = 0;
+            savebkg_file_stem = 'RNAQuant_savebkg_temp_cell_';
             fprintf("[%s] RNAQuant.FitRNA_S -- Cells found: %d\n", datetime, cell_count);
             if quant_struct.do_gauss_fit
                 fprintf("[%s] RNAQuant.FitRNA_S -- Fitting Gaussians to spots...\n", datetime);
@@ -1171,6 +1184,12 @@ classdef RNAQuant
                     my_cell = RNAQuant.FitGaussians3Cell(cell_nobkg, my_cell,...
                         quant_struct.spotzoom_r_xy, quant_struct.spotzoom_r_z, b_filters);
                     quant_struct.cell_zero = my_cell;
+
+                    if quant_struct.dump_bkg_subtracted_images & ~quant_struct.no_bkg_subtract
+                        savepath = [quant_struct.workdir filesep savebkg_file_stem '0000.mat'];
+                        save(savepath, 'cell_nobkg');
+                        clear savepath
+                    end
                 end
 
                 for c = 1:cell_count
@@ -1182,6 +1201,12 @@ classdef RNAQuant
                     my_cell = RNAQuant.FitGaussians3Cell(cell_nobkg, my_cell,...
                         quant_struct.spotzoom_r_xy, quant_struct.spotzoom_r_z, b_filters);
                     quant_struct.cell_rna_data(c) = my_cell;
+
+                    if quant_struct.dump_bkg_subtracted_images & ~quant_struct.no_bkg_subtract
+                        savepath = sprintf('%s%04d.mat', [quant_struct.workdir filesep savebkg_file_stem], c);
+                        save(savepath, 'cell_nobkg');
+                        clear savepath
+                    end
                 end
                 if quant_struct.do_clouds
                     min_cloud_vol = RNAQuant.suggestMinCloudVolume(quant_struct.cell_rna_data);

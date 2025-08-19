@@ -1,7 +1,7 @@
 %
 %%
 
-%Last build updated: 2025.04.06.01 (v.1.2.0)
+%Last build updated: 2025.07.31.00 (v.1.3.1)
 function quant_results = RNAQuantPipe(param_struct, guimode)
 
 use_nuc_mask = param_struct.use_nuc_mask; %0 = 2d, 1 = lo, 2 = mid, 3 = hi
@@ -285,6 +285,7 @@ quant_results.workers = param_struct.workers;
 quant_results.dbgcell = param_struct.dbgcell;
 quant_results.no_bkg_subtract = param_struct.no_bkg_subtract;
 quant_results.incl_cell_zero = param_struct.incl_cell_zero;
+quant_results.dump_bkg_subtracted_images = ~isempty(param_struct.dump_nobkg_path);
 
 if ~isempty(quant_results.t_coord_table)
    quant_results.t_coord_table = int32(quant_results.t_coord_table);
