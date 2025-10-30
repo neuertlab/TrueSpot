@@ -250,7 +250,7 @@ classdef TrueSpotProjSettings
                     scratchList{argPos} = [outdirPath filesep 'NucMask_' iname '.png']; argPos = argPos + 1;
                 end
                 if (obj.cellsegSettings.outputNucMaskTIF)
-                    scratchList{argPos} = '-oonucmask'; argPos = argPos + 1;
+                    scratchList{argPos} = '-onucmask'; argPos = argPos + 1;
                     scratchList{argPos} = [outdirPath filesep 'NucMask_' iname '.tif']; argPos = argPos + 1;
                 end
                 if (obj.cellsegSettings.dumpSettings)

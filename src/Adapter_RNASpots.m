@@ -93,9 +93,10 @@ if isempty(rna_spot_run.paths.out_dir)
 end
 if isempty(rna_spot_run.img_name)
     %Defaults to input file name
-    [~, rna_spot_run.img_name, ~] = fileparts(rna_spot_run.paths.img_path);
+    %[~, rna_spot_run.img_name, ~] = fileparts(rna_spot_run.paths.img_path);
     %Remove any extraneous dots to not confuse downstream fileparts calls
-    rna_spot_run.img_name = replace(rna_spot_run.img_name, '.', '_');
+    %rna_spot_run.img_name = replace(rna_spot_run.img_name, '.', '_');
+    rna_spot_run.img_name = RNAUtils.imageNameFromFile(rna_spot_run.paths.img_path);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Image name not provided. Set to %s", rna_spot_run.img_name), true);
 end
 if ~isempty(rna_spot_run.paths.ctrl_img_path)

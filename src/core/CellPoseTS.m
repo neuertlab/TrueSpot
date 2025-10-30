@@ -332,11 +332,11 @@ classdef CellPoseTS
             %TODO Retry finding nuc for cells without nuclei
 
             %DEBUG
-            figure(200);
-            imshow(max(nuc_lbl, [],3, 'omitnan'), []);
-
-            figure(201);
-            imshow(cell_lbl, []);
+            % figure(200);
+            % imshow(max(nuc_lbl, [],3, 'omitnan'), []);
+            % 
+            % figure(201);
+            % imshow(cell_lbl, []);
 
         end
 

@@ -6,13 +6,14 @@ function Main_CSCellpose(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.08.13.05';
-VERSION_STRING = 'v1.3.1';
+BUILD_STRING = '2025.10.29.00';
+VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
 
 arg_debug = true; %CONSTANT used for debugging arg parser.
 cellpose_options = struct();
+cellpose_options.cd_nuc = false;
 cellpose_options.hybrid_nuc = false;
 cellpose_options.skip_nuc = false;
 cellpose_options.overwrite_output = false;
@@ -32,11 +33,13 @@ cellpose_options.use_template = [];
 cellpose_options.save_template_as = [];
 
 cellpose_settings = CellPoseTS.genCellposeParamStruct();
+cellpose_settings.cdnuc_settings = CellSeg.genNucSegStruct();
 
 override_checklist = struct();
 OVERRIDE_OPS = {'cnorm' 'nnorm' 'censemble' 'nensemble' 'voxelsize' 'cmodel' 'nmodel' ...
     'cavgdia' 'navgdia' 'ccth' 'ncth' 'cfth' 'nfth' 'cszmin' 'nszmin' ...
-    'czmin' 'czmax' 'nzmin' 'nzmax'};
+    'czmin' 'czmax' 'nzmin' 'nzmax' 'xtrim' 'ytrim' ...
+    'nszmax' 'ndxy' 'nzrange' 'ncutoff' 'nthsmpl'};
 ovrcount = size(OVERRIDE_OPS, 2);
 for i = 1:ovrcount
     override_checklist.(OVERRIDE_OPS{i}) = false;
@@ -102,8 +105,13 @@ for i = 1:nargin
             if arg_debug; fprintf("Do nuclear segmentation: Off\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "hybridnuc")
+            %Experimental DON'T USE THIS!!
             cellpose_options.hybrid_nuc = true;
             if arg_debug; fprintf("Use hybrid approach to nuclear segmentation: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "cdnuc")
+            cellpose_options.cd_nuc = true;
+            if arg_debug; fprintf("Use CellDissect algorithm for nuclear segmentation: On\n"); end
             lastkey = [];
         end
         
@@ -198,10 +206,12 @@ for i = 1:nargin
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "nszmin")
             cellpose_settings.nuc_params.min_size = Force2Num(argval);
+            cellpose_settings.cdnuc_settings.min_nucleus_size = cellpose_settings.nuc_params.min_size;
             if arg_debug; fprintf("Min Nuc Size Set: %d\n", cellpose_settings.nuc_params.min_size); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "nszmax")
             cellpose_settings.nuc_params.max_size = Force2Num(argval);
+            cellpose_settings.cdnuc_settings.max_nucleus_size = cellpose_settings.nuc_params.max_size;
             if arg_debug; fprintf("Max Nuc Size Set: %d\n", cellpose_settings.nuc_params.max_size); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "czmin")
@@ -214,11 +224,37 @@ for i = 1:nargin
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "nzmin")
             cellpose_settings.nzmin = Force2Num(argval);
+            cellpose_settings.cdnuc_settings.z_min = cellpose_settings.nzmin;
             if arg_debug; fprintf("Nuc Channel Z Min Set: %d\n", cellpose_settings.nzmin); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "nzmax")
             cellpose_settings.nzmax = Force2Num(argval);
+            cellpose_settings.cdnuc_settings.z_max = cellpose_settings.nzmax;
             if arg_debug; fprintf("Nuc Channel Z Max Set: %d\n", cellpose_settings.nzmax); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "xtrim")
+            cellpose_settings.cdnuc_settings.x_trim = Force2Num(argval);
+            if arg_debug; fprintf("X Trim set: %d\n", cellpose_settings.cdnuc_settings.x_trim); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "ytrim")
+            cellpose_settings.cdnuc_settings.y_trim = Force2Num(argval);
+            if arg_debug; fprintf("Y Trim set: %d\n", cellpose_settings.cdnuc_settings.y_trim); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "nzrange")
+            cellpose_settings.cdnuc_settings.threshold_sampling = Force2Num(argval);
+            if arg_debug; fprintf("CD Nuc seg Z range set: %d\n", cellpose_settings.cdnuc_settings.threshold_sampling); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "nthsmpl")
+            cellpose_settings.cdnuc_settings.range = Force2Num(argval);
+            if arg_debug; fprintf("CD NucSeg Threshold Sampler Set: %d\n", cellpose_settings.cdnuc_settings.range); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "ncutoff")
+            cellpose_settings.cdnuc_settings.cutoff = Force2Num(argval);
+            if arg_debug; fprintf("CD NucSeg Cutoff Set: %f\n", cellpose_settings.cdnuc_settings.cutoff); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "dxy")
+            cellpose_settings.cdnuc_settings.ndxy = Force2Num(argval);
+            if arg_debug; fprintf("CD NucSeg dxy Set: %f\n", cellpose_settings.cdnuc_settings.ndxy); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "template")
             cellpose_options.use_template = argval;
@@ -246,8 +282,9 @@ if isempty(cellpose_options.input_path)
 end
 
 if isempty(cellpose_options.imgname)
-    [~, fn, ~] = fileparts(cellpose_options.input_path);
-    cellpose_options.imgname = fn;
+    % [~, fn, ~] = fileparts(cellpose_options.input_path);
+    % cellpose_options.imgname = fn;
+    cellpose_options.imgname = RNAUtils.imageNameFromFile(cellpose_options.input_path);
     fprintf("Image name not specified. Set to %s\n", cellpose_options.imgname);
 end
 
@@ -277,6 +314,7 @@ nuc_channel = [];
 nuc_lbl = [];
 nuc_stats = [];
 nuc_bkg_stats = [];
+cdNucSegRes = [];
 if cellpose_options.ch_nuc > 0
     fprintf("[%s] Attempting nuclear segmentation...\n", datetime);
     fprintf("[%s] Loading nuclear marker channel...\n", datetime);
@@ -293,10 +331,15 @@ if cellpose_options.ch_nuc > 0
 
     if ~cellpose_options.skip_nuc
         fprintf("[%s] Prediciting nuclei...\n", datetime);
-        if cellpose_options.hybrid_nuc
-            [nuc_lbl, nuc_stats, nuc_bkg_stats] = CellPoseTS.runHybrid3DNuclearSegmentation(nuc_channel, cellpose_settings, true);
+        if ~cellpose_options.cd_nuc
+            if cellpose_options.hybrid_nuc
+                [nuc_lbl, nuc_stats, nuc_bkg_stats] = CellPoseTS.runHybrid3DNuclearSegmentation(nuc_channel, cellpose_settings, true);
+            else
+                [nuc_lbl, ~] = CellPoseTS.runNuclearSegmentation(nuc_channel, cellpose_settings, true);
+            end
         else
-            [nuc_lbl, ~] = CellPoseTS.runNuclearSegmentation(nuc_channel, cellpose_settings, true);
+            [cellpose_settings.cdnuc_settings, cdNucSegRes] = CellSeg.AutosegmentNuclei(nuc_channel, cellpose_settings.cdnuc_settings);
+            nuc_lbl = cdNucSegRes.results.nuclei; %TODO Check this
         end
     else
         nuc_lbl = uint16(zeros(size(nuc_channel)));
@@ -359,11 +402,17 @@ end
 cellSeg = struct('cell_mask', cell_lbl);
 cellSeg.cell_info = CellSeg.getCellInfo(cell_lbl, nuc_lbl);
 nucleiSeg = struct();
-nucleiSeg.results = CellSeg.genNucSegResultsStruct();
-nucleiSeg.results.nuc_label = max(double(nuc_lbl), [], 3, 'omitnan');
-nucleiSeg.results.nuclei = uint16(nucleiSeg.results.nuc_label);
-nucleiSeg.results.lbl_mid = (nuc_lbl ~= 0);
-nucleiSeg.results.nuc_stats = nuc_stats;
+if cellpose_settings.cd_nuc
+    cdNucSegRes.nuclei = nuc_lbl;
+    cdNucSegRes.nuc_label = max(double(nuc_lbl), [], 3, 'omitnan');
+    nucleiSeg.results = cdNucSegRes;
+else
+    nucleiSeg.results = CellSeg.genNucSegResultsStruct();
+    nucleiSeg.results.nuc_label = max(double(nuc_lbl), [], 3, 'omitnan');
+    nucleiSeg.results.nuclei = uint16(nucleiSeg.results.nuc_label);
+    nucleiSeg.results.lbl_mid = (nuc_lbl ~= 0);
+    nucleiSeg.results.nuc_stats = nuc_stats;
+end
 save(outpath, 'cellSeg', 'nucleiSeg', 'runMeta', 'cellpose_settings', '-v7.3');
 
 clear cellSeg nucleiSeg
@@ -427,7 +476,8 @@ function printSummary(options, cellpose_settings)
     fprintf(fileHandle, 'overwrite_output=%d\n', options.overwrite_output);
     fprintf(fileHandle, 'dump_summary=%d\n', options.dump_summary);
     fprintf(fileHandle, 'skip_nuc=%d\n', options.skip_nuc);
-    fprintf(fileHandle, 'hybrid_nuc=%d\n', options.hybrid_nuc);
+    fprintf(fileHandle, 'cd_nuc=%d\n', options.cd_nuc);
+    %fprintf(fileHandle, 'hybrid_nuc=%d\n', options.hybrid_nuc);
     fprintf(fileHandle, 'save_template_as=%s\n', options.save_template_as);
     fprintf(fileHandle, 'use_template=%s\n', options.use_template);
 
@@ -446,14 +496,26 @@ function printSummary(options, cellpose_settings)
     fprintf(fileHandle, 'cellpose_settings.cyto_params.ensemble_bool=%d\n', cellpose_settings.cyto_params.ensemble_bool);
     fprintf(fileHandle, 'cellpose_settings.cyto_params.do3D=%d\n', cellpose_settings.cyto_params.do3D);
 
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.model_name=%s\n', cellpose_settings.nuc_params.model_name);
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.avg_dia=%d\n', cellpose_settings.nuc_params.avg_dia);
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.cell_threshold=%d\n', cellpose_settings.nuc_params.cell_threshold);
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.flow_threshold=%.3f\n', cellpose_settings.nuc_params.flow_threshold);
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.min_size=%d\n', cellpose_settings.nuc_params.min_size);
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.normalize_bool=%d\n', cellpose_settings.nuc_params.normalize_bool);
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.ensemble_bool=%d\n', cellpose_settings.nuc_params.ensemble_bool);
-    fprintf(fileHandle, 'cellpose_settings.nuc_params.do3D=%d\n', cellpose_settings.nuc_params.do3D);
+    if cellpose_settings.cd_nuc
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.min_nucleus_size=%d\n', cellpose_settings.cdnuc_settings.min_nucleus_size);
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.max_nucleus_size=%d\n', cellpose_settings.cdnuc_settings.max_nucleus_size);
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.range=%d\n', cellpose_settings.cdnuc_settings.range);
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.threshold_sampling=%d\n', cellpose_settings.cdnuc_settings.threshold_sampling);
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.cutoff=%f\n', cellpose_settings.cdnuc_settings.cutoff);
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.dxy=%f\n', cellpose_settings.cdnuc_settings.dxy);
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.x_trim=%d\n', cellpose_settings.cdnuc_settings.x_trim);
+        fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.y_trim=%d\n', cellpose_settings.cdnuc_settings.y_trim);
+    else
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.model_name=%s\n', cellpose_settings.nuc_params.model_name);
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.avg_dia=%d\n', cellpose_settings.nuc_params.avg_dia);
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.cell_threshold=%d\n', cellpose_settings.nuc_params.cell_threshold);
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.flow_threshold=%.3f\n', cellpose_settings.nuc_params.flow_threshold);
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.min_size=%d\n', cellpose_settings.nuc_params.min_size);
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.normalize_bool=%d\n', cellpose_settings.nuc_params.normalize_bool);
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.ensemble_bool=%d\n', cellpose_settings.nuc_params.ensemble_bool);
+        fprintf(fileHandle, 'cellpose_settings.nuc_params.do3D=%d\n', cellpose_settings.nuc_params.do3D);
+    end
+
     fclose(fileHandle);
 end
 
@@ -508,11 +570,31 @@ function cellpose_settings = loadTemplateInto(template_name, cellpose_settings, 
     if ~override_checklist.cfth; cellpose_settings.cyto_params.flow_threshold = t_cyto.flow_threshold; end
     if ~override_checklist.nfth; cellpose_settings.nuc_params.flow_threshold = t_nuc.flow_threshold; end
     if ~override_checklist.cszmin; cellpose_settings.cyto_params.min_size = t_cyto.min_size; end
-    if ~override_checklist.nszmin; cellpose_settings.nuc_params.min_size = t_nuc.min_size; end
+    if ~override_checklist.nszmin
+        cellpose_settings.nuc_params.min_size = t_nuc.min_size;
+        cellpose_settings.cdnuc_settings.min_nucleus_size = params.cdnuc_settings.min_nucleus_size;
+    end
+    if ~override_checklist.nszmax
+        cellpose_settings.nuc_params.max_size = t_nuc.max_size; 
+        cellpose_settings.cdnuc_settings.max_nucleus_size = params.cdnuc_settings.max_nucleus_size;
+    end
     if ~override_checklist.czmin; cellpose_settings.czmin = params.czmin; end
     if ~override_checklist.czmax; cellpose_settings.czmax = params.czmax; end
-    if ~override_checklist.nzmin; cellpose_settings.nzmin = params.nzmin; end
-    if ~override_checklist.nzmax; cellpose_settings.nzmax = params.nzmax; end
+    if ~override_checklist.nzmin
+        cellpose_settings.nzmin = params.nzmin;
+        cellpose_settings.cdnuc_settings.z_min = params.cdnuc_settings.z_min;
+    end
+    if ~override_checklist.nzmax
+        cellpose_settings.nzmax = params.nzmax;
+        cellpose_settings.cdnuc_settings.z_max = params.cdnuc_settings.z_max;
+    end
+
+    if ~override_checklist.xtrim; cellpose_settings.cdnuc_settings.x_trim = params.cdnuc_settings.x_trim; end
+    if ~override_checklist.ytrim; cellpose_settings.cdnuc_settings.y_trim = params.cdnuc_settings.y_trim; end
+    if ~override_checklist.ndxy; cellpose_settings.cdnuc_settings.dxy = params.cdnuc_settings.dxy; end
+    if ~override_checklist.nzrange; cellpose_settings.cdnuc_settings.range = params.cdnuc_settings.range; end
+    if ~override_checklist.ncutoff; cellpose_settings.cdnuc_settings.cutoff = params.cdnuc_settings.cutoff; end
+    if ~override_checklist.nthsmpl; cellpose_settings.cdnuc_settings.threshold_sampling = params.cdnuc_settings.threshold_sampling; end
 end
 
 function saveTemplate(template_name, cellpose_settings)

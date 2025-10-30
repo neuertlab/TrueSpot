@@ -330,6 +330,19 @@ classdef RNAUtils
             end
         end
 
+        %%
+        function imgname = imageNameFromFile(filePath)
+            MAX_NAME_LEN = 48;
+            [~, fname, ~] = fileparts(filePath);
+
+            %Clean up so less likely to have future file naming issues
+            imgname = replace(fname, '.', '');
+            imgname = replace(imgname, ' ', '_');
+            if length(imgname) > MAX_NAME_LEN
+                imgname = imgname(1:MAX_NAME_LEN);
+            end
+        end
+
     end
     
 end

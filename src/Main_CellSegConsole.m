@@ -5,8 +5,8 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2025.02.07.01';
-VERSION_STRING = 'v1.1.2';
+BUILD_STRING = '2025.10.29.00';
+VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
 
@@ -189,10 +189,12 @@ end
 
 if isempty(cellseg_options.imgname)
     %Just grab the file name.
-    [~, cellseg_options.imgname, ~] = fileparts(cellseg_options.input_path);
-    while contains(cellseg_options.imgname, ".")
-        [~, cellseg_options.imgname, ~] = fileparts(cellseg_options.imgname);
-    end
+    % [~, cellseg_options.imgname, ~] = fileparts(cellseg_options.input_path);
+    % while contains(cellseg_options.imgname, ".")
+    %     [~, cellseg_options.imgname, ~] = fileparts(cellseg_options.imgname);
+    % end
+    cellseg_options.imgname = RNAUtils.imageNameFromFile(cellseg_options.input_path);
+    fprintf("Image name not provided. Set to: %s\n", cellseg_options.imgname);
 end
 
 if isempty(cellseg_options.output_path)
@@ -606,4 +608,7 @@ function cellseg_options = genOptionsStruct()
 
     cellseg_options.cell_params = CellSeg.genCellSegParameterStruct();
     cellseg_options.nuc_params = CellSeg.genNucSegStruct();
+
+    cellseg_options.use_cellpose = false;
+    cellseg_options.cellpose_settings = CellPoseTS.genCellposeParamStruct();
 end

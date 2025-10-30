@@ -5,6 +5,19 @@ classdef TrueSpotXML
      %%
     methods (Static)
 
+        function boolres = isAbsolutePath(path)
+            if ispc
+                boolres = contains(path, ':');
+            else
+                boolres = startsWith(path, '/');
+            end
+        end
+
+        function abspath = rel2absPath(relpath, wd)
+            abspath = [wd filesep relpath]; %Quick way
+            abspath = replace(abspath, '/', filesep);
+        end
+
         %% ========================== Read ==========================
         function textData = getElementText(xmlElement)
             sChild = getFirstChild(xmlElement);
@@ -433,6 +446,44 @@ classdef TrueSpotXML
                     gChild = getNextSibling(gChild);
                 end
             end
+
+            %Detect any relative paths and convert to absolute
+            [xmldir, ~, ~] = fileparts(xmlpath);
+            for i = 1:batchCount
+                batchStruct = batchList(i);
+                if ~isempty(batchStruct.batchSettings.paths.inputPath)
+                    if ~TrueSpotXML.isAbsolutePath(batchStruct.batchSettings.paths.inputPath)
+                        batchStruct.batchSettings.paths.inputPath = TrueSpotXML.rel2absPath(batchStruct.batchSettings.paths.inputPath, xmldir);
+                    end
+                end
+
+                if ~isempty(batchStruct.batchSettings.paths.controlPath)
+                    if ~TrueSpotXML.isAbsolutePath(batchStruct.batchSettings.paths.controlPath)
+                        batchStruct.batchSettings.paths.controlPath = TrueSpotXML.rel2absPath(batchStruct.batchSettings.paths.controlPath, xmldir);
+                    end
+                end
+
+                if ~isempty(batchStruct.batchSettings.paths.outputPath)
+                    if ~TrueSpotXML.isAbsolutePath(batchStruct.batchSettings.paths.outputPath)
+                        batchStruct.batchSettings.paths.outputPath = TrueSpotXML.rel2absPath(batchStruct.batchSettings.paths.outputPath, xmldir);
+                    end
+                end
+
+                if ~isempty(batchStruct.batchSettings.paths.extCellMaskStem)
+                    if ~TrueSpotXML.isAbsolutePath(batchStruct.batchSettings.paths.extCellMaskStem)
+                        batchStruct.batchSettings.paths.extCellMaskStem = TrueSpotXML.rel2absPath(batchStruct.batchSettings.paths.extCellMaskStem, xmldir);
+                    end
+                end
+
+                if ~isempty(batchStruct.batchSettings.paths.extNucMaskStem)
+                    if ~TrueSpotXML.isAbsolutePath(batchStruct.batchSettings.paths.extNucMaskStem)
+                        batchStruct.batchSettings.paths.extNucMaskStem = TrueSpotXML.rel2absPath(batchStruct.batchSettings.paths.extNucMaskStem, xmldir);
+                    end
+                end
+
+                batchList(i) = batchStruct;
+            end
+
         end
 
     end
