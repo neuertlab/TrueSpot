@@ -5,6 +5,17 @@ import pathlib
 import os
 import xml.etree.ElementTree as ETree
 import datetime
+import numpy
+
+def str2bool(val):
+    #https://stackoverflow.com/questions/715417/converting-from-a-string-to-boolean-in-python
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    else:
+        raise ValueError("invalid truth value %r" % (val,))
 
 class MetaSettings:
     def __init__(self):
@@ -74,6 +85,50 @@ class MetaSettings:
             self.voxelDims = other.voxelDims
         else:
             self.mergeVoxelDims(other)
+            
+class CellposeSubSettings:
+    def __init__(self):
+        self.avgDia = 0
+        self.norm = False
+        self.modelName = None
+        self.ensemble = False
+        self.cellTh = numpy.nan
+        self.flowTh = numpy.nan
+    
+    def fromXmlNode(self, element):
+        if 'AvgDia' in element.attrib:
+            self.avgDia = int(element.attrib['AvgDia'])   
+        
+        if 'Normalize' in element.attrib:
+            self.norm = str2bool(element.attrib['Normalize'])
+            
+        for child in element:
+            if child.tag == 'Model':
+                if 'Name' in child.attrib:
+                    self.modelName = child.attrib['Name']
+                if 'Ensemble' in child.attrib:
+                    self.ensemble = str2bool(child.attrib['Ensemble'])
+            elif child.tag == 'TuningThresholds':
+                if 'Cell' in child.attrib:
+                    self.cellTh = float(child.attrib['Cell']) 
+                if 'Flow' in child.attrib:
+                    self.flowTh = float(child.attrib['Flow'])
+                    
+    def copyDataFrom(self, other, overwrite):
+        if other is None:
+            return
+        if overwrite or (self.modelName is None):
+            self.modelName = other.modelName
+        if overwrite or (self.avgDia <= 0):
+            self.avgDia = other.avgDia
+        if overwrite or not self.norm:
+            self.norm = other.norm
+        if overwrite or not self.ensemble:
+            self.ensemble = other.ensemble
+        if overwrite or (numpy.isnan(self.cellTh)):
+            self.cellTh = other.cellTh
+        if overwrite or (numpy.isnan(self.flowTh)):
+            self.flowTh = other.flowTh              
         
 class CellsegSettings:
     def __init__(self):
@@ -82,12 +137,30 @@ class CellsegSettings:
         self.lightZMax = 0
         self.nucZMin = 0
         self.nucZMax = 0
-        self.useCellpose = False
+        
+        self.cellSizeMin = 0
+        self.cellSizeMax = 0
+        self.nucSizeMin = 0
+        self.nucSizeMax = 0
+        
+        self.opNucMaskOut = None
+        self.opCellMaskOut = None
+        self.overwrite = True
+        self.dumpSettings = True
+        
+        self.xTrim = -1
+        self.yTrim = -1
+        self.nucZRange = -1
+        self.nucThSmpl = -1
+        self.nucCutoff = numpy.nan
+        self.nucDxy = numpy.nan
+        
+        self.useCellposeNuc = False
+        self.useCellposeCyto = False
+        self.cellposeNuc = None
+        self.cellposeCyto = None
         
     def fromXmlNode(self, element):
-        if 'UseCellpose' in element.attrib:
-            self.useCellpose = bool(element.attrib['UseCellpose'])
-            
         for child in element:
             if child.tag == 'PresetName':
                 self.templateName = cleanXmlValueString(child.text)
@@ -100,7 +173,51 @@ class CellsegSettings:
                 if 'Min' in child.attrib:
                     self.nucZMin = int(child.attrib['Min'])
                 if 'Max' in child.attrib:
-                    self.nucZMax = int(child.attrib['Max'])            
+                    self.nucZMax = int(child.attrib['Max'])
+            elif child.tag == 'CellSize':
+                if 'Min' in child.attrib:
+                    self.cellSizeMin = int(child.attrib['Min'])
+                if 'Max' in child.attrib:
+                    self.cellSizeMax = int(child.attrib['Max'])             
+            elif child.tag == 'NucSize':
+                if 'Min' in child.attrib:
+                    self.nucSizeMin = int(child.attrib['Min'])
+                if 'Max' in child.attrib:
+                    self.nucSizeMax = int(child.attrib['Max'])
+            elif child.tag == 'XTrim':
+                self.xTrim = int(cleanXmlValueString(child.text))
+            elif child.tag == 'YTrim':
+                self.yTrim = int(cleanXmlValueString(child.text))
+            elif child.tag == 'NucZRange':
+                self.nucZRange = int(cleanXmlValueString(child.text))
+            elif child.tag == 'NucThSample':
+                self.nucThSmpl = int(cleanXmlValueString(child.text))
+            elif child.tag == 'NucCutoff':
+                self.nucCutoff = float(cleanXmlValueString(child.text))
+            elif child.tag == 'NucDXY':
+                self.nucDxy = float(cleanXmlValueString(child.text)) 
+            elif child.tag == 'Options':
+                if 'ExportCellMaskToFormat' in child.attrib:
+                    self.opNucMaskOut = child.attrib['ExportCellMaskToFormat']
+                if 'ExportNucMaskToFormat' in child.attrib:
+                    self.opCellMaskOut = child.attrib['ExportNucMaskToFormat']
+                if 'Overwrite' in child.attrib:
+                    self.overwrite = str2bool(child.attrib['Overwrite'])
+                if 'DumpSettingsToText' in child.attrib:
+                    self.dumpSettings = str2bool(child.attrib['DumpSettingsToText'])
+            elif child.tag == 'CellposeSettings':
+                if 'UseCellposeNuc' in child.attrib:
+                    test = child.attrib['UseCellposeNuc']
+                    self.useCellposeNuc = str2bool(child.attrib['UseCellposeNuc'])
+                if 'UseCellposeCyto' in child.attrib:
+                    self.useCellposeCyto = str2bool(child.attrib['UseCellposeCyto'])
+                for grandchild in child:
+                    if grandchild.tag == 'NucSettings':
+                        self.cellposeNuc = CellposeSubSettings()
+                        self.cellposeNuc.fromXmlNode(grandchild)
+                    elif grandchild.tag == 'CytoSettings':
+                        self.cellposeCyto = CellposeSubSettings()
+                        self.cellposeCyto.fromXmlNode(grandchild)                
             else:
                 print("Tag \"", child.tag, "\" not recognized for cellseg settings")
                 
@@ -117,9 +234,59 @@ class CellsegSettings:
             self.nucZMin = other.nucZMin
         if overwrite or (self.nucZMax <= 0):
             self.nucZMax = other.nucZMax
-        if overwrite or not self.useCellpose:
-            self.useCellpose = other.useCellpose        
-        
+        if overwrite or (self.cellSizeMin <= 0):
+            self.cellSizeMin = other.cellSizeMin
+        if overwrite or (self.cellSizeMax <= 0):
+            self.cellSizeMax = other.cellSizeMax
+        if overwrite or (self.nucSizeMin <= 0):
+            self.nucSizeMin = other.nucSizeMin
+        if overwrite or (self.nucSizeMax <= 0):
+            self.nucSizeMax = other.nucSizeMax
+        if overwrite or (self.xTrim <= 0):
+            self.xTrim = other.xTrim
+        if overwrite or (self.yTrim <= 0):
+            self.yTrim = other.yTrim
+        if overwrite or (self.opNucMaskOut is None):
+            self.opNucMaskOut = other.opNucMaskOut 
+        if overwrite or (self.opCellMaskOut is None):
+            self.opCellMaskOut = other.opCellMaskOut 
+        if overwrite or self.overwrite:
+            self.overwrite = other.overwrite
+        if overwrite or self.dumpSettings:
+            self.dumpSettings = other.dumpSettings
+        if overwrite or (self.nucZRange <= 0):
+            self.nucZRange = other.nucZRange
+        if overwrite or (self.nucThSmpl <= 0):
+            self.nucThSmpl = other.nucThSmpl
+        if overwrite or (numpy.isnan(self.nucCutoff)):
+            self.nucCutoff = other.nucCutoff
+        if overwrite or (numpy.isnan(self.nucDxy)):
+            self.nucDxy = other.nucDxy
+        if overwrite or (not self.useCellposeNuc):
+            self.useCellposeNuc = other.useCellposeNuc   
+        if overwrite or (not self.useCellposeCyto):
+            self.useCellposeCyto = other.useCellposeCyto
+        if overwrite or (self.cellposeNuc is None):
+            if (self.cellposeNuc is None):
+                if (other.cellposeNuc is not None):
+                    self.cellposeNuc = CellposeSubSettings()
+                    self.cellposeNuc.copyDataFrom(other.cellposeNuc, True)
+            else:
+                if (other.cellposeNuc is not None):
+                    self.cellposeNuc.copyDataFrom(other.cellposeNuc, overwrite)
+                else:
+                    self.cellposeNuc = None
+        if overwrite or (self.cellposeCyto is None):
+            if (self.cellposeCyto is None):
+                if (other.cellposeCyto is not None):
+                    self.cellposeCyto = CellposeSubSettings()
+                    self.cellposeCyto.copyDataFrom(other.cellposeCyto, True)
+            else:
+                if (other.cellposeCyto is not None):
+                    self.cellposeCyto.copyDataFrom(other.cellposeCyto, overwrite)
+                else:
+                    self.cellposeCyto = None    
+    
 class SpotDetectSettings:
     def __init__(self):
         self.thPreset = 0
@@ -150,9 +317,9 @@ class QuantSettings:
     
     def fromXmlNode(self, element):
         if 'DoClouds' in element.attrib:
-            self.qNoClouds = not bool(element.attrib['DoClouds'])
+            self.qNoClouds = not str2bool(element.attrib['DoClouds'])
         if 'CellZero' in element.attrib:
-            self.qCellZero = bool(element.attrib['CellZero'])
+            self.qCellZero = str2bool(element.attrib['CellZero'])
                 
     def copyDataFrom(self, other, overwrite):
         if other is None:
@@ -203,9 +370,9 @@ class IDistroSettings:
         if 'CorrectionMtx' in element.attrib:
             self.correctionMtxPath = element.attrib['CorrectionMtx']
         if 'ForceNoProbe' in element.attrib:
-            self.forceNoProbe = bool(element.attrib['ForceNoProbe'])
+            self.forceNoProbe = str2bool(element.attrib['ForceNoProbe'])
         if 'ForceNoDPC' in element.attrib:
-            self.forceNoDPC = bool(element.attrib['ForceNoDPC'])  
+            self.forceNoDPC = str2bool(element.attrib['ForceNoDPC'])  
         if 'TrimZMin' in element.attrib:
             self.zTrimMin = int(element.attrib['TrimZMin'])         
         if 'TrimZMax' in element.attrib:
@@ -676,7 +843,13 @@ def genImageJobs(tifImage, batchInfo):
     scriptHandle.write("#!/bin/bash\n\n")
     scriptHandle.write("module load " + batchInfo.parentSet.moduleName + "\n")
     scriptHandle.write("if [ ! -s \"" + tifImage.csResPath + "\" ]; then\n")
-    scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
+    if batchInfo.cellsegSettings is not None:
+        if batchInfo.cellsegSettings.useCellposeCyto:
+            scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CSCellpose.sh") + "\"")
+        else:
+            scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
+    else:
+        scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
     scriptHandle.write(" -input \"" + tifImage.tifPath + "\"")
     scriptHandle.write(" -outpath \"" + tifImage.resultsDir + "\"")
     scriptHandle.write(" -imgname \"" + tifImage.name + "\"")
@@ -696,6 +869,80 @@ def genImageJobs(tifImage, batchInfo):
             scriptHandle.write(" -nuczmin " + str(batchInfo.cellsegSettings.nucZMin)) 
         if batchInfo.cellsegSettings.nucZMax > 0:
             scriptHandle.write(" -nuczmax " + str(batchInfo.cellsegSettings.nucZMax))
+        if batchInfo.cellsegSettings.cellSizeMin > 0:
+            scriptHandle.write(" -cszmin " + str(batchInfo.cellsegSettings.cellSizeMin)) 
+        if batchInfo.cellsegSettings.cellSizeMax > 0:
+            scriptHandle.write(" -cszmax " + str(batchInfo.cellsegSettings.cellSizeMax))
+        if batchInfo.cellsegSettings.nucSizeMin > 0:
+            scriptHandle.write(" -nszmin " + str(batchInfo.cellsegSettings.nucSizeMin)) 
+        if batchInfo.cellsegSettings.nucSizeMax > 0:
+            scriptHandle.write(" -nszmax " + str(batchInfo.cellsegSettings.nucSizeMax))   
+        if batchInfo.cellsegSettings.overwrite:
+            scriptHandle.write(" -ovrw")
+        if batchInfo.cellsegSettings.dumpSettings:
+            scriptHandle.write(" -dumpsummary")
+        if batchInfo.cellsegSettings.opNucMaskOut is not None:
+            scriptHandle.write(" -onucmask \"" + tifImage.resultsDir + "/NucMask_" + tifImage.name + "." + batchInfo.cellsegSettings.opNucMaskOut + "\"")  
+        if batchInfo.cellsegSettings.opCellMaskOut is not None:
+            scriptHandle.write(" -ocellmask \"" + tifImage.resultsDir + "/CellMask_" + tifImage.name + "." + batchInfo.cellsegSettings.opCellMaskOut + "\"")        
+        if batchInfo.cellsegSettings.useCellposeCyto:
+            if batchInfo.cellsegSettings.cellposeCyto is not None:
+                if batchInfo.cellsegSettings.cellposeCyto.avgDia > 0:
+                    scriptHandle.write(" -cavgdia " + str(batchInfo.cellsegSettings.cellposeCyto.avgDia))  
+                if not numpy.isnan(batchInfo.cellsegSettings.cellposeCyto.cellTh):
+                    scriptHandle.write(" -ccth " + str(batchInfo.cellsegSettings.cellposeCyto.cellTh))       
+                if not numpy.isnan(batchInfo.cellsegSettings.cellposeCyto.flowTh):
+                    scriptHandle.write(" -cfth " + str(batchInfo.cellsegSettings.cellposeCyto.flowTh))
+                if batchInfo.cellsegSettings.cellposeCyto.norm:
+                    scriptHandle.write(" -cnorm")     
+                if batchInfo.cellsegSettings.cellposeCyto.ensemble:
+                    scriptHandle.write(" -censemble")
+                if batchInfo.cellsegSettings.cellposeCyto.modelName is not None:
+                    scriptHandle.write(" -cmodel \"" + batchInfo.cellsegSettings.cellposeCyto.modelName + "\"")
+            if batchInfo.cellsegSettings.useCellposeNuc:
+                if batchInfo.cellsegSettings.cellposeNuc is not None:
+                    if batchInfo.cellsegSettings.cellposeNuc.avgDia > 0:
+                        scriptHandle.write(" -navgdia " + str(batchInfo.cellsegSettings.cellposeNuc.avgDia))  
+                    if not numpy.isnan(batchInfo.cellsegSettings.cellposeNuc.cellTh):
+                        scriptHandle.write(" -ncth " + str(batchInfo.cellsegSettings.cellposeNuc.cellTh))       
+                    if not numpy.isnan(batchInfo.cellsegSettings.cellposeNuc.flowTh):
+                        scriptHandle.write(" -nfth " + str(batchInfo.cellsegSettings.cellposeNuc.flowTh))
+                    if batchInfo.cellsegSettings.cellposeNuc.norm:
+                        scriptHandle.write(" -nnorm")     
+                    if batchInfo.cellsegSettings.cellposeNuc.ensemble:
+                        scriptHandle.write(" -nensemble")
+                    if batchInfo.cellsegSettings.cellposeNuc.modelName is not None:
+                        scriptHandle.write(" -nmodel \"" + batchInfo.cellsegSettings.cellposeNuc.modelName + "\"")
+                    if batchInfo.metaData is not None:
+                        if batchInfo.metaData.voxelDims is not None:
+                            scriptHandle.write(" -voxelsize \"(" + str(batchInfo.metaData.voxelDims[0]) + "," + str(batchInfo.metaData.voxelDims[1]) + "," + str(batchInfo.metaData.voxelDims[2]) + ")\"")
+            else:
+                scriptHandle.write(" -cdnuc")
+                if batchInfo.cellsegSettings.xTrim >= 0:
+                    scriptHandle.write(" -xtrim " + str(batchInfo.cellsegSettings.xTrim)) 
+                if batchInfo.cellsegSettings.yTrim >= 0:
+                    scriptHandle.write(" -ytrim " + str(batchInfo.cellsegSettings.yTrim))  
+                if batchInfo.cellsegSettings.nucZRange > 0:
+                    scriptHandle.write(" -nzrange " + str(batchInfo.cellsegSettings.nucZRange)) 
+                if batchInfo.cellsegSettings.nucThSmpl > 0:
+                    scriptHandle.write(" -nthsmpl " + str(batchInfo.cellsegSettings.nucThSmpl))   
+                if not numpy.isnan(batchInfo.cellsegSettings.nucCutoff):
+                    scriptHandle.write(" -ncutoff " + str(batchInfo.cellsegSettings.nucCutoff)) 
+                if not numpy.isnan(batchInfo.cellsegSettings.nucDxy):
+                    scriptHandle.write(" -ndxy " + str(batchInfo.cellsegSettings.nucDxy))                  
+        else:
+            if batchInfo.cellsegSettings.xTrim >= 0:
+                scriptHandle.write(" -xtrim " + str(batchInfo.cellsegSettings.xTrim)) 
+            if batchInfo.cellsegSettings.yTrim >= 0:
+                scriptHandle.write(" -ytrim " + str(batchInfo.cellsegSettings.yTrim))  
+            if batchInfo.cellsegSettings.nucZRange > 0:
+                scriptHandle.write(" -nzrange " + str(batchInfo.cellsegSettings.nucZRange)) 
+            if batchInfo.cellsegSettings.nucThSmpl > 0:
+                scriptHandle.write(" -nthsmpl " + str(batchInfo.cellsegSettings.nucThSmpl))   
+            if not numpy.isnan(batchInfo.cellsegSettings.nucCutoff):
+                scriptHandle.write(" -ncutoff " + str(batchInfo.cellsegSettings.nucCutoff)) 
+            if not numpy.isnan(batchInfo.cellsegSettings.nucDxy):
+                scriptHandle.write(" -ndxy " + str(batchInfo.cellsegSettings.nucDxy))                     
     scriptHandle.write(" -log \"" + os.path.join(tifImage.resultsDir, tifImage.name + '_cellseg_mat.log') + "\"")
     scriptHandle.write("\n")
     scriptHandle.write("else\n")
@@ -937,7 +1184,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 25.07.31.00")
+    print("TS Batch Job Generator initiated! Version 25.11.02.00")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")

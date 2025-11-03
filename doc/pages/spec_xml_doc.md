@@ -119,7 +119,7 @@ The metadata block (with tag `CommonMeta` at the set or batch level, and `Meta` 
 `PixelDimsNano` can be substituted for `VoxelDimsNano` with only `X` and `Y` attributes in the case of 2D images. `VoxelDimsNano`/`PixelDimsNano` and `PointDimsNano` are specified in nanometers. These values are not used by TrueSpot for processing, but are handy for scaling, rendering, and recording keeping.
 
 ### CellSegSettings
-The `CellSegSettings` block specifies parameters for cell segmentation, if it is to be run. The [parameters](./cellseg_allargs.md) are equivalent to what is used for the command line interface. The full arguments page can be referenced for descriptions. This whole block is optional, and all children are optional for the block.
+The `CellSegSettings` block specifies parameters for cell segmentation, if it is to be run. The [parameters](./cellseg_allargs.md) are equivalent to what is used for the command line interface (Cellpose variant [here](./tscp_allargs.md)). The full arguments page can be referenced for descriptions. This whole block is optional, and all children and grandchildren are optional for the block.
 
 ```
 <CellSegSettings>
@@ -135,8 +135,22 @@ The `CellSegSettings` block specifies parameters for cell segmentation, if it is
 	<NucCutoff>"{FLOAT}"</NucCutoff>
 	<NucDXY>"{FLOAT}"</NucDXY>
 	<Options ExportCellMaskToFormat="{png | tif}" ExportNucMaskToFormat="{png | tif}" Overwrite="{BOOL}" DumpSettingsToText="{BOOL}"/>
+	<CellposeSettings UseCellposeNuc="{BOOL}" UseCellposeCyto="{BOOL}">
+		<NucSettings AvgDia="{INT}" Normalize="{BOOL}">
+			<Model Name="{STRING}" Ensemble="{BOOL}"/>
+			<TuningThresholds Cell="{FLOAT}" Flow="{FLOAT}"/>
+		</NucSettings>
+		<CytoSettings AvgDia="{INT}" Normalize="{BOOL}">
+			<Model Name="{STRING}" Ensemble="{BOOL}"/>
+			<TuningThresholds Cell="{FLOAT}" Flow="{FLOAT}"/>
+		</CytoSettings>
+	</CellposeSettings>
 </CellSegSettings>
 ```
+
+Optionally, if all dependencies are properly installed, [Cellpose](https://www.cellpose.org) can be used for nuclear and/or cell segmentation instead of the CellDissect algorithm. As of version 1.3.3, Cellpose cytoplasmic/cell segmentation can be used with either Cellpose or CellDissect nuclear segmentation. Use of Cellpose is turned on and off by the boolean `UseCellposeNuc` and `UseCellposeCyto` attributes in the optional `CellposeSettings` block. If `UseCellposeNuc` is true while `UseCellposeCyto` is false, the `CellposeSettings` block will be ignored and CellDissect will be used for both nuclear and cytoplasmic/cell segmentation.
+
+All size values (minimum, maximum, average diameter) are in pixels.
 
 ### SpotDetectSettings
 `SpotDetectSettings` contains parameters for spot detection and automated threshold selection. As with `CellSegSettings`, the block is not required and it does not have any required children or attributes. However, we recommend using `GaussRad` to set a Gaussian filter radius smaller than 7 for images with voxel sizes significantly larger than 65nm. We also recommend using `Workers` to attempt multithreading to speed up the threshold scan.

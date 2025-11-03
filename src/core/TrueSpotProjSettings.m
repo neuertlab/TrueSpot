@@ -4,7 +4,7 @@ classdef TrueSpotProjSettings
 
     %%
     properties (Constant)
-        SAVE_VERSION = 1;
+        SAVE_VERSION = 2;
     end
 
     %%
@@ -217,6 +217,9 @@ classdef TrueSpotProjSettings
                 outdirPath = [obj.paths.outputPath filesep iname];
                 scratchList{argPos} = '-outpath'; argPos = argPos + 1;
                 scratchList{argPos} = outdirPath; argPos = argPos + 1;
+                if ~isfolder(outdirPath)
+                    mkdir(outdirPath);
+                end
 
                 scratchList{argPos} = '-imgname'; argPos = argPos + 1;
                 scratchList{argPos} = iname; argPos = argPos + 1;
@@ -263,7 +266,12 @@ classdef TrueSpotProjSettings
                 checkTuningParams = true;
                 if ~isempty(obj.cellsegSettings.presetName)
                     %Check if preset exists
-                    if isfile(['.' filesep 'cellsegTemplates' filesep obj.cellsegSettings.presetName '.mat'])
+                    if obj.cellsegSettings.useCellposeCyto
+                        templateFilePath = ['.' filesep 'cellsegTemplates' filesep 'cellpose' filesep obj.cellsegSettings.presetName '.mat'];
+                    else
+                        templateFilePath = ['.' filesep 'cellsegTemplates' filesep obj.cellsegSettings.presetName '.mat'];
+                    end
+                    if isfile(templateFilePath)
                         checkTuningParams = false;
                         scratchList{argPos} = '-template'; argPos = argPos + 1;
                         scratchList{argPos} = obj.cellsegSettings.presetName; argPos = argPos + 1;
@@ -271,12 +279,95 @@ classdef TrueSpotProjSettings
                     %Otherwise save the template
                 end
 
+                if obj.cellsegSettings.useCellposeCyto
+                    if ~obj.cellsegSettings.useCellposeNuc
+                        scratchList{argPos} = '-cdnuc'; argPos = argPos + 1;
+                    end
+                end
+
                 if(checkTuningParams)
-                    for j = 1:tuningParamCount
-                        paramName = TUNING_PARAMS{j};
-                        if (obj.cellsegSettings.(paramName) > 0)
-                            scratchList{argPos} = ['-' paramName]; argPos = argPos + 1;
-                            scratchList{argPos} = num2str(obj.cellsegSettings.(paramName)); argPos = argPos + 1;
+                    if obj.cellsegSettings.useCellposeCyto
+                        if ~obj.cellsegSettings.useCellposeNuc
+                            for j = 1:tuningParamCount
+                                paramName = TUNING_PARAMS{j};
+                                if (obj.cellsegSettings.(paramName) > 0)
+                                    scratchList{argPos} = ['-' paramName]; argPos = argPos + 1;
+                                    scratchList{argPos} = num2str(obj.cellsegSettings.(paramName)); argPos = argPos + 1;
+                                end
+                            end
+                        else
+                            %Cellpose specific as well as cell and nuc sz
+                            %ranges
+                            if ~isnan(obj.cellsegSettings.cszmin) & (obj.cellsegSettings.cszmin > 0)
+                                scratchList{argPos} = '-cszmin'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.cszmin); argPos = argPos + 1;
+                            end
+                            if ~isnan(obj.cellsegSettings.cszmax) & (obj.cellsegSettings.cszmax > 0)
+                                scratchList{argPos} = '-cszmax'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.cszmax); argPos = argPos + 1;
+                            end
+                            if ~isnan(obj.cellsegSettings.nszmin) & (obj.cellsegSettings.nszmin > 0)
+                                scratchList{argPos} = '-nszmin'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.nszmin); argPos = argPos + 1;
+                            end
+                            if ~isnan(obj.cellsegSettings.nszmax) & (obj.cellsegSettings.nszmax > 0)
+                                scratchList{argPos} = '-nszmax'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.nszmax); argPos = argPos + 1;
+                            end
+
+                            if ~isnan(obj.cellsegSettings.cellpose.nuc_params.avg_dia)
+                                scratchList{argPos} = '-navgdia'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.cellpose.nuc_params.avg_dia); argPos = argPos + 1;
+                            end
+                            if ~isempty(obj.cellsegSettings.cellpose.nuc_params.model_name)
+                                scratchList{argPos} = '-nmodel'; argPos = argPos + 1;
+                                scratchList{argPos} = obj.cellsegSettings.cellpose.nuc_params.model_name; argPos = argPos + 1;
+                            end
+                            if (obj.cellsegSettings.cellpose.nuc_params.cell_threshold ~= 0)
+                                scratchList{argPos} = '-ncth'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.cellpose.nuc_params.cell_threshold); argPos = argPos + 1;
+                            end
+                            if (obj.cellsegSettings.cellpose.nuc_params.flow_threshold ~= 0.4)
+                                scratchList{argPos} = '-nfth'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.cellpose.nuc_params.flow_threshold); argPos = argPos + 1;
+                            end
+                            if (obj.cellsegSettings.cellpose.nuc_params.ensemble_bool)
+                                scratchList{argPos} = '-nensemble'; argPos = argPos + 1;
+                            end
+                            if (obj.cellsegSettings.cellpose.nuc_params.normalize_bool)
+                                scratchList{argPos} = '-nnorm'; argPos = argPos + 1;
+                            end
+                        end
+
+                        if ~isnan(obj.cellsegSettings.cellpose.cyto_params.avg_dia)
+                            scratchList{argPos} = '-cavgdia'; argPos = argPos + 1;
+                            scratchList{argPos} = num2str(obj.cellsegSettings.cellpose.cyto_params.avg_dia); argPos = argPos + 1;
+                        end
+                        if ~isempty(obj.cellsegSettings.cellpose.cyto_params.model_name)
+                            scratchList{argPos} = '-cmodel'; argPos = argPos + 1;
+                            scratchList{argPos} = obj.cellsegSettings.cellpose.cyto_params.model_name; argPos = argPos + 1;
+                        end
+                        if (obj.cellsegSettings.cellpose.cyto_params.cell_threshold ~= 0)
+                            scratchList{argPos} = '-ccth'; argPos = argPos + 1;
+                            scratchList{argPos} = num2str(obj.cellsegSettings.cellpose.cyto_params.cell_threshold); argPos = argPos + 1;
+                        end
+                        if (obj.cellsegSettings.cellpose.cyto_params.flow_threshold ~= 0.4)
+                            scratchList{argPos} = '-cfth'; argPos = argPos + 1;
+                            scratchList{argPos} = num2str(obj.cellsegSettings.cellpose.cyto_params.flow_threshold); argPos = argPos + 1;
+                        end
+                        if (obj.cellsegSettings.cellpose.cyto_params.ensemble_bool)
+                            scratchList{argPos} = '-censemble'; argPos = argPos + 1;
+                        end
+                        if (obj.cellsegSettings.cellpose.cyto_params.normalize_bool)
+                            scratchList{argPos} = '-cnorm'; argPos = argPos + 1;
+                        end
+                    else
+                        for j = 1:tuningParamCount
+                            paramName = TUNING_PARAMS{j};
+                            if (obj.cellsegSettings.(paramName) > 0)
+                                scratchList{argPos} = ['-' paramName]; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.(paramName)); argPos = argPos + 1;
+                            end
                         end
                     end
 
@@ -288,7 +379,11 @@ classdef TrueSpotProjSettings
 
                 %Call the cellseg main
                 myArgs = scratchList(1:(argPos-1));
-                Main_CellSegConsole(myArgs{:});
+                if obj.cellsegSettings.useCellposeCyto
+                    Main_CSCellpose(myArgs{:});
+                else
+                    Main_CellSegConsole(myArgs{:});
+                end
             end
         end
 
@@ -481,6 +576,10 @@ classdef TrueSpotProjSettings
             cellsegSettings.outputNucMaskTIF = false;
             cellsegSettings.overwrite = true;
             cellsegSettings.dumpSettings = false;
+
+            cellsegSettings.useCellposeNuc = false;
+            cellsegSettings.useCellposeCyto = false;
+            cellsegSettings.cellpose = CellPoseTS.genCellposeParamStruct();
         end
 
         %% ========================== I/O ==========================
@@ -516,7 +615,7 @@ classdef TrueSpotProjSettings
             batchSettings = [];
             if ~isfile(filePath); return; end
 
-            load(filePath, 'paths', 'channelInfo', ...
+            load(filePath, 'saveVer', 'paths', 'channelInfo', ...
                 'cellsegSettings', 'metadata', 'previewState');
 
             batchSettings.paths = paths;
@@ -524,6 +623,12 @@ classdef TrueSpotProjSettings
             batchSettings.cellsegSettings = cellsegSettings;
             batchSettings.metadata = metadata;
             batchSettings.previewState = previewState;
+
+            if saveVer < 2
+                batchSettings.cellsegSettings.useCellposeNuc = false;
+                batchSettings.cellsegSettings.useCellposeCyto = false;
+                batchSettings.cellsegSettings.cellpose = CellPoseTS.genCellposeParamStruct();
+            end
         end
  
     end

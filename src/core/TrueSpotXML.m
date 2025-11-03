@@ -128,6 +128,51 @@ classdef TrueSpotXML
 
         end
 
+        function cellposeSubSettings = readCellposeSubSettingsNode(xmlNode, cellposeSubSettings)
+            if nargin < 2; cellposeSettings = []; end
+            if isempty(cellposeSubSettings)
+                cellposeSubSettings = CellPoseTS.genCellposeSubParamStruct();
+            end
+
+            cellposeSubSettings.avg_dia = TrueSpotXML.getNumberAttribute(xmlNode, 'AvgDia', NaN);
+            cellposeSubSettings.normalize_bool = TrueSpotXML.getBoolAttribute(xmlNode, 'Normalize', false);
+
+            sChild = getFirstChild(xmlNode);
+            while ~isempty(sChild)
+                if sChild.getNodeType == sChild.ELEMENT_NODE
+                    sChildName = char(sChild.getTagName);
+                    if strcmp(sChildName, 'Model')
+                        cellposeSubSettings.model_name = char(getAttribute(sChild, 'Name'));
+                        cellposeSubSettings.ensemble_bool = TrueSpotXML.getBoolAttribute(sChild, 'Ensemble', false);
+                    elseif strcmp(sChildName, 'TuningThresholds')
+                        cellposeSubSettings.cell_threshold = TrueSpotXML.getNumberAttribute(sChild, 'Cell', 0);
+                        cellposeSubSettings.flow_threshold = TrueSpotXML.getNumberAttribute(sChild, 'Flow', 0.4);
+                    end
+                end
+                sChild = getNextSibling(sChild);
+            end
+        end
+
+        function cellposeSettings = readCellposeSettingsNode(xmlNode, cellposeSettings)
+            if nargin < 2; cellposeSettings = []; end
+            if isempty(cellposeSettings)
+                cellposeSettings = CellPoseTS.genCellposeParamStruct();
+            end
+
+            sChild = getFirstChild(xmlNode);
+            while ~isempty(sChild)
+                if sChild.getNodeType == sChild.ELEMENT_NODE
+                    sChildName = char(sChild.getTagName);
+                    if strcmp(sChildName, 'NucSettings')
+                        cellposeSettings.nuc_params = TrueSpotXML.readCellposeSubSettingsNode(sChild, cellposeSettings.nuc_params);
+                    elseif strcmp(sChildName, 'CytoSettings')
+                        cellposeSettings.cyto_params = TrueSpotXML.readCellposeSubSettingsNode(sChild, cellposeSettings.cyto_params);
+                    end
+                end
+                sChild = getNextSibling(sChild);
+            end
+        end
+
         function cellsegSettings = readCellSegSettingsNode(xmlNode, cellsegSettings)
             if nargin < 2; cellsegSettings = []; end
             if isempty(cellsegSettings)
@@ -185,6 +230,10 @@ classdef TrueSpotXML
 
                         cellsegSettings.overwrite = TrueSpotXML.getBoolAttribute(sChild, 'Overwrite', true);
                         cellsegSettings.dumpSettings = TrueSpotXML.getBoolAttribute(sChild, 'DumpSettingsToText', false);
+                    elseif strcmp(sChildName, 'CellposeSettings')
+                        cellsegSettings.useCellposeNuc = TrueSpotXML.getBoolAttribute(sChild, 'UseCellposeNuc', true);
+                        cellsegSettings.useCellposeCyto = TrueSpotXML.getBoolAttribute(sChild, 'UseCellposeCyto', true);
+                        cellsegSettings.cellpose = TrueSpotXML.readCellposeSettingsNode(sChild, cellsegSettings.cellpose);
                     end
                 end
                 sChild = getNextSibling(sChild);

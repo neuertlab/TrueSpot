@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2025.10.29.00';
+BUILD_STRING = '2025.11.02.00';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
@@ -69,6 +69,10 @@ for i = 1:nargin
                 cellseg_options.output_dir = outdir;
             end
             if arg_debug; fprintf("Output Path Set: %s\n", cellseg_options.output_path); end
+        elseif strcmp(lastkey, "outdir")
+            cellseg_options.output_dir = argval;
+            cellseg_options.output_path = cellseg_options.output_dir;
+            if arg_debug; fprintf("Output Dir Set: %s\n", cellseg_options.output_dir); end
         elseif strcmp(lastkey, "ocellmask")
             cellseg_options.outpath_cell_mask = argval;
             if arg_debug; fprintf("Cell Mask TIF Output Path Set: %s\n", cellseg_options.outpath_cell_mask); end

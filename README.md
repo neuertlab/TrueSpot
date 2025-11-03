@@ -1,27 +1,36 @@
 # TrueSpot
 A MATLAB pipeline for automatically processing TIFF image stacks. Functions include cell segmentation, RNA/marker spot detection (with automatic thresholding), and RNA/marker quantification.
 
-[Detailed Documentation](./doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/TrueSpot-ReferenceData) | [Zenodo Repository](https://zenodo.org/records/16904733)
+[Detailed Documentation](./doc/dochome.md) | [Benchmarking Data](https://github.com/neuertlab/TrueSpot-ReferenceData) | [Zenodo Repository](https://zenodo.org/records/16904733) (v1.3.2)
 
 ## Citations
 **Cell Segmentation:** [View Paper](https://doi.org/10.1038/s41598-019-46689-5) | [Standalone](https://www.dropbox.com/sh/egb27tsgk6fpixf/AADaJ8DSjab_c0gU7N7ZF0Zba?dl=0)
 
 Kesler, B.K., Li, G., Thiemicke, A., Venkat, R., Neuert, G. (2019). Automated cell boundary and 3D nuclear segmentation of cells in suspension. *Scientific Reports*, **9**(1).
 
-**Local Maxima Detection:**
+**Local Maxima Detection:** [View Paper](https://pubmed.ncbi.nlm.nih.gov/41024246/)
 
-Hospelhorn, B.G., Kesler, B.K., Jashnsaz, H., Neuert, G. (2025). TrueSpot: A robust automated tool for quantifying signal puncta in fluorescent imaging. *Genome Biology*, In Revision.
+Hospelhorn, B.G., Kesler, B.K., Jashnsaz, H., Neuert, G. (2025). TrueSpot: A robust automated tool for quantifying signal puncta in fluorescent imaging. *Genome Biology*, **26**(1):317
 
 **Spot & Cloud Quantification:** [View Paper](https://pubmed.ncbi.nlm.nih.gov/40328749/)
 
 Kesler, B.K., Adams, J., Neuert, G. (2025). Transcriptional stochasticity reveals multiple mechanisms of long non-coding RNA regulation at the Xist-Tsix locus. *Nature Communications*, **16**(1):4223.
 
 ## Dependencies
-[MATLAB 2022a (or higher)](https://www.mathworks.com/products/get-matlab.html?s_tid=gn_getml)
+[MATLAB 2022a (or later)](https://www.mathworks.com/products/get-matlab.html?s_tid=gn_getml)
 
-[MATLAB Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html) | [MATLAB Signal Processing Toolbox](https://www.mathworks.com/products/signal.html) | [MATLAB Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html)
+[MATLAB Image Processing Toolbox](https://www.mathworks.com/products/image-processing.html) | [MATLAB Signal Processing Toolbox](https://www.mathworks.com/products/signal.html) | [MATLAB Parallel Computing Toolbox](https://www.mathworks.com/products/parallel-computing.html) | [MATLAB Statistics & Machine Learning Toolbox](https://www.mathworks.com/products/statistics.html) | [MATLAB Curve Fitting Toolbox](https://www.mathworks.com/products/curvefitting.html)
 
 [Java JRE 8 (or higher)](https://www.java.com/en/download/manual.jsp)
+
+### Additional Dependencies for Cellpose interface
+As of version 1.3.3, we have integrated [Cellpose](https://www.cellpose.org) into our cell segmentation module for optional use. However, use of Cellpose via MATLAB has additional dependency requirements.
+
+[MATLAB 2023b (or later)](https://www.mathworks.com/products/matlab.html)
+
+[MATLAB Deep Learning Toolbox](https://www.mathworks.com/products/deep-learning.html) | [MATLAB Computer Vision Toolbox](https://www.mathworks.com/products/computer-vision.html) | [MATLAB Medical Imaging Toolbox](https://www.mathworks.com/products/medical-imaging.html)
+
+[Medical Imaging Toolbox Interface for Cellpose Library](https://www.mathworks.com/help/medical-imaging/ug/getting-started-with-cellpose.html)
 
 ## Compatibility
 Scripts/GUIs should run on any system with compatible versions of MATLAB and Java.
@@ -122,6 +131,33 @@ The only required argument is `-input`. See [documentation](./doc/pages/cellseg_
 | `-ovrw` | - | **Flag** - Overwrite any existing output. |
 | `-dumpsummary` | - | **Flag** - Dump text file containing input parameter summary. |
 | `-imgname` | *String* - Name | Name to assign to image and output files. Useful for images with long unwieldy file names. (Default: Input file name.) |
+| `-template` | *String* - Template name | Name of preset template to use. |
+| `-savetmpl` | *String* - Template name | Save settings for this run as a preset template with the specified name. |
+
+### Cell Segmentation with Cellpose
+MATLAB Command Line Interface Script: `Main_CSCellpose.m`
+
+Bash Wrapper Script (Command Line): `TrueSpot_CSCellpose.sh`
+
+The only required argument is `-input`. See [documentation](./doc/pages/tscp_allargs.md) for full argument list.
+
+**Common Arguments**
+| Name | Parameter | Description |
+| ----- | ----- | ----- |
+| `-input` | *Path* - Path to input image file.  | The input image or image stack containing light/TRANS channel. |
+| `-innuc` | *Path* - Path to image file.  | The input image stack containing the nuclear marker channel, if different from the main input stack. |
+| `-chtotal` | *Integer* - Channel Count  | The total number of channels in the input image stack. (Default: 1) |
+| `-chtotnuc` | *Integer* - Channel Count  | The total number of channels in the `innuc` image stack, if provided. (Default: 1) |
+| `-chlight` | *Integer* - Channel Index (1-based) | The TRANS or passthrough light channel in the input image stack. Only used for background extraction along with cell segmentation mask. |
+| `-chnuc` | *Integer* - Channel Index (1-based) | The nuclear stain (eg. DAPI) channel in the input image stack, or the `innuc` image stack if one is provided. (Default: 1) |
+| `-outpath` | *Path* - Directory path | Path to directory to place output files. File names will be automatically generated from image name. (Default: Directory of input image.) |
+| `-ocellmask` | *Path* - Path to image (tif) file output | Path to write rendered TIF of cell mask. (Default: None) |
+| `-onucmask` | *Path* - Path to image (tif) file output | Path to write rendered TIF of nuclear mask. (Default: None) |
+| `-ovrw` | - | **Flag** - Overwrite any existing output. |
+| `-imgname` | *String* - Name | Name to assign to image and output files. Useful for images with long unwieldy file names. (Default: Input file name.) |
+| `-cdnuc` | - | **Flag** - Use CellDissect (3D) for nuclear segmentation instead of Cellpose |
+| `-cavgdia` | *Integer* - Size in pixels | Average expected cell diameter, in pixels (Default: NaN) |
+| `-navgdia` | *Integer* - Size in pixels | Average expected nuclear diameter, in pixels (Default: NaN) |
 | `-template` | *String* - Template name | Name of preset template to use. |
 | `-savetmpl` | *String* - Template name | Save settings for this run as a preset template with the specified name. |
 

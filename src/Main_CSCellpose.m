@@ -6,7 +6,7 @@ function Main_CSCellpose(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.10.29.00';
+BUILD_STRING = '2025.11.02.01';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
@@ -21,6 +21,7 @@ cellpose_options.dump_summary = false;
 cellpose_options.input_path = [];
 cellpose_options.input_nuc = [];
 cellpose_options.imgname = [];
+cellpose_options.output_dir = [];
 cellpose_options.output_path = [];
 cellpose_options.outpath_cell_mask = [];
 cellpose_options.outpath_nuc_mask = [];
@@ -134,6 +135,9 @@ for i = 1:nargin
         elseif strcmp(lastkey, "outpath")
             cellpose_options.output_path = argval;
             if arg_debug; fprintf("Output Path Set: %s\n", cellpose_options.output_path); end
+       elseif strcmp(lastkey, "outdir")
+            cellpose_options.output_dir = argval;
+            if arg_debug; fprintf("Output Directory Set: %s\n", cellpose_options.output_dir); end
         elseif strcmp(lastkey, "ocellmask")
             cellpose_options.outpath_cell_mask = argval;
             if arg_debug; fprintf("Cell Mask Dump Output Path Set: %s\n", cellpose_options.outpath_cell_mask); end
@@ -214,20 +218,20 @@ for i = 1:nargin
             cellpose_settings.cdnuc_settings.max_nucleus_size = cellpose_settings.nuc_params.max_size;
             if arg_debug; fprintf("Max Nuc Size Set: %d\n", cellpose_settings.nuc_params.max_size); end
             override_checklist.(lastkey) = true;
-        elseif strcmp(lastkey, "czmin")
+        elseif strcmp(lastkey, "lightzmin")
             cellpose_settings.czmin = Force2Num(argval);
             if arg_debug; fprintf("Cell Channel Z Min Set: %d\n", cellpose_settings.czmin); end
             override_checklist.(lastkey) = true;
-        elseif strcmp(lastkey, "czmax")
+        elseif strcmp(lastkey, "lightzmax")
             cellpose_settings.czmax = Force2Num(argval);
             if arg_debug; fprintf("Cell Channel Z Max Set: %d\n", cellpose_settings.czmax); end
             override_checklist.(lastkey) = true;
-        elseif strcmp(lastkey, "nzmin")
+        elseif strcmp(lastkey, "nuczmin")
             cellpose_settings.nzmin = Force2Num(argval);
             cellpose_settings.cdnuc_settings.z_min = cellpose_settings.nzmin;
             if arg_debug; fprintf("Nuc Channel Z Min Set: %d\n", cellpose_settings.nzmin); end
             override_checklist.(lastkey) = true;
-        elseif strcmp(lastkey, "nzmax")
+        elseif strcmp(lastkey, "nuczmax")
             cellpose_settings.nzmax = Force2Num(argval);
             cellpose_settings.cdnuc_settings.z_max = cellpose_settings.nzmax;
             if arg_debug; fprintf("Nuc Channel Z Max Set: %d\n", cellpose_settings.nzmax); end
@@ -241,12 +245,12 @@ for i = 1:nargin
             if arg_debug; fprintf("Y Trim set: %d\n", cellpose_settings.cdnuc_settings.y_trim); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "nzrange")
-            cellpose_settings.cdnuc_settings.threshold_sampling = Force2Num(argval);
-            if arg_debug; fprintf("CD Nuc seg Z range set: %d\n", cellpose_settings.cdnuc_settings.threshold_sampling); end
+            cellpose_settings.cdnuc_settings.range = Force2Num(argval);
+            if arg_debug; fprintf("CD Nuc seg Z range set: %d\n", cellpose_settings.cdnuc_settings.range); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "nthsmpl")
-            cellpose_settings.cdnuc_settings.range = Force2Num(argval);
-            if arg_debug; fprintf("CD NucSeg Threshold Sampler Set: %d\n", cellpose_settings.cdnuc_settings.range); end
+            cellpose_settings.cdnuc_settings.threshold_sampling = Force2Num(argval);
+            if arg_debug; fprintf("CD NucSeg Threshold Sampler Set: %d\n", cellpose_settings.cdnuc_settings.threshold_sampling); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "ncutoff")
             cellpose_settings.cdnuc_settings.cutoff = Force2Num(argval);
@@ -289,9 +293,29 @@ if isempty(cellpose_options.imgname)
 end
 
 if isempty(cellpose_options.output_path)
-    [indir, ~, ~] = fileparts(cellpose_options.input_path);
-    cellpose_options.output_path = [indir filesep 'TSCP_' cellpose_options.imgname '.mat'];
+    if isempty(cellpose_options.output_dir)
+        [cellpose_options.output_dir, ~, ~] = fileparts(cellpose_options.input_path);
+    end
+    cellpose_options.output_path = genCSOutpath(cellpose_options.output_dir, cellpose_options.imgname);
     fprintf("Output path not specified. Set to %s\n", cellpose_options.output_path);
+else
+    if isfolder(cellpose_options.output_path)
+        cellpose_options.output_dir = cellpose_options.output_path;
+        cellpose_options.output_path = genCSOutpath(cellpose_options.output_dir, cellpose_options.imgname);
+    else
+        [outdir, ~, outext] = fileparts(cellpose_options.output_path);
+        if isempty(outext)
+            cellpose_options.output_dir = cellpose_options.output_path;
+            cellpose_options.output_path = genCSOutpath(cellpose_options.output_dir, cellpose_options.imgname);
+        end
+        if isempty(cellpose_options.output_dir)
+            cellpose_options.output_dir = outdir;
+        end
+    end
+end
+
+if ~isfolder(cellpose_options.output_dir)
+    mkdir(cellpose_options.output_dir);
 end
 
 if ~cellpose_options.overwrite_output & isfile(cellpose_options.output_path)
@@ -339,7 +363,7 @@ if cellpose_options.ch_nuc > 0
             end
         else
             [cellpose_settings.cdnuc_settings, cdNucSegRes] = CellSeg.AutosegmentNuclei(nuc_channel, cellpose_settings.cdnuc_settings);
-            nuc_lbl = cdNucSegRes.results.nuclei; %TODO Check this
+            nuc_lbl = cdNucSegRes.nuclei; %TODO Check this
         end
     else
         nuc_lbl = uint16(zeros(size(nuc_channel)));
@@ -379,19 +403,9 @@ if ~isempty(cellpose_options.input_nuc)
 end
 runMeta.srcImageChNuc = cellpose_options.ch_nuc;
 
-if isfolder(cellpose_options.output_path)
-    %It's a directory. Generate a file name, then.
-    outpath = [cellpose_options.output_path filesep 'TSCP_' cellpose_options.imgname '.mat'];
-else
-    [outdir, ~, ~] = fileparts(cellpose_options.output_path);
-    if ~isfolder(outdir)
-        mkdir(outdir);
-    end
-    outpath = cellpose_options.output_path;
+if ~cellpose_options.cd_nuc
+    fprintf("[%s] Nucleus count: %d\n", datetime, max(nuc_lbl, [], 'all', 'omitnan'));
 end
-
-
-fprintf("[%s] Nucleus count: %d\n", datetime, max(nuc_lbl, [], 'all', 'omitnan'));
 fprintf("[%s] Cell count: %d\n", datetime, max(cell_lbl, [], 'all', 'omitnan'));
 
 if ~isempty(cell_lbl) & ~isempty(nuc_lbl)
@@ -402,7 +416,7 @@ end
 cellSeg = struct('cell_mask', cell_lbl);
 cellSeg.cell_info = CellSeg.getCellInfo(cell_lbl, nuc_lbl);
 nucleiSeg = struct();
-if cellpose_settings.cd_nuc
+if cellpose_options.cd_nuc
     cdNucSegRes.nuclei = nuc_lbl;
     cdNucSegRes.nuc_label = max(double(nuc_lbl), [], 3, 'omitnan');
     nucleiSeg.results = cdNucSegRes;
@@ -413,7 +427,7 @@ else
     nucleiSeg.results.lbl_mid = (nuc_lbl ~= 0);
     nucleiSeg.results.nuc_stats = nuc_stats;
 end
-save(outpath, 'cellSeg', 'nucleiSeg', 'runMeta', 'cellpose_settings', '-v7.3');
+save(cellpose_options.output_path, 'cellSeg', 'nucleiSeg', 'runMeta', 'cellpose_settings', '-v7.3');
 
 clear cellSeg nucleiSeg
 
@@ -431,6 +445,10 @@ if ~isempty(cellpose_options.outpath_nuc_mask)
 end
 
 end %--- END MAIN
+
+function path = genCSOutpath(outdir, imgname)
+    path = [outdir filesep 'CellSeg_' imgname '.mat'];
+end
 
 function dumpMaskToImageFile(outpath, maskdata)
     [wdir, ~, ~] = fileparts(outpath);
@@ -454,7 +472,7 @@ end
 
 function printSummary(options, cellpose_settings)
     if isempty(options.outpath_settings)
-        options.outpath_settings = [options.output_path filesep 'cellpose_settings.txt'];
+        options.outpath_settings = [options.output_dir filesep 'cellpose_settings.txt'];
     end
 
     if ~options.overwrite_output & isfile(options.outpath_settings)
@@ -464,6 +482,7 @@ function printSummary(options, cellpose_settings)
     fileHandle = fopen(options.outpath_settings, 'w');
     fprintf(fileHandle, 'input_path=%s\n', options.input_path);
     fprintf(fileHandle, 'input_nuc=%s\n', options.input_nuc);
+    fprintf(fileHandle, 'output_dir=%s\n', options.output_dir);
     fprintf(fileHandle, 'output_path=%s\n', options.output_path);
     fprintf(fileHandle, 'outpath_cell_mask=%s\n', options.outpath_cell_mask);
     fprintf(fileHandle, 'outpath_nuc_mask=%s\n', options.outpath_nuc_mask);
@@ -496,7 +515,7 @@ function printSummary(options, cellpose_settings)
     fprintf(fileHandle, 'cellpose_settings.cyto_params.ensemble_bool=%d\n', cellpose_settings.cyto_params.ensemble_bool);
     fprintf(fileHandle, 'cellpose_settings.cyto_params.do3D=%d\n', cellpose_settings.cyto_params.do3D);
 
-    if cellpose_settings.cd_nuc
+    if options.cd_nuc
         fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.min_nucleus_size=%d\n', cellpose_settings.cdnuc_settings.min_nucleus_size);
         fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.max_nucleus_size=%d\n', cellpose_settings.cdnuc_settings.max_nucleus_size);
         fprintf(fileHandle, 'cellpose_settings.cdnuc_settings.range=%d\n', cellpose_settings.cdnuc_settings.range);
