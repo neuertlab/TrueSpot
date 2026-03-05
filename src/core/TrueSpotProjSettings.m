@@ -57,28 +57,7 @@ classdef TrueSpotProjSettings
         end
 
         function obj = scanInputDir(obj, dirPath)
-            [varNames, varTypes] = TrueSpotProjSettings.getInputTableFields();
-
-            dirList = dir(dirPath);
-            dirTable = struct2table(dirList);
-            dirTable = convertvars(dirTable, 'name', 'string');
-
-            fileBool = ~dirTable{:,'isdir'};
-            fNames = dirTable{:, 'name'};
-            tifBool = endsWith(fNames, '.tif');
-            passBool = and(fileBool, tifBool);
-            iCount = nnz(passBool);
-            clear fileBool tifBool fNames dirList
-
-            table_size = [iCount size(varNames,2)];
-            obj.inputTable = table('Size', table_size, 'VariableTypes', varTypes, 'VariableNames', varNames);
-            %obj.inputTable{:, 'ImageFilePath'} = dirTable{passBool, 'name'};
-            obj.inputTable{:, 'ImageName'} = replace(dirTable{passBool, 'name'}, '.tif', '');
-            obj.inputTable{:, 'ImageFilePath'} = arrayfun(@(tifFileName) strjoin([dirPath filesep tifFileName], ''), dirTable{passBool, 'name'}, 'UniformOutput', false);
-            obj.inputTable{:, 'ControlFilePath'} = "";
-            obj.inputTable{:, 'NucDataFilePath'} = "";
-            obj.inputTable{:, 'ExtCellSegPath'} = "";
-            obj.inputTable{:, 'ExtNucSegPath'} = "";
+            obj.inputTable = TrueSpotProjSettings.scanInputDirStatic(dirPath);
         end
 
         function exportInputTable(obj, filePath)
@@ -513,12 +492,66 @@ classdef TrueSpotProjSettings
 
         %% ========================== Utility ==========================
 
+        function iname = cleanImageName(fileName)
+            fileName = char(fileName);
+            [~, iname, ~] = fileparts(fileName);
+            [~, testiname, ext] = fileparts(iname);
+            while ~isempty(ext)
+                iname = testiname;
+                [~, testiname, ext] = fileparts(testiname);
+            end
+        end
+
         function [varNames, varTypes] = getInputTableFields()
             varNames = {'ImageName' 'ImageFilePath' 'ControlFilePath' ...
                 'NucDataFilePath' 'LightDataFilePath' 'ExtCellSegPath' 'ExtNucSegPath'};
             varTypes = {'string' 'string' 'string' 'string' 'string' 'string' 'string'};
         end
         
+        function itemTable = scanInputDirStatic(dirPath)
+            [varNames, varTypes] = TrueSpotProjSettings.getInputTableFields();
+
+            dirList = dir(dirPath);
+            dirTable = struct2table(dirList);
+            dirTable = convertvars(dirTable, 'name', 'string');
+
+            fileBool = ~dirTable{:,'isdir'};
+            fNames = dirTable{:, 'name'};
+            tifBool = endsWith(fNames, '.tif');
+            passBool = and(fileBool, tifBool);
+            iCount = nnz(passBool);
+            clear tifBool fNames dirList
+
+            if iCount > 0
+                table_size = [iCount size(varNames,2)];
+                itemTable = table('Size', table_size, 'VariableTypes', varTypes, 'VariableNames', varNames);
+                itemTable{:, 'ImageName'} = arrayfun(@(tifFileName) TrueSpotProjSettings.cleanImageName(tifFileName), dirTable{passBool, 'name'}, 'UniformOutput', false);
+                itemTable{:, 'ImageFilePath'} = arrayfun(@(tifFileName) strjoin([dirPath filesep tifFileName], ''), dirTable{passBool, 'name'}, 'UniformOutput', false);
+                itemTable{:, 'ControlFilePath'} = "";
+                itemTable{:, 'NucDataFilePath'} = "";
+                itemTable{:, 'ExtCellSegPath'} = "";
+                itemTable{:, 'ExtNucSegPath'} = "";
+            else
+                itemTable = [];
+            end
+
+            %Child directories
+            cDirs = dirTable{~fileBool, 'name'};
+            cDirCount = nnz(~fileBool);
+            for i = 1:cDirCount
+                cdirName = cDirs{i};
+                if strcmp(cdirName, '.') | strcmp(cdirName, '..'); continue; end
+                childTable = TrueSpotProjSettings.scanInputDirStatic([dirPath filesep cdirName]);
+                if ~isempty(childTable)
+                    if ~isempty(itemTable)
+                        itemTable = [itemTable; childTable];
+                    else
+                        itemTable = childTable;
+                    end
+                end
+            end
+        end
+
         %% ========================== Inner Structs ==========================
 
         function pathsInfo = genPathsStruct()

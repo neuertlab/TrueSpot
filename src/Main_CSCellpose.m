@@ -6,7 +6,7 @@ function Main_CSCellpose(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.11.02.01';
+BUILD_STRING = '2026.02.27.01';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
@@ -39,7 +39,7 @@ cellpose_settings.cdnuc_settings = CellSeg.genNucSegStruct();
 override_checklist = struct();
 OVERRIDE_OPS = {'cnorm' 'nnorm' 'censemble' 'nensemble' 'voxelsize' 'cmodel' 'nmodel' ...
     'cavgdia' 'navgdia' 'ccth' 'ncth' 'cfth' 'nfth' 'cszmin' 'nszmin' ...
-    'czmin' 'czmax' 'nzmin' 'nzmax' 'xtrim' 'ytrim' ...
+    'lightzmin' 'lightzmax' 'nuczmin' 'nuczmax' 'xtrim' 'ytrim' ...
     'nszmax' 'ndxy' 'nzrange' 'ncutoff' 'nthsmpl'};
 ovrcount = size(OVERRIDE_OPS, 2);
 for i = 1:ovrcount
@@ -339,7 +339,9 @@ nuc_lbl = [];
 nuc_stats = [];
 nuc_bkg_stats = [];
 cdNucSegRes = [];
+hasNucData = false;
 if cellpose_options.ch_nuc > 0
+    hasNucData = true;
     fprintf("[%s] Attempting nuclear segmentation...\n", datetime);
     fprintf("[%s] Loading nuclear marker channel...\n", datetime);
     npath = cellpose_options.input_nuc;
@@ -363,7 +365,16 @@ if cellpose_options.ch_nuc > 0
             end
         else
             [cellpose_settings.cdnuc_settings, cdNucSegRes] = CellSeg.AutosegmentNuclei(nuc_channel, cellpose_settings.cdnuc_settings);
-            nuc_lbl = cdNucSegRes.nuclei; %TODO Check this
+
+            % %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG
+            % [d, f, ~] = fileparts(cellpose_options.outpath_nuc_mask);
+            % dumpMaskToImageFile([d filesep f '_3d_out.tif'], uint8(cdNucSegRes.lbl_mid));
+
+            nuc_lbl = cdNucSegRes.nuclei;
+
+            %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG
+            % [d, f, ~] = fileparts(cellpose_options.outpath_nuc_mask);
+            % dumpMaskToImageFile([d filesep f '_nuclbl_check.png'], nuc_lbl);
         end
     else
         nuc_lbl = uint16(zeros(size(nuc_channel)));
@@ -408,15 +419,24 @@ if ~cellpose_options.cd_nuc
 end
 fprintf("[%s] Cell count: %d\n", datetime, max(cell_lbl, [], 'all', 'omitnan'));
 
-if ~isempty(cell_lbl) & ~isempty(nuc_lbl)
+
+if ~isempty(cell_lbl) & ~isempty(nuc_lbl) & hasNucData
     fprintf("[%s] Updating nuclear mask to match cell mask...\n", datetime);
-    [cell_lbl, nuc_lbl] = CellPoseTS.matchCellNucLabels(cell_lbl, nuc_lbl, nuc_bkg_stats);
+    if cellpose_options.cd_nuc
+        [cell_lbl, nuc_lbl] = CellPoseTS.matchCellNucLabels(cell_lbl, cdNucSegRes.lbl_mid, nuc_bkg_stats);
+    else
+        [cell_lbl, nuc_lbl] = CellPoseTS.matchCellNucLabels(cell_lbl, nuc_lbl, nuc_bkg_stats);
+    end
+
+    %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DEBUG
+    % [d, f, ~] = fileparts(cellpose_options.outpath_nuc_mask);
+    % dumpMaskToImageFile([d filesep f '_nuclbl_updated.png'], nuc_lbl);
 end
 
 cellSeg = struct('cell_mask', cell_lbl);
 cellSeg.cell_info = CellSeg.getCellInfo(cell_lbl, nuc_lbl);
 nucleiSeg = struct();
-if cellpose_options.cd_nuc
+if cellpose_options.cd_nuc & hasNucData
     cdNucSegRes.nuclei = nuc_lbl;
     cdNucSegRes.nuc_label = max(double(nuc_lbl), [], 3, 'omitnan');
     nucleiSeg.results = cdNucSegRes;
@@ -438,9 +458,11 @@ end
 
 %Masks as tif or png
 if ~isempty(cellpose_options.outpath_cell_mask)
+    fprintf("[%s] Rendering cell mask...\n", datetime);
     dumpMaskToImageFile(cellpose_options.outpath_cell_mask, cell_lbl);
 end
 if ~isempty(cellpose_options.outpath_nuc_mask)
+    fprintf("[%s] Rendering nuclear mask...\n", datetime);
     dumpMaskToImageFile(cellpose_options.outpath_nuc_mask, nuc_lbl);
 end
 
@@ -597,13 +619,13 @@ function cellpose_settings = loadTemplateInto(template_name, cellpose_settings, 
         cellpose_settings.nuc_params.max_size = t_nuc.max_size; 
         cellpose_settings.cdnuc_settings.max_nucleus_size = params.cdnuc_settings.max_nucleus_size;
     end
-    if ~override_checklist.czmin; cellpose_settings.czmin = params.czmin; end
-    if ~override_checklist.czmax; cellpose_settings.czmax = params.czmax; end
-    if ~override_checklist.nzmin
+    if ~override_checklist.lightzmin; cellpose_settings.czmin = params.czmin; end
+    if ~override_checklist.lightzmax; cellpose_settings.czmax = params.czmax; end
+    if ~override_checklist.nuczmin
         cellpose_settings.nzmin = params.nzmin;
         cellpose_settings.cdnuc_settings.z_min = params.cdnuc_settings.z_min;
     end
-    if ~override_checklist.nzmax
+    if ~override_checklist.nuczmax
         cellpose_settings.nzmax = params.nzmax;
         cellpose_settings.cdnuc_settings.z_max = params.cdnuc_settings.z_max;
     end

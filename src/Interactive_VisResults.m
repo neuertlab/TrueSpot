@@ -6,22 +6,31 @@ addpath('./thirdparty');
 
 % ------------------------ INPUT PATHS ------------------------
 
-ResultsBasePath = 'D:\Users\hospelb\labdata\RNAFISH\Analysis';
-ImagesBasePath = 'C:\Users\hospelb\labdata\imgproc\img';
-
+% ResultsBasePath = 'D:\Users\hospelb\labdata\RNAFISH\Analysis';
+% ImagesBasePath = 'C:\Users\hospelb\labdata\imgproc\img';
+% 
 % AnalysisDir = [ResultsBasePath filesep 'JAJH_ProbeTest_20240827\JA_20240828_Jurkat_TrueSpot_hARF4_Cy5_1-2000_I1'];
 % RunPath = [AnalysisDir filesep 'CH3\JA_20240828_Jurkat_TrueSpot_hARF4_Cy5_1-2000_I1_CH3_spotCall_rnaspotsrun.mat'];
-AnalysisDir = [ResultsBasePath filesep 'sctc2017\E2R2\Exp2_rep2_10min_im3'];
-RunPath = [AnalysisDir filesep 'CH2\Exp2_rep2_10min_im3_CH2_spotCall_rnaspotsrun.mat'];
+% 
+% %Overrides
+% 
+% useOverrides = true;
+% saveOverrides = false;
+% ImagePath = [ImagesBasePath filesep 'JURKAT FISH\TrueSpots\JA_2024_08_28_Jurkat_TrueSpothARF4_Cy5_1-2000_1_MMStack_Pos0.ome.tif'];
+% CellSegPath = [AnalysisDir filesep 'CellSeg_JA_20240828_Jurkat_TrueSpot_hARF4_Cy5_1-2000_I1.mat'];
+
+ResultsBasePath = 'D:\usr\bghos\labdat\RNAFISH\Analysis';
+ImagesBasePath = 'D:\usr\bghos\labdat\imgproc\img';
+
+AnalysisDir = [ResultsBasePath filesep 'HJ_Protein_Mar2018_Subset\Msb2\20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack'];
+RunPath = [AnalysisDir filesep 'CH1\TS_20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack_CH1_rnaspotsrun.mat'];
 
 %Overrides
 
 useOverrides = true;
 saveOverrides = false;
-% ImagePath = [ImagesBasePath filesep 'JURKAT FISH\TrueSpots\JA_2024_08_28_Jurkat_TrueSpothARF4_Cy5_1-2000_1_MMStack_Pos0.ome.tif'];
-% CellSegPath = [AnalysisDir filesep 'CellSeg_JA_20240828_Jurkat_TrueSpot_hARF4_Cy5_1-2000_I1.mat'];
-ImagePath = [ImagesBasePath filesep 'yeast_full\Exp2_rep2\Exp2_rep2_10min_im3.tif'];
-CellSegPath = [AnalysisDir filesep 'CellSeg_Exp2_rep2_10min_im3.mat'];
+ImagePath = [ImagesBasePath filesep 'msb2\20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack.ome.tif'];
+CellSegPath = [AnalysisDir filesep 'CellSeg_20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack.mat'];
 
 % ------------------------ INITIAL SETTINGS ------------------------
 
@@ -38,7 +47,8 @@ if useOverrides
     end
 end
 
-quantPath = [spotsrun.getFullOutStem() '_quantData.mat'];
+%quantPath = [spotsrun.getFullOutStem() '_quantData.mat'];
+quantPath = [spotsrun.paths.out_dir filesep spotsrun.img_name '_quantData.mat'];
 if ~isfile(quantPath)
     quantPath = replace(quantPath, '_spotCall', '');
     if ~isfile(quantPath)
@@ -54,7 +64,7 @@ mygui = mygui.initCallView(spotsrun, quantPath);
 
 mygui.cellLayerOn = true;
 mygui.nucLayerOn = true;
-mygui.quantFitLayerOn = false;
+mygui.quantFitLayerOn = true;
 mygui.spotCircleLayerOn = true;
 
 mygui = mygui.launchFigureGUI();

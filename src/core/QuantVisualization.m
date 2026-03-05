@@ -6,6 +6,7 @@ classdef QuantVisualization
     properties
         maxProj = true;
         cells = SingleCell.empty();
+        cell_zero = SingleCell.empty();
 
         spotrad_xy = 4;
         spotrad_z = 2;
@@ -19,6 +20,7 @@ classdef QuantVisualization
         showCountLabels = false;
 
         rgbCellRenders = [];
+        cellZeroRender = [];
     end
 
     %%
@@ -31,8 +33,14 @@ classdef QuantVisualization
             %Determine scale intensity
             %TODO
             peakIntensity = 1;
-            for c = 1:cellCount
-                myCell = obj.cells(c);
+            for c = 0:cellCount
+                if c > 0
+                    myCell = obj.cells(c);
+                else
+                    if isempty(obj.cell_zero); continue; end
+                    myCell = obj.cell_zero;
+                end
+
                 if isempty(myCell.spotTable) & ~isempty(myCell.spots)
                     myCell = myCell.convertSpotStorage();
                 end
@@ -54,15 +62,26 @@ classdef QuantVisualization
                 end
 
                 if maxi > peakIntensity; peakIntensity = maxi; end
-                obj.cells(c) = myCell;
+               if c > 0
+                   obj.cells(c) = myCell;
+               else
+                   obj.cell_zero = myCell;
+               end
             end
             clear maxi;
 
 
             obj.rgbCellRenders = cell(1,cellCount);
-            for c = 1:cellCount
-                [obj, okay] = obj.renderCellRGB(obj.cells(c), peakIntensity);
-                if ~okay; return; end
+            for c = 0:cellCount
+                if(c > 0)
+                    [obj, okay] = obj.renderCellRGB(obj.cells(c), peakIntensity);
+                    if ~okay; return; end
+                else
+                    if ~isempty(obj.cell_zero)
+                        [obj, okay] = obj.renderCellRGB(obj.cell_zero, peakIntensity);
+                        if ~okay; return; end
+                    end
+                end
             end
         end
  
@@ -111,7 +130,11 @@ classdef QuantVisualization
             cellRender.blue = b;
             cellRender.alpha = a;
 
-            obj.rgbCellRenders{myCell.cell_number} = cellRender;
+            if (myCell.cell_number > 0)
+                obj.rgbCellRenders{myCell.cell_number} = cellRender;
+            else
+                obj.cellZeroRender = cellRender;
+            end
             okay = true;
         end
 
@@ -255,8 +278,17 @@ classdef QuantVisualization
             imgOut(:,:,3) = blue;
 
             cellCount = size(obj.rgbCellRenders, 2);
-            for c = 1:cellCount
-                cellRender = obj.rgbCellRenders{c};
+            for c = 0:cellCount
+                if c > 0
+                    cellRender = obj.rgbCellRenders{c};
+                else
+                    if isempty(obj.cellZeroRender)
+                        continue;
+                    else
+                        cellRender = obj.cellZeroRender;
+                    end
+                end
+                
                 x0 = cellRender.cellBounds.left;
                 x1 = cellRender.cellBounds.right;
                 y0 = cellRender.cellBounds.top;

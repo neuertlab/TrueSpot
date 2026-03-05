@@ -1215,12 +1215,17 @@ classdef RNAQuant
             
             if quant_struct.do_clouds
                 fprintf("[%s] RNAQuant.FitRNA_S -- Finding clouds...\n", datetime);
-                for c = 1:cell_count
+                for c = 0:cell_count
                     if (quant_struct.dbgcell > 0) & (c ~= quant_struct.dbgcell); continue; end
-                    my_cell = quant_struct.cell_rna_data(c);
+                    if (c > 0)
+                        my_cell = quant_struct.cell_rna_data(c);
+                    else
+                        if isempty(quant_struct.cell_zero); continue; end
+                        my_cell = quant_struct.cell_zero;
+                    end
                     cell_raw = my_cell.isolateCellBox(img_raw_dbl);
                     
-                    [start_coords, ~] = my_cell.getCoordsSubset(quant_struct.t_coord_table);
+                    [start_coords, ~] = my_cell.getCoordsSubset(quant_struct.t_coord_table, true, false);
                     if ~isempty(start_coords)
                         [cell_cloud_mask, cloud_boxes] = ...
                             RNAQuant.DetectRNACloudsCell(cell_raw, start_coords, quant_struct.z_adj);
@@ -1231,7 +1236,11 @@ classdef RNAQuant
                         clear cell_raw;
                     end
 
-                    quant_struct.cell_rna_data(c) = my_cell;
+                    if (c > 0)
+                        quant_struct.cell_rna_data(c) = my_cell;
+                    else
+                        quant_struct.cell_zero = my_cell;
+                    end
                 end
             end
 

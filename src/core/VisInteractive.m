@@ -149,6 +149,7 @@ classdef VisInteractive
                     quant_results = RNAQuant.readResultsSavePackage(quant_results);
                 end
 
+                obj.qnVis.cell_zero = quant_results.cell_zero;
                 obj.qnVis.cells = quant_results.cell_rna_data;
                 clear quant_results;
             else

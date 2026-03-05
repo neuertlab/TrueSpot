@@ -196,31 +196,34 @@ classdef SingleCell
         end
         
         %%
-        function [cell_coord_table, nuc_coord_table] = getCoordsSubset(obj, coord_table_t)
+        function [cell_coord_table, nuc_coord_table] = getCoordsSubset(obj, coord_table_t, has_th_dropout, keep_th_dropout)
+            if nargin < 3; has_th_dropout = true; end
+            if nargin < 4; keep_th_dropout = true; end
             cell_coord_table = [];
             nuc_coord_table = [];
             if isempty(coord_table_t); return; end
             coord_dims = size(coord_table_t,2);
-            
-            x_valid = (coord_table_t(:,1) >= obj.cell_loc.left) & (coord_table_t(:,1) <= obj.cell_loc.right);
-            y_valid = (coord_table_t(:,2) >= obj.cell_loc.top) & (coord_table_t(:,2) <= obj.cell_loc.bottom);
-            incl_mtx = x_valid & y_valid;
-            
+            if has_th_dropout; coord_dims = coord_dims - 1; end
+
+            x_valid = and((coord_table_t(:,1) >= obj.cell_loc.left),(coord_table_t(:,1) <= obj.cell_loc.right));
+            y_valid = and((coord_table_t(:,2) >= obj.cell_loc.top),(coord_table_t(:,2) <= obj.cell_loc.bottom));
+            incl_mtx = and(x_valid, y_valid);
+
             if coord_dims >= 3
-                z_valid = (coord_table_t(:,3) >= obj.cell_loc.z_bottom) & (coord_table_t(:,3) <= obj.cell_loc.z_top);
-                incl_mtx = incl_mtx & z_valid;
+                z_valid = and((coord_table_t(:,3) >= obj.cell_loc.z_bottom),(coord_table_t(:,3) <= obj.cell_loc.z_top));
+                incl_mtx = and(incl_mtx,z_valid);
             end
-            
+
             [incl_rows, ~] = find(incl_mtx);
             if isempty(incl_rows); return; end
-            
+
             cell_coord_table = coord_table_t(incl_rows,:);
             cell_coord_table(:,1) = cell_coord_table(:,1) - obj.cell_loc.left + 1;
             cell_coord_table(:,2) = cell_coord_table(:,2) - obj.cell_loc.top + 1;
             if coord_dims >= 3
                 cell_coord_table(:,3) = cell_coord_table(:,3) - obj.cell_loc.z_bottom + 1;
             end
-            
+
             %Filter through cell mask
             c_count = size(cell_coord_table,1);
             mask_okay = false(c_count,1);
@@ -233,7 +236,7 @@ classdef SingleCell
                     mask_okay(i,1) = obj.mask_cell(cell_coord_table(i,2), cell_coord_table(i,1));
                 end
             end
-            
+
             [incl_rows, ~] = find(mask_okay);
             if isempty(incl_rows)
                 cell_coord_table = [];
@@ -255,11 +258,20 @@ classdef SingleCell
                 end
             end
             [incl_rows, ~] = find(mask_okay);
-             if isempty(incl_rows)
+            if isempty(incl_rows)
                 nuc_coord_table = [];
-                return;
+            else
+                nuc_coord_table = cell_coord_table(incl_rows,:);
             end
-            nuc_coord_table = cell_coord_table(incl_rows,:);
+
+            if has_th_dropout & ~keep_th_dropout
+                if ~isempty(cell_coord_table)
+                    cell_coord_table = cell_coord_table(:, 1:coord_dims);
+                end
+                if ~isempty(nuc_coord_table)
+                    nuc_coord_table = nuc_coord_table(:, 1:coord_dims);
+                end
+            end
         end
         
         %%

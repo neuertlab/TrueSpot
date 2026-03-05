@@ -165,7 +165,8 @@ for i = 1:nargin
             rna_spot_run.paths.out_dir = argval;
             if arg_debug; fprintf("Output Directory Set: %s\n", rna_spot_run.paths.out_dir); end
         elseif strcmp(lastkey, "outstem")
-            [rna_spot_run.paths.out_dir, rna_spot_run.paths.out_namestem, ~] = fileparts(argval);
+            [rna_spot_run.paths.out_dir, fn, fe] = fileparts(argval);
+            rna_spot_run.paths.out_namestem = [fn fe];
             if arg_debug; fprintf("Output Directory Set: %s\n", rna_spot_run.paths.out_dir); end
             if arg_debug; fprintf("Output Filename Stem Set: %s\n", rna_spot_run.paths.out_namestem); end
         elseif strcmp(lastkey, "cellseg")

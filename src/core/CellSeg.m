@@ -520,13 +520,13 @@ classdef CellSeg
             dapi_huge = bwareaopen(DAPI_ims_final, max_nucleus_size);                          % remove DAPI signal that are too large
             DAPI_ims_final = dapi_normal - dapi_huge;
             
-%             figure(2);
-%             clf;
-%             imshow(max(dapi_normal, [], 3, 'omitnan'), []);
-% 
-%             figure(3);
-%             clf;
-%             imshow(max(DAPI_ims_final, [], 3, 'omitnan'), []);
+            % figure(2);
+            % clf;
+            % imshow(max(dapi_normal, [], 3, 'omitnan'), []);
+            % 
+            % figure(3);
+            % clf;
+            % imshow(max(DAPI_ims_final, [], 3, 'omitnan'), []);
             
             dapi_normal = bwareaopen(nucSegRes.nuc_label_lo, min_nucleus_size);                        % remove DAPI signal that are too small
             dapi_huge = bwareaopen(nucSegRes.nuc_label_lo, max_nucleus_size);                          % remove DAPI signal that are too large
@@ -541,6 +541,10 @@ classdef CellSeg
                 xs(j,1) = mean(x_es);
                 ys(j,1) = mean(y_es);
             end
+
+            % figure(4);
+            % clf;
+            % imshow(max(nucSegRes.nuc_label, [], 3, 'omitnan'), []);
 
             nucSegRes.counter = nucSegRes.counter + 1;
         end
@@ -564,9 +568,9 @@ classdef CellSeg
             nuc_max_proj = max(nuc_ch_data(:,:,min_slice:max_slice), [], 3, 'omitnan');
             clear min_slice max_slice
 
-%             figure(1);
-%             clf;
-%             imshow(nuc_max_proj, []);
+            % figure(1);
+            % clf;
+            % imshow(nuc_max_proj, []);
 
             Label_low = zeros(Y,X,Z);                                      % generate zero 3D matrix of the size of the image stack
             Label_mid = zeros(Y,X,Z);
@@ -717,13 +721,13 @@ classdef CellSeg
                 dapi_label3C = (dapi_label_hi == mode(dapi_label_hi(dapi_label_hi > 0)));
                 clear dapi_label_low dapi_label_mid dapi_label_hi
 
-%                 figure(5);
-%                 clf;
-%                 imshow(max(dapi_label3A, [], 3), []);
-% 
-%                 figure(6);
-%                 clf;
-%                 imshow(max(dapi_label3B, [], 3), []);
+                % figure(5);
+                % clf;
+                % imshow(max(dapi_label3A, [], 3), []);
+                % 
+                % figure(6);
+                % clf;
+                % imshow(max(dapi_label3B, [], 3), []);
 
                 % Eliminate Cells at the border
                 temp_props = regionprops3(dapi_label3A,'BoundingBox') ;              %Obtain axis lengths for nucleus with low threshold
@@ -773,9 +777,9 @@ classdef CellSeg
             nucSegRes.lbl_mid = Label_mid > 0;                                   % Make sure it is binary image
             nucSegRes.lbl_hi = Label_hi > 0;                                     % Make sure it is binary image
 
-%             figure(2);
-%             clf;
-%             imshow(max(nucSegRes.lbl_mid, [], 3), []);
+            % figure(2);
+            % clf;
+            % imshow(max(nucSegRes.lbl_mid, [], 3), []);
 
             nucSegRes.nuclei = Label_index;                                                       % max projection of the segmented dapi signals using the 50% threshold
         

@@ -17,6 +17,7 @@ arg_debug = true; %CONSTANT used for debugging arg parser.
 param_struct.runpath = [];
 param_struct.tifpath = [];
 param_struct.outdir = [];
+%param_struct.outfilestem = [];
 param_struct.cellsegdir = [];
 param_struct.cellsegname = [];
 param_struct.cellsegpath = [];
