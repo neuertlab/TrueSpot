@@ -356,6 +356,21 @@ classdef TrueSpotProjSettings
                     end
                 end
 
+                %Add external masks, if present
+                if ~obj.cellsegSettings.useCellposeCyto
+                    nsegPath = obj.getInputTableValue(i, 'ExtNucSegPath');
+                    if ~isempty(nsegPath)
+                        scratchList{argPos} = '-importnuc'; argPos = argPos + 1;
+                        scratchList{argPos} = nsegPath; argPos = argPos + 1;
+                    end
+
+                    csegPath = obj.getInputTableValue(i, 'ExtCellSegPath');
+                    if ~isempty(csegPath)
+                        scratchList{argPos} = '-importcell'; argPos = argPos + 1;
+                        scratchList{argPos} = csegPath; argPos = argPos + 1;
+                    end
+                end
+
                 %Call the cellseg main
                 myArgs = scratchList(1:(argPos-1));
                 if obj.cellsegSettings.useCellposeCyto

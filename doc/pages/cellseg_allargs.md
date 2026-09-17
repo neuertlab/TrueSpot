@@ -22,6 +22,8 @@ This page lists all arguments recognized by `Main_CellSegConsole.m`. Some additi
 | `-nuczmax` | *Integer* - Slice Index (1-based) | The maximum slice in the nuclear marker channel to include in nucleus detection. (Default: Z) |
 | `-lightzmin` | *Integer* - Slice Index (1-based) | The minimum slice in the TRANS channel to include in cell boundary detection. (Default: 1) |
 | `-lightzmax` | *Integer* - Slice Index (1-based) | The maximum slice in the TRANS channel to include in cell boundary detection. (Default: Z) |
+| `-importnuc` | *Path* - Path to mask file (csv, tif, or png).  | If nuclear segmentation was run externally, it can be imported into TrueSpot using this option. If an import mask is provided, nuclear segmentation will not be run. |
+| `-importcell` | *Path* - Path to mask file (csv, tif, or png).  | If cell segmentation was run externally, it can be imported into TrueSpot using this option. If an import mask is provided, cell segmentation will not be run. |
 
 NOTE: The GUI version appears to have 13 hardcoded as the equivalent to `nuczmin` (see `A1_segment_predefined_variables_streamlined_generalized.m`).
 

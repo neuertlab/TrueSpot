@@ -50,12 +50,12 @@ classdef CellSeg
 
             res_struct.counter = 0;
             res_struct.nuc_threshold = NaN;
-            res_struct.nuc_label = [];
-            res_struct.nuc_label_lo = [];
-            res_struct.lbl_lo = [];
-            res_struct.lbl_mid = [];
-            res_struct.lbl_hi = [];
-            res_struct.nuclei = [];
+            res_struct.nuc_label = []; %First pass labels (2D double)
+            res_struct.nuc_label_lo = []; %First pass labels - permissive (2D double)
+            res_struct.lbl_lo = []; %Bool mask from low threshold (3D bool)
+            res_struct.lbl_mid = []; %Bool mask from middle threshold (3D bool)
+            res_struct.lbl_hi = []; %Bool mask from high threshold (3D bool)
+            res_struct.nuclei = []; %Labeled centroids (2D uint16)
             res_struct.nuc_int = [];
             res_struct.nuc_vol = [];
             res_struct.nuc_axis_major = [];
@@ -545,6 +545,10 @@ classdef CellSeg
             % figure(4);
             % clf;
             % imshow(max(nucSegRes.nuc_label, [], 3, 'omitnan'), []);
+            % 
+            % figure(5);
+            % clf;
+            % imshow(max(nucSegRes.nuc_label_lo, [], 3, 'omitnan'), []);
 
             nucSegRes.counter = nucSegRes.counter + 1;
         end
@@ -783,6 +787,10 @@ classdef CellSeg
 
             nucSegRes.nuclei = Label_index;                                                       % max projection of the segmented dapi signals using the 50% threshold
         
+            % figure(2);
+            % clf;
+            % imshow(nucSegRes.nuclei, []);
+
             %Save everything else to output struct
             nucSegRes.nuc_int = Nuc_int;
             nucSegRes.nuc_vol = Nuc_vol;
@@ -1004,10 +1012,15 @@ classdef CellSeg
         end
 
         %%
-        function cell_mask = openCellMask(path)
+        function cell_mask = openCellMask(path, Y)
+            if nargin < 2
+                Y = 0; %If Y is not provided, then 3D text files cannot be read
+            end
+            pathlwr = lower(path);
+
             %For checking input format. Can open the CellSeg outputs, tsv, csv, or tif.
             cell_mask = [];
-            if endsWith(path, '.mat')
+            if endsWith(pathlwr, '.mat')
                 finfo = who('-file', path);
                 if ~isempty(find(ismember(finfo, 'cellSeg'),1))
                     load(path, 'cellSeg');
@@ -1020,27 +1033,51 @@ classdef CellSeg
                     cell_mask = cells;
                     clear cells;
                 end
-            elseif endsWith(path, '.tif') | endsWith(path, '.tiff')
-                %Assumes one channel, one plane.
+            elseif endsWith(pathlwr, '.tif') | endsWith(pathlwr, '.tiff')
+                %Assumes one channel
                 [channels, ~] = LoadTif(path, 1, [1], 0);
                 cell_mask = channels{1,1};
                 clear channels;
-            elseif endsWith(path, '.tsv') | endsWith(path, '.csv')
+            elseif endsWith(pathlwr, ".png")
+                cell_mask = imread(path);
+            elseif endsWith(pathlwr, '.tsv') | endsWith(pathlwr, '.csv')
                 cell_mask = readmatrix(path);
+                if (Y > 0)
+                    mY = size(cell_mask, 1);
+                    if mY > Y
+                        zy = size(cell_mask, 1);
+                        X = size(cell_mask, 2);
+                        Z = zy / Y;
+                        temp = cell_mask;
+                        mask = zeros([Y X Z]);
+                        y0 = 1;
+                        y1 = Y;
+
+                        for z = 1:Z
+                            mask(:,:,z) = temp(y0:y1,:);
+                            y0 = y1+1;
+                            y1 = y0 + Y - 1;
+                        end
+                    end
+                end
             end
         end
 
         %%
-        function nuc_mask = openNucMask(path, maskno, fill3)
+        function nuc_mask = openNucMask(path, maskno, fill3, Y)
             if nargin < 2
                 maskno = 2; %lblmid
             end
             if nargin < 3
                 fill3 = true;
             end
+            if nargin < 4
+                Y = 0; %If Y is not provided, then 3D text files cannot be read
+            end
+            pathlwr = lower(path);
 
             nuc_mask = [];
-            if endsWith(path, '.mat')
+            if endsWith(pathlwr, '.mat')
                 finfo = who('-file', path);
                 if ~isempty(find(ismember(finfo, 'nucleiSeg'),1))
                     load(path, 'nucleiSeg');
@@ -1116,14 +1153,124 @@ classdef CellSeg
                             end
                     end
                 end
-            elseif endsWith(path, '.tif') | endsWith(path, '.tiff')
+            elseif endsWith(pathlwr, '.tif') | endsWith(pathlwr, '.tiff')
                 %Assumes one channel
                 [channels, ~] = LoadTif(path, 1, [1], 0);
                 nuc_mask = channels{1,1};
                 clear channels;
-            elseif endsWith(path, '.tsv') | endsWith(path, '.csv')
-                %Assumes one channel, one plane.
+            elseif endsWith(pathlwr, ".png")
+                nuc_mask = imread(path);
+            elseif endsWith(pathlwr, '.tsv') | endsWith(pathlwr, '.csv')
+                %Assumes one channel, one plane, unless Y is provided as an
+                %arg
                 nuc_mask = readmatrix(path);
+                if (Y > 0)
+                    mY = size(nuc_mask, 1);
+                    if mY > Y
+                        zy = size(nuc_mask, 1);
+                        X = size(nuc_mask, 2);
+                        Z = zy / Y;
+                        temp = nuc_mask;
+                        mask = zeros([Y X Z]);
+                        y0 = 1;
+                        y1 = Y;
+
+                        for z = 1:Z
+                            mask(:,:,z) = temp(y0:y1,:);
+                            y0 = y1+1;
+                            y1 = y0 + Y - 1;
+                        end
+                    end
+                end
+            end
+        end
+
+        %%
+        function [nucSegSpecs, nucSegRes, loadedMask] = importExternalNucMask(maskPath, nucSegSpecs, idims)
+            if isempty(maskPath); return; end
+
+            if isempty(nucSegSpecs)
+                nucSegSpecs = CellSeg.genNucSegStruct();
+            end
+            nucSegRes = CellSeg.genNucSegResultsStruct();
+
+            nuc_mask = CellSeg.openNucMask(maskPath, 2, true, idims.y);
+            loadedMask = nuc_mask;
+            if isempty(nuc_mask)
+                return;
+            end
+
+            %Determine z trim range (if possible)
+            if ndims(nuc_mask) > 2
+                sliceSums = sum(nuc_mask, [1 2]);
+                z0 = find(sliceSums, 1);
+                z1 = find(sliceSums, 1, 'last');
+                if isempty(z0) | isempty(z1)
+                    %Empty mask? Weird.
+                    z0 = 1;
+                    z1 = idims.z;
+                end
+
+                nucSegSpecs.z_min = z0;
+                nucSegSpecs.z_max = z1;
+            end
+
+            %Set results
+            if ndims(nuc_mask) > 2
+                nucSegRes.nuc_label = double(max(nuc_mask, [], 3));
+            else
+                nucSegRes.nuc_label = double(nuc_mask);
+            end
+            nucSegRes.nuc_label_lo = nucSegRes.nuc_label;
+
+            nucSegRes.lbl_mid = nuc_mask > 0;
+            nucSegRes.lbl_hi = nucSegRes.lbl_mid;
+            nucSegRes.lbl_lo = nucSegRes.lbl_mid;
+
+            rp = regionprops(nucSegRes.nuc_label, 'centroid');
+            cx = rp.Centroids(:,2);
+            cy = rp.Centroids(:,1);
+            nucSegRes.nuclei = zeros(idims.y, idims.x);
+            nucSegRes.nuclei(cy, cx) = nucSegRes.nuc_label(cy, cx);
+            nucSegRes.nuclei = uint16(nucSegRes.nuclei);
+        end
+        
+        %%
+        function [cell_mask, cell_info, params, loadedMask] = importExternalCellMask(maskPath, params, idims)
+            if isempty(maskPath); return; end
+
+            if isempty(params)
+                params = CellSeg.genCellSegParameterStruct();
+            end
+
+            cell_mask = CellSeg.openCellMask(maskPath, idims.y);
+            loadedMask = cell_mask;
+            if isempty(cell_mask)
+                return;
+            end
+
+            %Flatten, if needed
+            if ndims(cell_mask) > 2
+                cell_mask = max(cell_mask, [], 3, 'omitnan');
+            end
+            cell_mask = uint16(cell_mask);
+
+            %Derive cell info
+            cellCount = max(cell_mask, [], 'all');
+            cell_info(cellCount) = struct('Centroid', NaN, 'MajorAxisLength', NaN, 'MinorAxisLength', NaN, 'FilledArea', NaN, 'Image', []);
+            for j = 1 : cellCount
+                % Determine cell properties
+                this_cell_mask = uint16(cell_mask == j);
+                try
+                    cell_reg = regionprops(this_cell_mask,'Centroid','MajorAxisLength','MinorAxisLength','FilledArea','Image');
+                    cell_info(j).Centroid = cell_reg.Centroid;
+                    cell_info(j).MajorAxisLength = cell_reg.MajorAxisLength;
+                    cell_info(j).MinorAxisLength = cell_reg.MinorAxisLength;
+                    cell_info(j).FilledArea = cell_reg.FilledArea;
+                    cell_info(j).Image = cell_reg.Image;
+                catch
+                end
+                clear this_cell_mask cell_reg
             end
         end
 

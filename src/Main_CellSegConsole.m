@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2025.11.02.00';
+BUILD_STRING = '2026.09.17.00';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
@@ -57,6 +57,12 @@ for i = 1:nargin
         elseif strcmp(lastkey, "innuc")
             cellseg_options.input_nuc = argval;
             if arg_debug; fprintf("Input Path (Nuclear Dye Channel) Set: %s\n", cellseg_options.input_nuc); end
+        elseif strcmp(lastkey, "importnuc")
+            cellseg_options.import_path_nuc = argval;
+            if arg_debug; fprintf("Import Nuclear Mask Path: %s\n", cellseg_options.import_path_nuc); end
+        elseif strcmp(lastkey, "importcell")
+            cellseg_options.import_path_cell = argval;
+            if arg_debug; fprintf("Import Cell Mask Path: %s\n", cellseg_options.import_path_cell); end
         elseif strcmp(lastkey, "imgname")
             cellseg_options.imgname = argval;
             if arg_debug; fprintf("Image Name Set: %s\n", cellseg_options.imgname); end
@@ -249,11 +255,12 @@ function [okay, options] = runCellseg(options, buildString, versionString)
     %Load image channels
     nuc_ch_data = [];
     light_ch_data = [];
+    %idims = [];
 
     if ~isempty(options.input_nuc)
         %Nuc in its own file
         fprintf('> Loading nuclear marker channel...\n');
-        [channels, ~] = LoadTif(options.input_nuc, options.total_ch_nuc, [options.ch_nuc], 1);
+        [channels, idims] = LoadTif(options.input_nuc, options.total_ch_nuc, [options.ch_nuc], 1);
         if isempty(channels); return; end
         nuc_ch_data = channels{options.ch_nuc, 1};
         clear channels
@@ -261,7 +268,7 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         if ~options.nuc_only
             %Load both at once
             fprintf('> Loading nuclear marker and light channels...\n');
-            [channels, ~] = LoadTif(options.input_path,...
+            [channels, idims] = LoadTif(options.input_path,...
                 options.total_ch, [options.ch_nuc options.ch_light], 1);
             if isempty(channels); return; end
             nuc_ch_data = channels{options.ch_nuc, 1};
@@ -269,23 +276,41 @@ function [okay, options] = runCellseg(options, buildString, versionString)
             clear channels
         else
             fprintf('> Loading nuclear marker channel...\n');
-            [channels, ~] = LoadTif(options.input_path, options.total_ch, [options.ch_nuc], 1);
+            [channels, idims] = LoadTif(options.input_path, options.total_ch, [options.ch_nuc], 1);
             if isempty(channels); return; end
             nuc_ch_data = channels{options.ch_nuc, 1};
             clear channels
         end
     end
 
-    %Attempt nuclear segmentation
-    [nuc_params, nuc_res] = CellSeg.AutosegmentNuclei(nuc_ch_data, options.nuc_params);
-    options.nuc_params = nuc_params;
-    if isempty(nuc_res.nuc_label)
-        fprintf('Nuclei segmentation failed!\n');
-        return;
+    if ~isempty(options.import_path_nuc) & ~isfile(options.import_path_nuc)
+        fprintf('> Requested nuclear mask import file "%s" does not exist! Not using...\n', options.import_path_nuc);
+        options.import_path_nuc = [];
+    end
+
+    if ~isempty(options.import_path_nuc)
+        fprintf('> Importing nuclear segmentation mask from %s...\n', options.import_path_nuc);
+        [nuc_params, nuc_res, nuc_mask] = ...
+            CellSeg.importExternalNucMask(options.import_path_nuc, options.nuc_params, idims);
+        if ndims(nuc_mask) > 2
+            fprintf('> %d x %d x %d nuclear segmentation mask imported!\n', size(nuc_mask, 2), size(nuc_mask, 1), size(nuc_mask, 3));
+        else
+            fprintf('> %d x %d nuclear segmentation mask imported!\n', size(nuc_mask, 2), size(nuc_mask, 1));
+        end
+        clear nuc_mask
+    else
+        %Attempt nuclear segmentation
+        fprintf('> Now segmenting nuclei...\n');
+        [nuc_params, nuc_res] = CellSeg.AutosegmentNuclei(nuc_ch_data, options.nuc_params);
+        options.nuc_params = nuc_params;
+        if isempty(nuc_res.nuc_label)
+            fprintf('Nuclei segmentation failed!\n');
+            return;
+        end
     end
     clear nuc_ch_data
     
-    %Load light channel, if not alread loaded.
+    %Load light channel, if not already loaded.
     if isempty(light_ch_data) & ~options.nuc_only
         fprintf('> Loading light channel...\n');
         [channels, ~] = LoadTif(options.input_path, options.total_ch, [options.ch_light], 1);
@@ -296,12 +321,26 @@ function [okay, options] = runCellseg(options, buildString, versionString)
 
     %Attempt cell segmentation
     if ~options.nuc_only
-        [cell_mask, cell_info, trans_plane, cellseg_info] = ...
-            CellSeg.AutosegmentCells(light_ch_data, nuc_res.nuc_label, options.cell_params);
-        clear light_ch_data
-        if isempty(cell_mask)
-            fprintf('Cell segmentation failed!\n');
-            return;
+        if ~isempty(options.import_path_cell)
+            fprintf('> Importing cell segmentation mask from %s...\n', options.import_path_cell);
+            trans_plane = [];
+            [cell_mask, cell_info, options.cell_params, rawMask] = ...
+                CellSeg.importExternalCellMask(options.import_path_cell, options.cell_params, idims);
+            if ndims(rawMask) > 2
+                fprintf('> %d x %d x %d cell segmentation mask imported!\n', size(rawMask, 2), size(rawMask, 1), size(rawMask, 3));
+            else
+                fprintf('> %d x %d cell segmentation mask imported!\n', size(rawMask, 2), size(rawMask, 1));
+            end
+            clear rawMask;
+        else
+            fprintf('> Now segmenting cells...\n');
+            [cell_mask, cell_info, trans_plane, cellseg_info] = ...
+                CellSeg.AutosegmentCells(light_ch_data, nuc_res.nuc_label, options.cell_params);
+            clear light_ch_data
+            if isempty(cell_mask)
+                fprintf('Cell segmentation failed!\n');
+                return;
+            end
         end
     else
         %Just use nuc mask
@@ -469,6 +508,8 @@ function printSummary(options)
     fileHandle = fopen(options.outpath_settings, 'w');
     fprintf(fileHandle, 'input_path=%s\n', options.input_path);
     fprintf(fileHandle, 'input_nuc=%s\n', options.input_nuc);
+    fprintf(fileHandle, 'import_path_nuc=%s\n', options.import_path_nuc);
+    fprintf(fileHandle, 'import_path_cell=%s\n', options.import_path_cell);
     fprintf(fileHandle, 'output_path=%s\n', options.output_path);
     fprintf(fileHandle, 'outpath_cell_mask=%s\n', options.outpath_cell_mask);
     fprintf(fileHandle, 'outpath_nuc_mask=%s\n', options.outpath_nuc_mask);
@@ -594,6 +635,9 @@ function cellseg_options = genOptionsStruct()
     cellseg_options.outpath_cell_mask = []; %As TIF
     cellseg_options.outpath_nuc_mask = []; %As TIF
     cellseg_options.outpath_settings = [];
+
+    cellseg_options.import_path_nuc = [];
+    cellseg_options.import_path_cell = [];
 
     cellseg_options.imgname = [];
 

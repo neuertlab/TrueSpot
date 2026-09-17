@@ -119,7 +119,7 @@ The metadata block (with tag `CommonMeta` at the set or batch level, and `Meta` 
 `PixelDimsNano` can be substituted for `VoxelDimsNano` with only `X` and `Y` attributes in the case of 2D images. `VoxelDimsNano`/`PixelDimsNano` and `PointDimsNano` are specified in nanometers. These values are not used by TrueSpot for processing, but are handy for scaling, rendering, and recording keeping.
 
 ### CellSegSettings
-The `CellSegSettings` block specifies parameters for cell segmentation, if it is to be run. The [parameters](./cellseg_allargs.md) are equivalent to what is used for the command line interface (Cellpose variant [here](./tscp_allargs.md)). The full arguments page can be referenced for descriptions. This whole block is optional, and all children and grandchildren are optional for the block.
+The `CellSegSettings` block specifies parameters for cell segmentation, if it is to be run. The [parameters](./cellseg_allargs.md) are equivalent to what is used for the command line interface (integrated Cellpose variant [here](./tscp_allargs.md)). The full arguments page can be referenced for descriptions. This whole block is optional, and all children and grandchildren are optional for the block.
 
 ```
 <CellSegSettings>
@@ -135,7 +135,7 @@ The `CellSegSettings` block specifies parameters for cell segmentation, if it is
 	<NucCutoff>"{FLOAT}"</NucCutoff>
 	<NucDXY>"{FLOAT}"</NucDXY>
 	<Options ExportCellMaskToFormat="{png | tif}" ExportNucMaskToFormat="{png | tif}" Overwrite="{BOOL}" DumpSettingsToText="{BOOL}"/>
-	<CellposeSettings UseCellposeNuc="{BOOL}" UseCellposeCyto="{BOOL}">
+	<CellposeSettings UseCellposeNuc="{BOOL}" UseCellposeCyto="{BOOL}" ExPyvEnv="{STRING}" ExPyvEnvType="{venv | conda}">
 		<NucSettings AvgDia="{INT}" Normalize="{BOOL}">
 			<Model Name="{STRING}" Ensemble="{BOOL}"/>
 			<TuningThresholds Cell="{FLOAT}" Flow="{FLOAT}"/>
@@ -148,7 +148,11 @@ The `CellSegSettings` block specifies parameters for cell segmentation, if it is
 </CellSegSettings>
 ```
 
-Optionally, if all dependencies are properly installed, [Cellpose](https://www.cellpose.org) can be used for nuclear and/or cell segmentation instead of the CellDissect algorithm. As of version 1.3.3, Cellpose cytoplasmic/cell segmentation can be used with either Cellpose or CellDissect nuclear segmentation. Use of Cellpose is turned on and off by the boolean `UseCellposeNuc` and `UseCellposeCyto` attributes in the optional `CellposeSettings` block. If `UseCellposeNuc` is true while `UseCellposeCyto` is false, the `CellposeSettings` block will be ignored and CellDissect will be used for both nuclear and cytoplasmic/cell segmentation.
+Optionally, if all dependencies are properly installed, [Cellpose](https://www.cellpose.org) can be used for nuclear and/or cell segmentation instead of the CellDissect algorithm. 
+
+As of version 1.3.3, integrated Cellpose cytoplasmic/cell segmentation can be used with either Cellpose or CellDissect nuclear segmentation. Use of Cellpose is turned on and off by the boolean `UseCellposeNuc` and `UseCellposeCyto` attributes in the optional `CellposeSettings` block. If `UseCellposeNuc` is true while `UseCellposeCyto` is false, the `CellposeSettings` block will be ignored and CellDissect will be used for both nuclear and cytoplasmic/cell segmentation.
+
+Cellpose can also be used externally, either outside of the pipeline entirely utilizing the `ExtCellMask` and `ExtNucMask` options in the `Paths` block or, if `tsBatchGen.py` is used, included in the script chain using an included wrapper. This was added because it is difficult to install the MATLAB Cellpose add-on in enviroments without admin permissions. To tell `tsBatchGen.py` to use external Cellpose, the `ExPyvEnv` and `ExPyvEnvType` options can be used. `ExPyvEnv` should specify the name or path of the python environment that Cellpose needs to run in. `ExPyvEnvType` defaults to `venv`, but `conda` should be specified if the target environment is a Conda environment. TrueSpot Lite does not recognize `ExPyvEnv` or `ExPyvEnvType`.
 
 All size values (minimum, maximum, average diameter) are in pixels.
 
