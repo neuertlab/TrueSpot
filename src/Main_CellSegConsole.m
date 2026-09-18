@@ -324,7 +324,7 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         if ~isempty(options.import_path_cell)
             fprintf('> Importing cell segmentation mask from %s...\n', options.import_path_cell);
             trans_plane = [];
-            [cell_mask, cell_info, options.cell_params, rawMask] = ...
+            [cell_mask, cell_info, cellseg_info, rawMask] = ...
                 CellSeg.importExternalCellMask(options.import_path_cell, options.cell_params, idims);
             if ndims(rawMask) > 2
                 fprintf('> %d x %d x %d cell segmentation mask imported!\n', size(rawMask, 2), size(rawMask, 1), size(rawMask, 3));

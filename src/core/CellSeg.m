@@ -1040,7 +1040,7 @@ classdef CellSeg
                 clear channels;
             elseif endsWith(pathlwr, ".png")
                 cell_mask = imread(path);
-            elseif endsWith(pathlwr, '.tsv') | endsWith(pathlwr, '.csv')
+            elseif endsWith(pathlwr, '.tsv') | endsWith(pathlwr, '.csv') | endsWith(pathlwr, '.csv.gz') | endsWith(pathlwr, '.tsv.gz')
                 cell_mask = readmatrix(path);
                 if (Y > 0)
                     mY = size(cell_mask, 1);
@@ -1160,7 +1160,7 @@ classdef CellSeg
                 clear channels;
             elseif endsWith(pathlwr, ".png")
                 nuc_mask = imread(path);
-            elseif endsWith(pathlwr, '.tsv') | endsWith(pathlwr, '.csv')
+            elseif endsWith(pathlwr, '.tsv') | endsWith(pathlwr, '.csv') | endsWith(pathlwr, '.csv.gz') | endsWith(pathlwr, '.tsv.gz')
                 %Assumes one channel, one plane, unless Y is provided as an
                 %arg
                 nuc_mask = readmatrix(path);

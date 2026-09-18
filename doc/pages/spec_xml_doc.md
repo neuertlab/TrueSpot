@@ -7,6 +7,8 @@ An example input XML for TrueSpot Lite can be found [here](../sampleXmls/TSLite_
 
 Parameters are organized into blocks. The outermost block has the tag `ImageSet`. An `ImageSet` can contain any number of batches (`ImageBatch`) and blocks specifying parameters common to all batches. TrueSpot Lite will only read the first `ImageSet` in the file and it will process ALL batches within that set. Having multiple `ImageSet`s in one file is not recommended anyway since XML parsers tend to balk at files that don't have a single defined root element. 
 
+`ImageSet` has one optional attribute - `Name`. This is used for project name if LSF batch system is used.
+
 ## Variable Substitution
 
 TrueSpot can do variable substitution for certain field values (namely file paths). This allows for the specification of image-specific parameters on the batch level such as different control images for each image to analyze - provided that the control image file names follow a particular naming scheme.
@@ -187,3 +189,24 @@ See the [full command line argument list](./quant_allargs.md) for descriptions o
 
 Note that if the voxel size is specified in metadata, the Z to XY ratio can be automatically calculated.
 The `ManualThreshold` option is intended as an override. We recommend letting quant run without a threshold specified in most cases however as this allows it to fit spots over a wider range of possible thresholds meaning quant does not have to be run again should the desired threshold be lowered.
+
+### JobSettings
+A `JobSettings` block specifies batch job properties for headless runs. `JobSettings` blocks are read by `tsBatchGen.py`, but ignored by TrueSpot Lite. 
+
+```
+<JobSettings BatchSystem="{slurm | lsf}" GenExePerm="{CHMOD PERM STRING}">
+	<TrueSpotDir>"{PATH}"</TrueSpotDir>
+	<MatlabModuleName>"{STRING}"</MatlabModuleName>
+	<(CellSeg | Spot | Quant)Job CpuCount="{INT}" RamGigs="{INT}" Time="{TIMESTRING}"/>
+</JobSettings>
+```
+
+`BatchSystem` can be used to specify what software tool is used to manage jobs on the target cluster. Syntax for job submission in scripts needs to be adjusted. The default value is `slurm`. Only Slurm and LSF are supported at this time.
+
+`GenExePerm` is the permissions string that follows `chmod` in scripts following creation of runnable files. The default value is `754`.
+
+`TrueSpotDir` should be used to specify the absolute path to the base directory of the TrueSpot repo on the target system. If this is not specified, behavior may be unpredictable, though likely the system will not consistently find the TrueSpot code.
+
+`MatlabModuleName` is the name of the module to be loaded by the command `module load`. This is handy for version specification, and is required on some clusters to run MATLAB. If this field is not specified, the batch gen script will not generate `module load` lines.
+
+There are three possible child nodes for specified resources (for the three job types): `CellSegJob`, `SpotJob`, and `QuantJob`. These nodes have three possible attributes: `CpuCount` (number of CPUs to request), `RamGigs` (RAM to request, in gigabytes), and `Time` (job wall time, specified as a hh:mm string).

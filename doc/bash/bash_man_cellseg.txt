@@ -10,6 +10,8 @@ Usage Manual
 -chtotnuc [Int]			The total number of channels in the `innuc` image stack, if provided. (Default: 1)
 -chlight [Int]			The TRANS or passthrough light channel in the input image stack. Only used for background extraction along with cell segmentation mask.
 -chnuc [Int]			The nuclear stain (eg. DAPI) channel in the input image stack, or the `innuc` image stack if one is provided. (Default: 1)
+-importcell [Path]			If cell segmentation was run externally, it can be imported into TrueSpot using this option. If an import mask is provided, cell segmentation will not be run.
+-importnuc [Path]			If nuclear segmentation was run externally, it can be imported into TrueSpot using this option. If an import mask is provided, nuclear segmentation will not be run.
 
 --- Output Options ---
 -outpath [Path]			Path to directory to place output files. File names will be automatically generated from image name. (Default: Directory of input image.)

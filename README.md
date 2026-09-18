@@ -120,6 +120,8 @@ The only required argument is `-input`. See [documentation](./doc/pages/cellseg_
 | ----- | ----- | ----- |
 | `-input` | *Path* - Path to input image file.  | The input image or image stack containing light/TRANS channel. |
 | `-innuc` | *Path* - Path to image file.  | The input image stack containing the nuclear marker channel, if different from the main input stack. |
+| `-importnuc` | *Path* - Path to mask file (csv, tif, or png).  | If nuclear segmentation was run externally, it can be imported into TrueSpot using this option. If an import mask is provided, nuclear segmentation will not be run. |
+| `-importcell` | *Path* - Path to mask file (csv, tif, or png).  | If cell segmentation was run externally, it can be imported into TrueSpot using this option. If an import mask is provided, cell segmentation will not be run. |
 | `-chtotal` | *Integer* - Channel Count  | The total number of channels in the input image stack. (Default: 1) |
 | `-chtotnuc` | *Integer* - Channel Count  | The total number of channels in the `innuc` image stack, if provided. (Default: 1) |
 | `-chlight` | *Integer* - Channel Index (1-based) | The TRANS or passthrough light channel in the input image stack. Only used for background extraction along with cell segmentation mask. |

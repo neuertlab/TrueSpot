@@ -8,8 +8,8 @@
 	<JobSettings>
 		<TrueSpotDir>"/nobackup/p_neuert_lab/hospelb/TrueSpot_Release"</TrueSpotDir>
 		<MatlabModuleName>"MATLAB/2022a"</MatlabModuleName>
-		<CellSegJob CpuCount="2" RamGigs="24" Time="02:00:00"/>
-		<SpotJob CpuCount="4" RamGigs="32" Time="08:00:00"/>
+		<CellSegJob CpuCount="2" RamGigs="24" Time="02:00"/>
+		<SpotJob CpuCount="4" RamGigs="32" Time="08:00"/>
 	</JobSettings>
 	<ImageBatch Name="E1R1">
 		<Paths>

@@ -160,6 +160,9 @@ class CellsegSettings:
         self.cellposeNuc = None
         self.cellposeCyto = None
         
+        self.excpPyvenvName = None
+        self.excpPyvenvType = None
+        
     def fromXmlNode(self, element):
         for child in element:
             if child.tag == 'PresetName':
@@ -207,10 +210,14 @@ class CellsegSettings:
                     self.dumpSettings = str2bool(child.attrib['DumpSettingsToText'])
             elif child.tag == 'CellposeSettings':
                 if 'UseCellposeNuc' in child.attrib:
-                    test = child.attrib['UseCellposeNuc']
+                    #test = child.attrib['UseCellposeNuc']
                     self.useCellposeNuc = str2bool(child.attrib['UseCellposeNuc'])
                 if 'UseCellposeCyto' in child.attrib:
                     self.useCellposeCyto = str2bool(child.attrib['UseCellposeCyto'])
+                if 'ExPyvEnv' in child.attrib:
+                    self.excpPyvenvName = child.attrib['ExPyvEnv']
+                if 'ExPyvEnvType' in child.attrib:
+                    self.excpPyvenvType = child.attrib['ExPyvEnvType']
                 for grandchild in child:
                     if grandchild.tag == 'NucSettings':
                         self.cellposeNuc = CellposeSubSettings()
@@ -266,6 +273,10 @@ class CellsegSettings:
             self.useCellposeNuc = other.useCellposeNuc   
         if overwrite or (not self.useCellposeCyto):
             self.useCellposeCyto = other.useCellposeCyto
+        if overwrite or (self.excpPyvenvName is None):
+            self.excpPyvenvName = other.excpPyvenvName
+        if overwrite or (self.excpPyvenvType is None) or (self.excpPyvenvType == "venv"):
+            self.excpPyvenvType = other.excpPyvenvType
         if overwrite or (self.cellposeNuc is None):
             if (self.cellposeNuc is None):
                 if (other.cellposeNuc is not None):
@@ -363,8 +374,8 @@ class IDistroSettings:
         
         self.jobSettings = JobSettings()
         self.jobSettings.cpuCount = 4
-        self.jobSettings.ramGigs = 128
-        self.jobSettings.timeString = "12:00:00"
+        self.jobSettings.ramGigs = 64
+        self.jobSettings.timeString = "12:00"
         
     def fromXmlNode(self, element):
         if 'CorrectionMtx' in element.attrib:
@@ -406,8 +417,7 @@ class IDistroSettings:
             self.jobSettings.copyDataFrom(other.jobSettings, True)
         else:
             self.jobSettings.copyDataFrom(other.jobSettings, overwrite)
-        
-        
+                
 class ImageChannelInfo:
     def __init__(self):
         self.channelNumber = 0
@@ -477,7 +487,7 @@ class ImageChannelInfo:
         if other is None:
             return        
         self.channelNumber = other.channelNumber
-        copyFromParent(other, overwrite) #Contingent upon field names staying the same             
+        self.copyFromParent(other, overwrite) #Contingent upon field names staying the same             
     
 class ImageBatchInfo:
     def __init__(self):
@@ -640,7 +650,7 @@ class ImageBatchInfo:
             self.lightChannel = other.lightChannel
         if overwrite or (self.nucChannel <= 0):
             self.nucChannel = other.nucChannel
-        copyFromParent(other, overwrite)
+        self.copyFromParent(other, overwrite)
         
     def updateOverrides(self):
         for chinfo in self.channels:
@@ -648,6 +658,8 @@ class ImageBatchInfo:
 
 class ImageBatchSet:
     def __init__(self):
+        self.setName = None
+        
         self.metaData = None
         self.cellsegSettings = None
         self.spotsSettings = None
@@ -658,10 +670,27 @@ class ImageBatchSet:
         
         self.tsDir = None
         self.moduleName = None
+        self.batchSystem = None
+        self.genExePerm = '754'
         
         self.batches = list()
         
+    def autoGenName(self):
+        now = datetime.datetime.now()
+        dd = now.date()
+        tt = now.time()
+        yy = dd.year
+        mo = dd.month
+        dm = dd.day
+        hr = tt.hour
+        mn = tt.minute
+        sc = tt.second
+        self.setName = f"ISet{yy:04d}{mo:02d}{dm:02d}{hr:02d}{mn:02d}{sc:02d}"
+        
     def fromXmlNode(self, element):
+        if 'Name' in element.attrib:
+            self.setName = element.attrib['Name']
+        
         for child in element:
             if (child.tag == 'CommonMeta') or (child.tag == 'Meta'):
                 metanode = MetaSettings()
@@ -692,6 +721,10 @@ class ImageBatchSet:
                 else:
                     self.quantSettings = childnode
             elif child.tag == 'JobSettings':
+                if 'BatchSystem' in child.attrib:
+                    self.batchSystem = child.attrib['BatchSystem']
+                if 'GenExePerm' in child.attrib:
+                    self.genExePerm = child.attrib['GenExePerm']
                 for gchild in child:
                     if gchild.tag == 'SpotJob':
                         childnode = JobSettings()
@@ -710,7 +743,7 @@ class ImageBatchSet:
                     elif gchild.tag == 'TrueSpotDir':
                         self.tsDir = cleanXmlValueString(gchild.text)
                     elif gchild.tag == 'MatlabModuleName':
-                        self.moduleName = cleanXmlValueString(gchild.text)   
+                        self.moduleName = cleanXmlValueString(gchild.text)
             elif child.tag == 'IntensityDistroSettings':
                 childnode = IDistroSettings()
                 childnode.fromXmlNode(child)
@@ -754,7 +787,36 @@ def getdtstr():
     now = datetime.datetime.now()
     return "[" + str(now) + "]"
 
-def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
+def genSlurmJobCommand(targetHandle, jobName, jobSettings, scriptPath, outPath, errPath):
+    targetHandle.write("sbatch --job-name=\"" + jobName + "\"")
+    if jobSettings is not None:
+        targetHandle.write(" --cpus-per-task=" + str(jobSettings.cpuCount))
+        targetHandle.write(" --mem=" + str(jobSettings.ramGigs) + "g")
+        if jobSettings.timeString is not None:
+            targetHandle.write(" --time=" + str(jobSettings.timeString) + ":00")
+        else:
+            targetHandle.write(" --time=02:00:00")
+    if errPath is not None:
+        targetHandle.write(" --error=\""  + errPath + "\"")
+    if outPath is not None:
+        targetHandle.write(" --out=\""  + outPath + "\"")
+    targetHandle.write(" \"" + scriptPath + "\"\n")
+    
+def genLSFJobCommand(targetHandle, projectName, jobName, jobSettings, scriptPath, outPath, errPath):
+    targetHandle.write("bsub -P \"" + projectName + "\"")
+    targetHandle.write(" -J \""  + jobName + "\"")
+    if jobSettings is not None:
+        targetHandle.write(" -n " + str(jobSettings.cpuCount))
+        targetHandle.write(" -R \"rusage[mem=" + str(jobSettings.ramGigs*1000) + "]\"")
+        if jobSettings.timeString is not None:
+            targetHandle.write(" -W " + str(jobSettings.timeString)) #Maybe use -We?
+    if errPath is not None:
+        targetHandle.write(" -eo \""  + errPath + "\"")
+    if outPath is not None:
+        targetHandle.write(" -oo \""  + outPath + "\"")
+    targetHandle.write(" \"" + scriptPath + "\"\n")
+
+def genChannelJob(tifImage, channelInfo, batchSet):
     chStr = 'CH' + str(channelInfo.channelNumber)
     channelInfo.dirName = chStr
     chDir = os.path.join(tifImage.resultsDir, chStr)
@@ -768,9 +830,10 @@ def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
     
     scriptHandle = open(spotScriptPath, 'w')
     scriptHandle.write("#!/bin/bash\n\n")
-    scriptHandle.write("module load " + moduleName + "\n")
+    if batchSet.moduleName:
+        scriptHandle.write("module load " + batchSet.moduleName + "\n")
     scriptHandle.write("if [ -s \"" + tifImage.csResPath + "\" ]; then\n")
-    scriptHandle.write("\tbash \"" + os.path.join(tsDir, "TrueSpot_RNASpots.sh") + "\"")
+    scriptHandle.write("\tbash \"" + os.path.join(batchSet.tsDir, "TrueSpot_RNASpots.sh") + "\"")
     scriptHandle.write(" -input \"" + tifImage.tifPath + "\"")
     scriptHandle.write(" -outstem \"" + fullOutStem + "\"")
     scriptHandle.write(" -imgname \"" + chName + "\"")
@@ -814,7 +877,7 @@ def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
     
     #Quant
     scriptHandle.write("if [ -s \"" + fullOutStem + "_callTable.mat\" ]; then\n")
-    scriptHandle.write("\tbash \"" + os.path.join(tsDir, "TrueSpot_RNAQuant.sh") + "\"")
+    scriptHandle.write("\tbash \"" + os.path.join(batchSet.tsDir, "TrueSpot_RNAQuant.sh") + "\"")
     scriptHandle.write(" -runinfo \"" + fullOutStem + "_rnaspotsrun.mat\"")
     if channelInfo.quantSettings is not None:
         if channelInfo.quantSettings.qNoClouds:
@@ -834,6 +897,7 @@ def genChannelJob(tifImage, channelInfo, tsDir, moduleName):
     return channelInfo
 
 def genImageJobs(tifImage, batchInfo):
+    batchSet = batchInfo.parentSet
     os.makedirs(tifImage.resultsDir, exist_ok=True)
     tifImage.csResPath = os.path.join(tifImage.resultsDir, "CellSeg_" + tifImage.name + ".mat")
     tifImage.batchInfo = batchInfo
@@ -841,21 +905,123 @@ def genImageJobs(tifImage, batchInfo):
     #Cell Segmentation
     scriptHandle = open(tifImage.csScriptPath, 'w')
     scriptHandle.write("#!/bin/bash\n\n")
-    scriptHandle.write("module load " + batchInfo.parentSet.moduleName + "\n")
+    if batchSet.moduleName is not None:
+        scriptHandle.write("module load " + batchSet.moduleName + "\n")
     scriptHandle.write("if [ ! -s \"" + tifImage.csResPath + "\" ]; then\n")
-    if batchInfo.cellsegSettings is not None:
+    
+    #Add external cellpose
+    useEXCPCell = False
+    useEXCPNuc = False
+    excpCellMaskPath = None
+    excpNucMaskPath = None
+    if (batchInfo.cellsegSettings is not None) and (batchInfo.cellsegSettings.excpPyvenvName is not None):
         if batchInfo.cellsegSettings.useCellposeCyto:
-            scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CSCellpose.sh") + "\"")
+            useEXCPCell = True
+            excpCellMaskPath = os.path.join(tifImage.resultsDir, "EXCP_" + tifImage.name + "_cellmask.csv")
+        if batchInfo.cellsegSettings.useCellposeNuc:
+            useEXCPNuc = True
+            excpNucMaskPath = os.path.join(tifImage.resultsDir, "EXCP_" + tifImage.name + "_nucmask.csv")
+            
+    if useEXCPCell or useEXCPNuc:
+        if batchInfo.cellsegSettings.excpPyvenvType == 'venv':
+            scriptHandle.write("\tsource \"" + batchInfo.cellsegSettings.excpPyvenvName + "/bin/activate\"\n")
+        elif batchInfo.cellsegSettings.excpPyvenvType == 'conda':
+            scriptHandle.write("\tconda activate  " + batchInfo.cellsegSettings.excpPyvenvName + "\n")
         else:
-            scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
+            print("Python environment type \"" + batchInfo.cellsegSettings.excpPyvenvType + "\" not recognized. External Cellpose will not be used.")
+            useEXCPCell = False
+            useEXCPNuc = False
+        
+    if useEXCPCell or useEXCPNuc:
+        scriptHandle.write("\tpython3 \"" + batchSet.tsDir + "/scripts/cellpose_wrapper.py" + "\" \"" + tifImage.tifPath + "\"")
+        
+        scriptHandle.write(" --ch_nuc " + str(batchInfo.nucChannel))
+        scriptHandle.write(" --ch_cell " + str(batchInfo.lightChannel))
+        
+        if batchInfo.metaData is not None:
+            vxSz = batchInfo.metaData.voxelDims
+            if vxSz[2] > 0:
+                scriptHandle.write(" --voxelsz \"(" + str(vxSz[2]) + "," + str(vxSz[1]) + "," + str(vxSz[0]) + ")\"")
+                if useEXCPNuc:
+                    scriptHandle.write(" --n3d")
+            else:
+                scriptHandle.write(" --pixelsz \"(" + str(vxSz[1]) + "," + str(vxSz[0]) + ")\"")
+        
+        if useEXCPNuc:
+            scriptHandle.write(" --nuc_out \"" + excpNucMaskPath + "\"")
+            
+            if (batchInfo.cellsegSettings is not None):
+                if batchInfo.cellsegSettings.nucSizeMin > 0:
+                    scriptHandle.write(" --nminsz " + str(batchInfo.cellsegSettings.nucSizeMin))
+                if batchInfo.cellsegSettings.nucZMin > 0:
+                    scriptHandle.write(" --nzmin " + str(batchInfo.cellsegSettings.nucZMin)) 
+                if batchInfo.cellsegSettings.nucZMax > 0:
+                    scriptHandle.write(" --nzmax " + str(batchInfo.cellsegSettings.nucZMax))
+            
+                if batchInfo.cellsegSettings.cellposeNuc is not None:
+                    if batchInfo.cellsegSettings.cellposeNuc.avgDia > 0:
+                        scriptHandle.write(" --navgdia "  + str(batchInfo.cellsegSettings.cellposeNuc.avgDia))
+                    if batchInfo.cellsegSettings.cellposeNuc.norm:
+                        scriptHandle.write(" --nnorm")
+                    if not numpy.isnan(batchInfo.cellsegSettings.cellposeNuc.cellTh):
+                        scriptHandle.write(" --ncth " + str(batchInfo.cellsegSettings.cellposeNuc.cellTh))
+                    if not numpy.isnan(batchInfo.cellsegSettings.cellposeNuc.flowTh):
+                        scriptHandle.write(" --nfth " + str(batchInfo.cellsegSettings.cellposeNuc.flowTh))
+
+        if useEXCPCell:
+            scriptHandle.write(" --cell_out \"" + excpCellMaskPath + "\"")
+            
+            if (batchInfo.cellsegSettings is not None):
+                if batchInfo.cellsegSettings.cellSizeMin > 0:
+                    scriptHandle.write(" --cminsz " + str(batchInfo.cellsegSettings.cellSizeMin))
+                if batchInfo.cellsegSettings.lightZMin > 0:
+                    scriptHandle.write(" --czmin " + str(batchInfo.cellsegSettings.lightZMin)) 
+                if batchInfo.cellsegSettings.lightZMax > 0:
+                    scriptHandle.write(" --czmax " + str(batchInfo.cellsegSettings.lightZMax))
+            
+                if batchInfo.cellsegSettings.cellposeCyto is not None:
+                    if batchInfo.cellsegSettings.cellposeCyto.avgDia > 0:
+                        scriptHandle.write(" --cavgdia "  + str(batchInfo.cellsegSettings.cellposeCyto.avgDia))
+                    if batchInfo.cellsegSettings.cellposeCyto.norm:
+                        scriptHandle.write(" --cnorm")
+                    if not numpy.isnan(batchInfo.cellsegSettings.cellposeCyto.cellTh):
+                        scriptHandle.write(" --ccth " + str(batchInfo.cellsegSettings.cellposeCyto.cellTh))
+                    if not numpy.isnan(batchInfo.cellsegSettings.cellposeCyto.flowTh):
+                        scriptHandle.write(" --cfth " + str(batchInfo.cellsegSettings.cellposeCyto.flowTh))
+
+        scriptHandle.write(" --onecoords")
+        if not useEXCPNuc:
+            scriptHandle.write(" --nonucseg")
+        if not useEXCPCell:
+            scriptHandle.write(" --nocellseg")
+
+        scriptHandle.write("\n")
+
+        if batchInfo.cellsegSettings.excpPyvenvType == 'venv':
+            scriptHandle.write("\tdeactivate\n")
+        elif batchInfo.cellsegSettings.excpPyvenvType == 'conda':
+            scriptHandle.write("\tconda deactivate\n")
+    
+    #-----------------------------------------
+    if batchInfo.cellsegSettings is not None:
+        if batchInfo.cellsegSettings.useCellposeCyto and (not useEXCPCell) and (not useEXCPNuc):
+            scriptHandle.write("\tbash \"" + os.path.join(batchSet.tsDir, "TrueSpot_CSCellpose.sh") + "\"")
+        else:
+            scriptHandle.write("\tbash \"" + os.path.join(batchSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
     else:
-        scriptHandle.write("\tbash \"" + os.path.join(batchInfo.parentSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
+        scriptHandle.write("\tbash \"" + os.path.join(batchSet.tsDir, "TrueSpot_CellSeg.sh") + "\"")
     scriptHandle.write(" -input \"" + tifImage.tifPath + "\"")
     scriptHandle.write(" -outpath \"" + tifImage.resultsDir + "\"")
     scriptHandle.write(" -imgname \"" + tifImage.name + "\"")
     scriptHandle.write(" -chtotal " + str(batchInfo.channelCount))
     scriptHandle.write(" -chlight " + str(batchInfo.lightChannel))
     scriptHandle.write(" -chnuc " + str(batchInfo.nucChannel))
+    
+    if excpCellMaskPath is not None:
+        scriptHandle.write(" -importcell \"" + excpCellMaskPath + "\"") 
+    if excpNucMaskPath is not None:
+        scriptHandle.write(" -importnuc \"" + excpNucMaskPath + "\"") 
+    
     if batchInfo.lightChannel <= 0:
         scriptHandle.write(" -nuconly")
     if batchInfo.cellsegSettings is not None:
@@ -945,26 +1111,35 @@ def genImageJobs(tifImage, batchInfo):
                 scriptHandle.write(" -ndxy " + str(batchInfo.cellsegSettings.nucDxy))                     
     scriptHandle.write(" -log \"" + os.path.join(tifImage.resultsDir, tifImage.name + '_cellseg_mat.log') + "\"")
     scriptHandle.write("\n")
+    
+    #GZip the cellpose outputs, if applicable
+    if excpCellMaskPath is not None:
+        scriptHandle.write("\tgzip \"" + excpCellMaskPath + "\"\n") 
+    if excpNucMaskPath is not None:
+        scriptHandle.write("\tgzip \"" + excpNucMaskPath + "\"\n") 
+    
     scriptHandle.write("else\n")
     scriptHandle.write("\techo -e \"Cellseg results found! Skipping cell segmentation...\"\n")
     scriptHandle.write("fi\n\n")
     
     #Submit jobs for channels
     for chInfo in batchInfo.channels:
-        chInfo = genChannelJob(tifImage, chInfo, batchInfo.parentSet.tsDir, batchInfo.parentSet.moduleName)
+        chInfo = genChannelJob(tifImage, chInfo, batchSet)
         chDir = os.path.join(tifImage.resultsDir, chInfo.dirName)
         scriptHandle.write("if [ -s \"" + chInfo.quantResPath + "\" ]; then\n")
         scriptHandle.write("\techo -e \"Quant data already found! Skipping...\"\n")
         scriptHandle.write("else\n")
-        scriptHandle.write("\tchmod 774 \"" + chInfo.scriptPath + "\"\n")
-        scriptHandle.write("\tsbatch --job-name=\"TS_" + tifImage.name + "_" + chInfo.dirName + "\"")
-        if chInfo.spotsJobSettings is not None:
-            scriptHandle.write(" --cpus-per-task=" + str(chInfo.spotsJobSettings.cpuCount))
-            scriptHandle.write(" --mem=" + str(chInfo.spotsJobSettings.ramGigs) + "g")
-            scriptHandle.write(" --time=" + str(chInfo.spotsJobSettings.timeString))
-        scriptHandle.write(" --error=\""  + os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsSlurm.err') + "\"")
-        scriptHandle.write(" --out=\""  + os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsSlurm.out') + "\"")
-        scriptHandle.write(" \"" + chInfo.scriptPath + "\"\n")
+        
+        scriptHandle.write("\tchmod " + batchSet.genExePerm + " \"" + chInfo.scriptPath + "\"\n")
+        jobName = "TS_" + tifImage.name + "_" + chInfo.dirName
+        berrPath = os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsJob.err')
+        boutPath = os.path.join(chDir, tifImage.name + "_" + chInfo.dirName + '_tsJob.out')
+        scriptHandle.write("\t")
+        if batchSet.batchSystem == "slurm":
+            genSlurmJobCommand(scriptHandle, jobName, chInfo.spotsJobSettings, chInfo.scriptPath, boutPath, berrPath)
+        elif batchSet.batchSystem == "lsf":    
+            genLSFJobCommand(scriptHandle, batchSet.setName, jobName, chInfo.spotsJobSettings, chInfo.scriptPath, boutPath, berrPath)
+
         scriptHandle.write("fi\n\n")
 
     scriptHandle.close()
@@ -977,7 +1152,8 @@ def genIDistro(idisSettings, trgDir, tsDir, moduleName):
     
     scriptHandle = open(idistroScriptPath, 'w')
     scriptHandle.write("#!/bin/bash\n\n")
-    scriptHandle.write("module load " +  moduleName + "\n")
+    if moduleName is not None:
+        scriptHandle.write("module load " +  moduleName + "\n")
     
     scriptHandle.write("matlab -nodisplay -nosplash -logfile \"")
     scriptHandle.write(os.path.join(trgDir, 'idistroDump.log') + "\"")
@@ -1003,6 +1179,7 @@ def genIDistro(idisSettings, trgDir, tsDir, moduleName):
 
 def genBatch(myBatch):
     print(getdtstr(), "Working on batch " + myBatch.name)
+    batchSet = myBatch.parentSet
     
     #Get list of tif images
     #https://realpython.com/get-all-files-in-directory-python/
@@ -1032,20 +1209,22 @@ def genBatch(myBatch):
     for tifImage in tifList:
         print(getdtstr(), "\tImage found:", tifImage.name)
         tifImage = genImageJobs(tifImage, myBatch)
-        batchScriptHandle.write("chmod 774 \"" + tifImage.csScriptPath + "\"\n")
-        batchScriptHandle.write("sbatch --job-name=\"TSCS_" + tifImage.name + "\"")
-        if myBatch.cellsegJobSettings is not None:
-            batchScriptHandle.write(" --cpus-per-task=" + str(myBatch.cellsegJobSettings.cpuCount))
-            batchScriptHandle.write(" --mem=" + str(myBatch.cellsegJobSettings.ramGigs) + "g")
-            batchScriptHandle.write(" --time=" + str(myBatch.cellsegJobSettings.timeString))
-        batchScriptHandle.write(" --error=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.err') + "\"")
-        batchScriptHandle.write(" --out=\""  + os.path.join(tifImage.resultsDir, tifImage.name + '_tscsSlurm.out') + "\"")
-        batchScriptHandle.write(" \"" + tifImage.csScriptPath + "\"\n\n")        
-
+        batchScriptHandle.write("chmod " + batchSet.genExePerm + " \"" + tifImage.csScriptPath + "\"\n")
+        
+        jobName = "TSCS_" + tifImage.name
+        errPath = os.path.join(tifImage.resultsDir, tifImage.name + '_tscsJob.err')
+        outPath = os.path.join(tifImage.resultsDir, tifImage.name + '_tscsJob.out')
+        if batchSet.batchSystem == "slurm":
+            genSlurmJobCommand(batchScriptHandle, jobName, myBatch.cellsegJobSettings, tifImage.csScriptPath, outPath, errPath)
+        elif batchSet.batchSystem == "lsf":    
+            genLSFJobCommand(batchScriptHandle, batchSet.setName, jobName, myBatch.cellsegJobSettings, tifImage.csScriptPath, outPath, errPath)
+            
     batchScriptHandle.close()
     return myBatch
 
 def genPostJobs(myBatch):
+    batchSet = myBatch.parentSet
+    
     #XML for count dump
     xmlPath = os.path.join(myBatch.outputDir, 'countInfo.xml')
     outHandle = open(xmlPath, 'w')
@@ -1075,7 +1254,8 @@ def genPostJobs(myBatch):
     scriptPath1 = stem1 + ".sh"
     outHandle = open(scriptPath1, 'w')
     outHandle.write("#!/bin/bash\n\n")
-    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    if batchSet.moduleName is not None:
+        outHandle.write("module load " + batchSet.moduleName + "\n")
     outHandle.write("matlab -nodisplay -nosplash -logfile \"")
     outHandle.write(os.path.join(myBatch.outputDir, 'procResMATQC.log') + "\"")
     outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
@@ -1087,7 +1267,8 @@ def genPostJobs(myBatch):
     scriptPath2 = stem2 + ".sh"
     outHandle = open(scriptPath2, 'w')
     outHandle.write("#!/bin/bash\n\n")
-    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    if batchSet.moduleName is not None:
+        outHandle.write("module load " + batchSet.moduleName + "\n")
     outHandle.write("matlab -nodisplay -nosplash -logfile \"")
     outHandle.write(os.path.join(myBatch.outputDir, 'procResThreshAssess.log') + "\"")
     outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
@@ -1099,7 +1280,8 @@ def genPostJobs(myBatch):
     scriptPath3 = stem3 + ".sh"
     outHandle = open(scriptPath3, 'w')
     outHandle.write("#!/bin/bash\n\n")
-    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    if batchSet.moduleName is not None:
+        outHandle.write("module load " + batchSet.moduleName + "\n")
     outHandle.write("matlab -nodisplay -nosplash -logfile \"")
     outHandle.write(os.path.join(myBatch.outputDir, 'procResQuantDumpAuto.log') + "\"")
     outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
@@ -1111,7 +1293,8 @@ def genPostJobs(myBatch):
     scriptPath4 = stem4 + ".sh"
     outHandle = open(scriptPath4, 'w')
     outHandle.write("#!/bin/bash\n\n")
-    outHandle.write("module load " + myBatch.parentSet.moduleName + "\n")
+    if batchSet.moduleName is not None:
+        outHandle.write("module load " + batchSet.moduleName + "\n")
     outHandle.write("matlab -nodisplay -nosplash -logfile \"")
     outHandle.write(os.path.join(myBatch.outputDir, 'procResQuantDumpXML.log') + "\"")
     outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
@@ -1122,7 +1305,7 @@ def genPostJobs(myBatch):
     #Intensity distribution analysis
     stem5 = os.path.join(myBatch.outputDir, 'idistroJob')
     if myBatch.idistroSettings is not None:
-        idistroScriptPath = genIDistro(myBatch.idistroSettings, myBatch.outputDir, myBatch.parentSet.tsDir, myBatch.parentSet.moduleName)
+        idistroScriptPath = genIDistro(myBatch.idistroSettings, myBatch.outputDir, batchSet.tsDir, batchSet.moduleName)
     else:
         idistroScriptPath = None
     
@@ -1131,36 +1314,54 @@ def genPostJobs(myBatch):
     myBatch.postResScriptPath = scriptPath
     outHandle = open(scriptPath, 'w')
     outHandle.write("#!/bin/bash\n\n")
-    outHandle.write("chmod 774 \"" + scriptPath1 + "\"\n")
-    outHandle.write("sbatch --job-name=\"TSQC_" + myBatch.name + "\" --cpus-per-task=2 --time=8:00:00 --mem=16g")
-    outHandle.write(" --error=\"" + stem1 + ".err\"")
-    outHandle.write(" --out=\"" + stem1 + ".out\"")
-    outHandle.write(" \"" + scriptPath1 + "\"\n")
     
-    outHandle.write("chmod 774 \"" + scriptPath2 + "\"\n")
-    outHandle.write("sbatch --job-name=\"TSThA_" + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=4g")
-    outHandle.write(" --error=\"" + stem2 + ".err\"")
-    outHandle.write(" --out=\"" + stem2 + ".out\"")
-    outHandle.write(" \"" + scriptPath2 + "\"\n")    
+    outHandle.write("chmod " + batchSet.genExePerm + " \"" + scriptPath1 + "\"\n")
+    jobName = "TSQC_" + myBatch.name
+    js = JobSettings()
+    js.cpuCount = 2
+    js.ramGigs = 16
+    js.timeString = "08:00"
+    boutPath = stem1 + ".out"
+    berrPath = stem1 + ".err"
+    if batchSet.batchSystem == "slurm":
+        genSlurmJobCommand(outHandle, jobName, js, scriptPath1, boutPath, berrPath)
+    elif batchSet.batchSystem == "lsf":    
+        genLSFJobCommand(outHandle, batchSet.setName, jobName, js, scriptPath1, boutPath, berrPath)
+        
+    outHandle.write("chmod " + batchSet.genExePerm + " \"" + scriptPath2 + "\"\n")
+    jobName = "TSThA_" + myBatch.name
+    js.ramGigs = 4
+    js.timeString = "02:00"
+    boutPath = stem2 + ".out"
+    berrPath = stem2 + ".err"
+    if batchSet.batchSystem == "slurm":
+        genSlurmJobCommand(outHandle, jobName, js, scriptPath2, boutPath, berrPath)
+    elif batchSet.batchSystem == "lsf":    
+        genLSFJobCommand(outHandle, batchSet.setName, jobName, js, scriptPath2, boutPath, berrPath) 
     
-    outHandle.write("chmod 774 \"" + scriptPath3 + "\"\n")
-    outHandle.write("sbatch --job-name=\"TSQDA_" + myBatch.name + "\" --cpus-per-task=2 --time=2:00:00 --mem=8g")
-    outHandle.write(" --error=\"" + stem3 + ".err\"")
-    outHandle.write(" --out=\"" + stem3 + ".out\"")
-    outHandle.write(" \"" + scriptPath3 + "\"\n")
+ 
+    outHandle.write("chmod " + batchSet.genExePerm + " \"" + scriptPath3 + "\"\n")
+    jobName = "TSQDA_" + myBatch.name
+    js.ramGigs = 8
+    boutPath = stem3 + ".out"
+    berrPath = stem3 + ".err"
+    if batchSet.batchSystem == "slurm":
+        genSlurmJobCommand(outHandle, jobName, js, scriptPath3, boutPath, berrPath)
+    elif batchSet.batchSystem == "lsf":    
+        genLSFJobCommand(outHandle, batchSet.setName, jobName, js, scriptPath3, boutPath, berrPath) 
     
     if idistroScriptPath is not None:
-        outHandle.write("chmod 774 \"" + idistroScriptPath + "\"\n")
-        outHandle.write("sbatch --job-name=\"TSIDis_" + myBatch.name + "\"")
+        outHandle.write("chmod " + batchSet.genExePerm + " \"" + idistroScriptPath + "\"\n")
+        jobName = "TSIDis_" + myBatch.name
+        js.ramGigs = 8
+        boutPath = stem5 + ".out"
+        berrPath = stem5 + ".err"
         if myBatch.idistroSettings.jobSettings is not None:
-            outHandle.write(" --cpus-per-task=" + str(myBatch.idistroSettings.jobSettings.cpuCount))
-            outHandle.write(" --mem=" + str(myBatch.idistroSettings.jobSettings.ramGigs) + "g")
-            outHandle.write(" --time=" + myBatch.idistroSettings.jobSettings.timeString)
-        else:
-            outHandle.write(" --cpus-per-task=2 --time=2:00:00 --mem=8g") 
-        outHandle.write(" --error=\"" + stem5 + ".err\"")
-        outHandle.write(" --out=\"" + stem5 + ".out\"")
-        outHandle.write(" \"" + idistroScriptPath + "\"\n")    
+            js = myBatch.idistroSettings.jobSettings
+        if batchSet.batchSystem == "slurm":
+            genSlurmJobCommand(outHandle, jobName, js, idistroScriptPath, boutPath, berrPath)
+        elif batchSet.batchSystem == "lsf":    
+            genLSFJobCommand(outHandle, batchSet.setName, jobName, js, idistroScriptPath, boutPath, berrPath)   
     
     outHandle.close()        
     
@@ -1178,13 +1379,18 @@ def readBatchXml(xmlpath):
     batchSet.fromXmlNode(treeRoot)
     batchSet.updateOverrides()
     
+    if batchSet.setName is None:
+        batchSet.autoGenName()
+    if batchSet.batchSystem is None:
+        batchSet.batchSystem = "slurm"
+    
     del(treeRoot)
     del(xmlDoc)
     gc.collect()
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 25.11.02.00")
+    print("TS Batch Job Generator initiated! Version 26.09.18.01")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
@@ -1195,8 +1401,8 @@ def main(args):
         batchInfo = genBatch(batchInfo)
         batchInfo = genPostJobs(batchInfo)
         print()
-        print('chmod 774 \"', batchInfo.batchScriptPath, '\"', sep='')
-        print('chmod 774 \"', batchInfo.postResScriptPath, '\"', sep='')
+        print('chmod ', batchSet.genExePerm, ' \"', batchInfo.batchScriptPath, '\"', sep='')
+        print('chmod ', batchSet.genExePerm, ' \"', batchInfo.postResScriptPath, '\"', sep='')
         print('bash \"', batchInfo.batchScriptPath, '\"', sep='', flush=True)
         print()
         
