@@ -172,7 +172,7 @@ See the [full command line argument list](./spots_allargs.md) for descriptions o
 		<MADFactor Min="{FLOAT}" Max="{FLOAT}"/>
 		<Weights FitRightIntersect="{FLOAT}" MedMad="{FLOAT}" Fit="{FLOAT}"/>
 		<MiscOptions IncludeRawCurve="{BOOL}" IncludeDiffCurve="{BOOL}" StDevFactor="{FLOAT}" LogMode="{All | None | FitOnly}"/>
-	<ThresholdSettings/>
+	</ThresholdSettings>
 </SpotDetectSettings>
 ```
 
