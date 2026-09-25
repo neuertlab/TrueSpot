@@ -543,61 +543,75 @@ classdef TrueSpotXML
             strval = 'False';
         end
 
-        function writeBatchMetaBlock(xmlHandle, metaInfo, indent)
-            fprintf(xmlHandle, '%s<CommonMeta>\n', indent);
+        function tabstr = genIndentString(indentCount)
+            tabstr = '';
+            if indentCount < 1; return; end
+            tabstr = repmat('\t', 1, indentCount);
+        end
+
+        function writeBatchMetaBlock(xmlHandle, metaInfo, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<CommonMeta>\n']);
             if ~isempty(metaInfo.species)
-                fprintf(xmlHandle, '%s\t<Species>"%s"</Species>\n', indent, metaInfo.species);
+                fprintf(xmlHandle, [tabstr '\t<Species>"%s"</Species>\n'], metaInfo.species);
             end
             if ~isempty(metaInfo.cellType)
-                fprintf(xmlHandle, '%s\t<CellType>"%s"</CellType>\n', indent, metaInfo.cellType);
+                fprintf(xmlHandle, [tabstr '\t<CellType>"%s"</CellType>\n'], metaInfo.cellType);
             end
             if ~isempty(metaInfo.voxelSize)
-                fprintf(xmlHandle, '%s\t<VoxelDimsNano X="%d" Y="%d" Z="%d"/>\n',...
-                    indent, metaInfo.voxelSize.x, metaInfo.voxelSize.y, metaInfo.voxelSize.z);
+                fprintf(xmlHandle, [tabstr '\t<VoxelDimsNano X="%d" Y="%d" Z="%d"/>\n'],...
+                    metaInfo.voxelSize.x, metaInfo.voxelSize.y, metaInfo.voxelSize.z);
             end
-            fprintf(xmlHandle, '%s</CommonMeta>\n', indent);
+            fprintf(xmlHandle, [tabstr '</CommonMeta>\n']);
         end
 
-        function writeChannelMetaBlock(xmlHandle, metaInfo, indent)
-            fprintf(xmlHandle, '%s<Meta>\n', indent);
+        function writeChannelMetaBlock(xmlHandle, metaInfo, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<Meta>\n']);
             if ~isempty(metaInfo.targetName)
-                fprintf(xmlHandle, '%s\t<TargetName>"%s"</TargetName>\n', indent, metaInfo.targetName);
+                fprintf(xmlHandle, [tabstr '\t<TargetName>"%s"</TargetName>\n'], metaInfo.targetName);
             end
             if ~isempty(metaInfo.probeName)
-                fprintf(xmlHandle, '%s\t<ProbeName>"%s"</ProbeName>\n', indent, metaInfo.probeName);
+                fprintf(xmlHandle, [tabstr '\t<ProbeName>"%s"</ProbeName>\n'], metaInfo.probeName);
             end
             if ~isempty(metaInfo.targetMolType)
-                fprintf(xmlHandle, '%s\t<TargetType>"%s"</TargetType>\n', indent, metaInfo.targetMolType);
+                fprintf(xmlHandle, [tabstr '\t<TargetType>"%s"</TargetType>\n'], metaInfo.targetMolType);
             end
             if ~isempty(metaInfo.pointSize)
-                fprintf(xmlHandle, '%s\t<PointDimsNano X="%d" Y="%d" Z="%d"/>\n',...
-                    indent, metaInfo.pointSize.x, metaInfo.pointSize.y, metaInfo.pointSize.z);
+                fprintf(xmlHandle, [tabstr '\t<PointDimsNano X="%d" Y="%d" Z="%d"/>\n'],...
+                    metaInfo.pointSize.x, metaInfo.pointSize.y, metaInfo.pointSize.z);
             end
-            fprintf(xmlHandle, '%s</Meta>\n', indent);
+            fprintf(xmlHandle, [tabstr '</Meta>\n']);
         end
 
-        function writePathsBlock(xmlHandle, pathsInfo, indent)
-            fprintf(xmlHandle, '%s<Paths>\n', indent);
+        function writePathsBlock(xmlHandle, pathsInfo, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<Paths>\n']);
             if ~isempty(pathsInfo.inputPath)
-                fprintf(xmlHandle, '%s\t<Input>"%s"</Input>\n', indent, pathsInfo.inputPath);
+                fprintf(xmlHandle, [tabstr '\t<ImageDir>"%s"</ImageDir>\n'], pathsInfo.inputPath);
             end
             if ~isempty(pathsInfo.outputPath)
-                fprintf(xmlHandle, '%s\t<OutputDir>"%s"</OutputDir>\n', indent, pathsInfo.outputPath);
+                fprintf(xmlHandle, [tabstr '\t<OutputDir>"%s"</OutputDir>\n'], pathsInfo.outputPath);
             end
             if ~isempty(pathsInfo.controlPath)
-                fprintf(xmlHandle, '%s\t<ControlPath>"%s"</ControlPath>\n', indent, pathsInfo.controlPath);
+                fprintf(xmlHandle, [tabstr '\t<ControlPath>"%s"</ControlPath>\n'], pathsInfo.controlPath);
             end
             if ~isempty(pathsInfo.extCellMaskStem)
-                fprintf(xmlHandle, '%s\t<ExtCellMask>"%s"</ExtCellMask>\n', indent, pathsInfo.extCellMaskStem);
+                fprintf(xmlHandle, [tabstr '\t<ExtCellMask>"%s"</ExtCellMask>\n'], pathsInfo.extCellMaskStem);
             end
             if ~isempty(pathsInfo.extNucMaskStem)
-                fprintf(xmlHandle, '%s\t<ExtNucMask ZMin="%d">"%s"</ExtNucMask>\n', indent, pathsInfo.extNucMaskStem, pathsInfo.extNucMaskZMin);
+                fprintf(xmlHandle, [tabstr '\t<ExtNucMask ZMin="%d">"%s"</ExtNucMask>\n'], pathsInfo.extNucMaskStem, pathsInfo.extNucMaskZMin);
             end
-            fprintf(xmlHandle, '%s</Paths>\n', indent);
+            fprintf(xmlHandle, [tabstr '</Paths>\n']);
         end
 
-        function writeChannelInfoBlock(xmlHandle, channelInfo, channelSettingsList, indent)
-            fprintf(xmlHandle, '%s<ChannelInfo', indent);
+        function writeChannelInfoBlock(xmlHandle, channelInfo, channelSettingsList, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<ChannelInfo']);
             fprintf(xmlHandle, ' ChannelCount="%d"', channelInfo.channelCount);
             fprintf(xmlHandle, ' NucChannel="%d"', channelInfo.nucMarkerChannel);
             fprintf(xmlHandle, ' TransChannel="%d"', channelInfo.lightChannel);
@@ -620,14 +634,16 @@ classdef TrueSpotXML
                     myChannel = channelSettingsList(c);
                 end
                 
-                TrueSpotXML.writeImageChannelBlock(xmlHandle, myChannel, [indent '\t']);
+                TrueSpotXML.writeImageChannelBlock(xmlHandle, myChannel, indentCount+1);
             end
 
-            fprintf(xmlHandle, '%s</ChannelInfo>\n', indent);
+            fprintf(xmlHandle, [tabstr '</ChannelInfo>\n']);
         end
 
-        function writeCellposeBlock(xmlHandle, cellsegSettings, indent)
-            fprintf(xmlHandle, '%s<CellposeSettings', indent);
+        function writeCellposeBlock(xmlHandle, cellsegSettings, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<CellposeSettings']);
             if cellsegSettings.useCellposeNuc
                 fprintf(xmlHandle, ' UseCellposeNuc="True"');
             else
@@ -641,7 +657,7 @@ classdef TrueSpotXML
             fprintf(xmlHandle, '>\n');
 
             if cellsegSettings.useCellposeNuc
-                fprintf(xmlHandle, '%s\t<NucSettings', indent);
+                fprintf(xmlHandle, [tabstr '\t<NucSettings']);
                 fprintf(xmlHandle, '>\n');
 
                 if ~isnan(cellsegSettings.cellpose.nuc_params.avg_dia)
@@ -654,7 +670,7 @@ classdef TrueSpotXML
                     fprintf(xmlHandle, ' Normalize="False"');
                 end
 
-                fprintf(xmlHandle, '%s\t\t<Model Name="%s"', indent, cellsegSettings.cellpose.nuc_params.model_name);
+                fprintf(xmlHandle, [tabstr '\t\t<Model Name="%s"'], cellsegSettings.cellpose.nuc_params.model_name);
                 if cellsegSettings.cellpose.nuc_params.ensemble_bool
                     fprintf(xmlHandle, ' Ensemble="True"');
                 else
@@ -662,14 +678,14 @@ classdef TrueSpotXML
                 end
                 fprintf(xmlHandle, '/>\n');
 
-                fprintf(xmlHandle, '%s\t\t<TuningThresholds Cell="%f" Flow="%f"/>', ...
-                    indent, cellsegSettings.cellpose.nuc_params.cell_threshold, cellsegSettings.cellpose.nuc_params.flow_threshold);
+                fprintf(xmlHandle, [tabstr '\t\t<TuningThresholds Cell="%f" Flow="%f"/>'], ...
+                    cellsegSettings.cellpose.nuc_params.cell_threshold, cellsegSettings.cellpose.nuc_params.flow_threshold);
 
-                fprintf(xmlHandle, '%s\t</NucSettings>\n', indent);
+                fprintf(xmlHandle, [tabstr '\t</NucSettings>\n']);
             end
 
             if cellsegSettings.useCellposeCyto
-                fprintf(xmlHandle, '%s\t<CytoSettings', indent);
+                fprintf(xmlHandle, '%s\t<CytoSettings', tabstr);
                 fprintf(xmlHandle, '>\n');
 
                 if ~isnan(cellsegSettings.cellpose.nuc_params.avg_dia)
@@ -682,7 +698,7 @@ classdef TrueSpotXML
                     fprintf(xmlHandle, ' Normalize="False"');
                 end
 
-                fprintf(xmlHandle, '%s\t\t<Model Name="%s"', indent, cellsegSettings.cellpose.cyto_params.model_name);
+                fprintf(xmlHandle, '%s\t\t<Model Name="%s"', tabstr, cellsegSettings.cellpose.cyto_params.model_name);
                 if cellsegSettings.cellpose.cyto_params.ensemble_bool
                     fprintf(xmlHandle, ' Ensemble="True"');
                 else
@@ -691,21 +707,23 @@ classdef TrueSpotXML
                 fprintf(xmlHandle, '/>\n');
 
                 fprintf(xmlHandle, '%s\t\t<TuningThresholds Cell="%f" Flow="%f"/>', ...
-                    indent, cellsegSettings.cellpose.cyto_params.cell_threshold, cellsegSettings.cellpose.cyto_params.flow_threshold);
+                    tabstr, cellsegSettings.cellpose.cyto_params.cell_threshold, cellsegSettings.cellpose.cyto_params.flow_threshold);
 
-                fprintf(xmlHandle, '%s\t</CytoSettings>\n', indent);
+                fprintf(xmlHandle, '%s\t</CytoSettings>\n', tabstr);
             end
 
-            fprintf(xmlHandle, '%s</CellposeSettings>\n', indent);
+            fprintf(xmlHandle, '%s</CellposeSettings>\n', tabstr);
         end
 
-        function writeCellSegBlock(xmlHandle, cellsegSettings, indent)
-            fprintf(xmlHandle, '%s<CellSegSettings>\n', indent);
+        function writeCellSegBlock(xmlHandle, cellsegSettings, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<CellSegSettings>\n']);
             if ~isempty(cellsegSettings.presetName)
-                fprintf(xmlHandle, '%s\t<PresetName>"%s"</PresetName>\n', indent, cellsegSettings.presetName);
+                fprintf(xmlHandle, [tabstr '\t<PresetName>"%s"</PresetName>\n'], cellsegSettings.presetName);
             end
             if (cellsegSettings.lightZMin > 0) | (cellsegSettings.lightZMax > 0)
-                fprintf(xmlHandle, '%s\t<TransZTrim', indent);
+                fprintf(xmlHandle, [tabstr '\t<TransZTrim']);
                 if (cellsegSettings.lightZMin > 0)
                     fprintf(xmlHandle, ' Min="%d"', cellsegSettings.lightZMin);
                 end
@@ -715,7 +733,7 @@ classdef TrueSpotXML
                 fprintf(xmlHandle, '/>\n');
             end
             if (cellsegSettings.nucZMin > 0) | (cellsegSettings.nucZMax > 0)
-                fprintf(xmlHandle, '%s\t<NucZTrim', indent);
+                fprintf(xmlHandle, [tabstr '\t<NucZTrim']);
                 if (cellsegSettings.nucZMin > 0)
                     fprintf(xmlHandle, ' Min="%d"', cellsegSettings.nucZMin);
                 end
@@ -725,7 +743,7 @@ classdef TrueSpotXML
                 fprintf(xmlHandle, '/>\n');
             end
             if (cellsegSettings.cszmin > 0) | (cellsegSettings.cszmax > 0)
-                fprintf(xmlHandle, '%s\t<CellSize', indent);
+                fprintf(xmlHandle, [tabstr '\t<CellSize']);
                 if (cellsegSettings.cszmin > 0)
                     fprintf(xmlHandle, ' Min="%d"', cellsegSettings.cszmin);
                 end
@@ -735,7 +753,7 @@ classdef TrueSpotXML
                 fprintf(xmlHandle, '/>\n');
             end
             if (cellsegSettings.nszmin > 0) | (cellsegSettings.nszmax > 0)
-                fprintf(xmlHandle, '%s\t<NucSize', indent);
+                fprintf(xmlHandle, [tabstr '\t<NucSize']);
                 if (cellsegSettings.nszmin > 0)
                     fprintf(xmlHandle, ' Min="%d"', cellsegSettings.nszmin);
                 end
@@ -745,25 +763,25 @@ classdef TrueSpotXML
                 fprintf(xmlHandle, '/>\n');
             end
             if cellsegSettings.xtrim > 0
-                fprintf(xmlHandle, '%s\t<XTrim>"%d"</XTrim>\n', indent, cellsegSettings.xtrim);
+                fprintf(xmlHandle, [tabstr '\t<XTrim>"%d"</XTrim>\n'], cellsegSettings.xtrim);
             end
             if cellsegSettings.ytrim > 0
-                fprintf(xmlHandle, '%s\t<YTrim>"%d"</YTrim>\n', indent, cellsegSettings.ytrim);
+                fprintf(xmlHandle, [tabstr '\t<YTrim>"%d"</YTrim>\n'], cellsegSettings.ytrim);
             end
             if cellsegSettings.nzrange > 0
-                fprintf(xmlHandle, '%s\t<NucZRange>"%d"</NucZRange>\n', indent, cellsegSettings.nzrange);
+                fprintf(xmlHandle, [tabstr '\t<NucZRange>"%d"</NucZRange>\n'], cellsegSettings.nzrange);
             end
             if cellsegSettings.nthsmpl > 0
-                fprintf(xmlHandle, '%s\t<NucThSample>"%d"</NucThSample>\n', indent, cellsegSettings.nthsmpl);
+                fprintf(xmlHandle, [tabstr '\t<NucThSample>"%d"</NucThSample>\n'], cellsegSettings.nthsmpl);
             end
             if cellsegSettings.ncutoff > 0
-                fprintf(xmlHandle, '%s\t<NucCutoff>"%f"</NucCutoff>\n', indent, cellsegSettings.ncutoff);
+                fprintf(xmlHandle, [tabstr '\t<NucCutoff>"%f"</NucCutoff>\n'], cellsegSettings.ncutoff);
             end
             if cellsegSettings.ndxy > 0
-                fprintf(xmlHandle, '%s\t<NucDXY>"%f"</NucDXY>\n', indent, cellsegSettings.ndxy);
+                fprintf(xmlHandle, [tabstr '\t<NucDXY>"%f"</NucDXY>\n'], cellsegSettings.ndxy);
             end
 
-            fprintf(xmlHandle, '%s\t<Options', indent);
+            fprintf(xmlHandle, [tabstr '\t<Options']);
             if cellsegSettings.outputCellMaskPNG
                 fprintf(xmlHandle, ' ExportCellMaskToFormat="png"');
             end
@@ -786,45 +804,53 @@ classdef TrueSpotXML
 
             if cellsegSettings.useCellposeNuc | cellsegSettings.useCellposeCyto
                 if ~isempty(cellsegSettings.cellpose)
-                    TrueSpotXML.writeCellposeBlock(xmlHandle, cellsegSettings, [indent '\t']);
+                    TrueSpotXML.writeCellposeBlock(xmlHandle, cellsegSettings, indentCount+1);
                 end
             end
 
-            fprintf(xmlHandle, '%s</CellSegSettings>\n', indent);
+            fprintf(xmlHandle, [tabstr '</CellSegSettings>\n']);
         end
 
-        function writeThresholdSettingsBlock(xmlHandle, thSettings, indent)
-            fprintf(xmlHandle, '%s<ThresholdSettings', indent);
+        function writeThresholdSettingsBlock(xmlHandle, thSettings, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
 
-            fprintf(xmlHandle, ' Preset="%d"', thSettings.preset);
+            fprintf(xmlHandle, [tabstr '<ThresholdSettings']);
+
+            if ~isnan(thSettings.preset)
+                fprintf(xmlHandle, ' Preset="%d"', thSettings.preset);
+            end
             fprintf(xmlHandle, ' ScanMin="%d"', thSettings.thMin);
             fprintf(xmlHandle, ' ScanMax="%d"', thSettings.thMax);
             fprintf(xmlHandle, '>\n');
 
             if ~isempty(thSettings.thParams)
                 if ~isempty(thSettings.thParams.window_sizes)
-                    fprintf(xmlHandle, '%s\t<WindowSettings', indent);
+                    fprintf(xmlHandle, [tabstr '\t<WindowSettings']);
                     fprintf(xmlHandle, ' Min="%d"', min(thSettings.thParams.window_sizes, [], 'all'));
                     fprintf(xmlHandle, ' Max="%d"', max(thSettings.thParams.window_sizes, [], 'all'));
                     fprintf(xmlHandle, ' Increment="%d"', min(diff(thSettings.thParams.window_sizes), [], 'all'));
                     fprintf(xmlHandle, '/>\n');
                 end
 
-                fprintf(xmlHandle, '%s\t<MADFactor', indent);
+                fprintf(xmlHandle, [tabstr '\t<MADFactor']);
                 fprintf(xmlHandle, ' Min="%d"', thSettings.thParams.mad_factor_min);
                 fprintf(xmlHandle, ' Max="%d"', thSettings.thParams.mad_factor_max);
                 fprintf(xmlHandle, '/>\n');
 
-                fprintf(xmlHandle, '%s\t<Weights', indent);
+                fprintf(xmlHandle, [tabstr '\t<Weights']);
                 fprintf(xmlHandle, ' FitRightIntersect="%f"', thSettings.thParams.fit_ri_weight);
                 fprintf(xmlHandle, ' MedMad="%f"', thSettings.thParams.madth_weight);
                 fprintf(xmlHandle, ' Fit="%f"', thSettings.thParams.fit_weight);
                 fprintf(xmlHandle, '/>\n');
 
-                fprintf(xmlHandle, '%s\t<MiscOptions', indent);
+                fprintf(xmlHandle, [tabstr '\t<MiscOptions']);
                 fprintf(xmlHandle, ' IncludeRawCurve="%s"', TrueSpotXML.bool2str(thSettings.thParams.test_data));
                 fprintf(xmlHandle, ' IncludeDiffCurve="%s"', TrueSpotXML.bool2str(thSettings.thParams.test_diff));
-                fprintf(xmlHandle, ' StDevFactor="%f"', thSettings.thParams.std_factor);
+                
+                if ~isnan(thSettings.thParams.std_factor) & (thSettings.thParams.std_factor ~= 0)
+                    fprintf(xmlHandle, ' StDevFactor="%f"', thSettings.thParams.std_factor);
+                end
+                
                 fprintf(xmlHandle, ' LogMode=');
                 if thSettings.thParams.log_proj_mode == 0
                     fprintf(xmlHandle, '"None"');
@@ -836,11 +862,13 @@ classdef TrueSpotXML
                 fprintf(xmlHandle, '/>\n');
             end
 
-            fprintf(xmlHandle, '%s</ThresholdSettings>\n', indent);
+            fprintf(xmlHandle, [tabstr '</ThresholdSettings>\n']);
         end
 
-        function writeSpotsBlock(xmlHandle, spotsSettings, optionsStruct, thSettings, indent)
-            fprintf(xmlHandle, '%s<SpotDetectSettings', indent);
+        function writeSpotsBlock(xmlHandle, spotsSettings, optionsStruct, thSettings, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<SpotDetectSettings']);
             fprintf(xmlHandle, ' GaussRad="%d"', spotsSettings.gaussRad);
             fprintf(xmlHandle, ' Workers="%d"', spotsSettings.spotDetectThreads);
             if spotsSettings.useDPC
@@ -850,7 +878,7 @@ classdef TrueSpotXML
             end
 
             if (spotsSettings.zMin > 0) | (spotsSettings.zMax > 0)
-                fprintf(xmlHandle, '%s\t<ZTrim', indent);
+                fprintf(xmlHandle, [tabstr '\t<ZTrim']);
                 if (spotsSettings.zMin > 0)
                     fprintf(xmlHandle, ' Min="%d"', spotsSettings.zMin);
                 end
@@ -859,8 +887,9 @@ classdef TrueSpotXML
                 end
                 fprintf(xmlHandle, '/>\n');
             end
+            fprintf(xmlHandle, '>\n');
 
-            fprintf(xmlHandle, '%s\t<Options', indent);
+            fprintf(xmlHandle, [tabstr '\t<Options']);
             if optionsStruct.runparamtxt
                 fprintf(xmlHandle, ' DumpRunParamsToText="True"');
             else
@@ -884,14 +913,16 @@ classdef TrueSpotXML
             fprintf(xmlHandle, '/>\n');
 
             if ~isempty(thSettings)
-                TrueSpotXML.writeThresholdSettingsBlock(xmlHandle, thSettings, [indent '\t']);
+                TrueSpotXML.writeThresholdSettingsBlock(xmlHandle, thSettings, indentCount+1);
             end
 
-            fprintf(xmlHandle, '%s</SpotDetectSettings>\n', indent);
+            fprintf(xmlHandle, [tabstr '</SpotDetectSettings>\n']);
         end
 
-        function writeQuantBlock(xmlHandle, quantSettings, thSettings, indent)
-            fprintf(xmlHandle, '%s<QuantSettings', indent);
+        function writeQuantBlock(xmlHandle, quantSettings, thSettings, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<QuantSettings']);
             fprintf(xmlHandle, ' DoClouds="%s"', TrueSpotXML.bool2str(~quantSettings.quantNoClouds));
             fprintf(xmlHandle, ' DoRefilter="%s"', TrueSpotXML.bool2str(~quantSettings.quantNoRefilter));
             fprintf(xmlHandle, ' CellZero="%s"', TrueSpotXML.bool2str(quantSettings.quantCellZero));
@@ -913,43 +944,47 @@ classdef TrueSpotXML
             fprintf(xmlHandle, '/>\n');
         end
 
-        function writeImageChannelBlock(xmlHandle, channelSettings, indent)
-            fprintf(xmlHandle, '%s<ImageChannel ChannelNumber="%d">\n', indent, channelSettings.channelIndex);
+        function writeImageChannelBlock(xmlHandle, channelSettings, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
+            fprintf(xmlHandle, [tabstr '<ImageChannel ChannelNumber="%d">\n'], channelSettings.channelIndex);
             if ~isempty(channelSettings.metadata)
-                TrueSpotXML.writeChannelMetaBlock(xmlHandle, channelSettings.metadata, [indent '\t']);
+                TrueSpotXML.writeChannelMetaBlock(xmlHandle, channelSettings.metadata, indentCount+1);
             end
             if ~isempty(channelSettings.spotCountSettings)
                 TrueSpotXML.writeSpotsBlock(xmlHandle, ...
-                    channelSettings.spotCountSettings, channelSettings.options, channelSettings.thresholdSettings, [indent '\t']);
+                    channelSettings.spotCountSettings, channelSettings.options, channelSettings.thresholdSettings, indentCount+1);
             end
             if ~isempty(channelSettings.spotCountSettings)
                 TrueSpotXML.writeQuantBlock(xmlHandle, ...
-                    channelSettings.spotCountSettings, channelSettings.thresholdSettings, [indent '\t']);
+                    channelSettings.spotCountSettings, channelSettings.thresholdSettings, indentCount+1);
             end
-            fprintf(xmlHandle, '%s</ImageChannel>\n', indent);
+            fprintf(xmlHandle, [tabstr '</ImageChannel>\n']);
         end
 
-        function writeBatchBlock(xmlHandle, batchSettings, channelSettingsList, indent)
+        function writeBatchBlock(xmlHandle, batchSettings, channelSettingsList, indentCount)
+            tabstr = TrueSpotXML.genIndentString(indentCount);
+
             if ~isempty(batchSettings.metadata) & ~isempty(batchSettings.metadata.batchName)
-                fprintf(xmlHandle, '%s<ImageBatch Name="%s">\n', indent, batchSettings.metadata.batchName);
+                fprintf(xmlHandle, [tabstr '<ImageBatch Name="%s">\n'], batchSettings.metadata.batchName);
             else
-                fprintf(xmlHandle, '%s<ImageBatch>\n', indent);
+                fprintf(xmlHandle, [tabstr '<ImageBatch>\n']);
             end
 
             if ~isempty(batchSettings.metadata)
-                TrueSpotXML.writeBatchMetaBlock(xmlHandle, batchSettings.metadata, [indent '\t']);
+                TrueSpotXML.writeBatchMetaBlock(xmlHandle, batchSettings.metadata, indentCount+1);
             end
             if ~isempty(batchSettings.paths)
-                TrueSpotXML.writePathsBlock(xmlHandle, batchSettings.paths, [indent '\t']);
+                TrueSpotXML.writePathsBlock(xmlHandle, batchSettings.paths, indentCount+1);
             end
             if ~isempty(batchSettings.cellsegSettings)
-                TrueSpotXML.writeCellSegBlock(xmlHandle, batchSettings.cellsegSettings, [indent '\t']);
+                TrueSpotXML.writeCellSegBlock(xmlHandle, batchSettings.cellsegSettings, indentCount+1);
             end
             if ~isempty(batchSettings.channelInfo)
-                TrueSpotXML.writeChannelInfoBlock(xmlHandle, batchSettings.channelInfo, channelSettingsList, [indent '\t']);
+                TrueSpotXML.writeChannelInfoBlock(xmlHandle, batchSettings.channelInfo, channelSettingsList, indentCount+1);
             end
 
-            fprintf(xmlHandle, '%s</ImageBatch>\n', indent);
+            fprintf(xmlHandle, [tabstr '</ImageBatch>\n']);
         end
 
         function writeSettingsXML(xmlpath, batchSettings, channels, commonMeta)
@@ -957,7 +992,7 @@ classdef TrueSpotXML
 
             fh = fopen(xmlpath, 'w');
 
-            fprintf(fh, '<?xml version="1.0" encoding="UTF-8"?>\n');
+            fprintf(fh, "<?xml version=""1.0"" encoding=""UTF-8""?>\n");
             if isempty(commonMeta)
                 fprintf(fh, '<ImageSet>\n');
             else
@@ -965,18 +1000,18 @@ classdef TrueSpotXML
             end
             
             if ~isempty(commonMeta)
-                fprintf(fh, '\t<CommonMeta>\n');
+                fprintf(fh, "\t<CommonMeta>\n");
                 if ~isempty(commonMeta.species)
-                    fprintf(fh, '\t\t<Species>"%s"</Species>\n', commonMeta.species);
+                    fprintf(fh, "\t\t<Species>""%s""</Species>\n", commonMeta.species);
                 end
                 if ~isempty(commonMeta.cellType)
-                    fprintf(fh, '\t\t<CellType>"%s"</CellType>\n', commonMeta.cellType);
+                    fprintf(fh, "\t\t<CellType>""%s""</CellType>\n", commonMeta.cellType);
                 end
                 if ~isempty(commonMeta.voxelSize)
-                    fprintf(fh, '\t\t<VoxelDimsNano X="%d" Y="%d" Z="%d"/>\n',... 
+                    fprintf(fh, "\t\t<VoxelDimsNano X=""%d"" Y=""%d"" Z=""%d""/>\n",... 
                         commonMeta.voxelSize.x, commonMeta.voxelSize.y, commonMeta.voxelSize.z);
                 end
-                fprintf(fh, '\t</CommonMeta>\n');
+                fprintf(fh, "\t</CommonMeta>\n");
             end
 
             batchCount = size(batchSettings, 2);
@@ -989,7 +1024,7 @@ classdef TrueSpotXML
                 
                 chList = channels{b};
 
-                TrueSpotXML.writeBatchBlock(fh, myBatch, chList, '\t');
+                TrueSpotXML.writeBatchBlock(fh, myBatch, chList, 1);
             end
 
             fprintf(fh, '</ImageSet>\n');

@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2026.09.17.00';
+BUILD_STRING = '2026.09.23.01';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
@@ -622,7 +622,8 @@ function [options, okay] = saveParamTemplate(options, templateId)
 
     cell_params = options.cell_params;
     nuc_params = options.nuc_params;
-    save(templatePath, 'cell_params', 'nuc_params', '-v7.3');
+    %save(templatePath, 'cell_params', 'nuc_params', '-v7.3');
+    save(templatePath, 'cell_params', 'nuc_params');
 
     okay = true;
 end

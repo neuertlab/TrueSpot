@@ -387,10 +387,10 @@ classdef CellSeg
             threshold_sampling = nucSegSpecs.threshold_sampling;
             med10 = 10 * nuc_median;
             if med10 < nuc_max                                         %BK 4/27/2016
-                dd = round((med10 - nuc_min) / threshold_sampling);
+                dd = max(round((med10 - nuc_min) / threshold_sampling), 1);
                 test_thresh = nuc_min:dd:med10;
             else
-                dd = round((nuc_max - nuc_min) / threshold_sampling);
+                dd = max(round((nuc_max - nuc_min) / threshold_sampling), 1);
                 test_thresh = nuc_min:dd:nuc_max;
             end
             clear nuc_min nuc_max nuc_median med10 dd

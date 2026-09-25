@@ -9,7 +9,7 @@ import argparse
 import datetime
 import numpy
 import gc
-import os.path
+import os
 
 from cellpose import models
 from cellpose.io import imread
@@ -45,6 +45,11 @@ def getStackChannel(stack, chdim, chidx):
         return None
     
 def outputMask(maskDat, outpath):
+    #Create directory
+    outdir = os.path.dirname(outpath)
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir, exist_ok=True)
+   
     #If 3D, then just adds planes as more rows. Thus Z is needed to read correctly.
     if len(maskDat.shape) > 2:
         Z = maskDat.shape[0]
@@ -73,7 +78,7 @@ def readImage3D(path):
     return imageRaw
 
 def runCellpose(runparams):
-    print(getdtstr(), "Cellpose 4 Wrapper Initialized! Version 26.09.16.00")
+    print(getdtstr(), "Cellpose 4 Wrapper Initialized! Version 26.09.23.00")
     
     #Print parameters for recordkeeping
     print(getdtstr(),"Input File:", runparams.imgSettings.filePath)

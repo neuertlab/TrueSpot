@@ -11,7 +11,7 @@ else
         'https://www.openmicroscopy.org/bio-formats/downloads and copy to ' BF_DIR]);
 end
 
-BUILD_STRING = '2026.09.22.00';
+BUILD_STRING = '2026.09.25.02';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ======================
@@ -33,6 +33,15 @@ for i = 1:nargin
         end
         
         %Account for boolean keys...
+        if strcmp(lastkey, "skip2d")
+            opStruct.skip2D = true;
+            if arg_debug; fprintf("Skip 2D Inputs: On\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "pngrender")
+            opStruct.pngRender = true;
+            if arg_debug; fprintf("Output PNG MIPs: On\n"); end
+            lastkey = [];
+        end
   
     else
         if isempty(lastkey)
@@ -127,7 +136,7 @@ fprintf("%d czi images found!\n", iCount);
 batchCount = 0;
 batchList = cell(1,iCount);
 cdList = cell(1,iCount);
-outTable = cell(iCount, 2); %Output image file name, batch index
+outTable = cell(iCount*8, 2); %Output image file name, batch index
 tifCount = 0;
 
 for i = 1:iCount
@@ -135,10 +144,19 @@ for i = 1:iCount
     fstem = replace(fnames{i}, '.czi', '');
     fstem = replace(fstem, ' ', '_');
     fstem = replace(fstem, '.', '_');
+    fstem = replace(fstem, '(', '');
+    fstem = replace(fstem, ')', '');
+    fstem = replace(fstem, '+', '_');
     inpath = [opStruct.inDirPath filesep fnames{i}];
 
     fprintf("\tReading %s...\n", inpath);
-    idatRaw = bfopen(inpath);
+    try
+        idatRaw = bfopen(inpath);
+    catch ME
+        fprintf("\tWARNING: Failed to read %s! File will be skipped!\n", inpath);
+        continue;
+    end
+
     seriesCount = size(idatRaw, 1);
     for s = 1:seriesCount
         stackDat = idatRaw{s, 1};
@@ -147,12 +165,17 @@ for i = 1:iCount
         stackPos = 1;
         for j = 1:subImgCount
             if (subImgCount == 1) & (seriesCount == 1)
-                foname = [fstem '.tif'];
+                fostem = fstem;
             else
-                foname = [fstem '_s' num2str(s) 'i' num2str(j) '.tif'];
+                fostem = [fstem '_s' num2str(s) 'i' num2str(j)];
             end
+            foname = [fostem '.tif'];
             outpath = [opStruct.outDirPath filesep foname];
             idims = omeGetStackDims(omeMeta, j-1);
+            if opStruct.skip2D & (idims.z < 2)
+                continue;
+            end
+
             chCount = omeMeta.getChannelCount(j-1);
 
             myStack = zeros(idims.y, idims.x, idims.z, chCount, class(stackDat{stackPos,1}));
@@ -173,7 +196,40 @@ for i = 1:iCount
             end
 
             fprintf("\tGenerating %s...\n", outpath);
+            if isfile(outpath)
+                delete(outpath);
+            end
             bfsave(myStack, outpath);
+
+            %PNG renders, if applicable
+            if opStruct.pngRender
+                stackPos = 1;
+                for z = 1:idims.z
+                    for c = 1:chCount
+                        myPlane = stackDat{stackPos, 1};
+                        myStack(:,:,z,c) = myPlane(:,:);
+                        stackPos = stackPos + 1;
+                    end
+                end
+
+                for c = 1:chCount
+                    pngOut = [fostem '_c' num2str(c) '.png'];
+                    pngPath = [opStruct.outDirPath filesep pngOut];
+                    chDat = myStack(:,:,:,c);
+                    cmip = max(chDat, [], 3, 'omitnan');
+
+                    if isfile(pngPath)
+                        delete(pngPath);
+                    end
+
+                    fh = figure(10);
+                    clf;
+                    imshow(cmip, []);
+                    saveas(fh, pngPath);
+                    close(fh);
+                end
+                clear pngOut c cmip fh chDat pngPath
+            end
 
             %Clean up
             clear myStack myPlane c z
@@ -224,8 +280,25 @@ for i = 1:iCount
     end
 end
 
+batchList = batchList(1:batchCount);
+cdList = cdList(1:batchCount);
+outTable = outTable(1:tifCount, :);
+
+if tifCount < 1
+    fprintf("No valid stacks found! Exiting...\n");
+    return;
+end
+
+fprintf("%d valid stacks successfully converted!\n", tifCount);
+
 %--- Move output TIFs to correct batch subdirectories (if applicable)
 %Also update the batch settings input/output info
+
+outBatches = zeros(1, tifCount);
+for i = 1:tifCount
+    outBatches(i) = outTable{i, 2};
+end
+clear i
 
 if batchCount > 1
     for b = 1:batchCount
@@ -239,12 +312,15 @@ if batchCount > 1
             mkdir(batchDir);
         end
 
-        ibool = (outTable{:, 2} == b);
+        ibool = (outBatches == b);
         ilist = outTable(ibool, 1);
         icount = size(ilist, 1);
         for i = 1:icount
             srcPath = [opStruct.outDirPath filesep ilist{i}];
             dstPath = [batchDir filesep ilist{i}];
+            if isfile(dstPath)
+                delete(dstPath);
+            end
             movefile(srcPath, dstPath);
         end
 
@@ -259,8 +335,12 @@ else
     clear myBatch
 end
 
+
 %--- Output XML file from metadata gathered by batches
 fprintf("\tOutputting XML...\n");
+if isfile(opStruct.outXmlPath)
+    delete(opStruct.outXmlPath);
+end
 TrueSpotXML.writeSettingsXML(opStruct.outXmlPath, batchList, cdList);
 
 end
@@ -275,6 +355,8 @@ function opStruct = genOptionsStruct()
     opStruct.outXmlPath = [];
 
     opStruct.inPatternMatch = []; %File name must contain this pattern to be included
+    opStruct.skip2D = false;
+    opStruct.pngRender = false;
 end
 
 function resbool = imageBelongsInBatch(omeMeta, imageIndex, batchStruct, batchChannels)
@@ -321,6 +403,11 @@ function idims = omeGetVoxelSizeNano(omeMeta, imageIndex)
     idims.x = double(omeMeta.getPixelsPhysicalSizeX(imageIndex).value(ome.units.UNITS.NANOMETER));
     idims.y = double(omeMeta.getPixelsPhysicalSizeY(imageIndex).value(ome.units.UNITS.NANOMETER));
     idims.z = double(omeMeta.getPixelsPhysicalSizeZ(imageIndex).value(ome.units.UNITS.NANOMETER));
+
+    %Round
+    idims.x = uint32(round(idims.x));
+    idims.y = uint32(round(idims.y));
+    idims.z = uint32(round(idims.z));
 end
 
 function chNames = omeGetChannelNames(omeMeta, imageIndex)
