@@ -35,6 +35,10 @@ classdef CellSeg
             param_struct.max_nucleus_size = 200;
             param_struct.cutoff = 0.05;
             param_struct.dxy = NaN;
+            param_struct.tmin_ptile = NaN;
+            %param_struct.tmin_ptile = 33; %Test
+            param_struct.tmax_ptile = NaN;
+            %param_struct.tmax_ptile = 99; %Test
             param_struct.use_adding = true;
             param_struct.x_trim = 4;
             param_struct.y_trim = 4;
@@ -372,9 +376,32 @@ classdef CellSeg
             z_max = ip + range;
             nuc_max_proj = max(nuc_ch_data(:,:,z_min:z_max), [], 3);                            % maximum intensity projection in z-direction
 
+            % figure(20);
+            % clf;
+            % imshow(nuc_max_proj, []);
+            % 
+            % figure(21);
+            % clf;
+            % imhist(uint16(nuc_max_proj));
+            % 
+            % filt_nuc_max_proj = nuc_max_proj;
+            % filt_nuc_max_proj(filt_nuc_max_proj < 25000) = 0;
+            % figure(22);
+            % clf;
+            % imshow(filt_nuc_max_proj, []);
+
             nuc_min = min(nuc_max_proj(:));
             nuc_max = max(nuc_max_proj(:));
             nuc_median = median(nuc_max_proj(:));
+            nuc_hiptilev = NaN;
+            nuc_loptilev = NaN;
+            if ~isnan(nucSegSpecs.tmax_ptile)
+                nuc_hiptilev = prctile(nuc_max_proj(:), nucSegSpecs.tmax_ptile);
+            end
+            if ~isnan(nucSegSpecs.tmin_ptile)
+                nuc_loptilev = prctile(nuc_max_proj(:), nucSegSpecs.tmin_ptile);
+            end
+            %nuc_ptiles = prctile(nuc_max_proj(:), [75 80 90 95 99]);
             clear nuc_max_proj ip
 
 %             if false;%Ywin
@@ -386,14 +413,22 @@ classdef CellSeg
             % find the nuclei-maximizing dapi threshold
             threshold_sampling = nucSegSpecs.threshold_sampling;
             med10 = 10 * nuc_median;
-            if med10 < nuc_max                                         %BK 4/27/2016
-                dd = max(round((med10 - nuc_min) / threshold_sampling), 1);
-                test_thresh = nuc_min:dd:med10;
+            thmin = nuc_min;
+            if ~isnan(nuc_hiptilev)
+                thmax = nuc_hiptilev;
             else
-                dd = max(round((nuc_max - nuc_min) / threshold_sampling), 1);
-                test_thresh = nuc_min:dd:nuc_max;
+                if med10 < nuc_max     %BK 4/27/2016
+                    thmax = med10;
+                else
+                    thmax = nuc_max;
+                end
             end
-            clear nuc_min nuc_max nuc_median med10 dd
+            if ~isnan(nuc_loptilev)
+                thmin = nuc_loptilev;
+            end
+            dd = max(round((thmax - thmin) / threshold_sampling), 1);
+            test_thresh = thmin:dd:thmax;
+            clear nuc_min nuc_max nuc_median med10 dd nuc_hiptilev thmax nuc_loptilev thmin
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % % Ben Kesler 2/10/15 This goes through thresholds and determines how many
@@ -440,9 +475,9 @@ classdef CellSeg
             clear test_thresh dapi_bw min_slice dapi_OK...
                 dapi_bw_max dapi_bw_max
 
-%             figure(1);
-%             clf;
-%             imshow(nucSegRes.test_sum, []);
+            % figure(1);
+            % clf;
+            % imshow(nucSegRes.test_sum, []);
 
             % Apply cutoff for added image
             cutoff = nucSegSpecs.cutoff;    %This is a kind of cutoff. It's a proportion of the maximum number of times a pixel is present
@@ -456,6 +491,10 @@ classdef CellSeg
 %                 imshow(DAPI_ims_cut, []);
                 clear DAPI_ims_cut
             end
+
+            % figure(10);
+            % clf;
+            % imshow(DAPI_ims_final, []);
 
             nucSegRes.nuc_label = bwlabeln(DAPI_ims_final, 8);
             max_label = max(nucSegRes.nuc_label, [], 'all', 'omitnan');

@@ -274,6 +274,15 @@ classdef TrueSpotProjSettings
                                     scratchList{argPos} = num2str(obj.cellsegSettings.(paramName)); argPos = argPos + 1;
                                 end
                             end
+
+                            if ~isnan(obj.cellsegSettings.tmin_ptile) & (obj.cellsegSettings.tmin_ptile > 0)
+                                scratchList{argPos} = '-nthprcmin'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.tmin_ptile); argPos = argPos + 1;
+                            end
+                            if ~isnan(obj.cellsegSettings.tmax_ptile) & (obj.cellsegSettings.tmax_ptile > 0)
+                                scratchList{argPos} = '-nthprcmax'; argPos = argPos + 1;
+                                scratchList{argPos} = num2str(obj.cellsegSettings.tmax_ptile); argPos = argPos + 1;
+                            end
                         else
                             %Cellpose specific as well as cell and nuc sz
                             %ranges
@@ -618,6 +627,8 @@ classdef TrueSpotProjSettings
             cellsegSettings.nthsmpl = NaN;
             cellsegSettings.ncutoff = NaN;
             cellsegSettings.ndxy = NaN;
+            cellsegSettings.tmin_ptile = NaN;
+            cellsegSettings.tmax_ptile = NaN;
             cellsegSettings.outputCellMaskPNG = false;
             cellsegSettings.outputCellMaskTIF = false;
             cellsegSettings.outputNucMaskPNG = false;

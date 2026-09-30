@@ -44,6 +44,8 @@ Usage Manual
 -nszmin [Int]			Minimum expected area of nucleus, in pixels (Default: 40)
 -nszmax [Int]			Maximum expected area of nucleus, in pixels (Default: 200)
 -ncutoff [Float]		Proportion of tested thresholds a pixel must be present in nuclear mask of to not be filtered out. (Default: 0.05)
+-nthprcmin [Int]		Nuclear channel max projection percentile to start threshold scan (Default: NaN, use minimum)
+-nthprcmax [Int]		Nuclear channel max projection percentile to end threshold scan (Default: NaN, use max or 10*med (autodetected))
 -ndxy [Float]			Radius of pixels to look around a putative nucleus center. (Default: round(sqrt(nszmax/pi)))
 
 --- fplstrat Valid Values ---

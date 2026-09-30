@@ -6,7 +6,7 @@ function Main_CSCellpose(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.02.27.01';
+BUILD_STRING = '2026.09.30.00';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
@@ -40,7 +40,7 @@ override_checklist = struct();
 OVERRIDE_OPS = {'cnorm' 'nnorm' 'censemble' 'nensemble' 'voxelsize' 'cmodel' 'nmodel' ...
     'cavgdia' 'navgdia' 'ccth' 'ncth' 'cfth' 'nfth' 'cszmin' 'nszmin' ...
     'lightzmin' 'lightzmax' 'nuczmin' 'nuczmax' 'xtrim' 'ytrim' ...
-    'nszmax' 'ndxy' 'nzrange' 'ncutoff' 'nthsmpl'};
+    'nszmax' 'ndxy' 'nzrange' 'ncutoff' 'nthsmpl' 'nthprcmin' 'nthprcmax'};
 ovrcount = size(OVERRIDE_OPS, 2);
 for i = 1:ovrcount
     override_checklist.(OVERRIDE_OPS{i}) = false;
@@ -259,6 +259,14 @@ for i = 1:nargin
         elseif strcmp(lastkey, "dxy")
             cellpose_settings.cdnuc_settings.ndxy = Force2Num(argval);
             if arg_debug; fprintf("CD NucSeg dxy Set: %f\n", cellpose_settings.cdnuc_settings.ndxy); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "nthprcmin")
+            cellpose_settings.cdnuc_settings.tmin_ptile = Force2Num(argval);
+            if arg_debug; fprintf("NucSeg Minimum Threshold Percentile Set: %d\n", cellpose_settings.cdnuc_settings); end
+            override_checklist.(lastkey) = true;
+        elseif strcmp(lastkey, "nthprcmax")
+            cellpose_settings.cdnuc_settings.tmax_ptile = Force2Num(argval);
+            if arg_debug; fprintf("NucSeg Maximum Threshold Percentile Set: %d\n", cellpose_settings.cdnuc_settings.tmax_ptile); end
             override_checklist.(lastkey) = true;
         elseif strcmp(lastkey, "template")
             cellpose_options.use_template = argval;
@@ -628,6 +636,12 @@ function cellpose_settings = loadTemplateInto(template_name, cellpose_settings, 
     if ~override_checklist.nuczmax
         cellpose_settings.nzmax = params.nzmax;
         cellpose_settings.cdnuc_settings.z_max = params.cdnuc_settings.z_max;
+    end
+    if ~override_checklist.nthprcmin
+        cellpose_settings.cdnuc_settings.tmin_ptile = params.cdnuc_settings.tmin_ptile;
+    end
+    if ~override_checklist.nthprcmax
+        cellpose_settings.cdnuc_settings.tmax_ptile = params.cdnuc_settings.tmax_ptile;
     end
 
     if ~override_checklist.xtrim; cellpose_settings.cdnuc_settings.x_trim = params.cdnuc_settings.x_trim; end

@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2026.09.23.01';
+BUILD_STRING = '2026.09.30.02';
 VERSION_STRING = 'v1.3.3';
 
 % ========================== Process args ==========================
@@ -89,6 +89,10 @@ for i = 1:nargin
             cellseg_options.outpath_settings = argval;
             cellseg_options.dump_summary = true;
             if arg_debug; fprintf("Settings Output Path Set: %s\n", cellseg_options.outpath_settings); end
+        elseif strcmp(lastkey, "onhist")
+            cellseg_options.outpath_nhist = argval;
+            cellseg_options.dump_summary = true;
+            if arg_debug; fprintf("Nuc Channel Histogram Output Path Set: %s\n", cellseg_options.outpath_nhist); end
         elseif strcmp(lastkey, "chtotal")
             cellseg_options.total_ch = Force2Num(argval);
             if arg_debug; fprintf("Primary Input Channel Count Set: %d\n", cellseg_options.total_ch); end
@@ -163,6 +167,14 @@ for i = 1:nargin
             cellseg_options.nuc_params.threshold_sampling = Force2Num(argval);
             cellop_override.nuc.threshold_sampling = cellseg_options.nuc_params.threshold_sampling;
             if arg_debug; fprintf("NucSeg Threshold Sampler Set: %d\n", cellseg_options.nuc_params.threshold_sampling); end
+        elseif strcmp(lastkey, "nthprcmin")
+            cellseg_options.nuc_params.tmin_ptile = Force2Num(argval);
+            cellop_override.nuc.tmin_ptile = cellseg_options.nuc_params.tmin_ptile;
+            if arg_debug; fprintf("NucSeg Minimum Threshold Percentile Set: %d\n", cellseg_options.nuc_params.tmin_ptile); end
+        elseif strcmp(lastkey, "nthprcmax")
+            cellseg_options.nuc_params.tmax_ptile = Force2Num(argval);
+            cellop_override.nuc.tmax_ptile = cellseg_options.nuc_params.tmax_ptile;
+            if arg_debug; fprintf("NucSeg Maximum Threshold Percentile Set: %d\n", cellseg_options.nuc_params.tmax_ptile); end
         elseif strcmp(lastkey, "nszmin")
             cellseg_options.nuc_params.min_nucleus_size = Force2Num(argval);
             cellop_override.nuc.min_nucleus_size = cellseg_options.nuc_params.min_nucleus_size;
@@ -300,6 +312,14 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         clear nuc_mask
     else
         %Attempt nuclear segmentation
+        if ~isempty(options.outpath_nhist)
+            fh = figure(1);
+            clf;
+            imhist(uint16(nuc_ch_data));
+            saveas(fh, options.outpath_nhist);
+            close(fh);
+        end
+
         fprintf('> Now segmenting nuclei...\n');
         [nuc_params, nuc_res] = CellSeg.AutosegmentNuclei(nuc_ch_data, options.nuc_params);
         options.nuc_params = nuc_params;
@@ -544,6 +564,8 @@ function printSummary(options)
     fprintf(fileHandle, 'nuc_params.dxy=%d\n', options.nuc_params.dxy);
     fprintf(fileHandle, 'nuc_params.z_min=%d\n', options.nuc_params.z_min);
     fprintf(fileHandle, 'nuc_params.z_max=%d\n', options.nuc_params.z_max);
+    fprintf(fileHandle, 'nuc_params.nthprcmin=%d\n', options.nuc_params.nthprcmin);
+    fprintf(fileHandle, 'nuc_params.nthprcmax=%d\n', options.nuc_params.nthprcmax);
     fclose(fileHandle);
 end
 
@@ -562,6 +584,13 @@ function [options, okay] = loadParamTemplate(options, templateId, cellop_overrid
     load(templatePath, 'cell_params', 'nuc_params');
     if isempty(cell_params); return; end
     if isempty(nuc_params); return; end
+
+    if ~isfield(nuc_params, 'tmin_ptile')
+        nuc_params.tmin_ptile = NaN;
+    end
+    if ~isfield(nuc_params, 'tmax_ptile')
+        nuc_params.tmax_ptile = NaN;
+    end
 
     options.cell_params = cell_params;
     options.nuc_params = nuc_params;
@@ -636,6 +665,7 @@ function cellseg_options = genOptionsStruct()
     cellseg_options.outpath_cell_mask = []; %As TIF
     cellseg_options.outpath_nuc_mask = []; %As TIF
     cellseg_options.outpath_settings = [];
+    cellseg_options.outpath_nhist = [];
 
     cellseg_options.import_path_nuc = [];
     cellseg_options.import_path_cell = [];

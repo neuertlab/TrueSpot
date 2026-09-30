@@ -136,6 +136,7 @@ The `CellSegSettings` block specifies parameters for cell segmentation, if it is
 	<NucThSample>"{INT}"</NucThSample>
 	<NucCutoff>"{FLOAT}"</NucCutoff>
 	<NucDXY>"{FLOAT}"</NucDXY>
+	<NucThresholdScanPercentile Min="{INT}" Max="{INT}"/>
 	<Options ExportCellMaskToFormat="{png | tif}" ExportNucMaskToFormat="{png | tif}" Overwrite="{BOOL}" DumpSettingsToText="{BOOL}"/>
 	<CellposeSettings UseCellposeNuc="{BOOL}" UseCellposeCyto="{BOOL}" ExPyvEnv="{STRING}" ExPyvEnvType="{venv | conda}">
 		<NucSettings AvgDia="{INT}" Normalize="{BOOL}">

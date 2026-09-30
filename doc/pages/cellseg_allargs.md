@@ -68,6 +68,8 @@ NOTE: The GUI version appears to have 13 hardcoded as the equivalent to `nuczmin
 | `-nszmin` | *Integer* - Size in pixels | Minimum expected area of nucleus, in pixels (Default: 40) |
 | `-nszmax` | *Integer* - Size in pixels | Maximum expected area of nucleus, in pixels (Default: 200) |
 | `-ncutoff` | *Float* - Proportion | Proportion of tested thresholds a pixel must be present in nuclear mask of to not be filtered out. (Default: 0.05) |
+| `-nthprcmin` | *Integer* - Percentile (1-99) | Nuclear channel max projection percentile to start threshold scan (Default: NaN, use minimum) |
+| `-nthprcmax` | *Integer* - Percentile (1-99) | Nuclear channel max projection percentile to end threshold scan (Default: NaN, use maximum or 10 times median (autodetected)) |
 | `-ndxy` | *Float* - Pixel count | Radius of pixels to look around a putative nucleus center. (Default: round(sqrt(nszmax/pi))) |
 
 ### fplstrat Valid Values

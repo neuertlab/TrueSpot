@@ -197,6 +197,9 @@ classdef TrueSpotXML
                     elseif strcmp(sChildName, 'NucSize')
                         cellsegSettings.nszmin = TrueSpotXML.getNumberAttribute(sChild, 'Min', 0);
                         cellsegSettings.nszmax = TrueSpotXML.getNumberAttribute(sChild, 'Max', 0);
+                    elseif strcmp(sChildName, 'NucThresholdScanPercentile')
+                        cellsegSettings.tmin_ptile = TrueSpotXML.getNumberAttribute(sChild, 'Min', 0);
+                        cellsegSettings.tmax_ptile = TrueSpotXML.getNumberAttribute(sChild, 'Max', 0);
                     elseif strcmp(sChildName, 'XTrim')
                         cellsegSettings.xtrim = TrueSpotXML.getElementTextAsNumber(sChild, 0);
                     elseif strcmp(sChildName, 'YTrim')
@@ -779,6 +782,16 @@ classdef TrueSpotXML
             end
             if cellsegSettings.ndxy > 0
                 fprintf(xmlHandle, [tabstr '\t<NucDXY>"%f"</NucDXY>\n'], cellsegSettings.ndxy);
+            end
+            if ~isnan(cellsegSettings.tmin_ptile) | ~isnan(cellsegSettings.tmax_ptile)
+                fprintf(xmlHandle, [tabstr '\t<NucThresholdScanPercentile']);
+                if ~isnan(cellsegSettings.tmin_ptile)
+                    fprintf(xmlHandle, ' Min="%d"', cellsegSettings.tmin_ptile);
+                end
+                if ~isnan(cellsegSettings.tmax_ptile)
+                    fprintf(xmlHandle, ' Max="%d"', cellsegSettings.tmax_ptile);
+                end
+                fprintf(xmlHandle, '/>\n');
             end
 
             fprintf(xmlHandle, [tabstr '\t<Options']);

@@ -154,6 +154,8 @@ class CellsegSettings:
         self.nucThSmpl = -1
         self.nucCutoff = numpy.nan
         self.nucDxy = numpy.nan
+        self.nucThScanMinPrc = numpy.nan
+        self.nucThScanMaxPrc = numpy.nan
         
         self.useCellposeNuc = False
         self.useCellposeCyto = False
@@ -187,6 +189,11 @@ class CellsegSettings:
                     self.nucSizeMin = int(child.attrib['Min'])
                 if 'Max' in child.attrib:
                     self.nucSizeMax = int(child.attrib['Max'])
+            elif child.tag == 'NucThresholdScanPercentile':
+                if 'Min' in child.attrib:
+                    self.nucThScanMinPrc = int(child.attrib['Min'])
+                if 'Max' in child.attrib:
+                    self.nucThScanMaxPrc = int(child.attrib['Max'])
             elif child.tag == 'XTrim':
                 self.xTrim = int(cleanXmlValueString(child.text))
             elif child.tag == 'YTrim':
@@ -269,6 +276,10 @@ class CellsegSettings:
             self.nucCutoff = other.nucCutoff
         if overwrite or (numpy.isnan(self.nucDxy)):
             self.nucDxy = other.nucDxy
+        if overwrite or (numpy.isnan(self.nucThScanMinPrc)):
+            self.nucThScanMinPrc = other.nucThScanMinPrc
+        if overwrite or (numpy.isnan(self.nucThScanMaxPrc)):
+            self.nucThScanMaxPrc = other.nucThScanMaxPrc
         if overwrite or (not self.useCellposeNuc):
             self.useCellposeNuc = other.useCellposeNuc   
         if overwrite or (not self.useCellposeCyto):
@@ -1042,7 +1053,7 @@ def genImageJobs(tifImage, batchInfo):
         if batchInfo.cellsegSettings.nucSizeMin > 0:
             scriptHandle.write(" -nszmin " + str(batchInfo.cellsegSettings.nucSizeMin)) 
         if batchInfo.cellsegSettings.nucSizeMax > 0:
-            scriptHandle.write(" -nszmax " + str(batchInfo.cellsegSettings.nucSizeMax))   
+            scriptHandle.write(" -nszmax " + str(batchInfo.cellsegSettings.nucSizeMax)) 
         if batchInfo.cellsegSettings.overwrite:
             scriptHandle.write(" -ovrw")
         if batchInfo.cellsegSettings.dumpSettings:
@@ -1095,7 +1106,11 @@ def genImageJobs(tifImage, batchInfo):
                 if not numpy.isnan(batchInfo.cellsegSettings.nucCutoff):
                     scriptHandle.write(" -ncutoff " + str(batchInfo.cellsegSettings.nucCutoff)) 
                 if not numpy.isnan(batchInfo.cellsegSettings.nucDxy):
-                    scriptHandle.write(" -ndxy " + str(batchInfo.cellsegSettings.nucDxy))                  
+                    scriptHandle.write(" -ndxy " + str(batchInfo.cellsegSettings.nucDxy)) 
+                if (not numpy.isnan(batchInfo.cellsegSettings.nucThScanMinPrc)) and (batchInfo.cellsegSettings.nucThScanMinPrc > 0):
+                    scriptHandle.write(" -nthprcmin " + str(batchInfo.cellsegSettings.nucThScanMinPrc)) 
+                if (not numpy.isnan(batchInfo.cellsegSettings.nucThScanMaxPrc)) and (batchInfo.cellsegSettings.nucThScanMaxPrc > 0):
+                    scriptHandle.write(" -nthprcmax " + str(batchInfo.cellsegSettings.nucThScanMaxPrc)) 
         else:
             if batchInfo.cellsegSettings.xTrim >= 0:
                 scriptHandle.write(" -xtrim " + str(batchInfo.cellsegSettings.xTrim)) 
@@ -1108,7 +1123,11 @@ def genImageJobs(tifImage, batchInfo):
             if not numpy.isnan(batchInfo.cellsegSettings.nucCutoff):
                 scriptHandle.write(" -ncutoff " + str(batchInfo.cellsegSettings.nucCutoff)) 
             if not numpy.isnan(batchInfo.cellsegSettings.nucDxy):
-                scriptHandle.write(" -ndxy " + str(batchInfo.cellsegSettings.nucDxy))                     
+                scriptHandle.write(" -ndxy " + str(batchInfo.cellsegSettings.nucDxy))
+            if (not numpy.isnan(batchInfo.cellsegSettings.nucThScanMinPrc)) and (batchInfo.cellsegSettings.nucThScanMinPrc > 0):
+                scriptHandle.write(" -nthprcmin " + str(batchInfo.cellsegSettings.nucThScanMinPrc)) 
+            if (not numpy.isnan(batchInfo.cellsegSettings.nucThScanMaxPrc)) and (batchInfo.cellsegSettings.nucThScanMaxPrc > 0):
+                scriptHandle.write(" -nthprcmax " + str(batchInfo.cellsegSettings.nucThScanMaxPrc)) 
     scriptHandle.write(" -log \"" + os.path.join(tifImage.resultsDir, tifImage.name + '_cellseg_mat.log') + "\"")
     scriptHandle.write("\n")
     
@@ -1390,7 +1409,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.09.18.01")
+    print("TS Batch Job Generator initiated! Version 26.09.30.00")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
