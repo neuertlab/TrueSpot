@@ -1062,7 +1062,7 @@ def genImageJobs(tifImage, batchInfo):
             scriptHandle.write(" -onucmask \"" + tifImage.resultsDir + "/NucMask_" + tifImage.name + "." + batchInfo.cellsegSettings.opNucMaskOut + "\"")  
         if batchInfo.cellsegSettings.opCellMaskOut is not None:
             scriptHandle.write(" -ocellmask \"" + tifImage.resultsDir + "/CellMask_" + tifImage.name + "." + batchInfo.cellsegSettings.opCellMaskOut + "\"")        
-        if batchInfo.cellsegSettings.useCellposeCyto:
+        if batchInfo.cellsegSettings.useCellposeCyto and not useEXCPCell:
             if batchInfo.cellsegSettings.cellposeCyto is not None:
                 if batchInfo.cellsegSettings.cellposeCyto.avgDia > 0:
                     scriptHandle.write(" -cavgdia " + str(batchInfo.cellsegSettings.cellposeCyto.avgDia))  
@@ -1409,7 +1409,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.09.30.00")
+    print("TS Batch Job Generator initiated! Version 26.09.30.01")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
