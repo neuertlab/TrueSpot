@@ -375,74 +375,9 @@ classdef RNA_Threshold_Common
                 savepath = 'recurring pixels 3 out of 6';
             end
         
-            Y = size(in_img,1);
-            X = size(in_img,2);
-            Z = size(in_img,3);
-            A = Y * X;
-            in_img = double(in_img);
-
-            px_counts = struct('recurring_all', 0, 'random', 0, 'recurring', 0);
-            slice_cut = 4/8;
-            slice_check = round(min(Z,max(Z./4, 6)));
-            hi_pixels = cell(slice_check, 1);
-            hi_pixels_all = [];
-            if verbose; fprintf("Determining recurring pixels...\n"); end
-    
-            w2 = [-1 -1 -1;...
-                  -1 +8 -1;...
-                  -1 -1 -1;];
-      
-            %For some subgroup of z slices, find pixels with unusually
-            %   high values after edge filter is applied.
-            if size(in_img,1) > 1
-                for i = 1:slice_check
-                    slice = imfilter(in_img(:,:,i),w2);
-                    cutoff = mean(slice(:)) + (3 * std(slice(:)));
-                    temp_pix = find(slice > cutoff);
-                    hi_pixels{i,1} = temp_pix;
-                    hi_pixels_all = cat(1, hi_pixels_all, temp_pix);
-                end
-            end
-    
-            %For each processed slice, pick the same number
-            %   of pixels randomly
-            rand_hi = [];
-            for j = 1:slice_check
-                temp_hi = hi_pixels{j,1};
-                rand_hi_temp = randsample(A, size(temp_hi,2));
-                rand_hi_temp = rand_hi_temp';
-                rand_hi = cat(1, rand_hi, rand_hi_temp);
-            end
-            
-            %See how often each pixel appears in random selection
-            [hist_pix_rand, ~] = histcounts(double(rand_hi(:)), A);
-            hist_pix_rand = transpose(hist_pix_rand);
-            
-            %Note which occur more than slice_cut proportion of the time.
-            rand_recur_pix = find(hist_pix_rand >= slice_check*slice_cut);
-            px_counts.random = size(rand_recur_pix,1);
-            if verbose; fprintf("%d randomly recurring pixels\n", px_counts.random); end
-            
-            %Repeat with high value pixels
-            [hist_pix, ~] = histcounts(double(hi_pixels_all(:)), A);
-            hist_pix = transpose(hist_pix);
-            recurring_pixels_all = find(hist_pix >= slice_check*slice_cut);
-            px_counts.recurring_all = size(recurring_pixels_all,1);
-            if verbose; fprintf("%d total recurring pixels\n", px_counts.recurring_all); end
-            
-            %Remove border pixels
-            recmtx = NaN(px_counts.recurring_all,3);
-            recmtx(:,1) = recurring_pixels_all(:,1); %1D
-            recmtx(:,2) = floor((recmtx(:,1) - 1)./Y) + 1; %x
-            recmtx(:,3) = mod((recmtx(:,1) - 1), Y) + 1; %y
-            testmtx = recmtx(:,2) > 1;
-            testmtx = testmtx & (recmtx(:,2) < X);
-            testmtx = testmtx & (recmtx(:,3) < Y);
-            testmtx = testmtx & (recmtx(:,3) > 1);
-            [keeprows, ~] = find(testmtx);
-            recurring_pixels = recmtx(keeprows,1);
-            px_counts.recurring = size(recurring_pixels,1);
-            if verbose; fprintf("%d non-border recurring pixels\n", px_counts.recurring); end
+            px_counts = RNAUtils.detectDeadPixels(in_img, verbose);
+            recurring_pixels = px_counts.recurring_pixels;
+            recurring_pixels_all = px_counts.recurring_pixels_all;
             
             %Save
             save(savepath, 'recurring_pixels', 'recurring_pixels_all');
@@ -474,50 +409,11 @@ classdef RNA_Threshold_Common
             end
             
             load(savepath, 'recurring_pixels') %Load previously saved list of dead pixels
-            rp_count = size(recurring_pixels,1);
-            cleaned_count = 0;
-    
-            %Get size(s) and save. Cleans up code.
-            dim1 = size(in_img,1); %Height
-            dim2 = size(in_img,2); %Width
-            dim3 = size(in_img,3); %Depth
-    
-            clean_img = in_img;
-                
-            %The notice messages are kept from previous code
-            %'Averaging recurring pixels'
-            if verbose
-                fprintf("Averaging recurring pixels...\t")
-                tic
-            end
-            for k = 1:dim3
-                slice = in_img(:,:,k); %[uint16[D][D]] 2D slice of image
-                for c = 1:rp_count
-                    p = recurring_pixels(c); %[int] 1D coordinate of bad pixel
-                    
-                    y = mod((p-1), dim1) + 1;
-                    if y <= 1; continue; end
-                    if y >= dim1; continue; end
-                    
-                    x = floor((p-1)/dim1) + 1;
-                    if x <= 1; continue; end
-                    if x >= dim2; continue; end
-                    
-                    west = p - dim1;
-                    east = p + dim1;
-                    surr_pix = [p-1, p+1, west, east, west-1, east-1, east+1, west+1];
-                    %N S W E NW NE SE SW
-                    slice(p) = mean(slice(surr_pix));
-                    cleaned_count = cleaned_count+1;
-                end
-                clean_img(:,:,k) = slice;
-            end
-            if verbose
-                toc; 
-                fprintf("Recurring voxels cleaned: %d\n", cleaned_count);
-            end
-    
+            px_counts = struct();
+            px_counts.recurring_pixels = recurring_pixels;
             clear recurring_pixels;
+
+            clean_img = RNAUtils.cleanDeadPixels(in_img, px_counts, verbose);
         end
         
         %%
