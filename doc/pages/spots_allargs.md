@@ -17,11 +17,18 @@ This page lists all arguments recognized by `Main_RNASpots.m`. Some additional a
 | `-matimg` | *Path* - Path to MATLAB input image file.  | A MATLAB save file containing the image/image stack to process. This argument is equivalent to `-input`, but is included for convenience and compatibility with previous versions. |
 | `-matvar` | *String* - Name of variable containing image in MATLAB input file.  | The name of the MATLAB variable in the input MATLAB save file containing the image/image stack data to process. Defaults to "imgdat". |
 | `-cellseg` | *Path* - Path to file containing cell segmentation mask.  | A file containing a cell segmentation mask. Accepts CellSeg module MAT outputs as well as single channel TIFFs, and numeric tsvs and csvs. |
-| `-ctrlimg` | *Path* - Path to control image file.  | A control image or image stack file. Only TIFF or MAT files are recognized at this time. |
-| `-ctrltif` | *Path* - Path to control TIFF file.  | A control image or image stack file in TIFF format. This argument is equivalent to `-ctrlimg`, but is included for convenience and compatibility with previous versions. |
 | `-chtotal` | *Integer* - Channel Count  | The total number of channels in the input image stack. (Default: 1) |
 | `-chsamp` | *Integer* - Channel Index (1-based) | The channel in the input image stack to process as sample. (Default: 1) |
 | `-chtrans` | *Integer* - Channel Index (1-based) | The TRANS or passthrough light channel in the input image stack. Only used for background extraction along with cell segmentation mask. |
+| `-ectrlstem` | *Path* - Path to control stem/run  | A spotsrun file or stem from an RNASpots run on a control image. Spot count table from control run can be used to set a threshold floor. |
+| `-ectwwait` | *Integer* - Wait time in seconds  | If file specified by `-ectrlstem` does not exist when thresholding is attempted, this is the loop wait time to sleep before checking for file again. Values at or below 0 specify not to wait and to just try background or skip control if file is not present. (Default: 0) |
+
+## Deprecated Input Options
+
+| Name | Parameter | Description |
+| ----- | ----- | ----- |
+| `-ctrlimg` | *Path* - Path to control image file.  | A control image or image stack file. Only TIFF or MAT files are recognized at this time. |
+| `-ctrltif` | *Path* - Path to control TIFF file.  | A control image or image stack file in TIFF format. This argument is equivalent to `-ctrlimg`, but is included for convenience and compatibility with previous versions. |
 | `-chctrtotal` | *Integer* - Channel Count  | The total number of channels in the control image stack. (Default: 1) |
 | `-chctrsamp` | *Integer* - Channel Index (1-based) | The channel in the control image stack to process as sample control. (Default: 1) |
 

@@ -41,9 +41,9 @@ if debug_lvl > 0
     RNA_Fisher_State.outputMessageLineStatic(sprintf("t_max = %d", spotsrun.options.t_max), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("ztrim = %d", spotsrun.dims.ztrim), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("cellseg_path = %s", spotsrun.paths.cellseg_path), false);
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_path = %s", spotsrun.paths.ctrl_img_path), false);
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_ch = %d", spotsrun.channels.ctrl_ch), false);
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_chcount = %d", spotsrun.channels.ctrl_chcount), false);
+    % RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_path = %s", spotsrun.paths.ctrl_img_path), false);
+    % RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_ch = %d", spotsrun.channels.ctrl_ch), false);
+    % RNA_Fisher_State.outputMessageLineStatic(sprintf("ctrl_chcount = %d", spotsrun.channels.ctrl_chcount), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("overwrite_output = %d", spotsrun.options.overwrite_output), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("thread_request = %d", thread_request), false);
     RNA_Fisher_State.outputMessageLineStatic(sprintf("Use preloaded images? = %d", bPreloaded), false);
@@ -70,7 +70,8 @@ sample_light_ch = [];
 bkg_mask_dir = [spotsrun.paths.out_dir filesep 'bkgmask'];
 spotsrun.paths.bkg_mask_path = [bkg_mask_dir filesep spotsrun.img_name '_bkg'];
 if (~bPreloaded & isempty(spotsrun.paths.ctrl_img_path)) | (bPreloaded & isempty(preloaded_imgs.dat_rna_control))
-    RNA_Fisher_State.outputMessageLineStatic(sprintf("Control not provided. Will attempt to use background."), true);
+    %RNA_Fisher_State.outputMessageLineStatic(sprintf("Control not provided. Will attempt to use background."), true);
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Attempting background extraction..."), true);
     if ~spotsrun.options.overwrite_output && isfile([spotsrun.paths.bkg_mask_path '.mat'])
         RNA_Fisher_State.outputMessageLineStatic(sprintf("Background mask already exists at %s! Skipping extraction...", spotsrun.paths.bkg_mask_path), true);
     else
@@ -255,6 +256,9 @@ end
 %   Detect if input control path is a tif. If not, assume the input is a spot
 %       detect results path stem.
 %!! Don't redo if target exists and overwrite output is false!
+
+%-------------- Leaving this in for backwards compatibility, but
+%control processing alongside sample image is deprecated as of v1.4.0 ----
 ctrl_stem = [];
 if ~isempty(spotsrun.paths.ctrl_img_path)
     if endsWith(spotsrun.paths.ctrl_img_path, ".tif")

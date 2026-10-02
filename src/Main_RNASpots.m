@@ -193,6 +193,12 @@ for i = 1:nargin
         elseif strcmp(lastkey, "ctrlimg")
             rna_spot_run.paths.ctrl_img_path = argval;
             if arg_debug; fprintf("Control Image Path Set: %s\n", rna_spot_run.paths.ctrl_img_path); end
+        elseif strcmp(lastkey, "ectrlstem")
+            rna_spot_run.paths.ext_ctrl_stem = argval;
+            if arg_debug; fprintf("External Control Table Stem Set: %s\n", rna_spot_run.paths.ext_ctrl_stem); end
+        elseif strcmp(lastkey, "ectwwait")
+            rna_spot_run.paths.ectwwait_sec = round(Force2Num(argval));
+            if arg_debug; fprintf("External Control Table Write Wait Set: %d seconds\n", rna_spot_run.paths.ectwwait_sec); end
         elseif strcmp(lastkey, "chctrsamp")
             rna_spot_run.channels.ctrl_ch = round(Force2Num(argval));
             if arg_debug; fprintf("Control Channel Set: %d\n", rna_spot_run.channels.ctrl_ch); end

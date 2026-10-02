@@ -22,7 +22,7 @@ classdef RNASpotsRun
 
         function [obj, run_info] = bundleForSave(obj)
             obj.meta.modifiedDate = datetime;
-            run_info = struct('RNASpotsRunVersion', 4);
+            run_info = struct('RNASpotsRunVersion', 5);
 
             run_info.img_name = obj.img_name;
             run_info.intensity_threshold = obj.intensity_threshold;
@@ -73,6 +73,35 @@ classdef RNASpotsRun
         
         function [obj, spot_table] = loadControlSpotsTable(obj)
             spot_table = [];
+
+            %First, check for externally provided table
+            if ~isempty(obj.paths.ext_ctrl_stem)
+                tbl_path = [obj.paths.ext_ctrl_stem '_spotTable.mat'];
+                if isfile(tbl_path)
+                    load(tbl_path, 'spot_table');
+                else
+                    if (obj.paths.ectwwait_sec > 0)
+                        while ~isfile(tbl_path)
+                            fprintf(['[RNASpotsRun.loadControlSpotsTable] ' ...
+                                'Expected external control spots table at ""%s"" does not exist (yet). ' ...
+                                'Waiting %d seconds to check again...\n'], tbl_path, obj.paths.ectwwait_sec);
+                            pause(obj.paths.ectwwait_sec);
+                        end
+                        load(tbl_path, 'spot_table');
+                    end
+                end
+            end
+
+            if ~isempty(spot_table)
+                return;
+            else
+                if ~isempty(obj.paths.ext_ctrl_stem)
+                    fprintf('[RNASpotsRun.loadControlSpotsTable] Warning: External control table provided, but file does not exist and wait was turned off. Skipping to using background or other internal control...\n');
+                end
+            end
+
+            %Look for background (or ctrl generated via deprecated method)
+            %table
             tbl_path = [obj.getFullCtrlOutStem() '_spotTable.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'spot_table');
@@ -439,13 +468,15 @@ classdef RNASpotsRun
             rnaspots_run.paths = struct('img_path', []);
             rnaspots_run.paths.out_dir = [];
             rnaspots_run.paths.out_namestem = [];
-            rnaspots_run.paths.ctrl_img_path = [];
-            rnaspots_run.paths.ctrl_out_namestem = [];
+            rnaspots_run.paths.ctrl_img_path = []; %don't use this
+            rnaspots_run.paths.ctrl_out_namestem = []; %don't use this
             rnaspots_run.paths.bkg_mask_path = [];
             rnaspots_run.paths.bkg_filter_stem = [];
             rnaspots_run.paths.cellseg_path = [];
             rnaspots_run.paths.csv_out_path = [];
             rnaspots_run.paths.params_out_path = [];
+            rnaspots_run.paths.ext_ctrl_stem = [];
+            rnaspots_run.paths.ectwwait_sec = 0; %External control table write wait time (in sec)
 
             rnaspots_run.channels = struct('rna_ch', 1);
             rnaspots_run.channels.light_ch = 0;
@@ -495,7 +526,7 @@ classdef RNASpotsRun
             rnaspots_run.meta.idims_expspot = struct('x', -1, 'y', -1, 'z', -1);
             rnaspots_run.meta.creationDate = datetime;
             rnaspots_run.meta.modifiedDate = datetime;
-            rnaspots_run.meta.tsSpotsVersion = '2025.03.27.00 (v1.2.0)';
+            rnaspots_run.meta.tsSpotsVersion = '2026.10.02.00 (v1.4.0)';
         end
         
         function rnaspots_run = loadFrom(path, updateOutDir)
@@ -523,6 +554,11 @@ classdef RNASpotsRun
                 rnaspots_run.meta = run_info.meta;
                 rnaspots_run.options = run_info.options;
 
+                if fileVer < 5
+                    rnaspots_run.paths.ext_ctrl_stem = rnaspots_run.getFullCtrlOutStem();
+                    rnaspots_run.paths.ectwwait_sec = 0;
+                end
+
                 if fileVer >= 4
                     rnaspots_run.th_alt = run_info.th_alt;
                 else
@@ -549,7 +585,8 @@ classdef RNASpotsRun
             spot_table = double(spot_table);
 
             %Spot count table
-            save([save_stem '_spotTable.mat'], 'spot_table', '-v7.3');
+            %save([save_stem '_spotTable.mat'], 'spot_table', '-v7.3');
+            save([save_stem '_spotTable.mat'], 'spot_table');
             %Spot coords
             save([save_stem '_callTable.mat'], 'call_table', '-v7.3');
         end

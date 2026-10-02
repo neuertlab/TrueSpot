@@ -5,8 +5,8 @@ function Main_AnalyzeBatchThresholds(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.04.04.00';
-VERSION_STRING = 'v1.2.0';
+BUILD_STRING = '2026.10.02.00';
+VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
 
@@ -15,6 +15,7 @@ arg_debug = true; %CONSTANT used for debugging arg parser.
 input_dir = []; %Give a dir for a batch and it will look recursively through it for TS results.
 table_out_path = [];
 stats_out_path = [];
+%ext_ctrl_run_path = [];
 
 lastkey = [];
 for i = 1:nargin
@@ -43,6 +44,9 @@ for i = 1:nargin
         elseif strcmp(lastkey, "statsout")
             stats_out_path = argval;
             if arg_debug; fprintf("Stats Output Path Set: %s\n", stats_out_path); end
+        % elseif strcmp(lastkey, "ctrlrun")
+        %     ext_ctrl_run_path = argval;
+        %     if arg_debug; fprintf("Stats Output Path Set: %s\n", ext_ctrl_run_path); end
         else
             fprintf("Key not recognized: %s - Skipping...\n", lastkey);
         end
@@ -68,6 +72,9 @@ fprintf('Script Version: %s\n', BUILD_STRING);
 fprintf('TrueSpot Version: %s\n', VERSION_STRING);
 fprintf('Run Time: %s\n', datetime);
 fprintf('Input: %s\n', input_dir);
+% if ~isempty(ext_ctrl_run_path)
+%     fprintf('Batch Control Run: %s\n', ext_ctrl_run_path);
+% end
 fprintf('Table Output: %s\n', table_out_path);
 fprintf('Stats Output: %s\n', stats_out_path);
 
@@ -114,7 +121,7 @@ statsTxtHandle = fopen(stats_out_path, 'w');
 %Table header
 tblHeaderFields = {'IMGNAME' 'TARGET' 'PROBE' 'CHANNEL' ...
     'AUTO_TH' 'PRESET_TEST_THS' 'THPOOL_MEAN' 'THPOOL_MEDIAN' ...
-    'THPOOL_STD' 'THPOOL_MAD'};
+    'THPOOL_STD' 'THPOOL_MAD' 'THFLOOR_BKG' 'THFLOOR_ECTRL'};
 field_count = size(tblHeaderFields, 2);
 for ii = 1:field_count
     if ii > 1; fprintf(tableHandle, '\t'); end
@@ -167,6 +174,40 @@ for g = 1:groupCount
         else
             fprintf(tableHandle, '\t<Not evaluated>\tNaN\tNaN\tNaN\tNaN');
         end
+
+        %Control-suggested floors, if applicable
+        if ~isempty(spotsRun.paths.ctrl_out_namestem)
+            tbl_path = [obj.getFullCtrlOutStem() '_spotTable.mat'];
+            if isfile(tbl_path)
+                load(tbl_path, 'spot_table');
+                thfloor = RNAThreshold.estimateControlFloor(spot_table);
+                fprintf(tableHandle, '\t%d', thfloor);
+                clear spot_table thfloor
+            else
+                fprintf(tableHandle, '\tNaN');
+            end
+
+            clear tbl_path
+        else
+            fprintf(tableHandle, '\tNaN');
+        end
+
+        if ~isempty(spotsRun.paths.ext_ctrl_stem)
+            tbl_path = [spotsRun.paths.ext_ctrl_stem '_spotTable.mat'];
+            if isfile(tbl_path)
+                load(tbl_path, 'spot_table');
+                thfloor = RNAThreshold.estimateControlFloor(spot_table);
+                fprintf(tableHandle, '\t%d', thfloor);
+                clear spot_table thfloor
+            else
+                fprintf(tableHandle, '\tNaN');
+            end
+
+            clear tbl_path
+        else
+            fprintf(tableHandle, '\tNaN');
+        end
+
         fprintf(tableHandle, '\n');
     end
 

@@ -31,6 +31,7 @@ The `ImageBatch` block has two mandatory child blocks: `Paths` and `ChannelInfo`
 	<QuantSettings>...</QuantSettings>
 	<Paths>...</Paths>
 	<ChannelInfo>...</ChannelInfo>
+	<Control>...</Control>
 </ImageBatch>
 ```
 
@@ -41,7 +42,6 @@ The `ImageBatch` block has two mandatory child blocks: `Paths` and `ChannelInfo`
 <Paths>
 	<Input>"{INPUT FILE/DIR PATH}"</Input>
 	<OutputDir>"{OUTPUT DIR PATH}"</OutputDir>
-	<ControlPath>"{CONTROL IMAGE PATH}"</ControlPath>
 	<ExtCellMask>"{EXTERNAL CELL MASK PATH STEM}"</ExtCellMask>
 	<ExtNucMask ZMin="{INTEGER}">"{EXTERNAL CELL MASK PATH STEM}"</ExtNucMask>
 </Paths>
@@ -51,19 +51,19 @@ The `ImageBatch` block has two mandatory child blocks: `Paths` and `ChannelInfo`
 
 `Output` specifies the output directory. Individual inner directory and file names are generated from the image file names, so only a place to put this output needs to be specified. If the specified output folder does not exist at run time, TrueSpot Lite will create it.
 
-`ControlPath` takes a path stem string to one or more control images. As with `Input`, all control images must have the same channel settings as each other.
-
 `ExtCellMask` takes a path stem string to one or more external (non TrueSpot) cell mask files. At this time, single channel TIFs and csvs can be read as cell masks. Cell masks are typically expected to be 2D and should have the same x and y dimensions as their target images.
 
 `ExtNucMask` takes a path stem string to one or more external (non TrueSpot) nuclear mask files. At this time, single channel TIFs and csvs can be read as nuclear masks. Nuclear masks are typically expected to be 3D and should have the same x and y dimensions as their target images. A Z offset can be specified for a nuclear mask that only covers a subset of slices using the `ZMin` attribute. `ZMin` is the 1-based index of the bottom slice of the nuclear mask as it appears in the original stack. `ZMin` defaults to 1.
 
-`ControlPath`, `ExtCellMask`, and `ExtNucMask` can interpret the `${IMAGE_NAME}` variable in their values. This allows for different control stacks or mask files to be used for different images provided there is a consistent naming pattern outside of the analysis stack file name. In other words, if you have a directory containing the cell masks for a batch of tif files run in an external tool and each cell mask file is named "{OG TIF file name}_CellMask.tif", then you could use:
+`ExtCellMask`, and `ExtNucMask` can interpret the `${IMAGE_NAME}` variable in their values. This allows for different control stacks or mask files to be used for different images provided there is a consistent naming pattern outside of the analysis stack file name. In other words, if you have a directory containing the cell masks for a batch of tif files run in an external tool and each cell mask file is named "{OG TIF file name}_CellMask.tif", then you could use:
 
 ```
 <ExtCellMask>"Your Cell Mask Directory/${IMAGE_NAME}_CellMask.tif"</ExtCellMask>
 ```
 
 to apply these cell masks instead of CellDissect's output.
+
+Note: `ControlPath` is deprecated. Please use `ControlBatch` and `Control` blocks instead.
 
 ### ImageBatch: ChannelInfo
 The `ChannelInfo` block contains information about the channels in the input images. It is also the block containing sample channel specific parameters in the form of `ImageChannel` blocks.
@@ -85,6 +85,19 @@ The `ChannelInfo` block contains information about the channels in the input ima
 `TransChannel` is the 1-based channel index for the channel containing TRANS light data. This is used for cell segmentation, background extraction (for Spot Detect threshold flooring) and some rendering.
 
 `ControlChannelCount`, `ControlNucChannel`, and `ControlTransChannel` are the same as above, but for the control image(s) if provided.
+
+### ImageBatch: Control
+The `Control` block links an `ImageBatch` to a `ControlBatch` or an image or subset of images within that `ControlBatch`.
+
+The top level `ControlBatch` attribute is the only mandatory attribute for the `Control` element as it is required to link the correct `ControlBatch`. `ImageName` can be used to specify a single image for the whole batch or file name pattern to match images (eg. `ImageName="${IMAGE_NAME}_noprobe"` will match an image within the `ImageBatch` called "MyImageFile.tif" to an image in the `ControlBatch` called "MyImageFile_noprobe.tif").
+
+The `ControlChannelMapping` child element is only required if the channel indices in the control stacks do not match those in the batch stacks. If a mapping is omitted for a sample channel, the assumption is made that the channel index in the control is the same as the sample channel index.
+
+```
+<Control ControlBatch="{BATCH NAME}" ImageName="{STRING}">
+	<ControlChannelMapping SampleChannel="{INT}" ControlChannel="{INT}"/> ...
+</Control>
+```
 
 ## ImageChannel
 An `ImageChannel` block contains parameters specific to a single sample channel. `ImageChannel` has no mandatory children, though it has one mandatory attribute (`ChannelNumber`, which specifies its 1-based index). An `ImageChannel` block must be present for TrueSpot Lite to run a channel as a sample, even if there are no channel specific parameters.
@@ -211,3 +224,18 @@ A `JobSettings` block specifies batch job properties for headless runs. `JobSett
 `MatlabModuleName` is the name of the module to be loaded by the command `module load`. This is handy for version specification, and is required on some clusters to run MATLAB. If this field is not specified, the batch gen script will not generate `module load` lines.
 
 There are three possible child nodes for specified resources (for the three job types): `CellSegJob`, `SpotJob`, and `QuantJob`. These nodes have three possible attributes: `CpuCount` (number of CPUs to request), `RamGigs` (RAM to request, in gigabytes), and `Time` (job wall time, specified as a hh:mm string).
+
+## ControlBatch
+A `ControlBatch` is just an `ImageBatch` that is used as a set of control images. An `ImageBatch` is linked to its control image(s) via a `Control` block inside the `ImageBatch` block. A `ControlBatch` is run like an `ImageBatch` without the quant step as it is assumed the images contained within the `ControlBatch` are signal-less scramble probe or no probe controls.
+
+`ControlBatch` blocks have the same children as `ImageBatch` blocks, except `Control` and `QuantSettings`.
+
+```
+<ControlBatch Name="{BATCH_NAME}">
+	<CommonMeta>...</CommonMeta>
+	<CellSegSettings>...</CellSegSettings>
+	<SpotDetectSettings>...</SpotDetectSettings>
+	<Paths>...</Paths>
+	<ChannelInfo>...</ChannelInfo>
+</ControlBatch>
+```

@@ -9,13 +9,11 @@ Usage Manual (Updated July 18, 2025)
 -matimg [Path]			A MATLAB save file containing the image/image stack to process. This argument is equivalent to -input, but is included for convenience and compatibility with previous versions.
 -matvar [String]		The name of the MATLAB variable in the input MATLAB save file containing the image/image stack data to process. Defaults to "imgdat".
 -cellseg [Path]			A file containing a cell segmentation mask. Accepts CellSeg module MAT outputs as well as single channel TIFFs, and numeric tsvs and csvs.
--ctrlimg [Path]			A control image or image stack file. Only TIFF or MAT files are recognized at this time.
--ctrltif [Path]			A control image or image stack file in TIFF format. This argument is equivalent to -ctrlimg, but is included for convenience and compatibility with previous versions.
 -chtotal [Int]			The total number of channels in the input image stack. (Default: 1)
 -chsamp [Int]			The channel in the input image stack to process as sample as a 1-based coordinate index. (Default: 1)
 -chtrans [Int]			The TRANS or passthrough light channel in the input image stack as a 1-based coordinate index. Only used for background extraction along with cell segmentation mask.
--chctrtotal [Int]		The total number of channels in the control image stack. (Default: 1)
--chctrsamp [Int]		The channel in the control image stack to process as sample control as a 1-based coordinate index. (Default: 1)
+-ectrlstem [Path]		A spotsrun file or stem from an RNASpots run on a control image. Spot count table from control run can be used to set a threshold floor.
+-ectwwait [Int]			If file specified by -ectrlstem does not exist when thresholding is attempted, this is the loop wait time to sleep (in seconds) before checking for file again. Values at or below 0 specify not to wait and to just try background or skip control if file is not present. (Default: 0)
 
 --- Output Options ---
 -outdir [Path]			Path to directory to place output files. File names will be automatically generated from image name. (Default: Directory of input image.)

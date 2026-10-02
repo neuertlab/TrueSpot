@@ -471,6 +471,41 @@ classdef RNAThreshold
         end
         
         %%
+        function thfloor = estimateControlFloor(ctrl_spot_table)
+            thfloor = 0;
+            if isempty(ctrl_spot_table); return; end
+
+            table_d = double(ctrl_spot_table);
+
+            xx_c = table_d(:,1);
+            yy_c = table_d(:,2);
+
+            if parameter_info.log_proj_mode == 1
+                yy_c = log10(yy_c);
+                [xx_c, yy_c] = cleanLogPlot(xx_c, yy_c);
+            end
+
+            ctrlderiv = diff(yy_c);
+            ctrlderiv = smooth(ctrlderiv);
+            ctrlderiv = abs(ctrlderiv);
+            T_control = size(table_d,1);
+            P_control = T_control - 1;
+
+            if ~isempty(ctrlderiv)
+                [~, cdmaxidx] = max(yy_c, [], 'omitnan');
+                cdtest = ctrlderiv(cdmaxidx:P_control,1);
+                
+                [findres, ~] = find(cdtest < 1,1);
+                if isempty(findres)
+                    [findres, ~] = find(cdtest < 2,1);
+                end
+                if ~isempty(findres)
+                    thfloor = xx_c(findres+cdmaxidx,1);
+                end
+            end
+        end
+        
+        %%
         % (Description)
         %
         % ARGS

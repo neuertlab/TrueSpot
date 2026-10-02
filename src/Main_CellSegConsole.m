@@ -5,8 +5,8 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2026.09.30.02';
-VERSION_STRING = 'v1.3.3';
+BUILD_STRING = '2026.10.02.00';
+VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
 

@@ -6,8 +6,8 @@ function Main_ImageStats(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.10.01.00';
-VERSION_STRING = 'v1.3.3';
+BUILD_STRING = '2026.10.02.00';
+VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
 

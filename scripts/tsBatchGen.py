@@ -7,6 +7,11 @@ import xml.etree.ElementTree as ETree
 import datetime
 import numpy
 
+#TODO: Add control path to sample spots jobs
+#TODO: Control jobs should have no quant and no spots control
+    
+#TODO: Eventually add Main_ImageStats to run after cellseg parallel channel jobs
+
 def str2bool(val):
     #https://stackoverflow.com/questions/715417/converting-from-a-string-to-boolean-in-python
     val = val.lower()
@@ -428,6 +433,64 @@ class IDistroSettings:
             self.jobSettings.copyDataFrom(other.jobSettings, True)
         else:
             self.jobSettings.copyDataFrom(other.jobSettings, overwrite)
+
+class ControlChannelMapping:
+    def __init__(self):
+        self.sampleChannel = 0
+        self.controlChannel = 0
+        
+    def fromXmlNode(self, element):
+        if 'SampleChannel' in element.attrib:
+            self.sampleChannel = int(element.attrib['SampleChannel'])
+        if 'ControlChannel' in element.attrib:
+            self.controlChannel = element.attrib['ControlChannel']     
+                
+    def copyDataFrom(self, other, overwrite):
+        if other is None:
+            return
+        if overwrite or (self.sampleChannel == 0):
+            self.sampleChannel = other.sampleChannel
+        if overwrite or (self.controlChannel <= 0):
+            self.controlChannel = other.controlChannel 
+            
+class ControlLink:
+    def __init__(self):
+        self.controlBatchName = None
+        self.imageNameString = None
+        self.channelMappings = list()
+        
+        self.linkedControlBatch = None
+        
+    def fromXmlNode(self, element):
+        if 'ControlBatch' in element.attrib:
+            self.controlBatchName = element.attrib['ControlBatch']
+        if 'ImageName' in element.attrib:
+            self.imageNameString = element.attrib['ImageName']
+        for child in element:
+            if child.tag == 'ControlChannelMapping':
+                childnode = ControlChannelMapping()
+                childnode.fromXmlNode(child)
+                self.channelMappings.append(childnode)
+            else:
+                print("Tag \"", child.tag, "\" not recognized for control link")        
+                
+    def copyDataFrom(self, other, overwrite):
+        if other is None:
+            return
+        if overwrite or (not self.controlBatchName):
+            self.controlBatchName = other.controlBatchName
+        if overwrite or (not self.imageNameString):
+            self.imageNameString = other.imageNameString
+        if overwrite or (not self.linkedControlBatch):
+            self.linkedControlBatch = other.linkedControlBatch
+            
+    def getControlChannelMapping(self, sampleChannel):
+        if self.channelMappings:
+            for mapping in self.channelMappings:
+                if mapping.sampleChannel == sampleChannel:
+                    return mapping.controlChannel
+            
+        return sampleChannel
                 
 class ImageChannelInfo:
     def __init__(self):
@@ -523,6 +586,9 @@ class ImageBatchInfo:
         self.batchScriptPath = None
         self.postResScriptPath = None
         
+        self.isControlBatch = False
+        self.controlLink = None
+        
         self.parentSet = None
         self.channels = list()
         
@@ -573,6 +639,10 @@ class ImageBatchInfo:
                     self.cellsegJobSettings.copyDataFrom(childnode, True)
                 else:
                     self.cellsegJobSettings = childnode
+            elif child.tag == 'Control':
+                childnode = ControlLink()
+                childnode.fromXmlNode(child)
+                self.controlLink = childnode
             elif child.tag == 'Paths':
                 for gchild in child:
                     if gchild.tag == 'ImageDir':
@@ -661,6 +731,10 @@ class ImageBatchInfo:
             self.lightChannel = other.lightChannel
         if overwrite or (self.nucChannel <= 0):
             self.nucChannel = other.nucChannel
+        if overwrite:
+            self.isControlBatch = other.isControlBatch
+        if overwrite or (self.controlLink is None):
+            self.controlLink = other.controlLink
         self.copyFromParent(other, overwrite)
         
     def updateOverrides(self):
@@ -762,11 +836,12 @@ class ImageBatchSet:
                     self.idistroSettings.copyDataFrom(childnode, True)
                 else:
                     self.idistroSettings = childnode               
-            elif child.tag == 'ImageBatch':
+            elif (child.tag == 'ImageBatch') or (child.tag == 'ControlBatch'):
                 childnode = ImageBatchInfo()
                 childnode.copyFromParent(self, False)
                 childnode.fromXmlNode(child)
                 childnode.parentSet = self
+                childnode.isControlBatch = (child.tag == 'ControlBatch')
                 self.batches.append(childnode)
             else:
                 print("Tag \"", child.tag, "\" not recognized for set settings")
@@ -827,6 +902,31 @@ def genLSFJobCommand(targetHandle, projectName, jobName, jobSettings, scriptPath
         targetHandle.write(" -oo \""  + outPath + "\"")
     targetHandle.write(" \"" + scriptPath + "\"\n")
 
+def getControlRunStem(controlLink, tifImage, channelInfo):
+    if controlLink and controlLink.linkedControlBatch:
+        controlDir = controlLink.linkedControlBatch.outputDir
+        iname = None
+        channelId = controlLink.getControlChannelMapping(channelInfo.channelNumber)
+        #TODO What to do if image name/pattern not provided?
+        if controlLink.imageNameString:
+            iname = controlLink.imageNameString
+            if "${IMAGE_NAME}" in controlLink.imageNameString:
+                iname = iname.replace("${IMAGE_NAME}", tifImage.name)
+        
+        chStr = 'CH' + str(channelId)
+        idir = os.path.join(controlDir, chStr)
+        istem = os.path.join(idir, chStr)
+        if iname:
+            chName = iname + '_' + chStr
+            outStemName = chName + '_spotCall'
+            idir = os.path.join(controlDir, iname)
+            idir = os.path.join(idir, chStr)
+            istem = os.path.join(idir, outStemName)
+            
+        return istem
+  
+    return None
+
 def genChannelJob(tifImage, channelInfo, batchSet):
     chStr = 'CH' + str(channelInfo.channelNumber)
     channelInfo.dirName = chStr
@@ -879,6 +979,13 @@ def genChannelJob(tifImage, channelInfo, batchSet):
     if channelInfo.spotsJobSettings is not None:
         if channelInfo.spotsJobSettings.cpuCount > 0:
             scriptHandle.write(" -threads " + str(channelInfo.spotsJobSettings.cpuCount))
+            
+    if (not channelInfo.parentBatch.isControlBatch) and (channelInfo.parentBatch.controlLink is not None):
+        #Link control
+        ctrlRunStem = getControlRunStem(channelInfo.parentBatch.controlLink, tifImage, channelInfo)
+        if ctrlRunStem:
+            scriptHandle.write(" -ectrlstem \"" + ctrlRunStem + "\"")
+        
     scriptHandle.write(" -log \"" + os.path.join(chDir, chName + '_spots_mat.log') + "\"")
     scriptHandle.write("\n")
     scriptHandle.write("else\n")
@@ -887,21 +994,22 @@ def genChannelJob(tifImage, channelInfo, batchSet):
     scriptHandle.write("fi\n\n")
     
     #Quant
-    scriptHandle.write("if [ -s \"" + fullOutStem + "_callTable.mat\" ]; then\n")
-    scriptHandle.write("\tbash \"" + os.path.join(batchSet.tsDir, "TrueSpot_RNAQuant.sh") + "\"")
-    scriptHandle.write(" -runinfo \"" + fullOutStem + "_rnaspotsrun.mat\"")
-    if channelInfo.quantSettings is not None:
-        if channelInfo.quantSettings.qNoClouds:
-            scriptHandle.write(" -noclouds")
-        if channelInfo.quantSettings.qCellZero:
-            scriptHandle.write(" -cellzero")        
-    scriptHandle.write(" -norefilter") 
-    scriptHandle.write(" -log \"" + os.path.join(chDir, chName + '_quant_mat.log') + "\"")
-    scriptHandle.write("\n")
-    scriptHandle.write("else\n")
-    scriptHandle.write("\techo -e \"Call table not found! Can't do quant! Terminating...\"\n")
-    scriptHandle.write("\texit 1\n")
-    scriptHandle.write("fi\n\n")
+    if not channelInfo.parentBatch.isControlBatch:
+        scriptHandle.write("if [ -s \"" + fullOutStem + "_callTable.mat\" ]; then\n")
+        scriptHandle.write("\tbash \"" + os.path.join(batchSet.tsDir, "TrueSpot_RNAQuant.sh") + "\"")
+        scriptHandle.write(" -runinfo \"" + fullOutStem + "_rnaspotsrun.mat\"")
+        if channelInfo.quantSettings is not None:
+            if channelInfo.quantSettings.qNoClouds:
+                scriptHandle.write(" -noclouds")
+            if channelInfo.quantSettings.qCellZero:
+                scriptHandle.write(" -cellzero")        
+        scriptHandle.write(" -norefilter") 
+        scriptHandle.write(" -log \"" + os.path.join(chDir, chName + '_quant_mat.log') + "\"")
+        scriptHandle.write("\n")
+        scriptHandle.write("else\n")
+        scriptHandle.write("\techo -e \"Call table not found! Can't do quant! Terminating...\"\n")
+        scriptHandle.write("\texit 1\n")
+        scriptHandle.write("fi\n\n")
     channelInfo.quantResPath = fullOutStem + "_quantData.mat"
     
     scriptHandle.close()
@@ -1402,6 +1510,17 @@ def readBatchXml(xmlpath):
         batchSet.autoGenName()
     if batchSet.batchSystem is None:
         batchSet.batchSystem = "slurm"
+        
+    #Link control batches
+    cbatchMap = {}
+    for batch in batchSet.batches:
+        if batch.isControlBatch:
+            cbatchMap[batch.name] = batch
+            
+    for batch in batchSet.batches:
+        if not batch.isControlBatch:
+            if batch.controlLink:
+                batch.controlLink.linkedControlBatch = cbatchMap[batch.controlLink.controlBatchName]
     
     del(treeRoot)
     del(xmlDoc)
@@ -1409,7 +1528,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.09.30.01")
+    print("TS Batch Job Generator initiated! Version 26.10.02.00")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
