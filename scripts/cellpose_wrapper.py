@@ -61,24 +61,36 @@ def outputMask(maskDat, outpath):
         maskDat = numpy.reshape(maskDat, (Yamal, X))
     numpy.savetxt(outpath, maskDat, delimiter=",")
     
-def readImage3D(path):
+def readImage3D(path, minChannels):
     imageRaw = imread(path)
     #Determine c axis
     smallestAxis = -1
     smallestAxisSize = 0x7fffffff
     axisCount = len(imageRaw.shape)
+    
     for i in range(axisCount):
         if imageRaw.shape[i] < smallestAxisSize:
             smallestAxisSize = imageRaw.shape[i]
             smallestAxis = i
             
-    if smallestAxis != 3:
-        imageRaw = numpy.moveaxis(imageRaw, smallestAxis, 3)
+    if axisCount < 4:
+        #Possibly 2D
+        if minChannels > 1:
+            #Assume 2D multi channel image
+            if smallestAxis != 2:
+                imageRaw = numpy.moveaxis(imageRaw, smallestAxis, 2)
+            imageRaw = numpy.expand_dims(imageRaw, axis=0) #Add artificial z axis
+        else:
+            #Assume 3D single channel stack
+            imageRaw = numpy.expand_dims(imageRaw, axis=3) #Add artificial c axis
+    else:
+        if smallestAxis != 3:
+            imageRaw = numpy.moveaxis(imageRaw, smallestAxis, 3)
         
     return imageRaw
 
 def runCellpose(runparams):
-    print(getdtstr(), "Cellpose 4 Wrapper Initialized! Version 26.09.23.00")
+    print(getdtstr(), "Cellpose 4 Wrapper Initialized! Version 26.10.06.00")
     
     #Print parameters for recordkeeping
     print(getdtstr(),"Input File:", runparams.imgSettings.filePath)
@@ -136,7 +148,7 @@ def runCellpose(runparams):
             print(getdtstr(),"Cell channel Z range:", runparams.cellSettings.zMin, "-", runparams.cellSettings.zMax)
         
         if (runparams.imgSettings.zaxis < 0) and (runparams.imgSettings.caxis < 0):
-            imageRaw = readImage3D(runparams.imgSettings.filePath)
+            imageRaw = readImage3D(runparams.imgSettings.filePath, runparams.imgSettings.channelCount)
             #imageRaw = imread_3D(runparams.imgSettings.filePath)
             runparams.imgSettings.caxis = len(imageRaw.shape) - 1
         else:
@@ -333,6 +345,8 @@ def main(args):
         runparams.imgSettings.nucCh = args.ch_nuc
     if args.ch_cell:
         runparams.imgSettings.cellCh = args.ch_cell
+    if args.ch_total:
+        runparams.imgSettings.channelCount = args.ch_total
     if args.voxelsz:
         runparams.imgSettings.voxelSize = parseDimArg(args.voxelsz)
         runparams.imgSettings.zxRatio = runparams.imgSettings.voxelSize[0] / runparams.imgSettings.voxelSize[2]
@@ -471,6 +485,11 @@ def main(args):
     if runparams.cellSettings.zMax > 1:
         runparams.imgSettings.is3d = True
         
+    if (runparams.imgSettings.cellCh + 1) > runparams.imgSettings.channelCount:
+        runparams.imgSettings.channelCount = (runparams.imgSettings.cellCh + 1)
+    if (runparams.imgSettings.nucCh + 1) > runparams.imgSettings.channelCount:
+        runparams.imgSettings.channelCount = (runparams.imgSettings.nucCh + 1)
+        
     runCellpose(runparams)
         
     
@@ -515,6 +534,7 @@ if __name__ == "__main__":
     parser.add_argument("--nzmax", type=int, help="Ending z slice (inclusive) for nuclear segmentation")
     parser.add_argument("--czmin", type=int, help="Starting z slice (inclusive) for cell segmentation")
     parser.add_argument("--czmax", type=int, help="Ending z slice (inclusive) for cell segmentation")
+    parser.add_argument("--ch_total", type=int, help="Total number of channels (optional suggestion to help image reader)")
     parser.add_argument("--help", "-h", "-?", action="help", help="Show this help message and exit.")
     args = parser.parse_args()
     main(args)

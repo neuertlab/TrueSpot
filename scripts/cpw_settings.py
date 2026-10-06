@@ -32,6 +32,7 @@ class ImageSettings:
         self.yMin = -1
         self.yMax = -1
         self.voxelSize = None
+        self.channelCount = 1 #Suggestion
         
 class CellposeRun:
     def __init__(self):

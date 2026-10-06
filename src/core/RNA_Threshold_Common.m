@@ -366,7 +366,7 @@ classdef RNA_Threshold_Common
         %FLEXIBILITIES
         %   -> "num" can refer to any numerical type
         %
-        function px_counts = saveDeadPixels(in_img, savepath, verbose)
+        function dead_pix_info = saveDeadPixels(in_img, savepath, verbose)
         %Originally copied wholesale from AB_FindThreshold_TMR_AF594_CY5_B.m
 
             if nargin < 3; verbose = false; end
@@ -375,9 +375,9 @@ classdef RNA_Threshold_Common
                 savepath = 'recurring pixels 3 out of 6';
             end
         
-            px_counts = RNAUtils.detectDeadPixels(in_img, verbose);
-            recurring_pixels = px_counts.recurring_pixels;
-            recurring_pixels_all = px_counts.recurring_pixels_all;
+            dead_pix_info = RNAUtils.detectDeadPixels(in_img, verbose);
+            recurring_pixels = dead_pix_info.recurring_pixels;
+            recurring_pixels_all = dead_pix_info.recurring_pixels_all;
             
             %Save
             save(savepath, 'recurring_pixels', 'recurring_pixels_all');
@@ -409,11 +409,11 @@ classdef RNA_Threshold_Common
             end
             
             load(savepath, 'recurring_pixels') %Load previously saved list of dead pixels
-            px_counts = struct();
-            px_counts.recurring_pixels = recurring_pixels;
+            dead_pix_info = struct();
+            dead_pix_info.recurring_pixels = recurring_pixels;
             clear recurring_pixels;
 
-            clean_img = RNAUtils.cleanDeadPixels(in_img, px_counts, verbose);
+            clean_img = RNAUtils.cleanDeadPixels(in_img, dead_pix_info, verbose);
         end
         
         %%

@@ -344,7 +344,7 @@ classdef RNAUtils
         end
 
         %%
-        function px_counts = detectDeadPixels(in_img, verbose)
+        function dead_pix_info = detectDeadPixels(in_img, verbose)
             %Adapted from RNA_Threshold_Common.saveDeadPixels
             %But without mandatory save...
             if nargin < 3; verbose = false; end
@@ -355,7 +355,12 @@ classdef RNAUtils
             A = Y * X;
             in_img = double(in_img);
 
-            px_counts = struct('recurring_all', 0, 'random', 0, 'recurring', 0);
+            dead_pix_info = struct('recurring_all_count', 0, 'random_count', 0, 'recurring_count', 0);
+            dead_pix_info.idims = struct('x', X, 'y', Y, 'z', Z);
+            dead_pix_info.recurring_pixels = [];
+            dead_pix_info.recurring_pixels_all = [];
+            dead_pix_info.rand_recur_pix = [];
+
             slice_cut = 4/8;
             slice_check = round(min(Z,max(Z./4, 6)));
             hi_pixels = cell(slice_check, 1);
@@ -393,20 +398,20 @@ classdef RNAUtils
             hist_pix_rand = transpose(hist_pix_rand);
             
             %Note which occur more than slice_cut proportion of the time.
-            rand_recur_pix = find(hist_pix_rand >= slice_check*slice_cut);
-            px_counts.random = size(rand_recur_pix,1);
-            if verbose; fprintf("%d randomly recurring pixels\n", px_counts.random); end
+            dead_pix_info.rand_recur_pix = find(hist_pix_rand >= slice_check*slice_cut);
+            dead_pix_info.random_count = size(dead_pix_info.rand_recur_pix,1);
+            if verbose; fprintf("%d randomly recurring pixels\n", dead_pix_info.random_count); end
             
             %Repeat with high value pixels
             [hist_pix, ~] = histcounts(double(hi_pixels_all(:)), A);
             hist_pix = transpose(hist_pix);
-            recurring_pixels_all = find(hist_pix >= slice_check*slice_cut);
-            px_counts.recurring_all = size(recurring_pixels_all,1);
-            if verbose; fprintf("%d total recurring pixels\n", px_counts.recurring_all); end
+            dead_pix_info.recurring_pixels_all = find(hist_pix >= slice_check*slice_cut);
+            dead_pix_info.recurring_all_count = size(dead_pix_info.recurring_pixels_all,1);
+            if verbose; fprintf("%d total recurring pixels\n", dead_pix_info.recurring_all_count); end
             
             %Remove border pixels
-            recmtx = NaN(px_counts.recurring_all,3);
-            recmtx(:,1) = recurring_pixels_all(:,1); %1D
+            recmtx = NaN(dead_pix_info.recurring_all_count,3);
+            recmtx(:,1) = dead_pix_info.recurring_pixels_all(:,1); %1D
             recmtx(:,2) = floor((recmtx(:,1) - 1)./Y) + 1; %x
             recmtx(:,3) = mod((recmtx(:,1) - 1), Y) + 1; %y
             testmtx = recmtx(:,2) > 1;
@@ -414,18 +419,18 @@ classdef RNAUtils
             testmtx = testmtx & (recmtx(:,3) < Y);
             testmtx = testmtx & (recmtx(:,3) > 1);
             [keeprows, ~] = find(testmtx);
-            recurring_pixels = recmtx(keeprows,1);
-            px_counts.recurring = size(recurring_pixels,1);
-            if verbose; fprintf("%d non-border recurring pixels\n", px_counts.recurring); end
+            dead_pix_info.recurring_pixels = recmtx(keeprows,1);
+            dead_pix_info.recurring_count = size(recurring_pixels,1);
+            if verbose; fprintf("%d non-border recurring pixels\n", dead_pix_info.recurring_count); end
         end
 
         %%
-        function clean_img = cleanDeadPixels(in_img, px_counts, verbose)
+        function clean_img = cleanDeadPixels(in_img, dead_pix_info, verbose)
             %Adapted from RNA_Threshold_Common.cleanDeadPixels
             %But without mandatory save...
             if nargin < 3; verbose = false; end
             
-            rp_count = size(px_counts.recurring_pixels,1);
+            rp_count = size(dead_pix_info.recurring_pixels,1);
             cleaned_count = 0;
     
             %Get size(s) and save. Cleans up code.
@@ -444,7 +449,7 @@ classdef RNAUtils
             for k = 1:dim3
                 slice = in_img(:,:,k); %[uint16[D][D]] 2D slice of image
                 for c = 1:rp_count
-                    p = px_counts.recurring_pixels(c); %[int] 1D coordinate of bad pixel
+                    p = dead_pix_info.recurring_pixels(c); %[int] 1D coordinate of bad pixel
                     
                     y = mod((p-1), dim1) + 1;
                     if y <= 1; continue; end

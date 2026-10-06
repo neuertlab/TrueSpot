@@ -1056,6 +1056,7 @@ def genImageJobs(tifImage, batchInfo):
         
         scriptHandle.write(" --ch_nuc " + str(batchInfo.nucChannel))
         scriptHandle.write(" --ch_cell " + str(batchInfo.lightChannel))
+        scriptHandle.write(" --ch_total " + str(batchInfo.channelCount))
         
         if batchInfo.metaData is not None:
             vxSz = batchInfo.metaData.voxelDims
@@ -1528,7 +1529,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.10.02.00")
+    print("TS Batch Job Generator initiated! Version 26.10.06.00")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
