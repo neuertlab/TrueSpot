@@ -420,7 +420,7 @@ classdef RNAUtils
             testmtx = testmtx & (recmtx(:,3) > 1);
             [keeprows, ~] = find(testmtx);
             dead_pix_info.recurring_pixels = recmtx(keeprows,1);
-            dead_pix_info.recurring_count = size(recurring_pixels,1);
+            dead_pix_info.recurring_count = size(dead_pix_info.recurring_pixels,1);
             if verbose; fprintf("%d non-border recurring pixels\n", dead_pix_info.recurring_count); end
         end
 

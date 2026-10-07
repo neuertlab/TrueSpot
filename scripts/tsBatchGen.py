@@ -976,6 +976,8 @@ def genChannelJob(tifImage, channelInfo, batchSet):
         elif channelInfo.spotsSettings.thPreset < 0:
             scriptHandle.write(" -precision " + str(channelInfo.spotsSettings.thPreset * -1))
     scriptHandle.write(" -autominth -automaxth")
+    if channelInfo.parentBatch.isControlBatch:
+        scriptHandle.write(" -noprobe")
     if channelInfo.spotsJobSettings is not None:
         if channelInfo.spotsJobSettings.cpuCount > 0:
             scriptHandle.write(" -threads " + str(channelInfo.spotsJobSettings.cpuCount))
@@ -1330,7 +1332,7 @@ def genBatch(myBatch):
     
     #Create output and base batch script
     os.makedirs(myBatch.outputDir, exist_ok=True)
-    myBatch.batchScriptPath = os.path.join(myBatch.outputDir, 'tsSlurmBatch.sh');
+    myBatch.batchScriptPath = os.path.join(myBatch.outputDir, 'tsClusterBatch.sh');
     batchScriptHandle = open(myBatch.batchScriptPath, 'w')
     batchScriptHandle.write("#!/bin/bash\n\n")
     
@@ -1529,7 +1531,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.10.06.00")
+    print("TS Batch Job Generator initiated! Version 26.10.07.00")
     print("Input Specification:", args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
