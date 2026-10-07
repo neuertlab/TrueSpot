@@ -117,26 +117,32 @@ classdef Background_Extractor
             
             %figure(256894);
             %imshow(obj.stdev_proj,[]);
-            
-            %Autodetect threshold
-            stdev16 = uint16(obj.stdev_proj);
-            max_stdev = max(max(stdev16(:,:)));
-            autot = Background_Extractor.autoestStdevThreshold_bimodal(stdev16, max_stdev);
-            
-            if autot < 0
-                %No bimodal valley found. Try enhancing contrast
-                obj = obj.enhanceContrast();
+
+            Z = size(obj.img_ch, 3);
+            if Z > 1
+                %Autodetect threshold
                 stdev16 = uint16(obj.stdev_proj);
                 max_stdev = max(max(stdev16(:,:)));
-                autot = Background_Extractor.autoestStdevThreshold_lowweight(stdev16, max_stdev);
-                obj.stdev_thresh_max = autot;
-                %obj.open_rad = 12;
-                %obj.erode_rad = 12;
+                autot = Background_Extractor.autoestStdevThreshold_bimodal(stdev16, max_stdev);
+
+                if autot < 0
+                    %No bimodal valley found. Try enhancing contrast
+                    obj = obj.enhanceContrast();
+                    stdev16 = uint16(obj.stdev_proj);
+                    max_stdev = max(max(stdev16(:,:)));
+                    autot = Background_Extractor.autoestStdevThreshold_lowweight(stdev16, max_stdev);
+                    obj.stdev_thresh_max = autot;
+                    %obj.open_rad = 12;
+                    %obj.erode_rad = 12;
+                else
+                    obj.stdev_thresh_max = autot;
+                end
+
+                obj = obj.updateBkgMask();
             else
-                obj.stdev_thresh_max = autot;
+                %No 3D stdev, of course! Just use cell mask.
+                obj.bkg_mask = obj.cell_mask;
             end
-            
-            obj = obj.updateBkgMask();
         end
         
         %%
