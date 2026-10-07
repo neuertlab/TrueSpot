@@ -900,6 +900,13 @@ classdef CellSeg
 %             imshow(nucmax, []);
 
             %Z trim
+            if params.z_max > Z
+                params.z_max = Z;
+            end
+            if params.z_min > params.z_max
+                params.z_min = (params.z_max - 1);
+            end
+
             if(params.z_min > 1)
                 light_ch_data(:,:,1:(params.z_min - 1)) = NaN;
                 if(params.min_plane < params.z_min)
@@ -1033,6 +1040,16 @@ classdef CellSeg
 %             if(nucSegSpecs.z_max < Z)
 %                 nuc_ch_data(:,:,(nucSegSpecs.z_max + 1):Z) = NaN;
 %             end
+
+            %Adjust z trim if outside boundaries (may occur if slice
+            %indices are batch general)
+            Z = size(nuc_ch_data, 3);
+            if nucSegSpecs.z_max > Z
+                nucSegSpecs.z_max = Z;
+            end
+            if nucSegSpecs.z_min > nucSegSpecs.z_max
+                nucSegSpecs.z_min = (nucSegSpecs.z_max - 1);
+            end
 
             if isnan(nucSegSpecs.dxy)
                 %From A0_segment_define_variables_streamlined_non_GUI

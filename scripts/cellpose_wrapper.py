@@ -90,7 +90,7 @@ def readImage3D(path, minChannels):
     return imageRaw
 
 def runCellpose(runparams):
-    print(getdtstr(), "Cellpose 4 Wrapper Initialized! Version 26.10.06.00")
+    print(getdtstr(), "Cellpose 4 Wrapper Initialized! Version 26.10.07.00")
     
     #Print parameters for recordkeeping
     print(getdtstr(),"Input File:", runparams.imgSettings.filePath)
@@ -191,6 +191,9 @@ def runCellpose(runparams):
     y0 = runparams.imgSettings.yMin
     y1 = runparams.imgSettings.yMax + 1
     
+    print(getdtstr(), "Adjusted x range:", x0, '-', x1)
+    print(getdtstr(), "Adjusted y range:", y0, '-', y1)
+    
     ZCT = 0
     ZNT = 0
         
@@ -201,23 +204,33 @@ def runCellpose(runparams):
     if runparams.imgSettings.is3d:
         if runparams.nucSettings.zMin < 0:
             runparams.nucSettings.zMin = 0
+        if runparams.nucSettings.zMin >= Z:
+            runparams.nucSettings.zMin = Z - 1;
         if runparams.nucSettings.zMax <= 0:
+            runparams.nucSettings.zMax = Z - 1
+        if runparams.nucSettings.zMax >= Z:
             runparams.nucSettings.zMax = Z - 1
         if runparams.nucSettings.zMax < runparams.nucSettings.zMin:
             runparams.nucSettings.zMax = runparams.nucSettings.zMin
             
         zn0 = runparams.nucSettings.zMin
         zn1 = runparams.nucSettings.zMax + 1
+        print(getdtstr(), "Adjusted z range (nuc):", zn0, '-', zn1)
             
         if runparams.cellSettings.zMin < 0:
             runparams.cellSettings.zMin = 0
+        if runparams.cellSettings.zMin >= Z:
+            runparams.cellSettings.zMin = Z - 1
         if runparams.cellSettings.zMax <= 0:
+            runparams.cellSettings.zMax = Z - 1
+        if runparams.cellSettings.zMax >= Z:
             runparams.cellSettings.zMax = Z - 1
         if runparams.cellSettings.zMax < runparams.cellSettings.zMin:
             runparams.cellSettings.zMax = runparams.cellSettings.zMin
             
         zc0 = runparams.cellSettings.zMin
         zc1 = runparams.cellSettings.zMax + 1
+        print(getdtstr(), "Adjusted z range (cell):", zc0, '-', zc1)
             
         if runparams.imgSettings.cellCh >= 0:
             celldat_3 = imageRaw[zc0:zc1, y0:y1, x0:x1, runparams.imgSettings.cellCh]
