@@ -1,0 +1,135 @@
+%
+%%
+classdef ResViewerFunctions
+
+    methods(Static)
+
+        %---------------------------- Structs ---------------------------
+
+        %%
+        function rvsmStruct = genResViewerSampleMetaStuct()
+            rvsmStruct = struct('structVer', 1);
+            
+            rvsmStruct.channelIndex = 0;
+            rvsmStruct.fluorName = [];
+            rvsmStruct.targetName = [];
+        end
+
+        %%
+        function rviStruct = genResViewerImageStruct()
+            rviStruct = struct('structVer', 1);
+            
+            rviStruct.imagePath = []; %TIF path
+            rviStruct.cellSegPath = [];
+            % rviStruct.totalCh = 0;
+            % rviStruct.lightCh = 0;
+            % rviStruct.nucCh = 0;
+
+            rviStruct.sampleRunPaths = []; %Paths to spotsrun for each channel
+            rviStruct.quantPaths = [];
+        end
+
+        %%
+        function rvbStruct = genResViewerBatchStruct()
+            rvbStruct = struct('structVer', 1);
+            
+            rvbStruct.batchName = [];
+            rvbStruct.batchDir = [];
+            rvbStruct.imageInfo = [];
+
+            rvbStruct.totalCh = 0;
+            rvbStruct.lightCh = 0;
+            rvbStruct.nucCh = 0;
+            rvbStruct.sampleInfo = [];
+        end
+
+        %---------------------------- Import ---------------------------
+
+        %%
+        function rvbStruct = importBatchDir(dirPath)
+            %Scan recursively for spotsrun files
+            rvbStruct = [];
+            runFileList = FileUtils.scanForFilesEndingWith(dirPath, '_rnaspotsrun.mat', true);
+            if isempty(runFileList)
+                return;
+            end
+
+            %Determine which groups of spotsrun files belong to each image
+            %Load first spotsrun to get some channel info
+            %Channel info is assumed to be the same across batch
+            srTestPath = runFileList{1};
+            spotsRun = RNASpotsRun.loadFrom(srTestPath, true);
+            rvbStruct.totalCh = spotsRun.channels.total_ch;
+            rvbStruct.lightCh = spotsRun.channels.light_ch;
+            rvbStruct.sampleInfo = cell(1, spotsRun.channels.total_ch);
+            lsize = size(runFileList, 2);
+            clear srTestPath spotsRun
+
+            iPathLookup = dictionary();
+            for i = 1:lsize
+                srPath = runFileList{i};
+                spotsRun = RNASpotsRun.loadFrom(srPath, true);
+                ogImgPath = spotsRun.paths.img_path;
+                sampleCh = spotsRun.channels.rna_ch;
+
+                if iPathLookup.isKey(ogImgPath)
+                    rviStruct = iPathLookup.lookup(ogImgPath);
+                else
+                    rviStruct = ResViewerFunctions.genResViewerImageStruct();
+                    rviStruct.imagePath = ogImgPath;
+                    rviStruct.cellSegPath = spotsRun.paths.cellseg_path;
+
+                    rviStruct.sampleRunPaths = cell(1, rvbStruct.totalCh);
+                    rviStruct.quantPaths = cell(1, rvbStruct.totalCh);
+
+                    %TODO Check cellseg path and grab nuc channel
+                    if ~isfile(rviStruct.cellSegPath)
+                        %TODO
+                    end
+                end
+
+                rviStruct.sampleRunPaths{sampleCh} = srPath;
+                %Look for quant path in the same directory
+                qpath = [];
+                [srDir, ~, ~] = fileparts(srPath);
+                dContents = dir(srDir);
+                itemCount = size(dContents, 1);
+                for j = 1:itemCount
+                    dChild = dContents(j);
+                    if ~dChild.isdir
+                        if endsWith(dChild.name, '_quantData.mat')
+                            qpath = [srDir filesep dChild.name];
+                            break;
+                        end
+                    end
+                end
+                if ~isempty(qpath)
+                    rviStruct.quantPaths{sampleCh} = qpath;
+                end
+                clear srDir qpath j itemCount dChild
+
+                rvsmStruct = rvbStruct.sampleInfo{sampleCh};
+                if isempty(rvsmStruct)
+                    rvsmStruct = genResViewerSampleMetaStuct();
+                    rvsmStruct.channelIndex = sampleCh;
+                    rvsmStruct.fluorName = spotsRun.meta.type_probe;
+                    rvsmStruct.targetName = spotsRun.meta.type_target;
+                    rvbStruct.sampleInfo{sampleCh} = rvsmStruct;
+                end
+
+                iPathLookup = iPathLookup.insert(ogImgPath, rviStruct); %Overwrite
+                clear srPath spotsRun ogImgPath sampleCh rvsmStruct rviStruct
+            end
+
+            %Copy image info structs to batch struct
+            rvbStruct.imageInfo = iPathLookup.values('cell');
+        end
+
+        %%
+        function rvbStruct = updateImagePaths(rvbStruct, newImageDir)
+            %TODO
+        end
+
+
+    end
+end
