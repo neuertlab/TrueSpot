@@ -471,7 +471,7 @@ classdef RNAThreshold
         end
         
         %%
-        function thfloor = estimateControlFloor(ctrl_spot_table)
+        function thfloor = estimateControlFloor(ctrl_spot_table, log_proj_mode)
             thfloor = 0;
             if isempty(ctrl_spot_table); return; end
 
@@ -480,7 +480,7 @@ classdef RNAThreshold
             xx_c = table_d(:,1);
             yy_c = table_d(:,2);
 
-            if parameter_info.log_proj_mode == 1
+            if log_proj_mode == 1
                 yy_c = log10(yy_c);
                 [xx_c, yy_c] = cleanLogPlot(xx_c, yy_c);
             end

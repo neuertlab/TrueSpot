@@ -5,7 +5,7 @@ function Main_AnalyzeBatchThresholds(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.10.08.00';
+BUILD_STRING = '2026.10.08.01';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -180,7 +180,7 @@ for g = 1:groupCount
             tbl_path = [spotsRun.getFullCtrlOutStem() '_spotTable.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'spot_table');
-                thfloor = RNAThreshold.estimateControlFloor(spot_table);
+                thfloor = RNAThreshold.estimateControlFloor(spot_table, spotsRun.th_params.log_proj_mode);
                 fprintf(tableHandle, '\t%d', thfloor);
                 clear spot_table thfloor
             else
@@ -196,7 +196,7 @@ for g = 1:groupCount
             tbl_path = [spotsRun.paths.ext_ctrl_stem '_spotTable.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'spot_table');
-                thfloor = RNAThreshold.estimateControlFloor(spot_table);
+                thfloor = RNAThreshold.estimateControlFloor(spot_table, spotsRun.th_params.log_proj_mode);
                 fprintf(tableHandle, '\t%d', thfloor);
                 clear spot_table thfloor
             else
