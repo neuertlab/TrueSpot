@@ -52,6 +52,10 @@ classdef RNASpotsRun
         end
 
         function out_stem = getFullCtrlOutStem(obj)
+            % if ~isempty(obj.paths.ext_ctrl_stem)
+            %     out_stem = obj.paths.ext_ctrl_stem;
+            %     return;
+            % end
             out_stem = [obj.paths.out_dir filesep obj.paths.ctrl_out_namestem];
         end
 

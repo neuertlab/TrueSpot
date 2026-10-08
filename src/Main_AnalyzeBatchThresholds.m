@@ -5,7 +5,7 @@ function Main_AnalyzeBatchThresholds(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.10.02.00';
+BUILD_STRING = '2026.10.08.00';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -177,7 +177,7 @@ for g = 1:groupCount
 
         %Control-suggested floors, if applicable
         if ~isempty(spotsRun.paths.ctrl_out_namestem)
-            tbl_path = [obj.getFullCtrlOutStem() '_spotTable.mat'];
+            tbl_path = [spotsRun.getFullCtrlOutStem() '_spotTable.mat'];
             if isfile(tbl_path)
                 load(tbl_path, 'spot_table');
                 thfloor = RNAThreshold.estimateControlFloor(spot_table);
