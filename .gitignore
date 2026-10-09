@@ -1,3 +1,4 @@
 src/settings
 testdata
 src/thirdparty/bfmatlab
+*.asv

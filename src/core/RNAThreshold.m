@@ -482,7 +482,7 @@ classdef RNAThreshold
 
             if log_proj_mode == 1
                 yy_c = log10(yy_c);
-                [xx_c, yy_c] = cleanLogPlot(xx_c, yy_c);
+                [xx_c, yy_c] = RNAThreshold.cleanLogPlot(xx_c, yy_c);
             end
 
             ctrlderiv = diff(yy_c);
@@ -590,7 +590,7 @@ classdef RNAThreshold
 
                 if parameter_info.log_proj_mode == 1
                     yy_c = log10(yy_c);
-                    [xx_c, yy_c] = cleanLogPlot(xx_c, yy_c);
+                    [xx_c, yy_c] = RNAThreshold.cleanLogPlot(xx_c, yy_c);
                 end
 
                 ctrlderiv = diff(yy_c);

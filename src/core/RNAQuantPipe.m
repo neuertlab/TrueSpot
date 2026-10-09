@@ -352,6 +352,11 @@ function [thresh_set, use_thresh] = determineThRange(spotsRun, param_struct)
                 thMin = floor(prctile(allAltTh, 25));
                 thMax = max(allAltTh, [], 'all', 'omitnan');
             end
+        else
+            %Pull from spotsRun.threshold_results
+            score_list = RNAThreshold.getAllThresholdSuggestions(spotsRun.threshold_results);
+            thMin = floor(prctile(score_list, 25));
+            thMax = max(score_list, [], 'all', 'omitnan');
         end
 
         if param_struct.th_range_min > 0

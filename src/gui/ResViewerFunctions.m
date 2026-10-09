@@ -85,6 +85,8 @@ classdef ResViewerFunctions
                     %TODO Check cellseg path and grab nuc channel
                     if ~isfile(rviStruct.cellSegPath)
                         %TODO
+                        %First check the directory above the spots dir
+                        %Then, scan entire batch directory
                     end
                 end
 

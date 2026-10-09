@@ -184,6 +184,7 @@ for g = 1:groupCount
                 fprintf(tableHandle, '\t%d', thfloor);
                 clear spot_table thfloor
             else
+                fprintf('\tWARNING: Background control stem found in spotsrun, but file %s not found!\n', tbl_path);
                 fprintf(tableHandle, '\tNaN');
             end
 
@@ -200,6 +201,7 @@ for g = 1:groupCount
                 fprintf(tableHandle, '\t%d', thfloor);
                 clear spot_table thfloor
             else
+                fprintf('\tWARNING: External control stem found in spotsrun, but file %s not found!\n', tbl_path);
                 fprintf(tableHandle, '\tNaN');
             end
 
