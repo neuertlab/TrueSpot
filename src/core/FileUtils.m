@@ -69,7 +69,7 @@ classdef FileUtils
                 if childItem.isdir
                     if boolRecursive
                         if ~strcmp(childName, '.') & ~strcmp(childName, '..')
-                            tempList = FileUtils.internal_scanForFilesEndingWith(childPath, ptnString, boolRecursive, tempList);
+                            tempList = FileUtils.internal_scanForFilesWithName(childPath, fileName, boolRecursive, tempList);
                         end
                     end
                 else

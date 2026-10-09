@@ -59,13 +59,16 @@ classdef ResViewerFunctions
             %Channel info is assumed to be the same across batch
             srTestPath = runFileList{1};
             spotsRun = RNASpotsRun.loadFrom(srTestPath, true);
+            rvbStruct = ResViewerFunctions.genResViewerBatchStruct();
+            rvbStruct.batchDir = dirPath;
+            [~, rvbStruct.batchName, ~] = fileparts(dirPath);
             rvbStruct.totalCh = spotsRun.channels.total_ch;
             rvbStruct.lightCh = spotsRun.channels.light_ch;
             rvbStruct.sampleInfo = cell(1, spotsRun.channels.total_ch);
             lsize = size(runFileList, 2);
             clear srTestPath spotsRun
 
-            iPathLookup = dictionary();
+            iPathLookup = dictionary('dummy', struct());
             for i = 1:lsize
                 srPath = runFileList{i};
                 spotsRun = RNASpotsRun.loadFrom(srPath, true);
@@ -82,11 +85,33 @@ classdef ResViewerFunctions
                     rviStruct.sampleRunPaths = cell(1, rvbStruct.totalCh);
                     rviStruct.quantPaths = cell(1, rvbStruct.totalCh);
 
-                    %TODO Check cellseg path and grab nuc channel
+                    %Check cellseg path and grab nuc channel
                     if ~isfile(rviStruct.cellSegPath)
-                        %TODO
+                        [~, csName, csExt] = fileparts(rviStruct.cellSegPath);
+                        csName = [csName csExt];
+                        clear csExt
+
                         %First check the directory above the spots dir
-                        %Then, scan entire batch directory
+                        [parentDir, ~, ~] = fileparts(srPath);
+                        [parentDir, ~, ~] = fileparts(parentDir);
+                        flist = FileUtils.scanForFilesWithName(parentDir, csName, false);
+                        clear parentDir
+                        if ~isempty(flist)
+                            rviStruct.cellSegPath = flist{1};
+                        else
+                            %Then, scan entire batch directory
+                            flist = FileUtils.scanForFilesWithName(dirPath, csName, true);
+                            if ~isempty(flist)
+                                rviStruct.cellSegPath = flist{1};
+                            end
+                        end
+                        clear csName flist
+                    end
+
+                    if isfile(rviStruct.cellSegPath) & (rvbStruct.nucCh < 1)
+                        load(rviStruct.cellSegPath, 'runMeta');
+                        rvbStruct.nucCh = runMeta.srcImageChNuc;
+                        clear runMeta
                     end
                 end
 
@@ -112,7 +137,7 @@ classdef ResViewerFunctions
 
                 rvsmStruct = rvbStruct.sampleInfo{sampleCh};
                 if isempty(rvsmStruct)
-                    rvsmStruct = genResViewerSampleMetaStuct();
+                    rvsmStruct = ResViewerFunctions.genResViewerSampleMetaStuct();
                     rvsmStruct.channelIndex = sampleCh;
                     rvsmStruct.fluorName = spotsRun.meta.type_probe;
                     rvsmStruct.targetName = spotsRun.meta.type_target;
@@ -124,14 +149,42 @@ classdef ResViewerFunctions
             end
 
             %Copy image info structs to batch struct
+            iPathLookup = iPathLookup.remove('dummy');
             rvbStruct.imageInfo = iPathLookup.values('cell');
+            rvbStruct.imageInfo = rvbStruct.imageInfo';
         end
 
         %%
         function rvbStruct = updateImagePaths(rvbStruct, newImageDir)
-            %TODO
+            if isempty(rvbStruct)
+                return;
+            end
+
+            rviCount = size(rvbStruct.imageInfo, 2);
+            for i = 1:rviCount
+                rviStruct = rvbStruct.imageInfo{i};
+                [~,n,e] = fileparts(rviStruct.imagePath);
+                ifileName = [n e];
+                searchRes = FileUtils.scanForFilesWithName(newImageDir, ifileName, true);
+                if ~isempty(searchRes)
+                    rviStruct.imagePath = searchRes{1};
+                end
+                rvbStruct.imageInfo{i} = rviStruct;
+                clear n e ifileName rviStruct searchRes
+            end
         end
 
+        %---------------------------- Save/Load ---------------------------
+
+        %%
+        function [rvbStruct, rvState] = loadResViewerBatch(filepath)
+            load(filepath, 'rvbStruct', 'rvState');
+        end
+
+        %%
+        function saveResViewerBatch(rvbStruct, rvState, filepath)
+            save(filepath, 'rvbStruct', 'rvState');
+        end
 
     end
 end
