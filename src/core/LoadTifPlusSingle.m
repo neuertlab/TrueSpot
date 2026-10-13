@@ -12,7 +12,7 @@ function loadResults = LoadTifPlusSingle(tifpath, opStruct, seriesId, subimageId
     opStruct.seriesToRead = seriesId;
     opStruct.subimagesToRead{seriesId} = subimageId;
     
-    fullRes = loadTifPlus(tifpath, opStruct);
+    fullRes = LoadTifPlus(tifpath, opStruct);
     loadResults.inputPath = fullRes.inputPath;
     loadResults.bioFormatsDetected = fullRes.bioFormatsDetected;
     s_idat = fullRes.imageData{seriesId};

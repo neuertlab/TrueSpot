@@ -585,6 +585,8 @@ class ImageBatchInfo:
         
         self.batchScriptPath = None
         self.postResScriptPath = None
+        self.thStatsStem = None
+        self.qdxStem = None
         
         self.isControlBatch = False
         self.controlLink = None
@@ -740,6 +742,21 @@ class ImageBatchInfo:
     def updateOverrides(self):
         for chinfo in self.channels:
             chinfo.copyFromParent(self, False)
+            
+    def getBatchGaussRad(self):
+        gval = 0
+        if self.spotsSettings:
+            gval = self.spotsSettings.gaussRad
+            
+        if gval <= 0:
+            #Grab from first sample channel...
+            for chinfo in self.channels:
+                if chinfo.spotsSettings:
+                    gval = chinfo.spotsSettings.gaussRad
+                    if gval > 0:
+                        return gval
+            
+        return gval
 
 class ImageBatchSet:
     def __init__(self):
@@ -757,6 +774,7 @@ class ImageBatchSet:
         self.moduleName = None
         self.batchSystem = None
         self.genExePerm = '754'
+        self.doQuickIDistro = False
         
         self.batches = list()
         
@@ -1252,6 +1270,25 @@ def genImageJobs(tifImage, batchInfo):
     scriptHandle.write("\techo -e \"Cellseg results found! Skipping cell segmentation...\"\n")
     scriptHandle.write("fi\n\n")
     
+    if batchSet.doQuickIDistro:
+        istatsPath = os.path.join(tifImage.resultsDir, "TS_" + tifImage.name + "_stats")
+        istatsPathChLast = istatsPath + "_CH" + str(batchInfo.channelCount) + ".mat"
+        scriptHandle.write("if [ ! -s \"" + istatsPathChLast + "\" ]; then\n")
+        if batchSet.moduleName is not None:
+            scriptHandle.write("\tmodule load " + batchSet.moduleName + "\n")
+        scriptHandle.write("\tmatlab -nodisplay -nosplash -logfile \"")
+        scriptHandle.write(os.path.join(tifImage.resultsDir, 'imagestatsMat.log') + "\"")
+        scriptHandle.write(" -r \"cd '" + batchSet.tsDir + "/src';")
+        scriptHandle.write(" Main_ImageStats('-input', '" + tifImage.tifPath + "'")
+        scriptHandle.write(", '-ostem', '" + istatsPath + "'")
+        scriptHandle.write(", '-chtotal', " + str(batchInfo.channelCount))
+        scriptHandle.write(", '-gaussrad', " + str(batchInfo.getBatchGaussRad()))
+        scriptHandle.write(", '-cellmask', '" + tifImage.csResPath + "'")
+        scriptHandle.write("); quit;\"\n")
+        scriptHandle.write("else\n")
+        scriptHandle.write("\techo -e \"Image stats results found! Skipping stats profiling...\"\n")
+        scriptHandle.write("fi\n\n")
+    
     #Submit jobs for channels
     for chInfo in batchInfo.channels:
         chInfo = genChannelJob(tifImage, chInfo, batchSet)
@@ -1403,7 +1440,8 @@ def genPostJobs(myBatch):
     outHandle.write(os.path.join(myBatch.outputDir, 'procResThreshAssess.log') + "\"")
     outHandle.write(" -r \"cd '" + myBatch.parentSet.tsDir + "/src';")
     outHandle.write(" Main_AnalyzeBatchThresholds('-input', '" + myBatch.outputDir + "'); quit;\"\n")
-    outHandle.close()      
+    outHandle.close()
+    myBatch.thStatsStem = stem2
     
     #Count dump (no XML)
     stem3 = os.path.join(myBatch.outputDir, 'procResQuantDumpAuto')
@@ -1431,6 +1469,7 @@ def genPostJobs(myBatch):
     outHandle.write(" Main_DumpQuantResults('-input', '" + myBatch.outputDir + "',")
     outHandle.write(" '-chdef', '" + xmlPath + "'); quit;\"\n")
     outHandle.close()
+    myBatch.qdxStem = stem4
     
     #Intensity distribution analysis
     stem5 = os.path.join(myBatch.outputDir, 'idistroJob')
@@ -1438,7 +1477,7 @@ def genPostJobs(myBatch):
         idistroScriptPath = genIDistro(myBatch.idistroSettings, myBatch.outputDir, batchSet.tsDir, batchSet.moduleName)
     else:
         idistroScriptPath = None
-    
+        
     #Master script
     scriptPath = os.path.join(myBatch.outputDir, 'doProcRes.sh')
     myBatch.postResScriptPath = scriptPath
@@ -1531,11 +1570,34 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.10.07.00")
+    print("TS Batch Job Generator initiated! Version 26.10.13.00")
     print("Input Specification:", args.xmlpath)
+    xmldir = os.path.dirname(args.xmlpath)
     
     print(getdtstr(), "Reading input xml...")
     batchSet = readBatchXml(args.xmlpath)
+    
+    if args.istats:
+        batchSet.doQuickIDistro = args.istats
+        
+    msBool = False
+    if args.masterscripts:
+        msBool = True
+        
+    scrHandleSubmit = None
+    scrHandleThStats = None
+    scrHandlePost = None
+    scrHandleQDX = None
+    
+    if msBool:
+        scrHandleSubmit = open(os.path.join(xmldir, 'submitAll.sh'), 'w')
+        scrHandleThStats = open(os.path.join(xmldir, 'thStatsAll.sh'), 'w')
+        scrHandlePost = open(os.path.join(xmldir, 'submitPostAll.sh'), 'w')
+        scrHandleQDX = open(os.path.join(xmldir, 'qdxAll.sh'), 'w')
+        scrHandleSubmit.write("#!/bin/bash\n\n")
+        scrHandleThStats.write("#!/bin/bash\n\n")
+        scrHandlePost.write("#!/bin/bash\n\n")
+        scrHandleQDX.write("#!/bin/bash\n\n")
       
     for batchInfo in batchSet.batches:
         print(getdtstr(), "Working on", batchInfo.name, "...")
@@ -1546,11 +1608,52 @@ def main(args):
         print('chmod ', batchSet.genExePerm, ' \"', batchInfo.postResScriptPath, '\"', sep='')
         print('bash \"', batchInfo.batchScriptPath, '\"', sep='', flush=True)
         print()
+        if msBool:
+            scrHandleSubmit.write("chmod \"" + batchSet.genExePerm + " \"" + batchInfo.batchScriptPath + "\"\n")
+            scrHandleSubmit.write("bash \"" + batchInfo.batchScriptPath + "\"\n")
+            scrHandlePost.write("chmod \"" + batchSet.genExePerm + " \"" + batchInfo.postResScriptPath + "\"\n")
+            scrHandlePost.write("bash \"" + batchInfo.postResScriptPath + "\"\n")
+            
+            thScriptPath = batchInfo.thStatsStem + ".sh"
+            scrHandleThStats.write("chmod " + batchSet.genExePerm + " \"" + thScriptPath + "\"\n")
+            js = JobSettings()
+            js.cpuCount = 2
+            js.ramGigs = 4
+            js.timeString = "02:00"
+            jobName = "TSTh_" + batchInfo.name
+            boutPath = batchInfo.thStatsStem + ".out"
+            berrPath = batchInfo.thStatsStem + ".err"
+            if batchSet.batchSystem == "slurm":
+                genSlurmJobCommand(scrHandleThStats, jobName, js, thScriptPath, boutPath, berrPath)
+            elif batchSet.batchSystem == "lsf":    
+                genLSFJobCommand(scrHandleThStats, batchSet.setName, jobName, js, thScriptPath, boutPath, berrPath) 
+            
+         
+            qdxScriptPath = batchInfo.qdxStem + ".sh"
+            scrHandleQDX.write("chmod " + batchSet.genExePerm + " \"" + qdxScriptPath + "\"\n")
+            jobName = "TSQDX_" + batchInfo.name
+            js.ramGigs = 8
+            boutPath = batchInfo.qdxStem + ".out"
+            berrPath = batchInfo.qdxStem + ".err"
+            if batchSet.batchSystem == "slurm":
+                genSlurmJobCommand(scrHandleQDX, jobName, js, qdxScriptPath, boutPath, berrPath)
+            elif batchSet.batchSystem == "lsf":    
+                genLSFJobCommand(scrHandleQDX, batchSet.setName, jobName, js, qdxScriptPath, boutPath, berrPath) 
+            
+     
+    if msBool:
+        scrHandleSubmit.close()
+        scrHandleThStats.close()
+        scrHandlePost.close()
+        scrHandleQDX.close()
+        
         
 if __name__ == "__main__":
     # Args
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("xmlpath", help="Input batch specification as XML")
+    parser.add_argument("--istats", action="store_true", help="Run Main_ImageStats after cell segmentation")
+    parser.add_argument("--masterscripts", action="store_true", help="Output master set scripts directory containing xml file")
     parser.add_argument("--help", "-h", "-?", action="help", help="Show this help message and exit.")
     args = parser.parse_args()
     main(args)

@@ -209,9 +209,12 @@ end
 
 function idims = omeGetVoxelSizeNano(omeMeta, imageIndex)
     idims = struct('x', 0, 'y', 0, 'z', 0);
-    idims.x = double(omeMeta.getPixelsPhysicalSizeX(imageIndex).value(ome.units.UNITS.NANOMETER));
-    idims.y = double(omeMeta.getPixelsPhysicalSizeY(imageIndex).value(ome.units.UNITS.NANOMETER));
-    idims.z = double(omeMeta.getPixelsPhysicalSizeZ(imageIndex).value(ome.units.UNITS.NANOMETER));
+    check = omeMeta.getPixelsPhysicalSizeX(imageIndex);
+    if ~isempty(check)
+        idims.x = double(omeMeta.getPixelsPhysicalSizeX(imageIndex).value(ome.units.UNITS.NANOMETER));
+        idims.y = double(omeMeta.getPixelsPhysicalSizeY(imageIndex).value(ome.units.UNITS.NANOMETER));
+        idims.z = double(omeMeta.getPixelsPhysicalSizeZ(imageIndex).value(ome.units.UNITS.NANOMETER));
+    end
 
     %Round
     idims.x = uint32(round(idims.x));

@@ -6,7 +6,7 @@ function Main_ImageStats(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.10.02.00';
+BUILD_STRING = '2026.10.13.02';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -44,9 +44,9 @@ for i = 1:nargin
         if strcmp(lastkey, "input")
             opStruct.inputPath = argval;
             if arg_debug; fprintf("Input Path Set: %s\n", opStruct.inputPath); end
-        elseif strcmp(lastkey, "ostats")
+        elseif strcmp(lastkey, "ostem")
             opStruct.outputPath = argval;
-            if arg_debug; fprintf("Output Directory Set: %s\n", opStruct.outputPath); end
+            if arg_debug; fprintf("Output Stem Set: %s\n", opStruct.outputStem); end
         elseif strcmp(lastkey, "oreport")
             opStruct.reportPath = argval;
             if arg_debug; fprintf("Output XML Path Set: %s\n", opStruct.reportPath); end
@@ -86,9 +86,9 @@ if ~isfile(opStruct.inputPath)
 end
 
 [indir, infn, ~] = fileparts(opStruct.inputPath);
-if isempty(opStruct.outputPath)
-    opStruct.outputPath = [indir filesep infn '_stats.mat'];
-    fprintf("Warning: Output file path was not provided. Set to: %s\n", opStruct.outputPath);
+if isempty(opStruct.outputStem)
+    opStruct.outputStem = [indir filesep infn '_stats'];
+    fprintf("Warning: Output file stem was not provided. Set to: %s\n", opStruct.outputStem);
 end
 
 if isempty(opStruct.reportPath)
@@ -122,7 +122,7 @@ if ~isempty(opStruct.cellSegPath)
 
         if ~isempty(cellMask)
             %Extend to 3D
-            cellMask = repmat(cellMask, [1 1 idims.x]);
+            cellMask = repmat(cellMask, [1 1 idims.z]);
         end
     else
         fprintf("Warning: Cell mask ""%s"" does not exist. Skipping...\n", opStruct.cellSegPath);
@@ -149,9 +149,11 @@ imageStats.scriptVer = BUILD_STRING;
 imageStats.tsVer = VERSION_STRING;
 imageStats.modifiedDate = datetime;
 imageStats.sourcePath = opStruct.inputPath;
-imageStats.channelStats = opStruct.genChannelStatsStruct(cellCount);
+%imageStats.channelStats = cell(1, chCount);
 for c = 1:chCount
     fprintf("Working on channel %d of %d...\n", c, chCount);
+    imageStats.channel = c;
+    imageStats.modifiedDate = datetime; %touch
 
     %Fetch channel
     chDat = loadTifRes.imageData{c};
@@ -167,17 +169,20 @@ for c = 1:chCount
     myChannelStats = genChannelStatsStruct(cellCount);
 
     %Whole channel
+    fprintf("\tTaking whole-channel stats...\n");
     myChannelStats.stats_raw = takeStackRegionStats(chDat, []);
     myChannelStats.stats_fLoG = takeStackRegionStats(chDat_f, []);
 
     %Cell-less bkg (if applicable)
     if cellCount > 0
+        fprintf("\tWorking on outside-cell background...\n");
         myChannelStats.bkgStats.stats_raw = takeStackRegionStats(chDat, (cellMask == 0));
         myChannelStats.bkgStats.stats_fLoG = takeStackRegionStats(chDat_f, (cellMask == 0));
     end
 
     %Cell by cell (if applicable)
     for i = 1:cellCount
+        fprintf("\tWorking on cell %d of %d...\n", i, cellCount);
         myCellStats = myChannelStats.cellStats(i);
         myCell = (cellMask == i);
 
@@ -199,8 +204,11 @@ for c = 1:chCount
         clear myCellStats myCell
     end
 
-    imageStats.channelStats{c} = myChannelStats;
-    clear myChannelStats chDat chDat_f i
+    %imageStats.channelStats{c} = myChannelStats;
+    imageStats.channelStats = myChannelStats;
+    outputPath = [opStruct.outputStem '_CH' num2str(c) '.mat'];
+    save(outputPath, 'imageStats');
+    clear myChannelStats chDat chDat_f i outputPath
 end
 clear c
 
@@ -208,7 +216,7 @@ clear c
 clear nucMask cellMask idims chCount loadTifRes cellCount
 
 %--- Output primary file
-save(opStruct.outputPath, 'imageStats');
+%save(opStruct.outputPath, 'imageStats');
 
 %--- Output summary report
 %TODO
@@ -221,7 +229,7 @@ function opStruct = genOptionsStruct()
     opStruct = struct();
 
     opStruct.inputPath = []; %TIF path
-    opStruct.outputPath = []; %mat path
+    opStruct.outputStem = []; %mat path
     opStruct.reportPath = []; %txt path
 
     opStruct.inputChannelCount = 0;
@@ -271,7 +279,7 @@ function statsStruct = genStackRegionStatsStruct()
 
     statsStruct.stackStats = [];
     statsStruct.maxProjStats = [];
-    statsStruct.sliceStats = [];
+    %statsStruct.sliceStats = [];
 end
 
 function statsStruct = takeStackRegionStats(imgDat, mask)
@@ -304,6 +312,8 @@ function statsStruct = takeStackRegionStats(imgDat, mask)
         maxproj = max(dImgDat, [], 3, 'omitnan');
         statsStruct.maxProjStats = takeStats(maxproj(:), intHisto);
         statsStruct.maxProjStats.datType = itype;
+    else
+        statsStruct.sliceStats = [];
     end
 end
 
@@ -334,7 +344,7 @@ function statsStruct = takeStats(dataCollapsed, intHisto)
     if nnz(notNan) < 1; return; end
     dataCollapsed = dataCollapsed(notNan);
 
-    statsStruct.volume = size(dataCollapsed, 2);
+    statsStruct.volume = size(dataCollapsed, 1);
 
     statsStruct.min = min(dataCollapsed, [], 'all', 'omitnan');
     statsStruct.max = max(dataCollapsed, [], 'all', 'omitnan');
@@ -354,6 +364,6 @@ function statsStruct = takeStats(dataCollapsed, intHisto)
 
     binCount = size(N, 2);
     statsStruct.histo = NaN(binCount, 2);
-    statsStruct.histo(1,:) = E(1:(binCount-1));
-    statsStruct.histo(2,:) = N(:);
+    statsStruct.histo(:,1) = E(1:binCount);
+    statsStruct.histo(:,2) = N(:);
 end
