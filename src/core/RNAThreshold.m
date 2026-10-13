@@ -483,6 +483,8 @@ classdef RNAThreshold
             if log_proj_mode == 1
                 yy_c = log10(yy_c);
                 [xx_c, yy_c] = RNAThreshold.cleanLogPlot(xx_c, yy_c);
+                xx_c = xx_c';
+                yy_c = yy_c';
             end
 
             ctrlderiv = diff(yy_c);
@@ -500,7 +502,7 @@ classdef RNAThreshold
                     [findres, ~] = find(cdtest < 2,1);
                 end
                 if ~isempty(findres)
-                    thfloor = xx_c(findres+cdmaxidx,1);
+                    thfloor = xx_c(findres+cdmaxidx);
                 end
             end
         end
@@ -572,8 +574,9 @@ classdef RNAThreshold
                 threshold_results.x_raw = xx;
                 yy = log10(yy);
                 [xx, yy] = RNAThreshold.cleanLogPlot(xx, yy);
-                threshold_results.x = xx';
                 xx = xx';
+                yy = yy';
+                threshold_results.x = xx;
             end
 
             deriv1 = diff(yy);
@@ -591,6 +594,8 @@ classdef RNAThreshold
                 if parameter_info.log_proj_mode == 1
                     yy_c = log10(yy_c);
                     [xx_c, yy_c] = RNAThreshold.cleanLogPlot(xx_c, yy_c);
+                    xx_c = xx_c';
+                    yy_c = yy_c';
                 end
 
                 ctrlderiv = diff(yy_c);
@@ -617,7 +622,7 @@ classdef RNAThreshold
                     [findres, ~] = find(cdtest < 2,1);
                 end
                 if ~isempty(findres)
-                    threshold_results.control_floor = xx_c(findres+cdmaxidx,1);
+                    threshold_results.control_floor = xx_c(findres+cdmaxidx);
                 end
             end
             
