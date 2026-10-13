@@ -1274,8 +1274,8 @@ def genImageJobs(tifImage, batchInfo):
         istatsPath = os.path.join(tifImage.resultsDir, "TS_" + tifImage.name + "_stats")
         istatsPathChLast = istatsPath + "_CH" + str(batchInfo.channelCount) + ".mat"
         scriptHandle.write("if [ ! -s \"" + istatsPathChLast + "\" ]; then\n")
-        if batchSet.moduleName is not None:
-            scriptHandle.write("\tmodule load " + batchSet.moduleName + "\n")
+        #if batchSet.moduleName is not None:
+        #    scriptHandle.write("\tmodule load " + batchSet.moduleName + "\n")
         scriptHandle.write("\tmatlab -nodisplay -nosplash -logfile \"")
         scriptHandle.write(os.path.join(tifImage.resultsDir, 'imagestatsMat.log') + "\"")
         scriptHandle.write(" -r \"cd '" + batchSet.tsDir + "/src';")
@@ -1570,7 +1570,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.10.13.00")
+    print("TS Batch Job Generator initiated! Version 26.10.13.01")
     print("Input Specification:", args.xmlpath)
     xmldir = os.path.dirname(args.xmlpath)
     
@@ -1609,36 +1609,37 @@ def main(args):
         print('bash \"', batchInfo.batchScriptPath, '\"', sep='', flush=True)
         print()
         if msBool:
-            scrHandleSubmit.write("chmod \"" + batchSet.genExePerm + " \"" + batchInfo.batchScriptPath + "\"\n")
+            scrHandleSubmit.write("chmod " + batchSet.genExePerm + " \"" + batchInfo.batchScriptPath + "\"\n")
             scrHandleSubmit.write("bash \"" + batchInfo.batchScriptPath + "\"\n")
-            scrHandlePost.write("chmod \"" + batchSet.genExePerm + " \"" + batchInfo.postResScriptPath + "\"\n")
+            scrHandlePost.write("chmod " + batchSet.genExePerm + " \"" + batchInfo.postResScriptPath + "\"\n")
             scrHandlePost.write("bash \"" + batchInfo.postResScriptPath + "\"\n")
             
-            thScriptPath = batchInfo.thStatsStem + ".sh"
-            scrHandleThStats.write("chmod " + batchSet.genExePerm + " \"" + thScriptPath + "\"\n")
-            js = JobSettings()
-            js.cpuCount = 2
-            js.ramGigs = 4
-            js.timeString = "02:00"
-            jobName = "TSTh_" + batchInfo.name
-            boutPath = batchInfo.thStatsStem + ".out"
-            berrPath = batchInfo.thStatsStem + ".err"
-            if batchSet.batchSystem == "slurm":
-                genSlurmJobCommand(scrHandleThStats, jobName, js, thScriptPath, boutPath, berrPath)
-            elif batchSet.batchSystem == "lsf":    
-                genLSFJobCommand(scrHandleThStats, batchSet.setName, jobName, js, thScriptPath, boutPath, berrPath) 
+            if not batchInfo.isControlBatch:
+                thScriptPath = batchInfo.thStatsStem + ".sh"
+                scrHandleThStats.write("chmod " + batchSet.genExePerm + " \"" + thScriptPath + "\"\n")
+                js = JobSettings()
+                js.cpuCount = 2
+                js.ramGigs = 4
+                js.timeString = "02:00"
+                jobName = "TSTh_" + batchInfo.name
+                boutPath = batchInfo.thStatsStem + ".out"
+                berrPath = batchInfo.thStatsStem + ".err"
+                if batchSet.batchSystem == "slurm":
+                    genSlurmJobCommand(scrHandleThStats, jobName, js, thScriptPath, boutPath, berrPath)
+                elif batchSet.batchSystem == "lsf":    
+                    genLSFJobCommand(scrHandleThStats, batchSet.setName, jobName, js, thScriptPath, boutPath, berrPath) 
             
-         
-            qdxScriptPath = batchInfo.qdxStem + ".sh"
-            scrHandleQDX.write("chmod " + batchSet.genExePerm + " \"" + qdxScriptPath + "\"\n")
-            jobName = "TSQDX_" + batchInfo.name
-            js.ramGigs = 8
-            boutPath = batchInfo.qdxStem + ".out"
-            berrPath = batchInfo.qdxStem + ".err"
-            if batchSet.batchSystem == "slurm":
-                genSlurmJobCommand(scrHandleQDX, jobName, js, qdxScriptPath, boutPath, berrPath)
-            elif batchSet.batchSystem == "lsf":    
-                genLSFJobCommand(scrHandleQDX, batchSet.setName, jobName, js, qdxScriptPath, boutPath, berrPath) 
+            
+                qdxScriptPath = batchInfo.qdxStem + ".sh"
+                scrHandleQDX.write("chmod " + batchSet.genExePerm + " \"" + qdxScriptPath + "\"\n")
+                jobName = "TSQDX_" + batchInfo.name
+                js.ramGigs = 8
+                boutPath = batchInfo.qdxStem + ".out"
+                berrPath = batchInfo.qdxStem + ".err"
+                if batchSet.batchSystem == "slurm":
+                    genSlurmJobCommand(scrHandleQDX, jobName, js, qdxScriptPath, boutPath, berrPath)
+                elif batchSet.batchSystem == "lsf":    
+                    genLSFJobCommand(scrHandleQDX, batchSet.setName, jobName, js, qdxScriptPath, boutPath, berrPath) 
             
      
     if msBool:
