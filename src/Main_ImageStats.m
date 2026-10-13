@@ -6,7 +6,7 @@ function Main_ImageStats(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.10.13.03';
+BUILD_STRING = '2026.10.13.04';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -160,10 +160,11 @@ for c = 1:chCount
 
     %Apply DPC and LoG filter
     fprintf("\tApplying filters...\n");
-    [chDat_f, ~] = RNAUtils.applyLoGFilter(chDat, opStruct.gaussRad, ~opStruct.nodpc);
-    % if ~opStruct.nodpc
-    %     chDat = RNAUtils.cleanDeadPixels(chDat, deadpixInfo, true);
-    % end
+    [chDat_f, deadpixInfo] = RNAUtils.applyLoGFilter(chDat, opStruct.gaussRad, ~opStruct.nodpc);
+    if ~opStruct.nodpc
+        %Remove for raw image too
+        chDat = RNAUtils.cleanDeadPixels(chDat, deadpixInfo, true);
+    end
     clear deadpixInfo
 
     myChannelStats = genChannelStatsStruct(cellCount);
