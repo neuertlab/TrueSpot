@@ -3,8 +3,8 @@ function Main_QCSummary(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2025.01.29.00';
-VERSION_STRING = 'v1.1.2';
+BUILD_STRING = '2026.10.14.00';
+VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
 arg_debug = true; %CONSTANT used for debugging arg parser.
@@ -108,7 +108,7 @@ function doDir(thTableHandle, dirPath, baseDir)
                 doDir(thTableHandle, [dirPath filesep fname], baseDir);
             end
         else
-            if startsWith(fname, 'CellSeg_') & endsWith(fname, '.mat')
+            if (startsWith(fname, 'CellSeg_') | startsWith(fname, 'TSCS_')) & endsWith(fname, '.mat')
                 csPath = [dirPath filesep fname];
             elseif endsWith(fname, '_rnaspotsrun.mat')
                 srPath = [dirPath filesep fname];
@@ -182,6 +182,9 @@ function doDir(thTableHandle, dirPath, baseDir)
                     imshow(lightDataOvr);
                     saveas(figHandle, [dirPath filesep 'cellMaskOverlay.png']);
                     close(figHandle);
+
+                    %Histograms
+                    outputHistograms(lightData, [dirPath filesep 'histoCell'], [0.5 0.5 0.5]);
                 end
                 clear lightData
 
@@ -192,6 +195,9 @@ function doDir(thTableHandle, dirPath, baseDir)
                     imshow(nucDataOvr);
                     saveas(figHandle, [dirPath filesep 'nucLabelOverlay.png']);
                     close(figHandle);
+
+                    %Histograms
+                    outputHistograms(dapiData, [dirPath filesep 'histoNuc'], [0 0 1]);
                 end
                 clear dapiData renderer
             end
@@ -241,9 +247,13 @@ function doDir(thTableHandle, dirPath, baseDir)
                     %Filter
                     [sampleFilt] = RNA_Threshold_SpotDetector.run_spot_detection_pre(...
                         sampleCh, [dirPath filesep spotsrun.paths.out_namestem], true, spotsrun.options.dtune_gaussrad, false);
+                    
+                    %Dump raw histos
+                    outputHistograms(sampleCh, [dirPath filesep 'histoRaw'], [1 0 0]);
                     clear sampleCh
 
                     maxProjFilt = max(sampleFilt, [], 3);
+                    outputHistograms(sampleFilt, [dirPath filesep 'histoFilt'], [0.75 0 0]);
                     clear sampleFilt
 
                     vis = SpotCallVisualization;
@@ -258,7 +268,7 @@ function doDir(thTableHandle, dirPath, baseDir)
                     hold on;
                     saveas(figHandle, [dirPath filesep 'rawMIP.png']);
 
-                    [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
+                    [vis, figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
                     if okay
                         saveas(figHandle, [dirPath filesep 'autoSpots.png']);
                     else
@@ -272,7 +282,7 @@ function doDir(thTableHandle, dirPath, baseDir)
                     hold on;
                     saveas(figHandle, [dirPath filesep 'filtMIP.png']);
 
-                    [figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
+                    [vis, figHandle, okay] = vis.drawResultsBasic(figHandle, spotsrun.intensity_threshold);
                     if okay
                         saveas(figHandle, [dirPath filesep 'autoSpotsF.png']);
                     else
@@ -304,6 +314,9 @@ function doDir(thTableHandle, dirPath, baseDir)
         end
     catch Excp
         fprintf('WARNING: Failed one or more QC steps. There is probably something wrong with this run!\n');
+        %disp(Excp.message);
+        emsg = getReport(Excp);
+        fprintf('%s', emsg);
     end
 
 end
@@ -363,5 +376,137 @@ function figHandle = renderSpotPlot(spotsrun, callTable)
         xline(score_max, 'LineStyle', ':', 'LineWidth', 1);
     end
 
+end
+
+function outputHistograms(imgDat, outStem, baseColor)
+    LINE_WIDTH = 1;
+
+    datRaw = imgDat(:);
+    keepBool = ~isnan(datRaw);
+    datRaw = datRaw(keepBool);
+    clear keepBool
+
+    Z = size(imgDat, 3);
+
+    %For now, just do automatic edges?
+    maxval = max(datRaw, [], 'all');
+    xx = 0:1:maxval;
+    [yy, xx] = histcounts(datRaw, xx);
+    binCount = size(yy, 2);
+    xx = xx(1:binCount);
+
+    savePath = [outStem, '_3d.png'];
+    fh = figure(1);
+    clf;
+    plot(xx, yy, 'Marker', 'none', 'LineStyle', '-', 'LineWidth', LINE_WIDTH, 'Color', baseColor);
+    xlabel('Intensity');
+    ylabel('Frequency');
+    saveas(fh, savePath);
+    close(fh);
+
+    %MIP
+    mip = max(imgDat, [], 3, 'omitnan');
+    datRaw = mip(:);
+    keepBool = ~isnan(datRaw);
+    datRaw = datRaw(keepBool);
+    clear keepBool
+
+    xx = 0:1:maxval;
+    [yy, xx] = histcounts(datRaw, xx);
+    binCount = size(yy, 2);
+    xx = xx(1:binCount);
+
+    savePath = [outStem, '_mip.png'];
+    fh = figure(1);
+    clf;
+    plot(xx, yy, 'Marker', 'none', 'LineStyle', '-', 'LineWidth', LINE_WIDTH, 'Color', baseColor);
+    xlabel('Intensity');
+    ylabel('Frequency');
+    saveas(fh, savePath);
+    close(fh);
+
+    %Z slices
+    zstd = NaN(1, Z);
+    zmed = NaN(1, Z);
+    zmean = NaN(1, Z);
+
+    clvl = round(Z * 0.75);
+    ctblDark = VisCommon.generateDarkColors(clvl, baseColor);
+    ctblLight = VisCommon.generateLightColors(clvl, baseColor);
+    clrTbl = zeros(Z, 3);
+    j = 1; mid = floor(Z/2);
+    for z = mid:-1:1
+        clrTbl(z,:) = ctblDark(j,:);
+        j = j+1;
+    end
+    j = 2;
+    for z = (mid+1):Z
+        clrTbl(z,:) = ctblLight(j,:);
+        j = j+1;
+    end
+    clear clvl ctblDark ctblLight z j mid;
+
+    savePath = [outStem, '_zslices.png'];
+    savePathFig = [outStem, '_zslices.fig'];
+    fh = figure(1);
+    clf;
+    hold on;
+    for z = 1:Z
+        sliceDat = imgDat(:,:,z);
+
+        sliceDat = sliceDat(:);
+        keepBool = ~isnan(sliceDat);
+        sliceDat = double(sliceDat(keepBool));
+        clear keepBool
+
+        zstd(z) = std(sliceDat, 0, 'all');
+        zmed(z) = median(sliceDat, 'all');
+        zmean(z) = mean(sliceDat, 'all');
+
+        maxval = max(sliceDat, [], 'all');
+        xx = 0:1:maxval;
+        [yy, xx] = histcounts(sliceDat, xx);
+        binCount = size(yy, 2);
+        xx = xx(1:binCount);
+        zz = repmat(z, 1, binCount);
+
+        plot3(zz, xx, yy, 'Marker', 'none', 'LineStyle', '-', 'LineWidth', LINE_WIDTH, 'Color', clrTbl(z,:));
+    end
+    xlabel('z');
+    ylabel('Intensity');
+    zlabel('Frequency');
+    %saveas(fh, savePath);
+    saveas(fh, savePathFig);
+    close(fh);
+
+    %Z std, median, mean
+    xx = 1:Z;
+    savePath = [outStem, '_zstd.png'];
+    fh = figure(1);
+    clf;
+    plot(xx, zstd, 'Marker', 'none', 'LineStyle', '-', 'LineWidth', LINE_WIDTH, 'Color', baseColor);
+    xlabel('z');
+    ylabel('Standard Deviation');
+    saveas(fh, savePath);
+    close(fh);
+
+    savePath = [outStem, '_zmean.png'];
+    fh = figure(1);
+    clf;
+    plot(xx, zmean, 'Marker', 'none', 'LineStyle', '-', 'LineWidth', LINE_WIDTH, 'Color', baseColor);
+    xlabel('z');
+    ylabel('Mean Intensity');
+    saveas(fh, savePath);
+    close(fh);
+
+    savePath = [outStem, '_zmed.png'];
+    fh = figure(1);
+    clf;
+    plot(xx, zmed, 'Marker', 'none', 'LineStyle', '-', 'LineWidth', LINE_WIDTH, 'Color', baseColor);
+    xlabel('z');
+    ylabel('Median Intensity');
+    saveas(fh, savePath);
+    close(fh);
+   
 end
 
