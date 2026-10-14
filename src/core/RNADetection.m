@@ -26,6 +26,15 @@ classdef RNADetection
                 = ind2sub(size(img_filtered), call_table{:,'coord_1d'});
 
         end
+
+        %%
+        function temp_calls = callTable2TempCalls(call_table)
+            %Cols: 1Dcoord, highest thresh passed
+            alloc = size(call_table, 1);
+            temp_calls = zeros(alloc, 2);
+            temp_calls(:,1) = call_table{:, 'coord_1d'};
+            temp_calls(:,2) = call_table{:, 'dropout_thresh'};
+        end
         
         %%
         function callTable2csv(csv_path, call_table, th_min, zero_coords)
@@ -344,22 +353,42 @@ classdef RNADetection
         function common_ctx = runThresholdList3D(common_ctx)
 
             T = size(common_ctx.th_list,2);
+            t0 = common_ctx.th_list(1);
+            t1 = common_ctx.th_list(T);
 
-            %Do lowest threshold to establish base table.
-            if common_ctx.verbose
-                fprintf("Processing lowest threshold...\n");
-            end
+            %mergeExisting = false;
+            scanStart = 2;
+            if ~isempty(common_ctx.call_table)
+                %There is a previous table to merge with.
+                %mergeExisting = true;
+                common_ctx.temp_calls = RNADetection.callTable2TempCalls(common_ctx.call_table);
+                min_th = max(common_ctx.temp_calls(:,2), [], 'all', 'omitnan');
+                scanStart = find((common_ctx.th_list == min_th), 1) + 1;
 
-            th_val = common_ctx.th_list(1,1);
-            [~, calls, ~, ~, spot_count] = RNADetection.testThreshold_3D(common_ctx.img_filter,...
-                th_val, common_ctx.plane_avgs, common_ctx.zBorder, true);
-            if common_ctx.collapse3D
-                base_coords = RNADetection.collapse3DCallResults(calls, spot_count, common_ctx.img_size);
+                [~, yy] = RNAUtils.spotCountFromCallTable(common_ctx.call_table, true, t0, t1);
+                common_ctx.spot_table(:,2) = yy;
+                clear yy min_th
             else
-                base_coords = RNADetection.condense3DCallResults(calls, spot_count);
+                %Do lowest threshold to establish base table.
+                if common_ctx.verbose
+                    fprintf("Processing lowest threshold...\n");
+                end
+
+                [~, calls, ~, ~, spot_count] = RNADetection.testThreshold_3D(common_ctx.img_filter,...
+                    t0, common_ctx.plane_avgs, common_ctx.zBorder, true);
+                if common_ctx.collapse3D
+                    base_coords = RNADetection.collapse3DCallResults(calls, spot_count, common_ctx.img_size);
+                else
+                    base_coords = RNADetection.condense3DCallResults(calls, spot_count);
+                end
+                common_ctx.spot_table(1,2) = spot_count;
+                clear calls;
+
+                common_ctx.temp_calls = NaN(spot_count, 2);
+                common_ctx.temp_calls(:,1) = base_coords(:);
+                common_ctx.temp_calls(:,2) = th0;
+                clear base_coords;
             end
-            common_ctx.spot_table(1,2) = spot_count;
-            clear calls;
 
             if common_ctx.threads > 1
                 ctx_clean.img_filter = common_ctx.img_filter;
@@ -383,20 +412,15 @@ classdef RNADetection
                 [outdir, ~, ~] = fileparts(common_ctx.save_stem);
                 pardir = [outdir filesep 'parallel'];
                 RNADetection.initParallel(1, common_ctx.threads, pardir);
-                parfor c = 2:T
-                    RNADetection.do3DThresholdLoop_parallel(ctx_clean, tlist(1,c));
+                parfor c = scanStart:T
+                    RNADetection.do3DThresholdLoop_parallel(ctx_clean, tlist(c));
                 end
                 delete(gcp('nocreate'));
                 rmres = rmdir(pardir, 's');
                 if common_ctx.verbose; toc; end
 
-                %Rejoin into tables...
-                common_ctx.temp_calls = NaN(spot_count, 2);
-                common_ctx.temp_calls(:,1) = base_coords(:);
-                common_ctx.temp_calls(:,2) = common_ctx.th_list(1,1);
-
-                for c = 2:T
-                    th_val = tlist(1,c);
+                for c = scanStart:T
+                    th_val = tlist(c);
                     partemp_path = [common_ctx.save_stem '_coords_' sprintf('%04d', th_val) '.mat'];
                     if isfile(partemp_path)
                         load(partemp_path, 't_coords');
@@ -405,20 +429,20 @@ classdef RNADetection
                         common_ctx.temp_calls(match_idx,2) = th_val;
                         common_ctx.spot_table(c,2) = size(t_coords,2);
                     else
+                        % match_mtx = common_ctx.temp_calls(:,2) == tlist(c-1);
+                        % match_idx = find(match_mtx);
+                        % common_ctx.temp_calls(match_idx,2) = tlist(c);
+                        % common_ctx.spot_table(c,2) = nnz(match_mtx);
                         common_ctx.spot_table(c,2) = 0;
                     end
                 end
             else
-                common_ctx.temp_calls = NaN(spot_count, 2);
-                common_ctx.temp_calls(:,1) = base_coords(:);
-                common_ctx.temp_calls(:,2) = common_ctx.th_list(1,1);
-
                 %Skip threshes with no spots at that intensity.
                 common_ctx.fimg_max_val = max(common_ctx.img_filter, [], 'all', 'omitnan');
                 common_ctx.valbin = histcounts(common_ctx.img_filter, common_ctx.fimg_max_val+1);
 
                 %fprintf("breakpoint\n");
-                for c = 2:T
+                for c = scanStart:T
                     common_ctx = RNADetection.do3DThresholdLoop_serial(common_ctx, c);
                 end
             end
@@ -562,5 +586,23 @@ classdef RNADetection
             end
 
         end
+    
+        %%
+        function common_ctx = runAndSave_spotDetect(common_ctx)
+            common_ctx = RNADetection.run_spotDetect(common_ctx);
+            [common_ctx.spot_table, common_ctx.call_table] = RNASpotsRun.saveTables(common_ctx.spot_table, common_ctx.call_table, common_ctx.save_stem);
+
+            if common_ctx.threads > 1
+                T = size(common_ctx.spot_table,1);
+                for i = 1:T
+                    th_val = common_ctx.spot_table(i,1);
+                    cpath = [common_ctx.save_stem '_coords_' sprintf('%04d.mat', th_val)];
+                    if isfile(cpath)
+                        delete(cpath);
+                    end
+                end
+            end
+        end
+    
     end
 end

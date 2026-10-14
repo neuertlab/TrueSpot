@@ -6,7 +6,7 @@ function Main_ImageStats(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.10.13.04';
+BUILD_STRING = '2026.10.14.00';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -45,7 +45,7 @@ for i = 1:nargin
             opStruct.inputPath = argval;
             if arg_debug; fprintf("Input Path Set: %s\n", opStruct.inputPath); end
         elseif strcmp(lastkey, "ostem")
-            opStruct.outputPath = argval;
+            opStruct.outputStem = argval;
             if arg_debug; fprintf("Output Stem Set: %s\n", opStruct.outputStem); end
         elseif strcmp(lastkey, "oreport")
             opStruct.reportPath = argval;

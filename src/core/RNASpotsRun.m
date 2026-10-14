@@ -22,7 +22,7 @@ classdef RNASpotsRun
 
         function [obj, run_info] = bundleForSave(obj)
             obj.meta.modifiedDate = datetime;
-            run_info = struct('RNASpotsRunVersion', 5);
+            run_info = struct('RNASpotsRunVersion', 6);
 
             run_info.img_name = obj.img_name;
             run_info.intensity_threshold = obj.intensity_threshold;
@@ -510,6 +510,9 @@ classdef RNASpotsRun
             rnaspots_run.options.winsize_incr = wincr;
             rnaspots_run.options.t_min = 10;
             rnaspots_run.options.t_max = 500;
+            rnaspots_run.options.t_incr = 1;
+            rnaspots_run.options.auto_max_full = false;
+            rnaspots_run.options.squash_fc_range = false;
 
             rnaspots_run.dims = struct('ztrim', 0);
             rnaspots_run.dims.ztrim_auto = 0;
@@ -530,7 +533,7 @@ classdef RNASpotsRun
             rnaspots_run.meta.idims_expspot = struct('x', -1, 'y', -1, 'z', -1);
             rnaspots_run.meta.creationDate = datetime;
             rnaspots_run.meta.modifiedDate = datetime;
-            rnaspots_run.meta.tsSpotsVersion = '2026.10.02.00 (v1.4.0)';
+            rnaspots_run.meta.tsSpotsVersion = '2026.10.14.00 (v1.4.0)';
         end
         
         function rnaspots_run = loadFrom(path, updateOutDir)
@@ -557,6 +560,12 @@ classdef RNASpotsRun
                 rnaspots_run.dims = run_info.dims;
                 rnaspots_run.meta = run_info.meta;
                 rnaspots_run.options = run_info.options;
+
+                if fileVer < 6
+                    rnaspots_run.options.t_incr = 1;
+                    rnaspots_run.options.auto_max_full = false;
+                    rnaspots_run.options.squash_fc_range = false;
+                end
 
                 if fileVer < 5
                     rnaspots_run.paths.ext_ctrl_stem = rnaspots_run.getFullCtrlOutStem();

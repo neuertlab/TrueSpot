@@ -129,73 +129,100 @@ if isfile(spotsrun_path)
     old_spotsrun = RNASpotsRun.loadFrom(spotsrun_path);
 end
 
-runme = true;
-if ~spotsrun.options.overwrite_output
-    if isfile([sample_outstem '_callTable.mat'])
-        fprintf("Spot detection output at %s already exists! Skipping spot detection...\n", sample_outstem);
-        runme = false;
+%Load, filter image (to set threshold range)
+if debug_lvl > 0
+    RNA_Fisher_State.outputMessageLineStatic('Pre-processing input image...', true);
+end
+%   Load image channel
+if bPreloaded
+    spotsrun.dims.idims_sample = struct('x', 0, 'y', 0, 'z', 0);
+    spotsrun.dims.idims_sample.x = size(preloaded_imgs.dat_rna_sample,2);
+    spotsrun.dims.idims_sample.y = size(preloaded_imgs.dat_rna_sample,1);
+    if ndims(preloaded_imgs.dat_rna_sample) > 2
+        spotsrun.dims.idims_sample.z = size(preloaded_imgs.dat_rna_sample,3);
+    else
+        spotsrun.dims.idims_sample.z = 1;
+    end
+    sample_rna_ch = double(preloaded_imgs.dat_rna_sample);
+else
+    %Load sample TIF
+    if isempty(sample_tif)
+        [spotsrun, sample_tif] = spotsrun.loadSampleTif(tif_v);
+    end
+    sample_rna_ch = sample_tif{spotsrun.channels.rna_ch,1};
+    spotsrun.dims.idims_sample = struct('x', 0, 'y', 0, 'z', 0);
+    spotsrun.dims.idims_sample.x = size(sample_rna_ch,2);
+    spotsrun.dims.idims_sample.y = size(sample_rna_ch,1);
+    if ndims(sample_rna_ch) > 2
+        spotsrun.dims.idims_sample.z = size(sample_rna_ch,3);
+    else
+        spotsrun.dims.idims_sample.z = 1;
+    end
+end
+spotdec = RNA_Threshold_SpotDetector;
+[img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, sample_outstem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad, spotsrun.options.save_maxproj);
+
+%Clear original image to free (a ton of) memory
+if ~bPreloaded & ~isempty(sample_tif)
+    clear sample_tif;
+end
+if ~bPreloaded & ~isempty(sample_light_ch)
+    clear sample_light_ch;
+end
+if ~bPreloaded
+    chdat_path = [sample_outstem '_samplech.mat'];
+    save(chdat_path, 'sample_rna_ch', '-v7.3');
+    clear sample_rna_ch;
+end
+
+%Suggest scan min or max if not set
+if spotsrun.options.auto_max_full
+    spotsrun.options.t_max = max(img_f, [], 'all', 'omitnan');
+    RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan max auto-set to: %d", spotsrun.options.t_max), true);
+end
+if spotsrun.options.t_max < 1 | spotsrun.options.t_min < 1
+    [th_min, th_max] = RNA_Threshold_Common.suggestScanThreshold(img_f);
+    if spotsrun.options.t_min < 1
+        spotsrun.options.t_min = th_min;
+        RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan min auto-set to: %d", spotsrun.options.t_min), true);
+    end
+    if spotsrun.options.t_max < 1
+        spotsrun.options.t_max = th_max;
+        RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan max auto-set to: %d", spotsrun.options.t_max), true);
     end
 end
 
+if debug_lvl > 0
+    RNA_Fisher_State.outputMessageLineStatic('Pre-processing complete.', true);
+end
+
+
+%Check previous results
+runme = true;
+prevCallTable = [];
+if ~spotsrun.options.overwrite_output
+    ctPath = [sample_outstem '_callTable.mat'];
+    if isfile(ctPath)
+        %Load
+        load(ctPath, 'call_table');
+        prevCallTable = call_table;
+        clear call_table
+
+        %Max threshold tested
+        prevMaxTh = max(prevCallTable{:, 'dropout_thresh'}, [], 'all', 'omitnan');
+        if prevMaxTh >= spotsrun.options.t_max
+            fprintf("Spot detection output at %s already exists! Skipping spot detection...\n", sample_outstem);
+            runme = false;
+            prevCallTable = [];
+        end
+    end
+    clear ctPath
+end
+
+%Do actual spot detection run
 if runme
-    %Load image channel
-    if bPreloaded
-        spotsrun.dims.idims_sample = struct('x', 0, 'y', 0, 'z', 0);
-        spotsrun.dims.idims_sample.x = size(preloaded_imgs.dat_rna_sample,2);
-        spotsrun.dims.idims_sample.y = size(preloaded_imgs.dat_rna_sample,1);
-        if ndims(preloaded_imgs.dat_rna_sample) > 2
-            spotsrun.dims.idims_sample.z = size(preloaded_imgs.dat_rna_sample,3);
-        else 
-            spotsrun.dims.idims_sample.z = 1;
-        end
-        sample_rna_ch = double(preloaded_imgs.dat_rna_sample);
-    else
-        %Load sample TIF
-        if isempty(sample_tif)
-            [spotsrun, sample_tif] = spotsrun.loadSampleTif(tif_v);
-        end
-        sample_rna_ch = sample_tif{spotsrun.channels.rna_ch,1};
-        spotsrun.dims.idims_sample = struct('x', 0, 'y', 0, 'z', 0);
-        spotsrun.dims.idims_sample.x = size(sample_rna_ch,2);
-        spotsrun.dims.idims_sample.y = size(sample_rna_ch,1);
-        if ndims(sample_rna_ch) > 2
-            spotsrun.dims.idims_sample.z = size(sample_rna_ch,3);
-        else 
-            spotsrun.dims.idims_sample.z = 1;
-        end
-    end
-    
-    spotdec = RNA_Threshold_SpotDetector;
-    [img_f] = spotdec.run_spot_detection_pre(sample_rna_ch, sample_outstem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad, spotsrun.options.save_maxproj);
-    
-    %Clear original image to free (a ton of) memory
-    if ~bPreloaded & ~isempty(sample_tif)
-        clear sample_tif;
-    end
-    if ~bPreloaded & ~isempty(sample_light_ch)
-        clear sample_light_ch;
-    end
-    if ~bPreloaded
-        chdat_path = [sample_outstem '_samplech.mat'];
-        save(chdat_path, 'sample_rna_ch', '-v7.3');
-        clear sample_rna_ch; 
-    end
-    
-    %Suggest scan min or max if not set
-    if spotsrun.options.t_max < 1 | spotsrun.options.t_min < 1
-        [th_min, th_max] = RNA_Threshold_Common.suggestScanThreshold(img_f);
-        if spotsrun.options.t_min < 1
-            spotsrun.options.t_min = th_min; 
-            RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan min auto-set to: %d", spotsrun.options.t_min), true);
-        end
-        if spotsrun.options.t_max < 1
-            spotsrun.options.t_max = th_max; 
-            RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan max auto-set to: %d", spotsrun.options.t_max), true);
-        end
-    end
-    
     if debug_lvl > 0
-        RNA_Fisher_State.outputMessageLineStatic('Pre-processing complete. Now continuing to detection...', true);
+        RNA_Fisher_State.outputMessageLineStatic('Run will proceed. Now continuing to detection...', true);
     end
 
     zMin = spotsrun.dims.z_min;
@@ -206,9 +233,27 @@ if runme
     if (spotsrun.dims.z_max < 1) & (spotsrun.dims.ztrim > 0)
         zMax = spotsrun.dims.idims_sample.z - spotsrun.dims.ztrim;
     end
-    [spotsrun.dims.z_min, spotsrun.dims.z_max, call_table] = spotdec.run_spot_detection_main(img_f, sample_outstem, strat, spotsrun.options.t_min, spotsrun.options.t_max, zMin, zMax, (debug_lvl > 0), thread_request);
-    %spotsrun.dims.ztrim_auto = auto_zt;
-    %spotsrun.t_min = new_th_min;
+    %[spotsrun.dims.z_min, spotsrun.dims.z_max, call_table] = spotdec.run_spot_detection_main(img_f, sample_outstem, strat, spotsrun.options.t_min, spotsrun.options.t_max, zMin, zMax, (debug_lvl > 0), thread_request);
+    %%spotsrun.dims.ztrim_auto = auto_zt;
+    %%spotsrun.t_min = new_th_min;
+
+    %All from RNA_Threshold_SpotDetector.run_spot_detection_main
+    detect_ctx = RNADetection.generateDetectContextStruct(img_f);
+    detect_ctx.th_list = spotsrun.options.t_min:spotsrun.options.t_incr:spotsrun.options.t_max;
+    detect_ctx.minZ = zMin;
+    detect_ctx.maxZ = zMax;
+    detect_ctx.save_stem = sample_outstem;
+    detect_ctx.th_strategy = strat;
+    detect_ctx.verbose = (debug_lvl > 0);
+    detect_ctx.threads = thread_request;
+    detect_ctx.call_table = prevCallTable;
+
+    detect_ctx = RNADetection.runAndSave_spotDetect(detect_ctx);
+    spotsrun.dims.z_min = detect_ctx.minZ;
+    spotsrun.dims.z_max = detect_ctx.maxZ;
+    call_table = detect_ctx.call_table;
+    clear detect_ctx
+
     if spotsrun.options.use_max_proj
         spotsrun.dims.ztrim = 0;
         spotsrun.dims.ztrim_auto = 0;
@@ -235,9 +280,9 @@ if runme
             clear sample_rna_ch; 
         end
     end
-
-    clear img_f;
 else
+    delete(chdat_path);
+
     %Copy over params from old run, if available.
     if ~isempty(old_spotsrun)
         fprintf('Previous run was found. Copying back spot detection parameters!\n');
@@ -251,6 +296,7 @@ else
         spotsrun.dims.idims_ctrl = old_spotsrun.dims.idims_ctrl;
     end
 end
+clear img_f;
 
 %Run spot detect on control (if a tif path was provided)
 %   Detect if input control path is a tif. If not, assume the input is a spot
@@ -276,10 +322,22 @@ if ~isempty(spotsrun.paths.ctrl_img_path)
         if ~spotsrun.options.overwrite_output
             %TODO check this run params against saved - if not match, throw
             %an error and return!!
-            if isfile([ctrl_stem '_callTable.mat'])
-                fprintf("Spot detection output at %s already exists! Skipping spot detection...\n", ctrl_stem);
-                runme = false;
+            ctPath = [ctrl_stem '_callTable.mat'];
+            if isfile(ctPath)
+                %Load
+                load(ctPath, 'call_table');
+                prevCallTable = call_table;
+                clear call_table
+
+                %Max threshold tested
+                prevMaxTh = max(prevCallTable{:, 'dropout_thresh'}, [], 'all', 'omitnan');
+                if prevMaxTh >= spotsrun.options.t_max
+                    fprintf("Spot detection output at %s already exists! Skipping spot detection...\n", ctrl_stem);
+                    runme = false;
+                    prevCallTable = [];
+                end
             end
+            clear ctPath
         end
 
         if runme
@@ -313,7 +371,23 @@ if ~isempty(spotsrun.paths.ctrl_img_path)
 
             spotdec = RNA_Threshold_SpotDetector;
             [ctrl_f] = spotdec.run_spot_detection_pre(ctrl_image_channel, ctrl_stem, spotsrun.options.deadpix_detect, spotsrun.options.dtune_gaussrad, spotsrun.options.save_maxproj);
-            [~, ~, call_table] = spotdec.run_spot_detection_main(ctrl_f, ctrl_stem, strat, spotsrun.options.t_min, spotsrun.options.t_max, zMin, zMax, (debug_lvl > 0), thread_request);
+            
+            %[~, ~, call_table] = spotdec.run_spot_detection_main(ctrl_f, ctrl_stem, strat, spotsrun.options.t_min, spotsrun.options.t_max, zMin, zMax, (debug_lvl > 0), thread_request);
+            %TODO
+            detect_ctx = RNADetection.generateDetectContextStruct(ctrl_f);
+            detect_ctx.th_list = spotsrun.options.t_min:spotsrun.options.t_incr:spotsrun.options.t_max;
+            detect_ctx.minZ = zMin;
+            detect_ctx.maxZ = zMax;
+            detect_ctx.save_stem = ctrl_stem;
+            detect_ctx.th_strategy = strat;
+            detect_ctx.verbose = (debug_lvl > 0);
+            detect_ctx.threads = thread_request;
+            detect_ctx.call_table = prevCallTable;
+
+            detect_ctx = RNADetection.runAndSave_spotDetect(detect_ctx);
+            call_table = detect_ctx.call_table;
+            clear detect_ctx
+            
             if ~isempty(call_table)
                 call_table{:, 'intensity'} = ctrl_image_channel(call_table{:, 'coord_1d'});
                 RNASpotsRun.saveCallTable(call_table, ctrl_stem);

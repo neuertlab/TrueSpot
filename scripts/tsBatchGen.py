@@ -318,6 +318,7 @@ class SpotDetectSettings:
     def __init__(self):
         self.thPreset = 0
         self.gaussRad = 0
+        self.amaxthfull = False
         
     def fromXmlNode(self, element):
         if 'GaussRad' in element.attrib:
@@ -325,7 +326,9 @@ class SpotDetectSettings:
         for child in element:
             if child.tag == 'ThresholdSettings':
                 if 'Preset' in child.attrib:
-                    self.thPreset = int(child.attrib['Preset'])  
+                    self.thPreset = int(child.attrib['Preset'])
+                if 'ScanToFilteredMax' in child.attrib:
+                    self.amaxthfull = str2bool(child.attrib['ScanToFilteredMax'])  
             else:
                 print("Tag \"", child.tag, "\" not recognized for spot detect settings")        
                 
@@ -336,6 +339,8 @@ class SpotDetectSettings:
             self.thPreset = other.thPreset
         if overwrite or (self.gaussRad <= 0):
             self.gaussRad = other.gaussRad 
+        if overwrite or not self.amaxthfull:
+            self.amaxthfull = other.amaxthfull 
 
 class QuantSettings:
     def __init__(self):
@@ -993,7 +998,11 @@ def genChannelJob(tifImage, channelInfo, batchSet):
             scriptHandle.write(" -sensitivity 0")        
         elif channelInfo.spotsSettings.thPreset < 0:
             scriptHandle.write(" -precision " + str(channelInfo.spotsSettings.thPreset * -1))
-    scriptHandle.write(" -autominth -automaxth")
+    scriptHandle.write(" -autominth")
+    if (channelInfo.spotsSettings is not None) and channelInfo.spotsSettings.amaxthfull:
+        scriptHandle.write(" -amaxthfull")
+    else:
+        scriptHandle.write(" -automaxth")
     if channelInfo.parentBatch.isControlBatch:
         scriptHandle.write(" -noprobe")
     if channelInfo.spotsJobSettings is not None:
@@ -1570,7 +1579,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.10.13.01")
+    print("TS Batch Job Generator initiated! Version 26.10.14.00")
     print("Input Specification:", args.xmlpath)
     xmldir = os.path.dirname(args.xmlpath)
     

@@ -105,6 +105,12 @@ for i = 1:nargin
             automaxth_flag = true;
             if arg_debug; fprintf("Automatically Determine Scan Max: On\n"); end
             lastkey = [];
+        elseif strcmp(lastkey, "amaxthfull")
+            %Overrides automaxth
+            rna_spot_run.options.auto_max_full = true;
+            automaxth_flag = true;
+            if arg_debug; fprintf("Set Scan Max to Max Intensity: On\n"); end
+            lastkey = [];
         elseif strcmp(lastkey, "autominth")
             rna_spot_run.options.t_min = 0;
             autominth_flag = true;
