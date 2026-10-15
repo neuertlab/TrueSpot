@@ -181,7 +181,7 @@ See the [full command line argument list](./spots_allargs.md) for descriptions o
 <SpotDetectSettings GaussRad="{FLOAT}" Workers="{INT}" NoDPC="{BOOL}">
 	<ZTrim Min="{INT}" Max="{INT}"/>
 	<Options DumpRunParamsToText="{BOOL}" Overwrite="{BOOL}" CsvDump="{All | ThresholdRange | SelectedThreshold}" CsvZeroBased="{BOOL}"/>
-	<ThresholdSettings Preset="{INT}" ScanMin="{INT}" ScanMax="{INT}" ScanToFilteredMax="{BOOL}">
+	<ThresholdSettings Preset="{INT}" ScanMin="{INT}" ScanMax="{INT}" ScanIncrement="{INT}" ScanToFilteredMax="{BOOL}">
 		<WindowSettings Min="{FLOAT}" Max="{FLOAT}" Increment="{FLOAT}"/>
 		<MADFactor Min="{FLOAT}" Max="{FLOAT}"/>
 		<Weights FitRightIntersect="{FLOAT}" MedMad="{FLOAT}" Fit="{FLOAT}"/>
