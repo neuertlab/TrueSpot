@@ -2286,10 +2286,16 @@ classdef RNA_Threshold_Common
             %Get some basic stats
             img_filter = double(img_filter);
             imax = max(img_filter, [], 'all');
-            pres = prctile(img_filter,[80 99],'all');
+            % pres = prctile(img_filter,[80 99],'all');
+            % p99 = pres(2);
+            % top1 = find(img_filter >= p99);
+            % p99_99 = prctile(img_filter(top1),99,'all');
+
+            maxproj = max(img_filter, [], 3, 'omitnan');
+            pres = prctile(maxproj,[80 99],'all');
             p99 = pres(2);
-            top1 = find(img_filter >= p99);
-            p99_99 = prctile(img_filter(top1),99,'all');
+            top1 = find(maxproj >= p99);
+            p99_99 = prctile(maxproj(top1),99,'all');
             
             %If image is generally kinda dim, lower the th_min
             p80 = pres(1);
@@ -2304,8 +2310,8 @@ classdef RNA_Threshold_Common
             iratio = p99_99 / imax;
             
             %This is somewhat arbitrary, but it seems to help?
-            %The idea is even though there 999/1000 pixels fall below
-            %   p99_99, if that top 0.1% is spread out over a wide range,
+            %The idea is even though there 9999/10000 pixels fall below
+            %   p99_99, if that top 0.01% is spread out over a wide range,
             %   discerning between the values up here can help either bring
             %   the plot down or give a longer evened out tail, helping the
             %   thresholder.

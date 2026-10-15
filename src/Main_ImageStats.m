@@ -6,7 +6,7 @@ function Main_ImageStats(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.10.14.00';
+BUILD_STRING = '2026.10.15.00';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -226,6 +226,29 @@ end
 
 % ========================== Helper functions ======================
 
+function val = reduceDatasize(val)
+    maxval = max(val, [], 'all', 'omitnan');
+    minval = min(val, [], 'all', 'omitnan');
+
+    if minval < 0
+        if maxval <= 0x7f
+            val = int8(val);
+        elseif maxval <= 0x7fff 
+            val = int16(val);
+        elseif maxval <= 0x7fffffff 
+            val = int32(val);
+        end
+    else
+        if maxval <= 0xff
+            val = uint8(val);
+        elseif maxval <= 0xffff 
+            val = uint16(val);
+        elseif maxval <= 0xffffffff 
+            val = uint32(val);
+        end
+    end
+end
+
 function opStruct = genOptionsStruct()
     opStruct = struct();
 
@@ -299,14 +322,14 @@ function statsStruct = takeStackRegionStats(imgDat, mask)
     intHisto = isinteger(imgDat);
 
     statsStruct.stackStats = takeStats(dImgDat(:), intHisto);
-    statsStruct.stackStats.datType = itype;
+    %statsStruct.stackStats.datType = itype;
 
     if Z > 1
         statsStruct.sliceStats(Z) = genGeneralStatsStruct();
         for z = 1:Z
             sliceDat = dImgDat(:,:,z);
             sliceStats = takeStats(sliceDat(:), intHisto);
-            sliceStats.datType = itype;
+            %sliceStats.datType = itype;
             statsStruct.sliceStats(z) = sliceStats;
         end
 
@@ -321,10 +344,12 @@ end
 function statsStruct = genGeneralStatsStruct()
     statsStruct = struct();
 
-    statsStruct.datType = [];
+    %statsStruct.datType = [];
     statsStruct.volume = 0;
 
-    statsStruct.histo = [];
+    %statsStruct.histo = [];
+    statsStruct.histo_x = [];
+    statsStruct.histo_y = [];
     statsStruct.min = NaN;
     statsStruct.max = NaN;
     statsStruct.mean = NaN;
@@ -364,7 +389,35 @@ function statsStruct = takeStats(dataCollapsed, intHisto)
     end
 
     binCount = size(N, 2);
-    statsStruct.histo = NaN(binCount, 2);
-    statsStruct.histo(:,1) = E(1:binCount);
-    statsStruct.histo(:,2) = N(:);
+    %statsStruct.histo = NaN(binCount, 2);
+    % statsStruct.histo(:,1) = E(1:binCount);
+    % statsStruct.histo(:,2) = N(:);
+    statsStruct.histo_x = E(1:binCount);
+    statsStruct.histo_y = N;
+
+    if intHisto
+        %statsStruct.histo = uint16(statsStruct.histo);
+        %statsStruct.histo_x = reduceDatasize(statsStruct.histo_x);
+        %statsStruct = rmfield(statsStruct, 'histo_x'); %Implicit
+        statsStruct.histo_x = []; %Implicit
+        statsStruct.min = reduceDatasize(statsStruct.min);
+        statsStruct.max = reduceDatasize(statsStruct.max);
+        statsStruct.median = reduceDatasize(statsStruct.median);
+        statsStruct.ptiles = reduceDatasize(statsStruct.ptiles);
+        statsStruct.mad = reduceDatasize(statsStruct.mad);
+    else
+        %statsStruct.histo = single(statsStruct.histo);
+        statsStruct.histo_x = single(statsStruct.histo_x);
+        statsStruct.min = single(statsStruct.min);
+        statsStruct.max = single(statsStruct.max);
+        statsStruct.median = single(statsStruct.median);
+        statsStruct.ptiles = single(statsStruct.ptiles);
+        statsStruct.mad = single(statsStruct.mad);
+    end
+
+    statsStruct.mean = single(statsStruct.mean);
+    statsStruct.stdev = single(statsStruct.stdev);
+
+    statsStruct.volume = reduceDatasize(statsStruct.volume);
+    statsStruct.histo_y = reduceDatasize(statsStruct.histo_y);
 end

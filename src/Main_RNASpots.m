@@ -221,6 +221,10 @@ for i = 1:nargin
                 rna_spot_run.options.t_max = round(Force2Num(argval));
                 if arg_debug; fprintf("Max Scan Threshold Set: %d\n", rna_spot_run.options.t_max); end
             end
+        elseif strcmp(lastkey, "thincr")
+            rna_spot_run.options.t_incr = round(Force2Num(argval));
+            rna_spot_run.options.auto_t_incr = false;
+            if arg_debug; fprintf("Threshold Scan Increment Set: %d\n", rna_spot_run.options.t_incr); end
         elseif strcmp(lastkey, "ztrim")
             rna_spot_run.dims.ztrim = round(Force2Num(argval));
             if arg_debug; fprintf("Z Trim Set: %d\n", rna_spot_run.dims.ztrim); end

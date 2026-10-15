@@ -192,10 +192,24 @@ if spotsrun.options.t_max < 1 | spotsrun.options.t_min < 1
     end
 end
 
+%Adjust threshold increment, if applicable
+if spotsrun.options.auto_t_incr
+    TH_COUNT_GOAL = 5000;
+    thcount = spotsrun.options.t_max - spotsrun.options.t_min + 1;
+    if thcount > TH_COUNT_GOAL
+        thcratio = thcount/TH_COUNT_GOAL;
+        spotsrun.options.t_incr = floor(thcratio);
+    end
+    clear TH_COUNT_GOAL thcount thcratio
+
+    if (spotsrun.options.t_incr > 1)
+        RNA_Fisher_State.outputMessageLineStatic(sprintf("Threshold scan increment auto-adjusted to: %d", spotsrun.options.t_incr), true);
+    end
+end
+
 if debug_lvl > 0
     RNA_Fisher_State.outputMessageLineStatic('Pre-processing complete.', true);
 end
-
 
 %Check previous results
 runme = true;
