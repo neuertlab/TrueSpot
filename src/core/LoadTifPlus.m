@@ -77,7 +77,7 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
             stackDat = idatRaw{s, 1};
             omeMeta = idatRaw{s, 4};
             subImgCount = omeMeta.getImageCount();
-            stackPos = 1;
+            subIOfs = 1;
 
             if isempty(subincl)
                 subincl = 1:1:subImgCount;
@@ -107,21 +107,23 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
                     chincl = 1:1:chCount;
                 end
 
-                itype = class(stackDat{stackPos,1});
+                itype = class(stackDat{subIOfs,1});
                 for c = 1:chCount
+                    stackPos = c + subIOfs - 1;
                     if ismember(c, chincl)
                         myStack = zeros(idims.y, idims.x, idims.z, itype);
+                        stackPos = c + subIOfs - 1;
                         for z = 1:idims.z
                             myPlane = stackDat{stackPos, 1};
                             myStack(:,:,z) = myPlane(:,:);
-                            stackPos = stackPos + 1;
+                            %stackPos = stackPos + 1;
+                            stackPos = stackPos + chCount;
                         end
                         ichDat{c} = myStack;
                         clear z myStack myPlane
-                    else
-                        stackPos = stackPos + idims.z;
                     end
                 end
+                subIOfs = subIOfs + (chCount * idims.z);
                 clear c
 
                 s_idims(i) = idims;

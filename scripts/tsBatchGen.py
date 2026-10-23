@@ -1092,10 +1092,10 @@ def genImageJobs(tifImage, batchInfo):
     excpCellMaskPath = None
     excpNucMaskPath = None
     if (batchInfo.cellsegSettings is not None) and (batchInfo.cellsegSettings.excpPyvenvName is not None):
-        if batchInfo.cellsegSettings.useCellposeCyto:
+        if batchInfo.cellsegSettings.useCellposeCyto and (batchInfo.lightChannel > 0):
             useEXCPCell = True
             excpCellMaskPath = os.path.join(tifImage.resultsDir, "EXCP_" + tifImage.name + "_cellmask.csv")
-        if batchInfo.cellsegSettings.useCellposeNuc:
+        if batchInfo.cellsegSettings.useCellposeNuc and (batchInfo.nucChannel > 0):
             useEXCPNuc = True
             excpNucMaskPath = os.path.join(tifImage.resultsDir, "EXCP_" + tifImage.name + "_nucmask.csv")
             
@@ -1608,7 +1608,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.10.15.00")
+    print("TS Batch Job Generator initiated! Version 26.10.20.00")
     print("Input Specification:", args.xmlpath)
     xmldir = os.path.dirname(args.xmlpath)
     
