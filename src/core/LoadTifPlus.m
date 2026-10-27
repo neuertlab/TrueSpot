@@ -98,7 +98,7 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
                 end
 
                 idims = omeGetStackDims(omeMeta, i-1);
-                vdims = omeGetVoxelSizeNano(omeMeta, i-1);
+                vdims = omeGetVoxelSizeNano(omeMeta, i-1, (idims.z > 1));
                 chCount = omeMeta.getChannelCount(i-1);
 
                 ichDat = cell(1, chCount);
@@ -109,7 +109,6 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
 
                 itype = class(stackDat{subIOfs,1});
                 for c = 1:chCount
-                    stackPos = c + subIOfs - 1;
                     if ismember(c, chincl)
                         myStack = zeros(idims.y, idims.x, idims.z, itype);
                         stackPos = c + subIOfs - 1;
@@ -209,13 +208,15 @@ function idims = omeGetStackDims(omeMeta, imageIndex)
     idims.z = omeMeta.getPixelsSizeZ(imageIndex).getValue();
 end
 
-function idims = omeGetVoxelSizeNano(omeMeta, imageIndex)
+function idims = omeGetVoxelSizeNano(omeMeta, imageIndex, hasZ)
     idims = struct('x', 0, 'y', 0, 'z', 0);
     check = omeMeta.getPixelsPhysicalSizeX(imageIndex);
     if ~isempty(check)
         idims.x = double(omeMeta.getPixelsPhysicalSizeX(imageIndex).value(ome.units.UNITS.NANOMETER));
         idims.y = double(omeMeta.getPixelsPhysicalSizeY(imageIndex).value(ome.units.UNITS.NANOMETER));
-        idims.z = double(omeMeta.getPixelsPhysicalSizeZ(imageIndex).value(ome.units.UNITS.NANOMETER));
+        if hasZ
+            idims.z = double(omeMeta.getPixelsPhysicalSizeZ(imageIndex).value(ome.units.UNITS.NANOMETER));
+        end
     end
 
     %Round

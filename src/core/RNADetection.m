@@ -386,7 +386,7 @@ classdef RNADetection
 
                 common_ctx.temp_calls = NaN(spot_count, 2);
                 common_ctx.temp_calls(:,1) = base_coords(:);
-                common_ctx.temp_calls(:,2) = th0;
+                common_ctx.temp_calls(:,2) = t0;
                 clear base_coords;
             end
 
