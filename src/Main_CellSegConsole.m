@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2026.10.02.00';
+BUILD_STRING = '2026.10.28.00';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -564,8 +564,8 @@ function printSummary(options)
     fprintf(fileHandle, 'nuc_params.dxy=%d\n', options.nuc_params.dxy);
     fprintf(fileHandle, 'nuc_params.z_min=%d\n', options.nuc_params.z_min);
     fprintf(fileHandle, 'nuc_params.z_max=%d\n', options.nuc_params.z_max);
-    fprintf(fileHandle, 'nuc_params.nthprcmin=%d\n', options.nuc_params.nthprcmin);
-    fprintf(fileHandle, 'nuc_params.nthprcmax=%d\n', options.nuc_params.nthprcmax);
+    fprintf(fileHandle, 'nuc_params.nthprcmin=%d\n', options.nuc_params.tmin_ptile);
+    fprintf(fileHandle, 'nuc_params.nthprcmax=%d\n', options.nuc_params.tmax_ptile);
     fclose(fileHandle);
 end
 
