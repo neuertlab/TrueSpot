@@ -100,6 +100,7 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
                 idims = omeGetStackDims(omeMeta, i-1);
                 vdims = omeGetVoxelSizeNano(omeMeta, i-1, (idims.z > 1));
                 chCount = omeMeta.getChannelCount(i-1);
+                czSwap = checkZCInterleaveOrder(omeMeta, i-1);
 
                 ichDat = cell(1, chCount);
                 chincl = opStruct.channelsToRead;
@@ -111,12 +112,19 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
                 for c = 1:chCount
                     if ismember(c, chincl)
                         myStack = zeros(idims.y, idims.x, idims.z, itype);
-                        stackPos = c + subIOfs - 1;
+                        if czSwap
+                            stackPos = subIOfs + (idims.z * (c - 1));
+                        else
+                            stackPos = subIOfs + (c - 1);
+                        end
                         for z = 1:idims.z
                             myPlane = stackDat{stackPos, 1};
                             myStack(:,:,z) = myPlane(:,:);
-                            %stackPos = stackPos + 1;
-                            stackPos = stackPos + chCount;
+                            if czSwap
+                                stackPos = stackPos + 1;
+                            else
+                                stackPos = stackPos + chCount;
+                            end
                         end
                         ichDat{c} = myStack;
                         clear z myStack myPlane
@@ -206,6 +214,20 @@ function idims = omeGetStackDims(omeMeta, imageIndex)
     idims.x = omeMeta.getPixelsSizeX(imageIndex).getValue();
     idims.y = omeMeta.getPixelsSizeY(imageIndex).getValue();
     idims.z = omeMeta.getPixelsSizeZ(imageIndex).getValue();
+end
+
+function czSwap = checkZCInterleaveOrder(omeMeta, imageIndex)
+    czSwap = false;
+    axisOrderRaw = omeMeta.getPixelsDimensionOrder(imageIndex);
+    axisOrderStr = axisOrderRaw.toString();
+    zi = strfind(axisOrderStr, 'Z');
+    ci = strfind(axisOrderStr, 'C');
+
+    if ~isempty(zi) & ~isempty(ci)
+        if zi > ci
+            czSwap = true;
+        end
+    end
 end
 
 function idims = omeGetVoxelSizeNano(omeMeta, imageIndex, hasZ)
