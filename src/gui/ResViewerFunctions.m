@@ -7,6 +7,26 @@ classdef ResViewerFunctions
         %---------------------------- Structs ---------------------------
 
         %%
+        function rvcrStruct = genResViewerChannelRenderStuct()
+            rvcrStruct = struct('structVer', 1);
+            
+            rvcrStruct.meta = []; %ResViewerSampleMetaStuct
+            rvcrStruct.isLight = false;
+            rvcrStruct.isCytoMarker = false;
+            rvcrStruct.isNucMarker = false;
+
+            rvcrStruct.alpha = 0;
+            rvcrStruct.clutName = 'grey';
+            rvcrStruct.contrastMin = 0;
+            rvcrStruct.contrastMax = 255;
+
+            %For LoG view - only applicable in single channel view
+            rvcrStruct.filtMode = false; 
+            rvcrStruct.fContrastMin = 0;
+            rvcrStruct.fContrastMin = 255;
+        end
+
+        %%
         function rvsmStruct = genResViewerSampleMetaStuct()
             rvsmStruct = struct('structVer', 1);
             
@@ -184,6 +204,94 @@ classdef ResViewerFunctions
         %%
         function saveResViewerBatch(rvbStruct, rvState, filepath)
             save(filepath, 'rvbStruct', 'rvState');
+        end
+
+        %---------------------------- Image Rendering ---------------------------
+
+        %%
+        function [cmin, cmax] = autoPickRawContrastRange(channelStackData8)
+            maxproj = max(channelStackData8, [], 3, 'omitnan');
+            cmin = min(maxproj(:));
+            cmax = median(maxproj(:)) + round(10 * std(maxproj(:)));
+        end
+
+        %%
+        function [cmin, cmax] = autoPickFiltContrastRange(channelStackData8)
+            maxproj = max(channelStackData8, [], 3, 'omitnan');
+            cmin = median(maxproj(:)) - round(0 * std(maxproj(:)));
+            cmax = median(maxproj(:)) + round(10 * std(maxproj(:)));
+        end
+
+        %%
+        function rgb8Image = renderCompositeBaseImage(stackData8, zSlice, rvcrStructs)
+            %TODO
+            %zSlice 0 means max projection
+            %Always in raw mode
+            X = size(stackData8, 2);
+            Y = size(stackData8, 1);
+            C = size(stackData8, 4);
+
+            rgb8Image = uint8(zeros(Y,X,3));
+
+            %Convert to Y,X,C projections/slices
+            sliceDat = zeros(Y,X,C);
+            if zSlice > 0
+                for c = 1:C
+                    sliceDat(:,:,c) = stackData8(:,:,zSlice,c);
+                end
+            else
+                for c = 1:C
+                    sliceDat(:,:,c) = max(stackData8(:,:,:,c), [], 3, 'omitnan');
+                end
+            end
+            clear c
+
+            %Linear rescale every channel (to 0.0 - 1.0)
+            for c = 1:C
+                rcvrInfo = rvcrStructs(c);
+                rsMax = (rcvrInfo.contrastMax - rcvrInfo.contrastMin);
+
+                mySlice = sliceDat(:,:,c);
+                mySlice = mySlice - rcvrInfo.contrastMin;
+                mySlice = mySlice ./ rsMax;
+                sliceDat(:,:,c) = mySlice;
+            end
+            clear c mySlice rcvrInfo rsMax
+
+            %Rescale to 0-255
+            sliceDat = sliceDat .* 255.0;
+            sliceDat = round(sliceDat);
+            sliceDat = uint8(sliceDat);
+
+            rgbRaw = zeros(Y,X,3);
+            %TODO
+
+        end
+
+        %%
+        function monochrome8Image = renderSingleChannelBaseImage(channelStackData8, zSlice, rvcrStruct)
+            %zSlice 0 means max projection
+            if zSlice > 0
+                sliceData = channelStackData8(:,:,zSlice);
+            else
+                sliceData = max(channelStackData8, [], 3, 'omitnan');
+            end
+
+            %Linear rescale
+            if rvcrStruct.filtMode
+                rsMax = (rvcrStruct.fContrastMax - rvcrStruct.fContrastMin);
+                sliceData = sliceData - rvcrStruct.fContrastMin;
+            else
+                rsMax = (rvcrStruct.contrastMax - rvcrStruct.contrastMin);
+                sliceData = sliceData - rvcrStruct.contrastMin;
+            end
+
+            sliceData = sliceData ./ rsMax;
+            sliceData(sliceData < 0) = 0;
+            sliceData(sliceData > 1) = 1;
+
+            sliceData = sliceData .* 255.0;
+            monochrome8Image = uint8(round(sliceData));
         end
 
     end

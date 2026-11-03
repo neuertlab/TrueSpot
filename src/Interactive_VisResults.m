@@ -3,6 +3,7 @@
 
 addpath('./core');
 addpath('./thirdparty');
+addpath('./util');
 
 % ------------------------ INPUT PATHS ------------------------
 
@@ -19,18 +20,18 @@ addpath('./thirdparty');
 % ImagePath = [ImagesBasePath filesep 'JURKAT FISH\TrueSpots\JA_2024_08_28_Jurkat_TrueSpothARF4_Cy5_1-2000_1_MMStack_Pos0.ome.tif'];
 % CellSegPath = [AnalysisDir filesep 'CellSeg_JA_20240828_Jurkat_TrueSpot_hARF4_Cy5_1-2000_I1.mat'];
 
-ResultsBasePath = 'D:\usr\bghos\labdat\RNAFISH\Analysis';
-ImagesBasePath = 'D:\usr\bghos\labdat\imgproc\img';
+ResultsBasePath = 'C:\Users\bhospelh\Documents\data\Bcy1Coloc_Analysis';
+ImagesBasePath = 'C:\Users\bhospelh\Documents\data';
 
-AnalysisDir = [ResultsBasePath filesep 'HJ_Protein_Mar2018_Subset\Msb2\20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack'];
-RunPath = [AnalysisDir filesep 'CH1\TS_20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack_CH1_rnaspotsrun.mat'];
+AnalysisDir = [ResultsBasePath filesep 'Bcy1Coloc_2303_Sep2026\230324\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01'];
+RunPath = [AnalysisDir filesep 'CH1\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01_CH1_spotCall_rnaspotsrun.mat'];
 
 %Overrides
 
 useOverrides = true;
 saveOverrides = false;
-ImagePath = [ImagesBasePath filesep 'msb2\20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack.ome.tif'];
-CellSegPath = [AnalysisDir filesep 'CellSeg_20180306_Msb2-GFP_04M_NaCl_1min_3_MMStack.mat'];
+ImagePath = [ImagesBasePath filesep 'Bcy1Coloc_2303_Sep2026\230324\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01.tif'];
+CellSegPath = [AnalysisDir filesep 'CellSeg_20230324_IF_Bcy1Rpb3_NoStress_44nm_I01.mat'];
 
 % ------------------------ INITIAL SETTINGS ------------------------
 
