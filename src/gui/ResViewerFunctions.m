@@ -210,14 +210,14 @@ classdef ResViewerFunctions
 
         %%
         function [cmin, cmax] = autoPickRawContrastRange(channelStackData8)
-            maxproj = max(channelStackData8, [], 3, 'omitnan');
+            maxproj = double(max(channelStackData8, [], 3, 'omitnan'));
             cmin = min(maxproj(:));
             cmax = median(maxproj(:)) + round(10 * std(maxproj(:)));
         end
 
         %%
         function [cmin, cmax] = autoPickFiltContrastRange(channelStackData8)
-            maxproj = max(channelStackData8, [], 3, 'omitnan');
+            maxproj = double(max(channelStackData8, [], 3, 'omitnan'));
             cmin = median(maxproj(:)) - round(0 * std(maxproj(:)));
             cmax = median(maxproj(:)) + round(10 * std(maxproj(:)));
         end
@@ -269,7 +269,7 @@ classdef ResViewerFunctions
         end
 
         %%
-        function monochrome8Image = renderSingleChannelBaseImage(channelStackData8, zSlice, rvcrStruct)
+        function bw8Image = renderSingleChannelBaseImage(channelStackData8, zSlice, rvcrStruct)
             %zSlice 0 means max projection
             if zSlice > 0
                 sliceData = channelStackData8(:,:,zSlice);
@@ -291,7 +291,7 @@ classdef ResViewerFunctions
             sliceData(sliceData > 1) = 1;
 
             sliceData = sliceData .* 255.0;
-            monochrome8Image = uint8(round(sliceData));
+            bw8Image = uint8(round(sliceData));
         end
 
     end

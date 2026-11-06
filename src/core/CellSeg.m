@@ -1074,6 +1074,8 @@ classdef CellSeg
             end
             pathlwr = lower(path);
 
+            %TODO Convert output to uint16?
+
             %For checking input format. Can open the CellSeg outputs, tsv, csv, or tif.
             cell_mask = [];
             if endsWith(pathlwr, '.mat')
@@ -1131,6 +1133,8 @@ classdef CellSeg
                 Y = 0; %If Y is not provided, then 3D text files cannot be read
             end
             pathlwr = lower(path);
+
+            %TODO Convert output to bool?
 
             nuc_mask = [];
             if endsWith(pathlwr, '.mat')
@@ -1255,9 +1259,12 @@ classdef CellSeg
             if isempty(nuc_mask)
                 return;
             end
+            X = size(nuc_mask, 2);
+            Y = size(nuc_mask, 1);
+            Z = size(nuc_mask, 3);
 
             %Determine z trim range (if possible)
-            if ndims(nuc_mask) > 2
+            if Z > 1
                 sliceSums = sum(nuc_mask, [1 2]);
                 z0 = find(sliceSums, 1);
                 z1 = find(sliceSums, 1, 'last');
@@ -1271,22 +1278,45 @@ classdef CellSeg
                 nucSegSpecs.z_max = z1;
             end
 
-            %Set results
-            if ndims(nuc_mask) > 2
-                nucSegRes.nuc_label = double(max(nuc_mask, [], 3));
-            else
-                nucSegRes.nuc_label = double(nuc_mask);
-            end
-            nucSegRes.nuc_label_lo = nucSegRes.nuc_label;
-
+            nucSegRes.lbl_imported = nuc_mask;
             nucSegRes.lbl_mid = nuc_mask > 0;
             nucSegRes.lbl_hi = nucSegRes.lbl_mid;
             nucSegRes.lbl_lo = nucSegRes.lbl_mid;
 
-            rp = regionprops(nucSegRes.nuc_label, 'centroid');
-            cx = rp.Centroids(:,2);
-            cy = rp.Centroids(:,1);
-            nucSegRes.nuclei = zeros(idims.y, idims.x);
+            relbl = bwlabeln(nucSegRes.lbl_mid, 26);
+            if Z > 1
+                lblmip = double(max(relbl, [], 3));
+            else
+                lblmip = double(relbl);
+            end
+
+            nucSegRes.nuc_label = lblmip;
+            nucSegRes.nuc_label_lo = lblmip;
+
+            rp = regionprops(lblmip, 'centroid');
+            rCount = size(rp, 1);
+            cx = zeros(1, rCount);
+            cy = zeros(1, rCount);
+            for r = 1:rCount
+                myRegion = rp(r);
+                myCentroid = myRegion.Centroid;
+
+                ccx = round(myCentroid(2));
+                ccy = round(myCentroid(1));
+
+                if ccx < 1; ccx = 1; end
+                if ccx > X; ccx = X; end
+                if ccy < 1; ccy = 1; end
+                if ccy > Y; ccy = Y; end
+
+                cx(r) = ccx;
+                cy(r) = ccy;
+            end
+            notNan = and(~isnan(cx), ~isnan(cy));
+            cx = cx(notNan);
+            cy = cy(notNan);
+
+            nucSegRes.nuclei = zeros(Y, X);
             nucSegRes.nuclei(cy, cx) = nucSegRes.nuc_label(cy, cx);
             nucSegRes.nuclei = uint16(nucSegRes.nuclei);
         end

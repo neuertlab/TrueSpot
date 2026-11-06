@@ -309,7 +309,7 @@ classdef RNA_Threshold_Common
         %FLEXIBILITIES
         %   -> "int" can refer to any integer type
         %
-        function img_filtered = blackoutBorders(in_img,border_width,trimZ)
+        function img_filtered = blackoutBorders(in_img, border_width, trimZ)
             
             if border_width > 0
                 %Do slice by slice

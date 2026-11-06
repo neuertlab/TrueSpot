@@ -101,6 +101,11 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
                 vdims = omeGetVoxelSizeNano(omeMeta, i-1, (idims.z > 1));
                 chCount = omeMeta.getChannelCount(i-1);
                 czSwap = checkZCInterleaveOrder(omeMeta, i-1);
+                %czSwap = false;
+
+                if opStruct.flipZCAxes
+                    czSwap = ~czSwap;
+                end
 
                 ichDat = cell(1, chCount);
                 chincl = opStruct.channelsToRead;
@@ -155,6 +160,8 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
                 fprintf("LoadTifPlus -- Channel count was not provided. Will read as single channel.\n");
             end
         end
+
+        %TODO opStruct.flipZCAxes?
 
         [stack, img_read] = tiffread2(tifpath);
         test_slice = stack(1,1).data;

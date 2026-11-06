@@ -9,4 +9,6 @@ function opStruct = LoadTifPlusStructGen()
     opStruct.channelsToRead = [];
     opStruct.seriesToRead = [];
     opStruct.subimagesToRead = [];
+
+    opStruct.flipZCAxes = false; %For some reason the getPixelsDimensionOrder return string is not consistent???
 end

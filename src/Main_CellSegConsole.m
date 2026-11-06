@@ -5,7 +5,7 @@ addpath('./thirdparty');
 addpath('./celldissect');
 addpath('./cellsegTemplates');
 
-BUILD_STRING = '2026.10.28.00';
+BUILD_STRING = '2026.11.06.00';
 VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ==========================
@@ -280,12 +280,21 @@ function [okay, options] = runCellseg(options, buildString, versionString)
         if ~options.nuc_only
             %Load both at once
             fprintf('> Loading nuclear marker and light channels...\n');
-            [channels, idims] = LoadTif(options.input_path,...
-                options.total_ch, [options.ch_nuc options.ch_light], 1);
-            if isempty(channels); return; end
-            nuc_ch_data = channels{options.ch_nuc, 1};
-            light_ch_data = channels{options.ch_light, 1};
-            clear channels
+            chToLoad = [options.ch_nuc options.ch_light];
+            chToLoad = chToLoad(chToLoad > 0);
+
+            if ~isempty(chToLoad)
+                [channels, idims] = LoadTif(options.input_path,...
+                    options.total_ch, chToLoad, 1);
+                if isempty(channels); return; end
+                if options.ch_nuc > 0
+                    nuc_ch_data = channels{options.ch_nuc, 1};
+                end
+                if options.ch_light > 0
+                    light_ch_data = channels{options.ch_light, 1};
+                end
+                clear channels
+            end
         else
             fprintf('> Loading nuclear marker channel...\n');
             [channels, idims] = LoadTif(options.input_path, options.total_ch, [options.ch_nuc], 1);
@@ -331,7 +340,7 @@ function [okay, options] = runCellseg(options, buildString, versionString)
     clear nuc_ch_data
     
     %Load light channel, if not already loaded.
-    if isempty(light_ch_data) & ~options.nuc_only
+    if isempty(light_ch_data) & ~options.nuc_only & (options.ch_light > 0)
         fprintf('> Loading light channel...\n');
         [channels, ~] = LoadTif(options.input_path, options.total_ch, [options.ch_light], 1);
         if isempty(channels); return; end

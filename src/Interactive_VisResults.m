@@ -24,7 +24,7 @@ ResultsBasePath = 'C:\Users\bhospelh\Documents\data\Bcy1Coloc_Analysis';
 ImagesBasePath = 'C:\Users\bhospelh\Documents\data';
 
 AnalysisDir = [ResultsBasePath filesep 'Bcy1Coloc_2303_Sep2026\230324\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01'];
-RunPath = [AnalysisDir filesep 'CH1\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01_CH1_spotCall_rnaspotsrun.mat'];
+RunPath = [AnalysisDir filesep 'CH2\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01_CH2_spotCall_rnaspotsrun.mat'];
 
 %Overrides
 
