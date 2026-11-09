@@ -69,7 +69,7 @@ classdef BaseImageRenderer
                     obj.stackData8(:,:,:,c) = chDat;
                 else
                     %Rescale based on minimum and maximum
-                    chDat = BaseImageRenderer.linearRescaleToU8FullRange(chDat);
+                    chDat = ImageUtils.linearRescaleToU8FullRange(chDat);
                 end
                 
                 %Structs
@@ -78,7 +78,7 @@ classdef BaseImageRenderer
 
                 %Auto detect raw contrast
                 [crStruct.contrastMin, crStruct.contrastMax] = ...
-                    BaseImageRenderer.autoPickRawContrastRange(chDat);
+                    ImageUtils.autoPickRawContrastRange(chDat);
 
                 obj.channelRenderInfo(c) = crStruct;
 
@@ -150,11 +150,11 @@ classdef BaseImageRenderer
             filtDat = RNA_Threshold_Common.applyGaussianFilter(rawDat, cfStruct.gaussRad, cfStruct.gaussAmt);
             filtDat = RNA_Threshold_Common.applyEdgeDetectFilter(filtDat);
             filtDat = RNA_Threshold_Common.blackoutBorders(filtDat, cfStruct.gaussRad + 1, 0);
-            cfStruct.filtData8 = BaseImageRenderer.linearRescaleToU8FullRange(filtDat);
+            cfStruct.filtData8 = ImageUtils.linearRescaleToU8FullRange(filtDat);
 
             if autoUpdateContrastBool
                 [crStruct.fContrastMin, crStruct.fContrastMax] = ...
-                    BaseImageRenderer.autoPickFiltContrastRange(cfStruct.filtData8);
+                    ImageUtils.autoPickFiltContrastRange(cfStruct.filtData8);
                 obj.channelRenderInfo(channel) = crStruct;
             end
             
@@ -273,35 +273,6 @@ classdef BaseImageRenderer
             crStruct.fContrastMin = 255;
 
             %crStruct.filtCache = BaseImageRenderer.genFilterCacheStuct();
-        end
-
-    %---------------------------- Image Rendering ---------------------------
-
-        %%
-        function [cmin, cmax] = autoPickRawContrastRange(channelStackData8)
-            maxproj = double(max(channelStackData8, [], 3, 'omitnan'));
-            cmin = min(maxproj(:));
-            cmax = median(maxproj(:)) + round(10 * std(maxproj(:)));
-        end
-
-        %%
-        function [cmin, cmax] = autoPickFiltContrastRange(channelStackData8)
-            maxproj = double(max(channelStackData8, [], 3, 'omitnan'));
-            cmin = median(maxproj(:)) - round(0 * std(maxproj(:)));
-            cmax = median(maxproj(:)) + round(10 * std(maxproj(:)));
-        end
-
-        %---------------------------- uint8 ---------------------------
-
-        function image8 = linearRescaleToU8FullRange(imageIn)
-            %Basically, minimum (whatever it is) is set to 0, and maximum
-            %to 255
-            valMin = min(imageIn, [], 'all', 'omitnan');
-            imageIn = imageIn - valMin; %Normalize min to 0
-            valMax = max(imageIn, [], 'all', 'omitnan');
-            imageIn = imageIn ./ valMax; %Normalize max to 1
-
-            image8 = uint8(round(imageIn .* 255.0));
         end
 
     end
