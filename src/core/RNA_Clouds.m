@@ -23,7 +23,7 @@ classdef RNA_Clouds
     properties
         max_dist = 50; %Max distance (radius in pixels) to look for clouds around a point
         d_thresh = 0.97; %Deriv. threshold
-        thresh_devs = 3; % # stdevs pixel intensity must be from median to be called in cloud
+        thresh_devs = 3; % # stdevs pixel intensity must be within from median to be called in cloud
     end
     
     methods
