@@ -19,6 +19,27 @@ classdef RNACloud
     methods
         
         %%
+        function obj = updateStats(obj)
+            if isempty(obj.cloud_mask)
+                obj.cloud_volume = 0.0;
+                obj.max_intensity = 0;
+                obj.total_intensity = 0;
+                return; 
+            end
+
+            obj.cloud_volume = sum(obj.cloud_mask, 'all');
+
+            if ~isempty(obj.cloud_data)
+                maskedDat = immultiply(obj.cloud_data, obj.cloud_mask);
+                obj.total_intensity = sum(maskedDat, 'all', 'omitnan');
+                obj.max_intensity = max(maskedDat, [], 'all', 'omitnan');
+            else
+                obj.max_intensity = 0;
+                obj.total_intensity = 0;
+            end
+        end
+
+        %%
         function obj = recalculateVolume(obj)
             if isempty(obj.cloud_mask)
                 obj.cloud_volume = 0.0;
@@ -74,6 +95,24 @@ classdef RNACloud
             rna_cloud.cloud_data = [];
         end
 
+        %%
+        function rna_cloud = cloudFromBoxStruct(cloudBoxStruct)
+            rna_cloud = RNACloud.newRNACloud();
+            rna_cloud.cloud_box.left = cloudBoxStruct.x0;
+            rna_cloud.cloud_box.right = cloudBoxStruct.x1;
+            rna_cloud.cloud_box.top = cloudBoxStruct.y0;
+            rna_cloud.cloud_box.bottom = cloudBoxStruct.y1;
+            rna_cloud.cloud_box.z_bottom = cloudBoxStruct.z0;
+            rna_cloud.cloud_box.z_top = cloudBoxStruct.z1;
+
+            rna_cloud.cloud_box.width = abs(cloudBoxStruct.x1 - cloudBoxStruct.x0) + 1;
+            rna_cloud.cloud_box.height = abs(cloudBoxStruct.y1 - cloudBoxStruct.y0) + 1;
+            rna_cloud.cloud_box.depth = abs(cloudBoxStruct.z1 - cloudBoxStruct.z0) + 1;
+            rna_cloud.cloud_box.width_i = round(rna_cloud.cloud_box.width);
+            rna_cloud.cloud_box.height_i = round(rna_cloud.cloud_box.height);
+            rna_cloud.cloud_box.depth_i = round(rna_cloud.cloud_box.depth);
+        end
+
         %---------------------------- Cloud Detection ---------------------------
 
         %%
@@ -90,12 +129,12 @@ classdef RNACloud
         %%
         function cloudBox = genCloudBoxStruct()
             cloudBox = struct();
-            cloudBox.x = 0;
-            cloudBox.xSize = 0;
-            cloudBox.y = 0;
-            cloudBox.ySize = 0;
-            cloudBox.z = 0;
-            cloudBox.zSize = 0;
+            cloudBox.x0 = 0;
+            cloudBox.x1 = 0;
+            cloudBox.y0 = 0;
+            cloudBox.y1 = 0;
+            cloudBox.z0 = 0;
+            cloudBox.z1 = 0;
         end
 
         %%
@@ -118,9 +157,17 @@ classdef RNACloud
                 sliceRaw = imageRaw;
             end
 
+            spot_x = double(spot_x);
+            spot_y = double(spot_y);
+            %spot_z = int32(spot_z);
             [xx, yy] = meshgrid((1:X) - spot_x, (1:Y) - spot_y);
             s_dist = sqrt(xx.^2 + yy.^2);
             winrad = 0;
+
+            figure(1); clf;
+            imshow(sliceRaw, []);
+            hold on;
+            plot(spot_x, spot_y, 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 10, 'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'none');
 
             last_avg = -1.0;
             for r = 1:settings.xyMaxDist
@@ -162,12 +209,75 @@ classdef RNACloud
 
             w_med = median(img_rmask2, 'all', 'omitnan');
             w_std = std(img_rmask2, 0, 'all', 'omitnan');
-            c_thresh = w_med - (settings.stdevCount * w_std);
+            c_thresh = w_med + (settings.stdevCount * w_std);
             clear img_rmask2 w_med w_std sliceRaw s_dist
 
             %Apply threshold in 3D to get mask
             rmask3 = repmat(rmask2, [1 1 Z]);
             cloudMask = and(rmask3, imageRaw >= c_thresh);
+
+            cmMax = max(cloudMask, [], 3, 'omitnan');
+            figure(2); clf;
+            imshow(cmMax, []);
+        end
+
+        %%
+        function cloudBoxes = cloudBoxesFromMask(cloudMask)
+            Z = size(cloudMask, 3);
+
+            if Z > 1
+                rprops = regionprops3(cloudMask, 'BoundingBox');
+                rCount = size(rprops, 1);
+
+                cloudBoxes(rCount) = RNACloud.genCloudBoxStruct();
+                for r = 1:rCount
+                    bb = rprops{r, 'BoundingBox'};
+                    box = RNACloud.genCloudBoxStruct();
+                    box.x0 = floor(bb(1));
+                    box.y0 = floor(bb(2));
+                    box.z0 = floor(bb(3));
+                    box.x1 = ceil(bb(1) + bb(4) - 1);
+                    box.y1 = ceil(bb(2) + bb(5) - 1);
+                    box.z1 = ceil(bb(3) + bb(6) - 1);
+
+                    cloudBoxes(r) = box;
+                end
+            else
+                rprops = regionprops(cloudMask, 'BoundingBox');
+                rCount = size(rprops, 1);
+                boxCount = 0;
+                for r = 1:rCount
+                    rprop = rprops(r);
+                    boxCount = boxCount + size(rprop.BoundingBox, 1);
+                end
+                
+                if boxCount < 1
+                    cloudBoxes = [];
+                    return;
+                end
+
+                cloudBoxes(boxCount) = RNACloud.genCloudBoxStruct();
+                b = 1;
+                for r = 1:rCount
+                    rprop = rprops(r);
+                    bb = rprop.BoundingBox;
+                    bc = size(bb, 1);
+                    for i = 1:bc
+                        box = RNACloud.genCloudBoxStruct();
+                        box.x0 = floor(bb(1));
+                        box.y0 = floor(bb(2));
+                        box.x1 = ceil(bb(1) + bb(3) - 1);
+                        box.y1 = ceil(bb(2) + bb(4) - 1);
+                        box.z0 = 1;
+                        box.z1 = 1;
+
+                        cloudBoxes(b) = box;
+                        b = b + 1;
+                    end
+                end
+                clear rprops b box bb bc r rCount boxCount rprop
+            end
+
         end
         
     end

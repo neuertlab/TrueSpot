@@ -374,6 +374,7 @@ classdef RNAQuant
         end
         
         %%
+        %
         function cloud_boxes = mergeOverlappingClouds(cloud_boxes, X, Y, Z)
             box_mask = false(Y,X,Z);
             box_count = size(cloud_boxes,1);
@@ -872,8 +873,43 @@ classdef RNAQuant
         function [cell_cloud_mask, cloud_boxes] = DetectRNACloudsCell(cell_img_raw, start_coords, z_adj)
             %This just runs the DETECT function, does not mess with Spots.
             %That way, can be run at same time as FitGaussians3Cell
-            clouddet = RNA_Clouds;
-            [cell_cloud_mask, cloud_boxes] = clouddet.detectClouds(cell_img_raw, start_coords, z_adj);
+
+            % clouddet = RNA_Clouds;
+            % [cell_cloud_mask, cloud_boxes] = clouddet.detectClouds(cell_img_raw, start_coords, z_adj);
+
+            X = size(cell_img_raw, 2);
+            Y = size(cell_img_raw, 1);
+            Z = size(cell_img_raw, 3);
+
+            cell_cloud_mask = false(Y,X,Z);
+
+            is3D = false;
+            if (size(start_coords, 2) > 2) & (Z > 1)
+                is3D = true;
+            end
+
+            cloudSettings = RNACloud.genCloudDetectSettingsStruct();
+            cloudSettings.stdevCount = 2;
+            cloudSettings.xyMaxDist = 50;
+            cloudSettings.avgRatioThresh = 0.98;
+            spotCount = size(start_coords, 1);
+            for s = 1:spotCount
+                sx = start_coords(s, 1);
+                sy = start_coords(s, 2);
+                sz = 1;
+                if is3D
+                    sz = start_coords(s, 3);
+                end
+
+                if ~cell_cloud_mask(sy,sx,sz)
+                    localCloudMask = RNACloud.detectCloudAroundLocalMax(cell_img_raw, cloudSettings, sx, sy, sz);
+                    if nnz(localCloudMask) > 1
+                        cell_cloud_mask = or(cell_cloud_mask, localCloudMask);
+                    end
+                end
+            end
+
+            cloud_boxes = RNACloud.cloudBoxesFromMask(cell_cloud_mask);
         end
         
         %%
@@ -884,38 +920,44 @@ classdef RNAQuant
             ch = my_cell.cell_loc.height_i;
             Z = my_cell.dim_z;
 
-            cloud_boxes = RNAQuant.mergeOverlappingClouds(cloud_boxes, cw, ch, Z);
+            %26/11/10 (1.4.0) removed this merge since the updated cloud
+            %box finder just runs regionprops(3) on the whole cell cloud
+            %mask already
+            %cloud_boxes = RNAQuant.mergeOverlappingClouds(cloud_boxes, cw, ch, Z);
+            
             cloud_count = size(cloud_boxes,1);
             temp_mem(cloud_count) = RNACloud;
             temp_pos = 1;
 
             %cell_cloud_mask = RNAQuant.fillClouds(cell_cloud_mask);
             kept_cloud_mask = false(ch,cw,Z);
+
+            %Covert to RNACloud objects (and toss any candidates below the
+            %recommended minimum volume)
             for i = 1:cloud_count
-                x0 = max(cloud_boxes(i,1) - 4, 1);
-                y0 = max(cloud_boxes(i,2) - 4, 1);
-                z0 = max(cloud_boxes(i,3) - 4, 1);
-                x1 = min(cloud_boxes(i,4) + x0 + 5, cw);
-                y1 = min(cloud_boxes(i,5) + y0 + 5, ch);
-                z1 = min(cloud_boxes(i,6) + z0 + 5, Z);
-                
-                my_cloud = RNACloud.newRNACloud();
-                my_cloud.cloud_box = ... %Update this if ever need to add 2D compat.
-                    SingleCell.generateRecPrismStruct(x0, x1, y0, y1, z0, z1);
+                my_box = cloud_boxes(i);
+
+                x0 = my_box.x0;
+                y0 = my_box.y0;
+                z0 = my_box.z0;
+                x1 = my_box.x1;
+                y1 = my_box.y1;
+                z1 = my_box.z1;
+
+                my_cloud = RNACloud.cloudFromBoxStruct(my_box);
                 my_cloud.cloud_mask = cell_cloud_mask(y0:y1,x0:x1,z0:z1);
-                
-                my_cloud = my_cloud.recalculateVolume();
-                if my_cloud.cloud_volume < min_cloud_vol; continue; end
-                
-                %Determine total intensity
                 cloud_img = cell_img_nobkg(y0:y1,x0:x1,z0:z1);
-                cloud_img = immultiply(cloud_img, my_cloud.cloud_mask);
-                my_cloud.total_intensity = sum(cloud_img, 'all');
-                my_cloud.cloud_data = cloud_img;
+                my_cloud.cloud_data = immultiply(cloud_img, my_cloud.cloud_mask);
+                my_cloud = my_cloud.updateStats();
+
+                clear cloud_img
+                if my_cloud.cloud_volume < min_cloud_vol; continue; end
+
+                %If past here, cloud is large enough to keep
                 ccmask = false(ch,cw,Z);
                 ccmask(y0:y1,x0:x1,z0:z1) = my_cloud.cloud_mask;
                 kept_cloud_mask = or(kept_cloud_mask, ccmask);
-                
+
                 %Determine if in nucleus
                 cnuc = immultiply(ccmask, my_cell.mask_nuc);
                 nuc_pix = sum(cnuc, 'all');
@@ -928,6 +970,7 @@ classdef RNAQuant
                 %Save to temp array
                 temp_mem(temp_pos) = my_cloud;
                 temp_pos = temp_pos + 1;
+                clear ccmask
             end
             
             %Move passed clouds from temp to cell obj
