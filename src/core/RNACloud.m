@@ -181,16 +181,18 @@ classdef RNACloud
 
                 %Take ratio to average of everything inside last tested
                 %radius
-                %If it drops off (there is a dropoff in intensity), call
-                %window
                 if last_avg >= 0.0
                     ratio = this_avg/last_avg;
-                    % if ratio > obj.d_thresh
-                    %     winrad = r;
-                    % end
-                    if ratio < settings.avgRatioThresh
+
+                    %Look for leveloff
+                    if ratio > settings.avgRatioThresh
                         winrad = r;
                     end
+
+                    %Look for dropoff
+                    % if ratio < settings.avgRatioThresh
+                    %     winrad = r;
+                    % end
                 end
 
                 last_avg = this_avg;
@@ -199,10 +201,18 @@ classdef RNACloud
                 end
             end
             clear r rmask2 img_rmask2 ratio last_avg this_avg
-
+           
             %Find a cloud intensity threshold by finding the median and
             %standard dev within the xy window on the chosen slice/proj
             if winrad == 0; winrad = settings.xyMaxDist; end
+            
+            %DEBUG
+            cx0 = max(spot_x - winrad, 1);
+            cx1 = min(spot_x + winrad, X);
+            cy0 = max(spot_y - winrad, 1);
+            cy1 = min(spot_y + winrad, Y);
+            rectangle('Position', [cx0 cy0 (cx1-cx0) (cy1-cy0)], 'Curvature', [1 1], 'EdgeColor', 'r');
+
             rmask2 = (s_dist <= winrad);
             img_rmask2 = sliceRaw;
             img_rmask2(~rmask2) = NaN;

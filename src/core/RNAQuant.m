@@ -888,11 +888,24 @@ classdef RNAQuant
                 is3D = true;
             end
 
+            %Resort spots doing most intense first
+            spotCount = size(start_coords, 1);
+            spot_int = zeros(1, spotCount);
+            for s = 1:spotCount
+                if is3D
+                    spot_int(s) = cell_img_raw(start_coords(s,2), start_coords(s,1), start_coords(s,3));
+                else
+                    spot_int(s) = cell_img_raw(start_coords(s,2), start_coords(s,1));
+                end
+            end
+            [~, spot_sort_index] = sort(spot_int);
+            spot_sort_index = flip(spot_sort_index);
+            start_coords = start_coords(spot_sort_index, :);
+
             cloudSettings = RNACloud.genCloudDetectSettingsStruct();
             cloudSettings.stdevCount = 2;
             cloudSettings.xyMaxDist = 50;
-            cloudSettings.avgRatioThresh = 0.98;
-            spotCount = size(start_coords, 1);
+            cloudSettings.avgRatioThresh = 0.97;
             for s = 1:spotCount
                 sx = start_coords(s, 1);
                 sy = start_coords(s, 2);
@@ -1413,6 +1426,8 @@ classdef RNAQuant
 
         %%
         function quant_struct = updateQuantCounts(quant_struct, ignoreLikelyDups, useThreshold)
+            %TODO Dim clouds can be called. Don't count these if below
+            %threshold.
             if isempty(quant_struct); return; end
 
             cell_count = size(quant_struct.cell_rna_data, 2);
