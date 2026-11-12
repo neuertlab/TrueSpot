@@ -13,6 +13,8 @@
 %   1.1.1 | 22.12.12
 %       Round 2 debugging. Fixed parallel, tweaked some cloud stuff.
 
+%TODO (26/11/12): In quant count function(s), filter out dimmer clouds
+
 classdef RNAQuant
     
     %%
@@ -61,6 +63,8 @@ classdef RNAQuant
             quant_info_struct.dbgcell = 0;
             quant_info_struct.incl_cell_zero = false;
             quant_info_struct.dump_bkg_subtracted_images = false;
+
+            quant_info_struct.cloud_settings = RNACloud.genCloudDetectSettingsStruct();
             
             %Results
             quant_info_struct.plane_stats = [];
@@ -357,8 +361,10 @@ classdef RNAQuant
             end
             
             %Do the stats.
-            vol_mean = nanmean(spot_vols);
-            vol_std = nanstd(spot_vols);
+            % vol_mean = nanmean(spot_vols);
+            % vol_std = nanstd(spot_vols);
+            vol_mean = mean(spot_vols, 'all', 'omitnan');
+            vol_std = std(spot_vols, 0, 'all', 'omitnan');
             
             min_cloud_vol = vol_mean + vol_std;
         end
@@ -702,7 +708,8 @@ classdef RNAQuant
                 for z = 1:zdim
                     slice_filtered = double(spot_filtered(:,:,z));
                     slice_scaled = slice_filtered ./ max(slice_filtered(:));
-                    slice_scaled = im2bw(slice_scaled,0.5);
+                    %slice_scaled = im2bw(slice_scaled,0.5);
+                    slice_scaled = imbinarize(slice_scaled, 0.5);
                     iprops = regionprops(slice_scaled,'MinorAxisLength','MajorAxisLength');
                     try 
                         axis_ratios(z) = iprops.MajorAxisLength ./ iprops.MinorAxisLength; %try/catch?
@@ -741,12 +748,14 @@ classdef RNAQuant
                 spot_params.yinit = my_spot.y;
                 spot_params.xgw = fitted_params(GPARAM_S1,z_mid);
                 spot_params.ygw = fitted_params(GPARAM_S2,z_mid);
-                spot_params.xFWHM = 2*sqrt(2*log(2)).*fitted_params(GPARAM_S1,z_mid);
-                spot_params.yFWHM = 2*sqrt(2*log(2)).*fitted_params(GPARAM_S2,z_mid);
+                spot_params.xFWHM = 2*sqrt(2*log(2)) .* fitted_params(GPARAM_S1,z_mid);
+                spot_params.yFWHM = 2*sqrt(2*log(2)) .* fitted_params(GPARAM_S2,z_mid);
                 spot_params.expMInt = double(max(spot_filtered(:)));
                 spot_params.fitMInt = fitted_params(GPARAM_A_2DIM,z_mid);
-                spot_params.TotExpInt = nansum(nansum(spot_filtered(:,:,z_mid)));
-                spot_params.TotFitInt = nansum(nansum(gauss_sim(:,:,z_mid)));
+                %spot_params.TotExpInt = nansum(nansum(spot_filtered(:,:,z_mid)));
+                %spot_params.TotFitInt = nansum(nansum(gauss_sim(:,:,z_mid)));
+                spot_params.TotExpInt = sum(spot_filtered(:,:,z_mid), 'all', 'omitnan');
+                spot_params.TotFitInt = sum(gauss_sim(:,:,z_mid), 'all', 'omitnan');
                 spot_params.r = axis_ratios(z_mid);
                 if spot_params.xFWHM > spot_params.yFWHM
                     spot_params.rFit = spot_params.xFWHM./spot_params.yFWHM;
@@ -870,7 +879,7 @@ classdef RNAQuant
         end
         
         %%
-        function [cell_cloud_mask, cloud_boxes] = DetectRNACloudsCell(cell_img_raw, start_coords, z_adj)
+        function [cell_cloud_mask, cloud_boxes] = DetectRNACloudsCell(cell_img_raw, start_coords, cloud_settings)
             %This just runs the DETECT function, does not mess with Spots.
             %That way, can be run at same time as FitGaussians3Cell
 
@@ -902,10 +911,11 @@ classdef RNAQuant
             spot_sort_index = flip(spot_sort_index);
             start_coords = start_coords(spot_sort_index, :);
 
-            cloudSettings = RNACloud.genCloudDetectSettingsStruct();
-            cloudSettings.stdevCount = 2;
-            cloudSettings.xyMaxDist = 50;
-            cloudSettings.avgRatioThresh = 0.97;
+            % cloudSettings = RNACloud.genCloudDetectSettingsStruct();
+            % cloudSettings.stdevCount = 2;
+            % cloudSettings.xyMaxDist = 50;
+            % cloudSettings.avgRatioThresh = 0.97;
+            % cloudSettings.zxRatio = z_adj;
             for s = 1:spotCount
                 sx = start_coords(s, 1);
                 sy = start_coords(s, 2);
@@ -915,7 +925,7 @@ classdef RNAQuant
                 end
 
                 if ~cell_cloud_mask(sy,sx,sz)
-                    localCloudMask = RNACloud.detectCloudAroundLocalMax(cell_img_raw, cloudSettings, sx, sy, sz);
+                    localCloudMask = RNACloud.detectCloudAroundLocalMax(cell_img_raw, cloud_settings, sx, sy, sz);
                     if nnz(localCloudMask) > 1
                         cell_cloud_mask = or(cell_cloud_mask, localCloudMask);
                     end
@@ -1062,8 +1072,8 @@ classdef RNAQuant
         end
         
         %%
-        function DetectRNACloudsCellPar(my_cell, z_adj, pardir)
-            [cell_cloud_mask, cloud_boxes] = RNAQuant.DetectRNACloudsCell(my_cell.img_raw, my_cell.coord_list, z_adj);
+        function DetectRNACloudsCellPar(my_cell, cloud_settings, pardir)
+            [cell_cloud_mask, cloud_boxes] = RNAQuant.DetectRNACloudsCell(my_cell.img_raw, my_cell.coord_list, cloud_settings);
             savepath = [pardir filesep sprintf('clouds_%04d.mat', my_cell.cell_number)];
             save(savepath, 'cell_cloud_mask', 'cloud_boxes', '-v7.3');
         end
@@ -1118,6 +1128,7 @@ classdef RNAQuant
             %cell_list_b = cell_list_a;
             
             %Distribute Cloud detect and Gauss fit jobs to parallel workers
+            cloud_settings = quant_struct.cloud_settings;
             pardir = char(RNAQuant.initParallel(1, quant_struct.workers, quant_struct.workdir));
             %pardir = char(quant_struct.workdir);
             parfor t = 1:task_count
@@ -1129,17 +1140,17 @@ classdef RNAQuant
 %                         
 %                         %Cloud
 %                         my_cell = cell_list_b(tt);
-%                         RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
+%                         RNAQuant.DetectRNACloudsCellPar(my_cell, cloud_settings, pardir);
 %                     else
 %                         %Gauss fit
 %                         my_cell = cell_list_a(t);
 %                         RNAQuant.FitGaussians3CellPar(my_cell, xy_rad, z_rad, b_filters, pardir);
-%                         RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
+%                         RNAQuant.DetectRNACloudsCellPar(my_cell, cloud_settings, pardir);
 %                     end
 
                     my_cell = cell_list_a(t);
                     RNAQuant.FitGaussians3CellPar(my_cell, xy_rad, z_rad, b_filters, pardir);
-                    RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
+                    RNAQuant.DetectRNACloudsCellPar(my_cell, cloud_settings, pardir);
                     cell_list_a(t).img_nobkg = [];
                 elseif do_gauss
                     %Just gaussian fit.
@@ -1149,7 +1160,7 @@ classdef RNAQuant
                 else
                     %Just cloud
                     my_cell = cell_list_a(t);
-                    RNAQuant.DetectRNACloudsCellPar(my_cell, z_adj, pardir);
+                    RNAQuant.DetectRNACloudsCellPar(my_cell, cloud_settings, pardir);
                     cell_list_a(t).img_nobkg = [];
                     cell_list_a(t).coord_list = [];
                 end
@@ -1284,7 +1295,7 @@ classdef RNAQuant
                     [start_coords, ~] = my_cell.getCoordsSubset(quant_struct.t_coord_table, true, false);
                     if ~isempty(start_coords)
                         [cell_cloud_mask, cloud_boxes] = ...
-                            RNAQuant.DetectRNACloudsCell(cell_raw, start_coords, quant_struct.z_adj);
+                            RNAQuant.DetectRNACloudsCell(cell_raw, start_coords, quant_struct.cloud_settings);
                         clear cell_raw;
                         cell_nobkg = my_cell.isolateCellBox(img_use_dbl);
                         my_cell = RNAQuant.FinishRNACloudsCell(my_cell, cell_nobkg, cell_cloud_mask, cloud_boxes, min_cloud_vol);

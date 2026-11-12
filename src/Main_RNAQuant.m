@@ -5,7 +5,7 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.11.10.00';
+BUILD_STRING = '2026.11.12.00';
 VERSION_STRING = 'v1.4.0';
 
 DEFAULT_PRESET_INDEX = 6;
@@ -43,6 +43,11 @@ param_struct.th_range_max = 0;
 param_struct.rna_channel = 1;
 param_struct.channel_count = 1;
 param_struct.z_adj = 1.0;
+
+param_struct.cloudmip = false;
+param_struct.cloudstd = 3;
+param_struct.cloudrad = 50;
+param_struct.cloudarth = 0.97;
 
 param_struct.small_obj_size = 3;
 param_struct.gaussian_radius = 0; %Defaults to 7 or spotsrun val if no override.
@@ -91,6 +96,10 @@ for i = 1:nargin
         elseif strcmp(lastkey, "nm2d")
             param_struct.use_nuc_mask = 0;
             if arg_debug; fprintf("Using 2D nuc mask.\n"); end
+            lastkey = [];
+        elseif strcmp(lastkey, "cloudmip")
+            param_struct.cloudmip = true;
+            if arg_debug; fprintf("Collapsing 3D images to MIP for cloud detection.\n"); end
             lastkey = [];
         elseif strcmp(lastkey, "nocells")
             param_struct.nocells = true;
@@ -184,6 +193,15 @@ for i = 1:nargin
         elseif strcmp(lastkey, "radz")
             param_struct.spotzoom_r_z = Force2Num(argval);
             if arg_debug; fprintf("Sampling z radius set: %d\n", param_struct.spotzoom_r_z); end
+        elseif strcmp(lastkey, "cloudrad")
+            param_struct.cloudrad = Force2Num(argval);
+            if arg_debug; fprintf("Cloud scan radius set: %d\n", param_struct.cloudrad); end
+        elseif strcmp(lastkey, "cloudarth")
+            param_struct.cloudarth = Force2Num(argval);
+            if arg_debug; fprintf("Cloud scan average ratio threshold set: %f\n", param_struct.avgRatioThresh); end
+        elseif strcmp(lastkey, "cloudstd")
+            param_struct.cloudstd = Force2Num(argval);
+            if arg_debug; fprintf("Cloud detection threshold stdevs set: %f\n", param_struct.cloudstd); end
         elseif strcmp(lastkey, "workers")
             param_struct.workers = Force2Num(argval);
             if arg_debug; fprintf("Worker threads/processes requested: %d\n", param_struct.workers); end

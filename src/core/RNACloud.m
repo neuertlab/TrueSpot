@@ -124,6 +124,7 @@ classdef RNACloud
             %cloudDetectSettings.zAvgRatioThresh = 0.97;
             cloudDetectSettings.stdevCount = 3; % # stdevs pixel intensity must be within from median to be called in cloud
             cloudDetectSettings.useMaxProj = true; %if false, use plane that spot is in
+            cloudDetectSettings.zxRatio = 0.0; %if non-zero use 3D region (if applicable)
         end
 
         %%
@@ -159,25 +160,41 @@ classdef RNACloud
 
             spot_x = double(spot_x);
             spot_y = double(spot_y);
-            %spot_z = int32(spot_z);
-            [xx, yy] = meshgrid((1:X) - spot_x, (1:Y) - spot_y);
-            s_dist = sqrt(xx.^2 + yy.^2);
-            winrad = 0;
+            spot_z = double(spot_z);
+            %[xx, yy] = meshgrid((1:X) - spot_x, (1:Y) - spot_y);
+            %s_dist = sqrt(xx.^2 + yy.^2);
+            [xx, yy, zz] = meshgrid((1:X) - spot_x, (1:Y) - spot_y, ((1:Z) - spot_z) * settings.zxRatio);
+            s_dist3 = sqrt(xx.^2 + yy.^2 + zz.^2);
 
-            figure(1); clf;
-            imshow(sliceRaw, []);
-            hold on;
-            plot(spot_x, spot_y, 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 10, 'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'none');
+            xx = xx(:,:,1);
+            yy = yy(:,:,1);
+            s_dist2 = sqrt(xx.^2 + yy.^2);
+            winrad = 0;
+            clear xx yy zz
+
+            %!!! DEBUG
+            % figure(1); clf;
+            % imshow(sliceRaw, []);
+            % hold on;
+            % plot(spot_x, spot_y, 'LineStyle', 'none', 'Marker', 'o', 'MarkerSize', 10, 'MarkerEdgeColor', 'r', 'MarkerFaceColor', 'none');
 
             last_avg = -1.0;
             for r = 1:settings.xyMaxDist
-                %Mask
-                rmask2 = (s_dist <= r);
-                img_rmask2 = sliceRaw;
-                img_rmask2(~rmask2) = NaN;
+                if (settings.zxRatio > 0.0) & (Z > 1)
+                    rmask3 = (s_dist3 <= r);
+                    img_rmask3 = imageRaw;
+                    img_rmask3(~rmask3) = NaN;
 
-                %Take the average of everything inside this radius
-                this_avg = mean(img_rmask2, 'all', 'omitnan');
+                    this_avg = mean(img_rmask3, 'all', 'omitnan');
+                else
+                    %Mask
+                    rmask2 = (s_dist2 <= r);
+                    img_rmask2 = sliceRaw;
+                    img_rmask2(~rmask2) = NaN;
+
+                    %Take the average of everything inside this radius
+                    this_avg = mean(img_rmask2, 'all', 'omitnan');
+                end
 
                 %Take ratio to average of everything inside last tested
                 %radius
@@ -206,29 +223,52 @@ classdef RNACloud
             %standard dev within the xy window on the chosen slice/proj
             if winrad == 0; winrad = settings.xyMaxDist; end
             
-            %DEBUG
-            cx0 = max(spot_x - winrad, 1);
-            cx1 = min(spot_x + winrad, X);
-            cy0 = max(spot_y - winrad, 1);
-            cy1 = min(spot_y + winrad, Y);
-            rectangle('Position', [cx0 cy0 (cx1-cx0) (cy1-cy0)], 'Curvature', [1 1], 'EdgeColor', 'r');
+            %!!! DEBUG
+            % cx0 = max(spot_x - winrad, 1);
+            % cx1 = min(spot_x + winrad, X);
+            % cy0 = max(spot_y - winrad, 1);
+            % cy1 = min(spot_y + winrad, Y);
+            % rectangle('Position', [cx0 cy0 (cx1-cx0) (cy1-cy0)], 'Curvature', [1 1], 'EdgeColor', 'r');
 
-            rmask2 = (s_dist <= winrad);
+            rmask2 = (s_dist2 <= winrad);
             img_rmask2 = sliceRaw;
             img_rmask2(~rmask2) = NaN;
 
-            w_med = median(img_rmask2, 'all', 'omitnan');
-            w_std = std(img_rmask2, 0, 'all', 'omitnan');
-            c_thresh = w_med + (settings.stdevCount * w_std);
-            clear img_rmask2 w_med w_std sliceRaw s_dist
+            if (settings.zxRatio > 0.0) & (Z > 1)
+                rmask3 = s_dist3 <= winrad;
+                img_rmask3 = imageRaw;
+                img_rmask3(~rmask3) = NaN;
+
+                w_med = median(img_rmask3, 'all', 'omitnan');
+                w_std = std(img_rmask3, 0, 'all', 'omitnan');
+                c_thresh = w_med + (settings.stdevCount * w_std);
+            else
+                rmask3 = repmat(rmask2, [1 1 Z]);
+                w_med = median(img_rmask2, 'all', 'omitnan');
+                w_std = std(img_rmask2, 0, 'all', 'omitnan');
+                c_thresh = w_med + (settings.stdevCount * w_std);
+            end
+            clear img_rmask2 w_med w_std sliceRaw s_dist2 s_dist3
 
             %Apply threshold in 3D to get mask
-            rmask3 = repmat(rmask2, [1 1 Z]);
             cloudMask = and(rmask3, imageRaw >= c_thresh);
 
-            cmMax = max(cloudMask, [], 3, 'omitnan');
-            figure(2); clf;
-            imshow(cmMax, []);
+            if nnz(cloudMask) > 0
+                %Keep only the region containing the original maximum
+                cmlbl = bwlabeln(cloudMask);
+                keepr = cmlbl(spot_y, spot_x, spot_z);
+                if(keepr > 0)
+                    cloudMask = (cmlbl == keepr);
+                else
+                    cloudMask(:) = 0;
+                end
+                clear cmlbl keepr
+            end
+
+            %!!! DEBUG
+            % cmMax = max(cloudMask, [], 3, 'omitnan');
+            % figure(2); clf;
+            % imshow(cmMax, []);
         end
 
         %%

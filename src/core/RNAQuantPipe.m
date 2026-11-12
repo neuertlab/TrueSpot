@@ -287,6 +287,13 @@ quant_results.no_bkg_subtract = param_struct.no_bkg_subtract;
 quant_results.incl_cell_zero = param_struct.incl_cell_zero;
 quant_results.dump_bkg_subtracted_images = ~isempty(param_struct.dump_nobkg_path);
 
+quant_results.cloud_settings.xyMaxDist = param_struct.cloudrad;
+quant_results.cloud_settings.avgRatioThresh = param_struct.cloudarth;
+quant_results.cloud_settings.stdevCount = param_struct.cloudstd;
+if ~param_struct.param_struct.cloudmip
+    quant_results.cloud_settings.zxRatio = quant_results.z_adj;
+end
+
 if ~isempty(quant_results.t_coord_table)
    quant_results.t_coord_table = int32(quant_results.t_coord_table);
 end
