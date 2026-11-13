@@ -46,12 +46,16 @@ No single options are required, but some form of input (ie. image path or spots 
 | `-gaussrad` | *Int* - Size in pixels | Gaussian filter radius. (Default: 7, or value stored in spotsrun) |
 | `-radxy` | *Int* - Size in pixels  | Pixel radius in xy to look around a maximum call during gaussian fitting. (Default: 4) |
 | `-radz` | *Int* - Size in pixels  | Radius in z to look around a maximum call during gaussian fitting. (Default: 2) |
+| `-cloudrad` | *Int* - Size in pixels  | Maximum radius to scan for clouds around a local maximum, if cloud detection enabled. (Default: 50) |
+| `-cloudarth` | *Float* - Ratio  | Average intensity ratio for cloud detection, if enabled (Default: 0.97) |
+| `-cloudstd` | *Float* - Factor  | Number of standard deviations to add to cloud window median for cloud thresholding, if enabled (Default: 3.0) |
 | `-norefilter` | - | **Flag** - Skip refiltering to rederive maxima list. If this flag is set, a coordinate table path is expected either directly or via the spotsrun. |
 | `-nmhi` | - | **Flag** - Use the nuclear mask derived from the high threshold (only applicable to output from CellDissect/TrueSpot's cellseg module). |
 | `-nmlo` | - | **Flag** - Use the nuclear mask derived from the low threshold (only applicable to output from CellDissect/TrueSpot's cellseg module). |
 | `-nm2d` | - | **Flag** - Use the 2D nuclear mask (only applicable to output from CellDissect/TrueSpot's cellseg module). |
 | `-nocells` | - | **Flag** - Evaluate input image as a whole instead of cell-by-cell. If this flag is set, cell segmentation paths are ignored. |
 | `-noclouds` | - | **Flag** - Skip cloud detection and only do gaussian fitting. |
+| `-cloudmip` | - | **Flag** - Use MIP instead of 3D stack for cloud detection, if enabled. |
 
 ## Performance
 

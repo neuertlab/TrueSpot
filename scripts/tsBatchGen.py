@@ -7,10 +7,6 @@ import xml.etree.ElementTree as ETree
 import datetime
 import numpy
 
-#TODO: Add control path to sample spots jobs
-#TODO: Control jobs should have no quant and no spots control
-    
-#TODO: Eventually add Main_ImageStats to run after cellseg parallel channel jobs
 
 def str2bool(val):
     #https://stackoverflow.com/questions/715417/converting-from-a-string-to-boolean-in-python
@@ -361,12 +357,29 @@ class QuantSettings:
     def __init__(self):
         self.qNoClouds = True
         self.qCellZero = True
+        
+        self.cloudrad = 0
+        self.cloudstd = numpy.nan
+        self.cloudarth = numpy.nan
+        self.cloudmip = False
     
     def fromXmlNode(self, element):
         if 'DoClouds' in element.attrib:
             self.qNoClouds = not str2bool(element.attrib['DoClouds'])
         if 'CellZero' in element.attrib:
             self.qCellZero = str2bool(element.attrib['CellZero'])
+        for child in element:
+            if child.tag == 'CloudSettings':
+                if 'MaxWindowRadius' in child.attrib:
+                    self.cloudrad = int(child.attrib['MaxWindowRadius'])
+                if 'UseMIP' in child.attrib:
+                    self.cloudmip = str2bool(child.attrib['UseMIP'])
+                if 'AvgRatioTh' in child.attrib:
+                    self.cloudarth = float(child.attrib['AvgRatioTh']) 
+                if 'StdDevs' in child.attrib:
+                    self.cloudstd = float(child.attrib['StdDevs']) 
+            else:
+                print("Tag \"", child.tag, "\" not recognized for quant settings")   
                 
     def copyDataFrom(self, other, overwrite):
         if other is None:
@@ -374,7 +387,15 @@ class QuantSettings:
         if overwrite or self.qNoClouds:
             self.qNoClouds = other.qNoClouds  
         if overwrite or self.qNoClouds:
-            self.qCellZero = other.qCellZero     
+            self.qCellZero = other.qCellZero
+        if overwrite or not self.cloudmip:
+            self.cloudmip = other.cloudmip
+        if overwrite or (numpy.isnan(self.cloudstd)):
+            self.cloudstd = other.cloudstd
+        if overwrite or (numpy.isnan(self.cloudarth)):
+            self.cloudarth = other.cloudarth
+        if overwrite or (self.cloudrad <= 0):
+            self.cloudrad = other.cloudrad
         
 class JobSettings:
     def __init__(self):
@@ -1060,7 +1081,15 @@ def genChannelJob(tifImage, channelInfo, batchSet):
             if channelInfo.quantSettings.qNoClouds:
                 scriptHandle.write(" -noclouds")
             if channelInfo.quantSettings.qCellZero:
-                scriptHandle.write(" -cellzero")        
+                scriptHandle.write(" -cellzero")
+            if channelInfo.quantSettings.cloudrad > 0:
+                scriptHandle.write(" -cloudrad " + str(channelInfo.quantSettings.cloudrad))
+            if not numpy.isnan(channelInfo.quantSettings.cloudarth):
+                scriptHandle.write(" -cloudarth " + str(channelInfo.quantSettings.cloudarth))
+            if not numpy.isnan(channelInfo.quantSettings.cloudstd):
+                scriptHandle.write(" -cloudstd " + str(channelInfo.quantSettings.cloudstd))
+            if channelInfo.quantSettings.cloudmip:
+                scriptHandle.write(" -cloudmip")
         scriptHandle.write(" -norefilter") 
         scriptHandle.write(" -log \"" + os.path.join(chDir, chName + '_quant_mat.log') + "\"")
         scriptHandle.write("\n")
@@ -1092,7 +1121,7 @@ def genImageJobs(tifImage, batchInfo):
     excpCellMaskPath = None
     excpNucMaskPath = None
     if (batchInfo.cellsegSettings is not None) and (batchInfo.cellsegSettings.excpPyvenvName is not None):
-        if batchInfo.cellsegSettings.useCellposeCyto and (batchInfo.lightChannel > 0):
+        if batchInfo.cellsegSettings.useCellposeCyto and ((batchInfo.lightChannel > 0) or (batchInfo.nucChannel > 0)):
             useEXCPCell = True
             excpCellMaskPath = os.path.join(tifImage.resultsDir, "EXCP_" + tifImage.name + "_cellmask.csv")
         if batchInfo.cellsegSettings.useCellposeNuc and (batchInfo.nucChannel > 0):
@@ -1608,7 +1637,7 @@ def readBatchXml(xmlpath):
     return batchSet
     
 def main(args):
-    print("TS Batch Job Generator initiated! Version 26.10.20.00")
+    print("TS Batch Job Generator initiated! Version 26.11.13.00")
     print("Input Specification:", args.xmlpath)
     xmldir = os.path.dirname(args.xmlpath)
     

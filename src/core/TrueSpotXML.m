@@ -129,7 +129,7 @@ classdef TrueSpotXML
         end
 
         function cellposeSubSettings = readCellposeSubSettingsNode(xmlNode, cellposeSubSettings)
-            if nargin < 2; cellposeSettings = []; end
+            if nargin < 2; cellposeSubSettings = []; end
             if isempty(cellposeSubSettings)
                 cellposeSubSettings = CellPoseTS.genCellposeSubParamStruct();
             end
@@ -351,6 +351,20 @@ classdef TrueSpotXML
             spotSettings.quantNoRefilter = ~TrueSpotXML.getBoolAttribute(xmlNode, 'DoRefilter', false);
 
             manualThresh = ~TrueSpotXML.getNumberAttribute(xmlNode, 'ManualThreshold', 0);
+
+            sChild = getFirstChild(xmlNode);
+            while ~isempty(sChild)
+                if sChild.getNodeType == sChild.ELEMENT_NODE
+                    sChildName = char(sChild.getTagName);
+                    if strcmp(sChildName, 'CloudSettings')
+                        spotSettings.cloudrad = TrueSpotXML.getNumberAttribute(sChild, 'MaxWindowRadius', 0);
+                        spotSettings.cloudarth = TrueSpotXML.getNumberAttribute(sChild, 'AvgRatioTh', NaN);
+                        spotSettings.cloudstd = TrueSpotXML.getNumberAttribute(sChild, 'StdDevs', NaN);
+                        spotSettings.cloudmip = TrueSpotXML.getBoolAttribute(sChild, 'UseMIP', false);
+                    end
+                end
+                sChild = getNextSibling(sChild);
+            end
         end
 
         function channelSettings = readImageChannelNode(xmlNode, spotCommon, threshCommon, opsCommon)

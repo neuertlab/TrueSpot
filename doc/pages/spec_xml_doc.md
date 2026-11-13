@@ -198,7 +198,9 @@ A `QuantSettings` block specifies quantification/fit parameters. It has no child
 See the [full command line argument list](./quant_allargs.md) for descriptions of parameters.
 
 ```
-<QuantSettings DoClouds="{BOOL}" DoRefilter="{BOOL}" CellZero="{BOOL}" ZtoXY="{FLOAT}" FitRadXY="{INT}" FitRadZ="{INT}" ManualThreshold="{INT}"/>
+<QuantSettings DoClouds="{BOOL}" DoRefilter="{BOOL}" CellZero="{BOOL}" ZtoXY="{FLOAT}" FitRadXY="{INT}" FitRadZ="{INT}" ManualThreshold="{INT}">
+	<CloudSettings MaxWindowRadius="{INT}" AvgRatioTh="{FLOAT}" StdDevs="{FLOAT}" UseMIP="{BOOL}"/>
+</QuantSettings>
 ```
 
 Note that if the voxel size is specified in metadata, the Z to XY ratio can be automatically calculated.

@@ -4,7 +4,7 @@ classdef TrueSpotChannelSettings
 
     %%
     properties (Constant)
-        SAVE_VERSION = 1;
+        SAVE_VERSION = 2;
     end
 
     %%
@@ -304,6 +304,18 @@ classdef TrueSpotChannelSettings
                 scratchList{argPos} = '-radz'; argPos = argPos + 1;
                 scratchList{argPos} = num2str(obj.spotCountSettings.fitRadZ); argPos = argPos + 1;
             end
+            if ~isnan(obj.spotCountSettings.cloudarth)
+                scratchList{argPos} = '-cloudarth'; argPos = argPos + 1;
+                scratchList{argPos} = num2str(obj.spotCountSettings.cloudarth); argPos = argPos + 1;
+            end
+            if ~isnan(obj.spotCountSettings.cloudstd)
+                scratchList{argPos} = '-cloudstd'; argPos = argPos + 1;
+                scratchList{argPos} = num2str(obj.spotCountSettings.cloudstd); argPos = argPos + 1;
+            end
+            if(obj.spotCountSettings.cloudrad > 0)
+                scratchList{argPos} = '-cloudrad'; argPos = argPos + 1;
+                scratchList{argPos} = num2str(obj.spotCountSettings.cloudrad); argPos = argPos + 1;
+            end
             if obj.spotCountSettings.quantNoRefilter
                 scratchList{argPos} = '-norefilter'; argPos = argPos + 1;
             end
@@ -312,6 +324,9 @@ classdef TrueSpotChannelSettings
             end
             if obj.spotCountSettings.quantCellZero
                 scratchList{argPos} = '-cellzero'; argPos = argPos + 1;
+            end
+            if obj.spotCountSettings.cloudmip
+                scratchList{argPos} = '-cloudmip'; argPos = argPos + 1;
             end
 
             myArgs = scratchList(1:(argPos-1));
@@ -356,6 +371,12 @@ classdef TrueSpotChannelSettings
             spotCountSettings.quantNoCells = false;
             spotCountSettings.quantCellZero = true;
             spotCountSettings.nucMaskLevel = 2; %2 is medium. 0 is 2D.
+
+            %V2+
+            spotCountSettings.cloudmip = false;
+            spotCountSettings.cloudstd = NaN;
+            spotCountSettings.cloudarth = NaN;
+            spotCountSettings.cloudrad = 0;
         end
 
         function thresholdSettings = genThresholdSettingsStruct()
@@ -408,7 +429,7 @@ classdef TrueSpotChannelSettings
             if ~isfile(filePath); return; end
 
             chSettings = TrueSpotChannelSettings;
-            load(filePath, 'channelIndex', 'metadata', ...
+            load(filePath, 'saveVer', 'channelIndex', 'metadata', ...
                 'spotCountSettings', 'thresholdSettings', 'options', 'previewState');
 
             chSettings.channelIndex = channelIndex;
@@ -417,6 +438,13 @@ classdef TrueSpotChannelSettings
             chSettings.thresholdSettings = thresholdSettings;
             chSettings.options = options;
             chSettings.previewState = previewState;
+
+            if saveVer < 2
+                chSettings.spotCountSettings.cloudmip = false;
+                chSettings.spotCountSettings.cloudstd = NaN;
+                chSettings.spotCountSettings.cloudarth = NaN;
+                chSettings.spotCountSettings.cloudrad = 0;
+            end
         end
 
     end
