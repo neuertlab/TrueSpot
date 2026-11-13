@@ -321,6 +321,51 @@ classdef SingleCell
         end
 
         %%
+        function obj = updateCloudDropoutThresholds(obj)
+            %Uses the threshold of the highest contained spot
+            if isempty(obj.clouds); return; end
+            [X, Y, Z] = obj.getCellBoxDims();
+            cloudLbl = zeros(Y, X, Z);
+
+            cloudCount = size(obj.clouds, 2);
+            for c = 1:cloudCount
+                cloudObj = obj.clouds(c);
+                cloudObj.dropout_thresh = 0;
+                obj.clouds(c) = cloudObj;
+
+                x0 = cloudObj.cloud_box.left;
+                x1 = cloudObj.cloud_box.right;
+                y0 = cloudObj.cloud_box.top;
+                y1 = cloudObj.cloud_box.bottom;
+                z0 = cloudObj.cloud_box.z_bottom;
+                z1 = cloudObj.cloud_box.z_top;
+
+                cloudLbl(y0:y1, x0:x1, z0:z1) = c .* double(cloudObj.cloud_mask);
+            end
+
+            % mm = max(cloudLbl, [], 3, 'omitnan');
+            % figure(1); clf;
+            % imshow(mm, []);
+
+            spotCount = size(obj.spotTable, 1);
+            for s = 1:spotCount
+                sx = obj.spotTable{s, 'xinit'};
+                sy = obj.spotTable{s, 'yinit'};
+                sz = obj.spotTable{s, 'zinit'};
+                sth = obj.spotTable{s, 'dropout_thresh'};
+
+                incloud = cloudLbl(sy, sx, sz);
+                if incloud > 0
+                    cloudObj = obj.clouds(incloud);
+                    if sth > cloudObj.dropout_thresh
+                        cloudObj.dropout_thresh = sth;
+                    end
+                    obj.clouds(incloud) = cloudObj;
+                end
+            end
+        end
+
+        %%
         function obj = updateSpotAndSignalValues(obj, globalBrightTh, globalSingleInt, removeLikelyDups, appliedThreshold)
             if nargin < 2; globalBrightTh = 65535.0; end %Used if not enough spots in this cell to work with.
             if nargin < 3; globalSingleInt = 200.0; end
@@ -380,13 +425,21 @@ classdef SingleCell
             
             %Clouds
             if ~isempty(obj.clouds)
-                cloud_count = size(obj.clouds,2);
-                for c = 1:cloud_count
-                    this_cloud = obj.clouds(c);
-                    if this_cloud.is_nuc
-                        obj.signal_nuc = obj.signal_nuc + this_cloud.total_intensity;
-                    else
-                        obj.signal_cyto = obj.signal_cyto + this_cloud.total_intensity;
+                %Filter by intensity
+                cloudList = obj.clouds;
+                cloud_th = [cloudList.dropout_thresh];
+                cloudKeep = or((cloud_th <= 0),(cloud_th >= appliedThreshold));
+                if nnz(cloudKeep) > 0
+                    cloud_count = size(cloudList,2);
+                    for c = 1:cloud_count
+                        if cloudKeep(c)
+                            this_cloud = obj.clouds(c);
+                            if this_cloud.is_nuc
+                                obj.signal_nuc = obj.signal_nuc + this_cloud.total_intensity;
+                            else
+                                obj.signal_cyto = obj.signal_cyto + this_cloud.total_intensity;
+                            end
+                        end
                     end
                 end
             end
@@ -478,47 +531,52 @@ classdef SingleCell
             totalClouds = size(obj.clouds, 2);
             if(totalClouds > 0)
                 cloudList = obj.clouds;
-                cloudInts = [cloudList.total_intensity];
+                cloudTh = [cloudList.dropout_thresh];
+                cloudKeep = or((cloudTh <= 0),(cloudTh >= appliedThreshold));
+                if nnz(cloudKeep) > 0
+                    cloudList = cloudList(cloudKeep);
+                    cloudInts = [cloudList.total_intensity];
 
-                %Redo spots, omitting spots marked as part of clouds
-                if(totalSpots > 0)
-                    inCloud = useSpotTable{:, 'in_cloud'};
-                    if nnz(inCloud) > 0
-                        obj.nucCloud = sum(counts(inNuc & ~inCloud));
-                        obj.nucNascentCloud = sum(counts(inNuc & isTooBright & ~inCloud));
-                        obj.cytoCloud = sum(counts(~inNuc & ~inCloud));
+                    %Redo spots, omitting spots marked as part of clouds
+                    if(totalSpots > 0)
+                        inCloud = useSpotTable{:, 'in_cloud'};
+                        if nnz(inCloud) > 0
+                            obj.nucCloud = sum(counts(inNuc & ~inCloud));
+                            obj.nucNascentCloud = sum(counts(inNuc & isTooBright & ~inCloud));
+                            obj.cytoCloud = sum(counts(~inNuc & ~inCloud));
+                        else
+                            obj.nucCloud = obj.nucCount;
+                            obj.nucNascentCloud = obj.nucNascentCount;
+                            obj.cytoCloud = obj.cytoCount;
+                        end
                     else
-                        obj.nucCloud = obj.nucCount;
-                        obj.nucNascentCloud = obj.nucNascentCount;
-                        obj.cytoCloud = obj.cytoCount;
+                        obj.nucCloud = 0;
+                        obj.nucNascentCloud = 0;
+                        obj.cytoCloud = 0;
+
+                        %Need a singleIntensity and brightnessThreshold
+                        iMean = mean(cloudInts, 'all', 'omitnan');
+                        %iMed = median(cloudInts, 'all', 'omitnan');
+                        iStd = std(cloudInts, 0, 'all', 'omitnan');
+                        brightnessThreshold = iMean + (brightStDevs * iStd);
+                        %brightnessThreshold = iMed + (brightStDevs * iStd);
+
+                        %The single will just be the smallest cloud
+                        singleIntensity = min(cloudInts, [], 'all', 'omitnan');
                     end
-                else
-                    obj.nucCloud = 0;
-                    obj.nucNascentCloud = 0;
-                    obj.cytoCloud = 0;
 
-                    %Need a singleIntensity and brightnessThreshold
-                    iMean = mean(cloudInts, 'all', 'omitnan');
-                    %iMed = median(cloudInts, 'all', 'omitnan');
-                    iStd = std(cloudInts, 0, 'all', 'omitnan');
-                    brightnessThreshold = iMean + (brightStDevs * iStd);
-                    %brightnessThreshold = iMed + (brightStDevs * iStd);
+                    %Try to get target count from clouds.
+                    cloudNuc = [cloudList.is_nuc];
+                    cloudTooBright = cloudInts >= brightnessThreshold;
+                    cloudCounts = round(cloudInts ./ singleIntensity);
 
-                    %The single will just be the smallest cloud
-                    singleIntensity = min(cloudInts, [], 'all', 'omitnan');
-                end
+                    obj.nucCloud = obj.nucCloud + sum(cloudCounts(cloudNuc));
+                    obj.nucNascentCloud = obj.nucNascentCloud + sum(cloudCounts(cloudNuc & cloudTooBright));
+                    obj.cytoCloud = obj.cytoCloud + sum(cloudCounts(~cloudNuc));
 
-                %Try to get target count from clouds.
-                cloudNuc = [cloudList.is_nuc];
-                cloudTooBright = cloudInts >= brightnessThreshold;
-                cloudCounts = round(cloudInts ./ singleIntensity);
-
-                obj.nucCloud = obj.nucCloud + sum(cloudCounts(cloudNuc));
-                obj.nucNascentCloud = obj.nucNascentCloud + sum(cloudCounts(cloudNuc & cloudTooBright));
-                obj.cytoCloud = obj.cytoCloud + sum(cloudCounts(~cloudNuc));
-
-                for j = 1:totalClouds
-                    obj.clouds(j).nascent_flag = cloudTooBright(j);
+                    for j = 1:totalClouds
+                        obj.clouds(j).nascent_flag = cloudTooBright(j);
+                    end
                 end
             else
                 obj.nucCloud = obj.nucCount;
@@ -580,6 +638,13 @@ classdef SingleCell
                     obj.spotTable{in_cluster, 'likely_dup'} = nodeId;
                 end
             end
+        end
+
+        %%
+        function [X, Y, Z] = getCellBoxDims(obj)
+            X = obj.cell_loc.width_i;
+            Y = obj.cell_loc.height_i;
+            Z = obj.cell_loc.depth_i;
         end
 
         %%

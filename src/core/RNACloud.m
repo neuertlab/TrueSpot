@@ -10,6 +10,7 @@ classdef RNACloud
         is_nuc;
         is_cyto;
         nascent_flag = false;
+        dropout_thresh = -1; %<= 0 means unset
         
         cloud_volume; %Just the number of pix/vox cloud encompasses.
         max_intensity; %TODO Add
@@ -60,6 +61,7 @@ classdef RNACloud
             pkg.cloud_volume = obj.cloud_volume;
             pkg.max_intensity = obj.max_intensity;
             pkg.total_intensity = obj.total_intensity;
+            pkg.dropout_thresh = obj.dropout_thresh;
         end
     
     end
@@ -81,6 +83,11 @@ classdef RNACloud
             rna_cloud.cloud_volume = pkg.cloud_volume;
             rna_cloud.max_intensity = pkg.max_intensity;
             rna_cloud.total_intensity = pkg.total_intensity;
+            if ~isfield(pkg, 'dropout_thresh')
+                rna_cloud.dropout_thresh =-1;
+            else
+                rna_cloud.dropout_thresh = pkg.dropout_thresh;
+            end
         end
 
         %%

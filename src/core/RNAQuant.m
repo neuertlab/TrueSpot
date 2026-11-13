@@ -336,7 +336,8 @@ classdef RNAQuant
         
         %%
         function min_cloud_vol = suggestMinCloudVolume(cell_rna_data)
-            % > 1 stdev above mean spot volume
+            STDEV_COUNT = 0.75;
+            % > STDEV_COUNT stdevs above mean spot volume
             
             %Count spots for vector allocation
             total_spots = 0;
@@ -366,7 +367,7 @@ classdef RNAQuant
             vol_mean = mean(spot_vols, 'all', 'omitnan');
             vol_std = std(spot_vols, 0, 'all', 'omitnan');
             
-            min_cloud_vol = vol_mean + vol_std;
+            min_cloud_vol = vol_mean + (STDEV_COUNT * vol_std);
         end
         
         %%
@@ -948,7 +949,7 @@ classdef RNAQuant
             %mask already
             %cloud_boxes = RNAQuant.mergeOverlappingClouds(cloud_boxes, cw, ch, Z);
             
-            cloud_count = size(cloud_boxes,1);
+            cloud_count = size(cloud_boxes, 2);
             temp_mem(cloud_count) = RNACloud;
             temp_pos = 1;
 
@@ -1440,8 +1441,6 @@ classdef RNAQuant
 
         %%
         function quant_struct = updateQuantCounts(quant_struct, ignoreLikelyDups, useThreshold)
-            %TODO Dim clouds can be called. Don't count these if below
-            %threshold.
             if isempty(quant_struct); return; end
 
             cell_count = size(quant_struct.cell_rna_data, 2);
@@ -1451,6 +1450,8 @@ classdef RNAQuant
                 if isempty(myCell.spotTable) & ~isempty(myCell.spots)
                     myCell = myCell.convertSpotStorage();
                 end
+
+                myCell = myCell.updateCloudDropoutThresholds();
 
                 if ~isempty(myCell.spotTable)
                     notCloud = ~myCell.spotTable{:, 'in_cloud'};
