@@ -1113,7 +1113,7 @@ classdef RNAQuant
             %Handle some common read-only values...
             xy_rad = quant_struct.spotzoom_r_xy;
             z_rad = quant_struct.spotzoom_r_z;
-            z_adj = quant_struct.z_adj;
+            %z_adj = quant_struct.z_adj;
             xydim = (xy_rad * 2) + 1;
             do_gauss = quant_struct.do_gauss_fit;
             b_filters = RNAQuant.generateGaussianBFilters(xydim);
@@ -1349,10 +1349,10 @@ classdef RNAQuant
             end
 
             % Determine dropout thresholds (this is quite slow right now)
-            cellCount = size(quant_output.cell_rna_data);
+            cellCount = size(quant_output.cell_rna_data, 2);
             if ~isempty(quant_output.cell_zero)
                 myCell = quant_output.cell_zero;
-                if isempty(obj.spotTable) & ~isempty(obj.spots)
+                if isempty(myCell.spotTable) & ~isempty(myCell.spots)
                     myCell = myCell.convertSpotStorage();
                 end
                 myCell.spotTable{:, 'dropout_thresh'} = uint16(thMin);
@@ -1360,7 +1360,7 @@ classdef RNAQuant
             end
             for c = 1:cellCount
                 myCell = quant_output.cell_rna_data(c);
-                if isempty(obj.spotTable) & ~isempty(obj.spots)
+                if isempty(myCell.spotTable) & ~isempty(myCell.spots)
                     myCell = myCell.convertSpotStorage();
                 end
                 myCell.spotTable{:, 'dropout_thresh'} = uint16(thMin);
@@ -1379,6 +1379,9 @@ classdef RNAQuant
                     if c > 0
                         myCell = quant_output.cell_rna_data(c);
                     else
+                        if isempty(quant_output.cell_zero)
+                            continue;
+                        end
                         myCell = quant_output.cell_zero;
                     end
 
