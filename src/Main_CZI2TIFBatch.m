@@ -11,8 +11,8 @@ else
         'https://www.openmicroscopy.org/bio-formats/downloads and copy to ' BF_DIR]);
 end
 
-BUILD_STRING = '2026.09.25.02';
-VERSION_STRING = 'v1.3.3';
+BUILD_STRING = '2026.11.17.00';
+VERSION_STRING = 'v1.4.0';
 
 % ========================== Process args ======================
 
@@ -199,7 +199,8 @@ for i = 1:iCount
             if isfile(outpath)
                 delete(outpath);
             end
-            bfsave(myStack, outpath);
+            %bfsave(myStack, outpath);
+            WrapBFSave(myStack, outpath);
 
             %PNG renders, if applicable
             if opStruct.pngRender

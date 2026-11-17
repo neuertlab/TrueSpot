@@ -113,6 +113,11 @@ function loadResults = LoadTifPlus(tifpath, opStruct)
                     chincl = 1:1:chCount;
                 end
 
+                %If czswap is set, planes per channel are clustered
+                %together (ie. c1z1 c1z2 c1z2 c2z1 c2z2 etc...)
+                %If not set, channels are interleaved 
+                % (ie. c1z1 c2z1 c3z1 c1z2 c2z2 c3z2 etc...)
+                %The latter seems to be more common.
                 itype = class(stackDat{subIOfs,1});
                 for c = 1:chCount
                     if ismember(c, chincl)
@@ -231,7 +236,7 @@ function czSwap = checkZCInterleaveOrder(omeMeta, imageIndex)
     ci = strfind(axisOrderStr, 'C');
 
     if ~isempty(zi) & ~isempty(ci)
-        if zi > ci
+        if ci > zi
             czSwap = true;
         end
     end
@@ -244,7 +249,12 @@ function idims = omeGetVoxelSizeNano(omeMeta, imageIndex, hasZ)
         idims.x = double(omeMeta.getPixelsPhysicalSizeX(imageIndex).value(ome.units.UNITS.NANOMETER));
         idims.y = double(omeMeta.getPixelsPhysicalSizeY(imageIndex).value(ome.units.UNITS.NANOMETER));
         if hasZ
-            idims.z = double(omeMeta.getPixelsPhysicalSizeZ(imageIndex).value(ome.units.UNITS.NANOMETER));
+            try
+               idims.z = double(omeMeta.getPixelsPhysicalSizeZ(imageIndex).value(ome.units.UNITS.NANOMETER)); 
+            catch mex
+                %TODO
+                idims.z = 0;
+            end
         end
     end
 
