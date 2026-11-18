@@ -434,6 +434,7 @@ classdef RNAUtils
             cleaned_count = 0;
     
             %Get size(s) and save. Cleans up code.
+            in_img = double(in_img);
             dim1 = size(in_img,1); %Height
             dim2 = size(in_img,2); %Width
             dim3 = size(in_img,3); %Depth
@@ -513,6 +514,40 @@ classdef RNAUtils
             end
             
             img_filtered = uint16(img_filtered); %To reduce memory usage. Note that on dim images this can have a dramatic effect.
+        end
+
+        %%
+        function imgNoBkg = applyLocalBackgroundFilter(imgIn, nSize)
+            %From RNAQuant.RNAProcess3DimFast
+            if nargin < 2; nSize = 20; end
+
+            if isempty(imgIn)
+                imgNoBkg = [];
+                return;
+            end
+
+            %Dead pix
+            dead_pix_info = RNAUtils.detectDeadPixels(imgIn, false);
+            img_dpcleaned = RNAUtils.cleanDeadPixels(imgIn, dead_pix_info, false);
+
+            %Adjust params
+            if size(nSize, 2) > 1
+                winX = nSize(1);
+                winY = nSize(2);
+            else
+                winX = nSize;
+                winY = nSize;
+            end
+
+            %medfilt
+            X = size(imgIn, 2);
+            Y = size(imgIn, 1);
+            Z = size(imgIn, 3);
+            imgNoBkg = zeros(Y, X, Z);
+            for z = 1:Z
+                z_raw = img_dpcleaned(:,:,z);
+                imgNoBkg(:,:,z) = medfilt2(z_raw, [winY winX]); 
+            end
         end
 
     end
