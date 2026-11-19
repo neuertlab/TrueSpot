@@ -68,6 +68,9 @@ classdef ImageUtils
                 imageIn = imageIn - cMin; %Normalize min to 0
                 imageDbl = imageIn ./ cMax; %Normalize max to 1
             end
+            %Clip.
+            imageDbl(imageDbl < 0.0) = 0.0;
+            imageDbl(imageDbl > 1.0) = 1.0;
         end
 
         %%
