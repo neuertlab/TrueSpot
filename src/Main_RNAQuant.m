@@ -5,7 +5,7 @@ function Main_RNAQuant(varargin)
 addpath('./core');
 addpath('./thirdparty');
 
-BUILD_STRING = '2026.11.12.00';
+BUILD_STRING = '2026.11.20.00';
 VERSION_STRING = 'v1.4.0';
 
 DEFAULT_PRESET_INDEX = 6;

@@ -281,6 +281,8 @@ classdef RNACloud
         %%
         function cloudBoxes = cloudBoxesFromMask(cloudMask)
             Z = size(cloudMask, 3);
+            X = size(cloudMask, 2);
+            Y = size(cloudMask, 1);
 
             if Z > 1
                 rprops = regionprops3(cloudMask, 'BoundingBox');
@@ -293,9 +295,17 @@ classdef RNACloud
                     box.x0 = floor(bb(1));
                     box.y0 = floor(bb(2));
                     box.z0 = floor(bb(3));
-                    box.x1 = ceil(bb(1) + bb(4) - 1);
-                    box.y1 = ceil(bb(2) + bb(5) - 1);
-                    box.z1 = ceil(bb(3) + bb(6) - 1);
+                    box.x1 = ceil(bb(1) + bb(4));
+                    box.y1 = ceil(bb(2) + bb(5));
+                    box.z1 = ceil(bb(3) + bb(6));
+
+                    %Snap into range
+                    if (box.x0 < 1); box.x0 = 1; end
+                    if (box.y0 < 1); box.y0 = 1; end
+                    if (box.z0 < 1); box.z0 = 1; end
+                    if (box.x1 > X); box.x1 = X; end
+                    if (box.y1 > Y); box.y1 = Y; end
+                    if (box.z1 > Z); box.z1 = Z; end
 
                     cloudBoxes(r) = box;
                 end
@@ -323,10 +333,16 @@ classdef RNACloud
                         box = RNACloud.genCloudBoxStruct();
                         box.x0 = floor(bb(1));
                         box.y0 = floor(bb(2));
-                        box.x1 = ceil(bb(1) + bb(3) - 1);
-                        box.y1 = ceil(bb(2) + bb(4) - 1);
+                        box.x1 = ceil(bb(1) + bb(3));
+                        box.y1 = ceil(bb(2) + bb(4));
                         box.z0 = 1;
                         box.z1 = 1;
+
+                        %Snap into range
+                        if (box.x0 < 1); box.x0 = 1; end
+                        if (box.y0 < 1); box.y0 = 1; end
+                        if (box.x1 > X); box.x1 = X; end
+                        if (box.y1 > Y); box.y1 = Y; end
 
                         cloudBoxes(b) = box;
                         b = b + 1;
