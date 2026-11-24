@@ -641,6 +641,64 @@ classdef SingleCell
         end
 
         %%
+        function cloudSpotSimParams = genCloudSpotSimParams(obj, brightStDevs, globalBrightTh, globalSingleInt, removeLikelyDups, appliedThreshold)
+            cloudSpotSimParams = RNASim.genSpotGroupGenParamStruct();
+
+            %Get stats from spots
+            if ~isempty(obj.spotTable)
+                %Filter out dim/dup spots as requested
+                spotBool = obj.spotTable{:, 'dropout_thresh'} >= appliedThreshold;
+                if removeLikelyDups
+                    spotBool = and(spotBool, obj.spotTable{:, 'likely_dup'} == 0);
+                end
+
+                spotCount = nnz(spotBool);
+                if (spotCount < 1)
+                    return;
+                end
+
+                localTable = obj.spotTable(spotBool, :);
+                localFits = obj.spotZFits(spotBool);
+
+                cloudSpotSimParams.spotTable = localTable;
+                cloudSpotSimParams.spotZFits = localFits;
+
+                spotints = localTable{:, 'TotFitInt'};
+                cloudSpotSimParams.meanPeak = mean(spotints, 'all', 'omitnan');
+                cloudSpotSimParams.stdPeak = std(spotints, 0, 'all', 'omitnan');
+                if spotCount > 2
+                    cloudSpotSimParams.brightnessThreshold = cloudSpotSimParams.meanPeak + (brightStDevs * cloudSpotSimParams.stdPeak);
+                else
+                    cloudSpotSimParams.brightnessThreshold = globalBrightTh;
+                end
+
+                isTooBright = (spotints >= cloudSpotSimParams.brightnessThreshold);
+                normCount = nnz(~isTooBright);
+                if normCount > 0
+                    normSpots = spotints(~isTooBright);
+                    cloudSpotSimParams.singleIntensity = median(normSpots, 'all', 'omitnan');
+                    clear normSpots
+                else
+                    cloudSpotSimParams.singleIntensity = globalSingleInt;
+                end
+
+                xgw = localTable{:, 'xgw'};
+                ygw = localTable{:, 'ygw'};
+                if normCount > 0
+                    cloudSpotSimParams.gwMeanX = mean(xgw(~isTooBright), 'all', 'omitnan');
+                    cloudSpotSimParams.gwMeanY = mean(ygw(~isTooBright), 'all', 'omitnan');
+                    cloudSpotSimParams.gwStdX = std(xgw(~isTooBright), 0, 'all', 'omitnan');
+                    cloudSpotSimParams.gwStdY = std(ygw(~isTooBright), 0, 'all', 'omitnan');
+                else
+                    cloudSpotSimParams.gwMeanX = mean(xgw, 'all', 'omitnan');
+                    cloudSpotSimParams.gwMeanY = mean(ygw, 'all', 'omitnan');
+                    cloudSpotSimParams.gwStdX = std(xgw, 0, 'all', 'omitnan');
+                    cloudSpotSimParams.gwStdY = std(ygw, 0, 'all', 'omitnan');
+                end
+            end
+        end
+
+        %%
         function [X, Y, Z] = getCellBoxDims(obj)
             X = obj.cell_loc.width_i;
             Y = obj.cell_loc.height_i;
@@ -683,6 +741,29 @@ classdef SingleCell
             keepSet = and(nascentOkay, nucOkay);
             cloudList = myclouds(keepSet);
 
+        end
+
+        %%
+        function cloudLbl = getLabeledCloudMask(obj)
+            [X, Y, Z] = obj.getCellBoxDims();
+            cloudLbl = zeros(Y,X,Z);
+
+            if ~isempty(obj.clouds)
+                cloudCount = size(obj.clouds, 2);
+                for c = 1:cloudCount
+                    myCloud = obj.clouds(c);
+                    x0 = myCloud.cloud_box.left;
+                    x1 = myCloud.cloud_box.right;
+                    y0 = myCloud.cloud_box.top;
+                    y1 = myCloud.cloud_box.bottom;
+                    z0 = myCloud.cloud_box.z_bottom;
+                    z1 = myCloud.cloud_box.z_top;
+
+                    cloudLbl(y0:y1,x0:x1,z0:z1) = double(myCloud.cloud_mask) .* c;
+                end
+            end
+
+            cloudLbl = uint16(cloudLbl);
         end
 
         %%

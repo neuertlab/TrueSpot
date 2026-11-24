@@ -23,15 +23,15 @@ addpath('./util');
 ResultsBasePath = 'C:\Users\bhospelh\Documents\data\Bcy1Coloc_Analysis';
 ImagesBasePath = 'C:\Users\bhospelh\Documents\data';
 
-AnalysisDir = [ResultsBasePath filesep 'Bcy1Coloc_2303_Sep2026\230324\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01'];
-RunPath = [AnalysisDir filesep 'CH2\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01_CH2_spotCall_rnaspotsrun.mat'];
+AnalysisDir = [ResultsBasePath filesep 'Bcy1Coloc_2207_Sep2026\220705_Rpb1_33nm\20220705_IF_Bcy1Rpb1_NaCl15min_33nm_I01'];
+RunPath = [AnalysisDir filesep 'CH2\20220705_IF_Bcy1Rpb1_NaCl15min_33nm_I01_CH2_spotCall_rnaspotsrun.mat'];
 
 %Overrides
 
 useOverrides = true;
 saveOverrides = false;
-ImagePath = [ImagesBasePath filesep 'Bcy1Coloc_2303_Sep2026\230324\20230324_IF_Bcy1Rpb3_NoStress_44nm_I01.tif'];
-CellSegPath = [AnalysisDir filesep 'CellSeg_20230324_IF_Bcy1Rpb3_NoStress_44nm_I01.mat'];
+ImagePath = [ImagesBasePath filesep 'Bcy1Coloc_2207_Sep2026\220705_Rpb1_33nm\20220705_IF_Bcy1Rpb1_NaCl15min_33nm_I01.tif'];
+CellSegPath = [AnalysisDir filesep 'CellSeg_20220705_IF_Bcy1Rpb1_NaCl15min_33nm_I01.mat'];
 
 % ------------------------ INITIAL SETTINGS ------------------------
 
