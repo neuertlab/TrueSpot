@@ -140,6 +140,35 @@ classdef RNASpot
         end
 
         %%
+        function [zgw, A] = adjustZFitParams(z_adj, gfit_slices)
+            %NOTE: Quant seems to always generate 5 slices fits regardless
+            %of init_z (ie. if init_z is 1, fit 3 correlates to the
+            %original slice 1 and fits 1-2 are dummies fit to all-zeros.
+            %These should be pruned before calling...
+
+            %z_adj is the fitted z center (z_rel in table)
+
+            %zdim = size(gfit_slices,2);
+            amps = [gfit_slices.A];
+            [ya, amaxIdx] = max(amps, [], 'all', 'omitnan');
+            nextSlice = amaxIdx - 1;
+            if nextSlice < 1
+                nextSlice = amaxIdx + 1;
+            end
+            yb = amps(nextSlice);
+            den = log(ya ./ yb) .* 2;
+            da = (amaxIdx - z_adj) ^ 2;
+            db = (nextSlice - z_adj) ^ 2;
+            num = db - da;
+
+            zgw = sqrt(num ./ den);
+            
+            num = -(da);
+            den = 2 .* (zgq ^ 2);
+            A = ya ./ exp(num ./ den);
+        end
+
+        %%
         function rna_spot = newRNASpot()
             rna_spot = RNASpot;
             rna_spot.gfit_slices = RNAQuant.genEmptyGaussFitParamStruct(false);

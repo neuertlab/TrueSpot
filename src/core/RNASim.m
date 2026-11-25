@@ -66,6 +66,11 @@ classdef RNASim
         end
 
         %%
+        function imageOut = addSimSpotToImage(simSpot, imageIn, c_x, c_y, c_z)
+            %TODO
+        end
+
+        %%
         function [genSpotTable, simData] = reconCloudSpots(cloudMask, cloudData, spotGenParams)
             genSpotTable = table.empty();
             if isempty(spotGenParams); return; end
@@ -74,8 +79,73 @@ classdef RNASim
             Y = size(cloudMask, 1);
             Z = size(cloudMask, 3);
 
+            %Prep output
+            simData = zeros(Y,X,Z);
+            %simMask = false(Y,X,Z);
+
+            varNames = {'center_x', 'center_y', 'center_z', 'xgw', 'ygw', 'zgw', 'amplitude'};
+            varTypes = {'single', 'single', 'single', 'single', 'single', 'single', 'single'};
+
+            table_size = [spotGenParams.spotCount size(varNames,2)];
+            genSpotTable = table('Size', table_size, 'VariableTypes', varTypes, 'VariableNames', varNames);
+
             remainingSpots = spotGenParams.spotCount;
+            spotPos = 1;
             %Start with known spots
+            if ~isempty(spotGenParams.spotTable)
+                %Look for spots inside this cloud
+                sx = spotGenParams.spotTable{:, 'xinit'};
+                sy = spotGenParams.spotTable{:, 'yinit'};
+                sz = spotGenParams.spotTable{:, 'zinit'};
+
+                inCloud = false(1, spotGenParams.spotCount);
+                for j = 1:spotGenParams.spotCount
+                    inCloud(j) = cloudMask(sy, sx, sz);
+                end
+                clear j sx sy sz
+
+                if nnz(inCloud) > 0
+                    cloudSpots = spotGenParams.spotTable(inCloud, :);
+                    cloudFits = spotGenParams.spotZFits(inCloud);
+                    csCount = size(cloudSpots, 1);
+
+                    for i = 1:csCount
+                        %Determine how many sub-spots
+                        sint = spotGenParams.spotTable{:, 'TotFitInt'};
+                        if (sint > paramStruct.brightnessThreshold)
+                            %Split into multiple
+                            %TODO
+                        else
+                            %Render as single as-is
+                            xy_rad = floor(cloudSpots{i, 'xFWHM'} .* 2);
+                            sim_spot = RNASpot.generateSimSpotFromFit_Table(cloudSpots, i, cloudFits{i}, xy_rad);
+
+                            c_x = cloudSpots{i, 'xinit'};
+                            c_y = cloudSpots{i, 'yinit'};
+                            c_z = cloudSpots{i, 'zinit'};
+                            simData = RNASim.addSimSpotToImage(sim_spot, simData, c_x, c_y, c_z);
+                            clear xy_rad sim_spot
+
+                            %TODO
+                            genSpotTable{spotPos, 'center_x'} = c_x;
+                            genSpotTable{spotPos, 'center_y'} = c_y;
+                            genSpotTable{spotPos, 'center_z'} = c_z;
+                            genSpotTable{spotPos, 'xgw'} = cloudSpots{i, 'xgw'};
+                            genSpotTable{spotPos, 'ygw'} = cloudSpots{i, 'ygw'};
+                            %TODO - calculate zgw
+
+                            clear c_x c_y c_z
+
+                            remainingSpots = remainingSpots - 1;
+                            spotPos = spotPos + 1;
+                        end
+                        clear sint
+                    end
+                    clear csCount cloudSpots cloudFits i
+                end
+                clear inCloud
+            end
+
             %TODO
         end
 
